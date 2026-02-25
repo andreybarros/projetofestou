@@ -25,9 +25,9 @@ html[data-theme="dark"] .cal-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .cal-head-cell.today .day-num{background:#4f46e5;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px}
 .cal-head-cell .day-num{font-size:18px;font-weight:700;color:var(--mtext2);margin-bottom:2px;line-height:1}
 .cal-hour-label{padding:0 6px;text-align:right;font-size:10px;font-weight:500;color:var(--mmuted);font-family:'DM Mono',monospace;height:56px;display:flex;align-items:flex-start;padding-top:4px;border-right:1px solid var(--mborder2);flex-shrink:0}
-.cal-cell{height:56px;border-right:1px solid var(--mborder2);border-bottom:1px solid var(--mborder2);position:relative}
+.cal-cell{min-height:56px;border-right:1px solid var(--mborder2);border-bottom:1px solid var(--mborder2);display:flex;flex-direction:column;gap:2px;padding:2px}
 .cal-cell:last-child{border-right:none}
-.cal-evento{position:absolute;left:2px;right:2px;top:2px;min-height:22px;color:#fff;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:600;cursor:pointer;overflow:hidden;z-index:2;transition:filter .15s;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.cal-evento{position:relative;min-height:22px;color:#fff;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:600;cursor:pointer;overflow:hidden;transition:filter .15s;display:flex;flex-direction:column;justify-content:center;gap:1px;width:100%}
 .cal-evento:hover{filter:brightness(1.12)}
 .cal-evento .ev-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
 .cal-evento .ev-time{font-size:9px;opacity:.85;font-family:'DM Mono',monospace}
@@ -37,9 +37,12 @@ html[data-theme="dark"] .cal-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .cal-evento.c4{background:linear-gradient(135deg,#059669,#34d399)}
 .cal-evento.c5{background:linear-gradient(135deg,#dc2626,#f87171)}
 .cal-evento.c6{background:linear-gradient(135deg,#d97706,#fbbf24)}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;animation:mfadeIn .15s ease}
-.modal-box{background:var(--mc);border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;animation:mslideUp .2s ease}
-html[data-theme="dark"] .modal-box{box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.cal-evento.desmont{background:linear-gradient(135deg,#7c3aed,#c084fc);opacity:.85}
+.cal-evento .ev-label{font-size:8px;opacity:.8;text-transform:uppercase;letter-spacing:.5px}
+.cal-evento.desmont{background:linear-gradient(135deg,#7c3aed,#c084fc)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;animation:mfadeIn .15s ease;backdrop-filter:blur(3px)}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,.5);border:1.5px solid #c7d2fe;overflow:hidden;animation:mslideUp .2s ease}
+html[data-theme="dark"] .modal-box{background:#1a1d27;border-color:#3d4270;box-shadow:0 24px 80px rgba(0,0,0,.7)}
 .modal-header{background:linear-gradient(135deg,#4f46e5,#818cf8);padding:20px 22px;color:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .modal-header h3{font-size:18px;font-weight:700;margin-bottom:6px}
 .modal-ev-meta{font-size:13px;opacity:.9;display:flex;gap:12px;flex-wrap:wrap}
@@ -49,6 +52,10 @@ html[data-theme="dark"] .modal-box{box-shadow:0 20px 60px rgba(0,0,0,.6)}
 .modal-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--mmuted);margin-bottom:10px}
 .modal-descricao{background:var(--mc2);border:1px solid var(--mborder);border-radius:10px;padding:14px;font-size:14px;color:var(--mtext);line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:260px;overflow-y:auto}
 .modal-empty{color:var(--mmuted);font-style:italic;font-size:13px}
+.modal-info-row{font-size:14px;color:var(--mtext);background:var(--mc2);border:1px solid var(--mborder);border-radius:8px;padding:10px 14px}
+.modal-tags{display:flex;flex-wrap:wrap;gap:6px}
+.modal-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:#e0e7ff;color:#3730a3;border-radius:20px;font-size:13px;font-weight:500}
+html[data-theme="dark"] .modal-tag{background:#2e3250;color:#a78bfa}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--mborder);display:flex;justify-content:flex-end;gap:10px}
 .mbtn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:8px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}.mbtn-danger:hover{background:#fecaca}
 @keyframes mfadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -89,6 +96,17 @@ html[data-theme="dark"] .modal-box{box-shadow:0 20px 60px rgba(0,0,0,.6)}
       <button class="btn-modal-close" onclick="AgMod.fecharModal()">✕</button>
     </div>
     <div class="modal-body">
+      <!-- Desmontagem -->
+      <div id="modal-desmont-wrap" style="display:none;margin-bottom:16px">
+        <div class="modal-section-title">📦 Desmontagem</div>
+        <div class="modal-info-row" id="modal-desmont-info">—</div>
+      </div>
+      <!-- Equipe -->
+      <div id="modal-equipe-wrap" style="display:none;margin-bottom:16px">
+        <div class="modal-section-title">👥 Equipe Escalada</div>
+        <div class="modal-tags" id="modal-equipe-tags"></div>
+      </div>
+      <!-- Descrição -->
       <div class="modal-section-title">📋 O que precisa para o evento</div>
       <div class="modal-descricao" id="modal-descricao"></div>
     </div>
@@ -164,16 +182,29 @@ window.AgMod = (function() {
         var cell=document.createElement('div');
         cell.className='cal-cell';
         var dStr=ds(d);
+        var toMin=function(h){return parseInt(h.split(':')[0])*60+parseInt((h.split(':')[1])||0);};
+        // Montagem
         eventos.filter(function(ev){
           return ev.data_evento===dStr && parseInt((ev.hora_inicio||'00').split(':')[0])===hora;
         }).forEach(function(ev){
           var blk=document.createElement('div');
           blk.className='cal-evento '+CORES[ev.pk % CORES.length];
-          if(ev.hora_fim){
-            var toMin=function(h){return parseInt(h.split(':')[0])*60+parseInt(h.split(':')[1]||0)};
-            blk.style.minHeight=(Math.max(1,toMin(ev.hora_fim)-toMin(ev.hora_inicio))/60*52)+'px';
-          }
-          blk.innerHTML='<span class="ev-title">'+ev.titulo+'</span><span class="ev-time">'+fmtH(ev.hora_inicio)+(ev.hora_fim?' – '+fmtH(ev.hora_fim):'')+'</span>';
+          if(ev.hora_fim){ var dur=Math.max(1,toMin(ev.hora_fim)-toMin(ev.hora_inicio)); blk.style.minHeight=(dur/60*52)+'px'; }
+          blk.innerHTML='<span class="ev-label">🔧 montagem</span><span class="ev-title">'+ev.titulo+'</span><span class="ev-time">'+fmtH(ev.hora_inicio)+(ev.hora_fim?' – '+fmtH(ev.hora_fim):'')+'</span>';
+          blk.onclick=function(e){ e.stopPropagation(); abrirDetalhes(ev); };
+          cell.appendChild(blk);
+        });
+
+        // Desmontagem
+        eventos.filter(function(ev){
+          return ev.data_desmontagem===dStr &&
+                 ev.hora_desmont_inicio &&
+                 parseInt((ev.hora_desmont_inicio||'00').split(':')[0])===hora;
+        }).forEach(function(ev){
+          var blk=document.createElement('div');
+          blk.className='cal-evento desmont';
+          if(ev.hora_desmont_fim){ var durD=Math.max(1,toMin(ev.hora_desmont_fim)-toMin(ev.hora_desmont_inicio)); blk.style.minHeight=(durD/60*52)+'px'; }
+          blk.innerHTML='<span class="ev-label">📦 desmontagem</span><span class="ev-title">'+ev.titulo+'</span><span class="ev-time">'+fmtH(ev.hora_desmont_inicio)+(ev.hora_desmont_fim?' – '+fmtH(ev.hora_desmont_fim):'')+'</span>';
           blk.onclick=function(e){ e.stopPropagation(); abrirDetalhes(ev); };
           cell.appendChild(blk);
         });
@@ -182,13 +213,43 @@ window.AgMod = (function() {
     });
   }
 
+  function fmtDataExtenso(d){
+    if(!d) return '';
+    var p=d.split('-'); return parseInt(p[2])+' de '+MESES_F[parseInt(p[1])-1]+' de '+p[0];
+  }
+
   function abrirDetalhes(ev) {
     evAtual=ev;
     document.getElementById('modal-titulo').textContent=ev.titulo;
+    // Montagem
     var p=ev.data_evento.split('-');
-    document.getElementById('modal-data').textContent='📆 '+parseInt(p[2])+' de '+MESES_F[parseInt(p[1])-1]+' de '+p[0];
+    document.getElementById('modal-data').textContent='🔧 '+fmtDataExtenso(ev.data_evento);
     document.getElementById('modal-hora').textContent='🕐 '+fmtH(ev.hora_inicio)+(ev.hora_fim?' – '+fmtH(ev.hora_fim):'');
     document.getElementById('modal-criado').textContent=ev.criado_por?'👤 '+ev.criado_por:'';
+    // Desmontagem
+    var dw=document.getElementById('modal-desmont-wrap');
+    if(ev.data_desmontagem){
+      var dtxt=fmtDataExtenso(ev.data_desmontagem);
+      var htxt=ev.hora_desmont_inicio ? ' às '+fmtH(ev.hora_desmont_inicio)+(ev.hora_desmont_fim?' – '+fmtH(ev.hora_desmont_fim):'') : '';
+      document.getElementById('modal-desmont-info').textContent='📅 '+dtxt+htxt;
+      if(dw) dw.style.display='';
+    } else {
+      if(dw) dw.style.display='none';
+    }
+    // Equipe
+    var ew=document.getElementById('modal-equipe-wrap');
+    var et=document.getElementById('modal-equipe-tags');
+    var equipe=[];
+    if(ev.equipe){
+      try{ equipe=Array.isArray(ev.equipe)?ev.equipe:JSON.parse(ev.equipe); }catch(e){}
+    }
+    if(equipe&&equipe.length){
+      if(et) et.innerHTML=equipe.map(function(m){return '<span class="modal-tag">👤 '+m.nome+'</span>';}).join('');
+      if(ew) ew.style.display='';
+    } else {
+      if(ew) ew.style.display='none';
+    }
+    // Descrição
     var desc=ev.descricao&&ev.descricao.trim();
     document.getElementById('modal-descricao').innerHTML=desc
       ? desc.replace(/</g,'&lt;')
@@ -237,14 +298,27 @@ window.AgMod = (function() {
     try {
       var dias=diasSemana(offset);
       var de=ds(dias[0]), ate=ds(dias[6]);
-      var q=window.supabase.from('agenda').select('*')
+        // Busca eventos onde montagem OU desmontagem cai na semana
+      var fil=window.filialLogada;
+      var baseQ=window.supabase.from('agenda').select('*').order('data_evento').order('hora_inicio');
+      if(fil&&fil.pk) baseQ=baseQ.eq('filial_pk',fil.pk);
+      // Eventos cuja montagem está na semana
+      var q1=window.supabase.from('agenda').select('*')
         .gte('data_evento',de).lte('data_evento',ate)
         .order('data_evento').order('hora_inicio');
-      var fil=window.filialLogada;
-      if(fil&&fil.pk) q=q.eq('filial_pk',fil.pk);
-      var res=await q;
+      if(fil&&fil.pk) q1=q1.eq('filial_pk',fil.pk);
+      // Eventos cuja desmontagem está na semana
+      var q2=window.supabase.from('agenda').select('*')
+        .gte('data_desmontagem',de).lte('data_desmontagem',ate)
+        .order('data_evento').order('hora_inicio');
+      if(fil&&fil.pk) q2=q2.eq('filial_pk',fil.pk);
+      var [res1,res2]=await Promise.all([q1,q2]);
+      var res={error:res1.error||res2.error};
       if(res.error){window.showToast('Erro ao carregar agenda: '+res.error.message,'error');return;}
-      eventos=res.data||[];
+      // Merge sem duplicatas (evento pode ter montagem e desmontagem na mesma semana)
+      var map={};
+      (res1.data||[]).concat(res2.data||[]).forEach(function(ev){ map[ev.pk]=ev; });
+      eventos=Object.values(map);
       render();
     } catch(e){
       window.showToast('Erro inesperado: '+e.message,'error');

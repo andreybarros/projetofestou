@@ -1,0 +1,324 @@
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+.mod*{box-sizing:border-box}
+.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mborder2:#f3f4f6;--mtext:#374151;--mtext2:#1e1b4b;--mmuted:#6b7280}
+html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mborder2:#22263a;--mtext:#c9cce0;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
+.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
+.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}
+.mod-header p{color:var(--mmuted);font-size:13px}
+.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.mbtn-primary{background:#4f46e5;color:#fff}.mbtn-primary:hover{background:#3730a3}
+.mbtn-ghost{background:var(--mc);color:#4f46e5;border:1px solid #c7d2fe}.mbtn-ghost:hover{background:var(--mc2)}
+.mbtn-sm{padding:5px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:all .15s}
+.mbtn-sep{background:#4f46e5;color:#fff}.mbtn-sep:hover{background:#3730a3}
+.mbtn-est{background:#fff3cd;color:#92400e;border:1px solid #fcd34d}.mbtn-est:hover{background:#fef3c7}
+html[data-theme="dark"] .mbtn-est{background:#2d2000;color:#fcd34d;border-color:#78350f}
+.mbtn-close{background:#d1fae5;color:#065f46}.mbtn-close:hover{background:#a7f3d0}
+
+/* Header card */
+.ordem-info{background:var(--mc);border-radius:14px;padding:20px 22px;margin-bottom:18px;border:1px solid var(--mborder);box-shadow:0 4px 20px rgba(79,70,229,.08);animation:mfadeUp .35s ease .05s both;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+html[data-theme="dark"] .ordem-info{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.info-left{display:flex;flex-direction:column;gap:6px}
+.info-numero{font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:#4f46e5;line-height:1}
+html[data-theme="dark"] .info-numero{color:#a78bfa}
+.info-titulo{font-size:16px;font-weight:600;color:var(--mtext2)}
+.info-meta{font-size:12px;color:var(--mmuted);display:flex;gap:12px;flex-wrap:wrap}
+.info-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.badge-status{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-status.a_separar{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
+.badge-status.em_separacao{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+.badge-status.encerrada{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.progress-wrap{min-width:140px}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--mmuted);margin-bottom:4px}
+.progress-bar{height:8px;background:var(--mborder);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#4f46e5,#818cf8);transition:width .4s}
+
+/* Tabela de itens */
+.sep-table-wrap{background:var(--mc);border-radius:14px;overflow:hidden;border:1px solid var(--mborder);box-shadow:0 4px 20px rgba(79,70,229,.08);animation:mfadeUp .35s ease .1s both}
+html[data-theme="dark"] .sep-table-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.sep-table{width:100%;border-collapse:collapse}
+.sep-table thead tr{background:linear-gradient(90deg,#4f46e5,#6366f1)}
+.sep-table th{padding:12px 14px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.9);font-weight:600;text-align:left}
+.sep-table td{padding:12px 14px;font-size:14px;color:var(--mtext);border-bottom:1px solid var(--mborder2);vertical-align:top}
+.sep-table tbody tr:last-child td{border-bottom:none}
+.sep-table tbody tr:hover{background:var(--mc2)}
+.code-cell{font-family:'DM Mono',monospace;font-size:12px;color:#4f46e5;font-weight:500}
+html[data-theme="dark"] .code-cell{color:#a78bfa}
+.qtd-num{font-family:'DM Mono',monospace;font-size:15px;font-weight:700}
+.qtd-ok{color:#059669}.qtd-falta{color:#dc2626}.qtd-zero{color:var(--mmuted)}
+.sep-log{font-size:11px;color:var(--mmuted);margin-top:4px;line-height:1.5}
+.sep-log span{display:block}
+
+/* Input de qtd inline */
+.sep-input-wrap{display:flex;gap:6px;align-items:center;margin-top:6px}
+.sep-qtd-inp{width:65px;padding:6px 8px;border:1.5px solid #4f46e5;border-radius:6px;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;background:var(--mc2);color:var(--mtext2);text-align:center;outline:none}
+.btn-confirm-sep{background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.btn-confirm-sep:hover{background:#3730a3}
+.btn-cancel-sep{background:var(--mc2);color:var(--mmuted);border:1px solid var(--mborder);border-radius:6px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer}
+
+.encerrada-banner{background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#166534;display:flex;align-items:center;gap:8px}
+html[data-theme="dark"] .encerrada-banner{background:#052e16;border-color:#166534;color:#4ade80}
+
+.mstate{text-align:center;padding:52px;color:var(--mmuted);font-size:14px}
+.mstate-icon{font-size:36px;display:block;margin-bottom:10px}
+
+@media(max-width:640px){
+  .sep-table-wrap{border-radius:10px;overflow:visible;background:transparent;border:none;box-shadow:none}
+  .sep-table thead{display:none}
+  .sep-table tbody tr{display:block;background:var(--mc);border:1px solid var(--mborder);border-radius:10px;margin-bottom:12px;padding:14px}
+  .sep-table tbody tr:hover{background:var(--mc)}
+  .sep-table td{display:flex;padding:6px 0;border-bottom:1px solid var(--mborder2);font-size:13px;gap:8px}
+  .sep-table td:last-child{border-bottom:none;padding-top:10px}
+  .sep-table td::before{content:attr(data-label);font-size:10px;text-transform:uppercase;color:var(--mmuted);font-weight:600;min-width:85px;flex-shrink:0}
+}
+@keyframes mfadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+
+<div class="mod">
+  <div class="mod-header">
+    <div><h2>📋 Ordem de Separação</h2><p>Selecione os itens e registre a separação</p></div>
+    <button class="mbtn mbtn-ghost" onclick="carregarModulo('cadastro_separacao.html','nav-separacao')">← Ordens</button>
+  </div>
+
+  <div id="encerrada-banner" class="encerrada-banner" style="display:none">
+    ✅ Esta ordem foi <strong>encerrada</strong>. Nenhuma separação pode ser realizada.
+  </div>
+
+  <!-- Info da ordem -->
+  <div class="ordem-info" id="info-card">
+    <div class="info-left">
+      <div class="info-numero" id="oi-numero">—</div>
+      <div class="info-titulo" id="oi-titulo">—</div>
+      <div class="info-meta">
+        <span id="oi-criado">—</span>
+        <span id="oi-evento" style="display:none">—</span>
+      </div>
+    </div>
+    <div class="info-right">
+      <span class="badge-status" id="oi-status">—</span>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Progresso</span><span id="oi-pct">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="oi-bar" style="width:0%"></div></div>
+      </div>
+      <button class="mbtn-sm mbtn-close" id="btn-encerrar" onclick="SepOrdem.encerrar()" style="display:none">🔒 Encerrar Ordem</button>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="sep-table-wrap">
+    <table class="sep-table">
+      <thead><tr>
+        <th>Código</th><th>Produto</th>
+        <th style="text-align:center">Solicitado</th>
+        <th style="text-align:center">Separado</th>
+        <th style="text-align:center">Falta</th>
+        <th>Última Separação</th>
+        <th>Ação</th>
+      </tr></thead>
+      <tbody id="sep-tbody">
+        <tr class="mstate"><td colspan="7"><span class="mstate-icon">⏳</span>Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+window.SepOrdem = (function(){
+  var ordem  = window._ordemAtual || null;
+  var itens  = [];
+  var movMap = {};   // item_pk → [movs]
+  var STATUS_LABEL = {a_separar:'🔴 A Separar',em_separacao:'🔵 Em Separação',encerrada:'🟢 Encerrada'};
+
+  if(!ordem){ setTbody('<tr class="mstate"><td colspan="7"><span class="mstate-icon">❌</span>Nenhuma ordem selecionada.</td></tr>'); }
+
+  function setTbody(h){ var el=document.getElementById('sep-tbody'); if(el) el.innerHTML=h; }
+
+  function renderHeader(){
+    if(!ordem) return;
+    document.getElementById('oi-numero').textContent = '#'+String(ordem.numero).padStart(4,'0');
+    document.getElementById('oi-titulo').textContent = ordem.titulo;
+    var d=ordem.criado_em?new Date(ordem.criado_em).toLocaleDateString('pt-BR'):'';
+    document.getElementById('oi-criado').textContent='👤 '+(ordem.criado_por||'—')+(d?'  ·  📅 '+d:'');
+    var st=document.getElementById('oi-status');
+    st.textContent=STATUS_LABEL[ordem.status]||ordem.status;
+    st.className='badge-status '+ordem.status;
+    var op=window.operadorLogado;
+    var podeGerir=op&&(op.admin||op.acesso_separacao);
+    if(ordem.status==='encerrada'){
+      document.getElementById('encerrada-banner').style.display='flex';
+      document.getElementById('btn-encerrar').style.display='none';
+    } else if(podeGerir){
+      document.getElementById('btn-encerrar').style.display='';
+    }
+  }
+
+  function calcProg(){
+    var sol=0,sep=0;
+    itens.forEach(function(i){
+      sol+=i.qtd_solicitada;
+      var ms=movMap[i.pk]||[];
+      ms.forEach(function(m){sep+=m.qtd;});
+    });
+    var pct=sol>0?Math.min(100,Math.round(sep/sol*100)):0;
+    document.getElementById('oi-pct').textContent=pct+'%';
+    document.getElementById('oi-bar').style.width=pct+'%';
+    return {sol,sep,pct};
+  }
+
+  function fmtDt(ts){
+    if(!ts) return '';
+    var d=new Date(ts);
+    return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function renderItens(){
+    if(!itens.length){
+      setTbody('<tr class="mstate"><td colspan="7"><span class="mstate-icon">📭</span>Nenhum item nesta ordem.</td></tr>');
+      calcProg(); return;
+    }
+    var encerrada=ordem&&ordem.status==='encerrada';
+    var op=window.operadorLogado;
+    var podeSeparar=!encerrada&&op&&(op.admin||op.acesso_separacao);
+
+    setTbody(itens.map(function(it){
+      var ms=movMap[it.pk]||[];
+      var qtdSep=0; ms.forEach(function(m){qtdSep+=m.qtd;});
+      var falta=Math.max(0,it.qtd_solicitada-qtdSep);
+      var ultimo=ms.length?ms[ms.length-1]:null;
+      var logHtml=ultimo?'<span>'+fmtDt(ultimo.separado_em)+'</span><span>👤 '+(ultimo.separado_por||'—')+'</span>':'<span class="qtd-zero">—</span>';
+      var acoes='';
+      if(podeSeparar){
+        if(falta>0) acoes+='<button class="mbtn-sm mbtn-sep" onclick="SepOrdem.iniciarSep('+it.pk+','+falta+')">Separar</button> ';
+        if(qtdSep>0) acoes+='<button class="mbtn-sm mbtn-est" onclick="SepOrdem.estornar('+it.pk+')">Estornar</button>';
+      }
+      if(!acoes) acoes='<span class="qtd-zero" style="font-size:12px">'+(encerrada?'—':'Completo ✓')+'</span>';
+      return '<tr id="irow-'+it.pk+'">'+
+        '<td data-label="Código" class="code-cell">'+(it.codigo||'—')+'</td>'+
+        '<td data-label="Produto">'+it.descricao+'</td>'+
+        '<td data-label="Solicitado" style="text-align:center"><span class="qtd-num">'+it.qtd_solicitada+'</span></td>'+
+        '<td data-label="Separado" style="text-align:center"><span class="qtd-num '+(qtdSep>=it.qtd_solicitada?'qtd-ok':qtdSep>0?'qtd-falta':'qtd-zero')+'">'+qtdSep+'</span></td>'+
+        '<td data-label="Falta" style="text-align:center"><span class="qtd-num '+(falta>0?'qtd-falta':'qtd-ok')+'">'+falta+'</span></td>'+
+        '<td data-label="Última Separação"><div class="sep-log">'+logHtml+'</div></td>'+
+        '<td data-label="Ação" id="acao-'+it.pk+'">'+acoes+'</td>'+
+      '</tr>';
+    }).join(''));
+    calcProg();
+  }
+
+  function iniciarSep(itemPk, falta){
+    // Coloca input inline na célula de ação
+    var cell=document.getElementById('acao-'+itemPk);
+    if(!cell) return;
+    cell.innerHTML=
+      '<div class="sep-input-wrap">'+
+        '<input class="sep-qtd-inp" id="qtd-inp-'+itemPk+'" type="number" min="1" max="'+falta+'" value="'+falta+'" autofocus>'+
+        '<button class="btn-confirm-sep" onclick="SepOrdem.confirmarSep('+itemPk+','+falta+')">✓</button>'+
+        '<button class="btn-cancel-sep" onclick="SepOrdem.renderItens()">✕</button>'+
+      '</div>';
+    setTimeout(function(){
+      var inp=document.getElementById('qtd-inp-'+itemPk);
+      if(inp){inp.focus();inp.select();}
+    },50);
+  }
+
+  async function confirmarSep(itemPk, faltaMax){
+    var inp=document.getElementById('qtd-inp-'+itemPk);
+    var qtd=inp?Math.min(faltaMax,Math.max(1,parseInt(inp.value)||1)):1;
+    var it=itens.find(function(x){return x.pk===itemPk;});
+    if(!it) return;
+    var op=window.operadorLogado;
+    var payload={
+      item_pk:itemPk, ordem_pk:ordem.pk,
+      filial_pk:window.filialLogada?.pk||null,
+      produto_pk:it.produto_pk||null,
+      qtd:qtd,
+      separado_por:op?.login||op?.nome||null
+    };
+    var res=await window.supabase.from('movimentos_separacao').insert([payload]);
+    if(res.error){window.showToast('Erro: '+res.error.message,'error');return;}
+    if(!movMap[itemPk]) movMap[itemPk]=[];
+    movMap[itemPk].push({...payload,separado_em:new Date().toISOString()});
+    // Atualiza status da ordem
+    await atualizarStatus();
+    window.showToast('Separação registrada!');
+    renderItens();
+  }
+
+  async function estornar(itemPk){
+    var ms=movMap[itemPk]||[];
+    if(!ms.length){window.showToast('Nenhum movimento para estornar.','error');return;}
+    var ultimo=ms[ms.length-1];
+    if(!confirm('Estornar '+ultimo.qtd+' un. separadas por '+(ultimo.separado_por||'—')+' em '+fmtDt(ultimo.separado_em)+'?')) return;
+    // Precisamos do pk real do movimento — vamos buscar o último do banco
+    var res=await window.supabase.from('movimentos_separacao')
+      .select('pk').eq('item_pk',itemPk).order('separado_em',{ascending:false}).limit(1);
+    if(res.error||!res.data||!res.data.length){window.showToast('Erro ao estornar.','error');return;}
+    var del=await window.supabase.from('movimentos_separacao').delete().eq('pk',res.data[0].pk);
+    if(del.error){window.showToast('Erro: '+del.error.message,'error');return;}
+    movMap[itemPk].pop();
+    await atualizarStatus();
+    window.showToast('Estorno realizado.');
+    renderItens();
+  }
+
+  async function atualizarStatus(){
+    // Calcula status baseado nos movimentos
+    var sol=0,sep=0;
+    itens.forEach(function(i){
+      sol+=i.qtd_solicitada;
+      (movMap[i.pk]||[]).forEach(function(m){sep+=m.qtd;});
+    });
+    var novoStatus=sep===0?'a_separar':'em_separacao';
+    if(ordem.status!=='encerrada'&&ordem.status!==novoStatus){
+      await window.supabase.from('ordens_separacao').update({status:novoStatus}).eq('pk',ordem.pk);
+      ordem.status=novoStatus;
+      renderHeader();
+    }
+  }
+
+  async function encerrar(){
+    if(!confirm('Encerrar a ordem?\nApós encerrar, nenhuma separação poderá ser realizada.')) return;
+    var res=await window.supabase.from('ordens_separacao').update({status:'encerrada'}).eq('pk',ordem.pk);
+    if(res.error){window.showToast('Erro: '+res.error.message,'error');return;}
+    ordem.status='encerrada';
+    window.showToast('Ordem encerrada!');
+    renderHeader();
+    renderItens();
+  }
+
+  async function carregar(){
+    if(!ordem) return;
+    renderHeader();
+    setTbody('<tr class="mstate"><td colspan="7"><span class="mstate-icon">⏳</span>Carregando itens...</td></tr>');
+
+    // Evento vinculado
+    if(ordem.agenda_pk){
+      var re=await window.supabase.from('agenda').select('titulo').eq('pk',ordem.agenda_pk).single();
+      if(!re.error&&re.data){
+        var elEv=document.getElementById('oi-evento');
+        if(elEv){elEv.textContent='📅 '+re.data.titulo;elEv.style.display='';}
+      }
+    }
+
+    // Itens
+    var ri=await window.supabase.from('itens_separacao').select('*').eq('ordem_pk',ordem.pk).order('pk');
+    if(ri.error){setTbody('<tr class="mstate"><td colspan="7">❌ '+ri.error.message+'</td></tr>');return;}
+    itens=ri.data||[];
+
+    // Movimentos
+    var iPks=itens.map(function(i){return i.pk;});
+    movMap={};
+    if(iPks.length){
+      var rm=await window.supabase.from('movimentos_separacao').select('*').in('item_pk',iPks).order('separado_em');
+      (rm.data||[]).forEach(function(m){
+        if(!movMap[m.item_pk]) movMap[m.item_pk]=[];
+        movMap[m.item_pk].push(m);
+      });
+    }
+    renderItens();
+  }
+
+  carregar();
+  return {encerrar,iniciarSep,confirmarSep,estornar,renderItens};
+})();
+</script>

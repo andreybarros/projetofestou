@@ -44,7 +44,7 @@ html[data-theme="dark"] .badge-fil{background:#22263a;color:#c9cce0;border-color
   </div>
   <div class="mtable-wrap">
     <table class="mtable">
-      <thead><tr><th>Nome</th><th>Login</th><th>Filial</th><th>Perfil</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Login</th><th>Filial</th><th>Perfil</th><th>Agenda</th><th>Separação</th><th>Criar Ordem</th><th>Excluir Ordem</th><th>Ações</th></tr></thead>
       <tbody id="tabela-operadores"><tr class="mstate"><td colspan="5"><span class="mstate-icon">⏳</span>Carregando...</td></tr></tbody>
     </table>
   </div>
@@ -58,6 +58,7 @@ async function carregarOperadores(){
   const{data:fils}=await window.supabase.from('filiais').select('pk,codigo,nome');
   window._listaFiliaisOp=fils||[];
 
+  const sim='<span class="badge-sim">✓</span>',nao='<span class="badge-nao">—</span>';
   const op=window.operadorLogado;
   const fil=window.filialLogada;
   let q=window.supabase.from('operadores').select('*').order('nome');
@@ -81,6 +82,10 @@ async function carregarOperadores(){
       <td data-label="Login" class="login-cell">${u.login??'—'}</td>
       <td data-label="Filial">${filBadge}</td>
       <td data-label="Perfil">${u.admin?'<span class="badge-adm">Admin</span>':'<span class="badge-op">Operador</span>'}</td>
+      <td data-label="Agenda">${u.admin||u.acesso_agenda?sim:nao}</td>
+      <td data-label="Separação">${u.admin||u.acesso_separacao?sim:nao}</td>
+      <td data-label="Criar Ordem">${u.admin||u.acesso_criar_ordem?sim:nao}</td>
+      <td data-label="Excluir Ordem">${u.admin||u.acesso_excluir_ordem?sim:nao}</td>
       <td data-label="Ações"><div class="acoes-cell">
         <button class="mbtn-edit" onclick="editarOperador(${u.id})">Alterar</button>
         ${u.login!=='Admin'?`<button class="mbtn-danger" onclick="excluirOperador(${u.id})">Excluir</button>`:'<span style="font-size:11px;color:var(--mmuted)">protegido</span>'}

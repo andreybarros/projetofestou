@@ -58,6 +58,9 @@ html[data-theme="dark"] .mperm-item.admin-row{background:#1e1a3a;border-color:#3
     <div class="mperm-item"><span>📦 Produtos</span><label class="toggle"><input type="checkbox" id="perm-produtos"><span class="toggle-slider"></span></label></div>
     <div class="mperm-item"><span>🏭 Armazéns</span><label class="toggle"><input type="checkbox" id="perm-armazens"><span class="toggle-slider"></span></label></div>
     <div class="mperm-item"><span>📅 Agenda</span><label class="toggle"><input type="checkbox" id="perm-agenda"><span class="toggle-slider"></span></label></div>
+    <div class="mperm-item"><span>📋 Executar Separação</span><label class="toggle"><input type="checkbox" id="perm-separacao"><span class="toggle-slider"></span></label></div>
+    <div class="mperm-item"><span>📝 Criar Ordem de Separação</span><label class="toggle"><input type="checkbox" id="perm-criar-ordem"><span class="toggle-slider"></span></label></div>
+    <div class="mperm-item"><span>🗑 Excluir Ordem de Separação</span><label class="toggle"><input type="checkbox" id="perm-excluir-ordem"><span class="toggle-slider"></span></label></div>
     <div class="mform-footer">
       <button class="mbtn mbtn-primary" id="btn-salvar-op" onclick="salvarOperador()">Salvar Operador</button>
       <button class="mbtn mbtn-ghost" onclick="limparFormOp()">Limpar</button>
@@ -94,11 +97,14 @@ function aplicarEdicao(){
   document.getElementById('perm-produtos').checked=d.acesso_produtos??false;
   document.getElementById('perm-armazens').checked=d.acesso_armazens??false;
   document.getElementById('perm-agenda').checked=d.acesso_agenda??false;
+  document.getElementById('perm-separacao').checked=d.acesso_separacao??false;
+  document.getElementById('perm-criar-ordem').checked=d.acesso_criar_ordem??false;
+  document.getElementById('perm-excluir-ordem').checked=d.acesso_excluir_ordem??false;
   if(d.admin)toggleAdmin({checked:true});
 }
 
 function toggleAdmin(cb){
-  ['perm-produtos','perm-armazens','perm-agenda'].forEach(id=>{
+  ['perm-produtos','perm-armazens','perm-agenda','perm-separacao','perm-criar-ordem','perm-excluir-ordem'].forEach(id=>{
     const el=document.getElementById(id);if(el){el.checked=cb.checked;el.disabled=cb.checked}
   });
 }
@@ -115,7 +121,7 @@ async function salvarOperador(){
   if(!nome||!login){window.showToast('Preencha Nome e Login.','error');return}
   if(!window._editOpId&&!senha){window.showToast('Preencha a Senha.','error');return}
   const btn=document.getElementById('btn-salvar-op');btn.disabled=true;
-  const payload={nome,login,admin,acesso_produtos,acesso_armazens,acesso_agenda,filial_pk:filial_pk?parseInt(filial_pk):null};
+  const payload={nome,login,admin,acesso_produtos,acesso_armazens,acesso_agenda,acesso_separacao:document.getElementById('perm-separacao')?.checked??false,acesso_criar_ordem:document.getElementById('perm-criar-ordem')?.checked??false,acesso_excluir_ordem:document.getElementById('perm-excluir-ordem')?.checked??false,filial_pk:filial_pk?parseInt(filial_pk):null};
   if(window._editOpId){
     if(senha)payload.senha=senha;
     const{error}=await window.supabase.from('operadores').update(payload).eq('id',window._editOpId);
@@ -132,7 +138,7 @@ function limparFormOp(){
   window._editOpId=null;
   ['op-nome','op-login','op-senha'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   document.getElementById('op-filial').value='';
-  ['perm-admin','perm-produtos','perm-armazens','perm-agenda'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;el.disabled=false}});
+  ['perm-admin','perm-produtos','perm-armazens','perm-agenda','perm-separacao','perm-criar-ordem','perm-excluir-ordem'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;el.disabled=false}});
   document.getElementById('btn-salvar-op').textContent='Salvar Operador';
   document.getElementById('edit-banner').style.display='none';
   document.getElementById('senha-hint').textContent='';

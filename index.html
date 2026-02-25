@@ -145,13 +145,16 @@ body{font-family:Arial,sans-serif;background:var(--content-bg);color:var(--sideb
     </div>
 
     <span class="sidebar-section">Estoque</span>
-    <button class="nav-btn" id="nav-produtos" onclick="ir('get_produtos.html','nav-produtos')" style="display:none">📦 Produtos</button>
+    <button class="nav-btn" id="nav-produtos"    onclick="ir('get_produtos.html','nav-produtos')"  style="display:none">📦 Produtos</button>
 
     <span class="sidebar-section">Estrutura</span>
     <button class="nav-btn" id="nav-armazem" onclick="ir('cadastro_armazem.html','nav-armazem')" style="display:none">🏭 Armazéns</button>
 
     <span class="sidebar-section" id="sec-agenda" style="display:none">Eventos</span>
     <button class="nav-btn" id="nav-agenda" onclick="ir('agenda.html','nav-agenda')" style="display:none">📅 Agenda</button>
+
+    <span class="sidebar-section" id="sec-separacao" style="display:none">Separação</span>
+    <button class="nav-btn" id="nav-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')" style="display:none">📋 Separação de Material</button>
 
     <span class="sidebar-section" id="sec-admin" style="display:none">Administração</span>
     <button class="nav-btn" id="nav-filiais"   onclick="ir('cadastro_filial.html','nav-filiais')"   style="display:none">🏢 Filiais</button>
@@ -293,6 +296,9 @@ function aplicarPermissoes(op) {
   show('nav-armazem',   op.admin || op.acesso_armazens);
   show('nav-agenda',    temAgenda);
   show('sec-agenda',    temAgenda);
+  var temSep = op.admin || op.acesso_separacao || op.acesso_criar_ordem;
+  show('nav-separacao', temSep);
+  show('sec-separacao', temSep);
   show('sec-admin',     op.admin);
   show('nav-filiais',   op.admin);
   show('nav-operador',  op.admin);
