@@ -1,0 +1,143 @@
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+.mod*{box-sizing:border-box}.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mtext2:#1e1b4b;--mmuted:#6b7280}
+html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
+.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
+.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}.mod-header p{color:var(--mmuted);font-size:13px}
+.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
+.mbtn-ghost{background:var(--mc);color:#4f46e5;border:1px solid #c7d2fe}.mbtn-ghost:hover{background:var(--mc2)}
+.edit-banner{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e}
+html[data-theme="dark"] .edit-banner{background:#2d2000;border-color:#78350f;color:#fcd34d}
+.mform-card{background:var(--mc);border-radius:14px;padding:22px 24px;max-width:560px;box-shadow:0 4px 20px rgba(79,70,229,.08);border:1px solid var(--mborder);animation:mfadeUp .35s ease .05s both}
+html[data-theme="dark"] .mform-card{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+@media(max-width:600px){.mform-card{padding:16px;border-radius:10px}}
+.mform-group{margin-bottom:15px}
+.mform-group label{display:block;font-size:11px;font-weight:600;letter-spacing:.8px;color:var(--mmuted);margin-bottom:5px;text-transform:uppercase}
+.mform-group input{width:100%;background:var(--mc2);border:1.5px solid var(--mborder);border-radius:8px;color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:15px;padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.mform-group input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}.mform-group input::placeholder{color:#c4c9d9}
+.mform-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.filial-badge{display:inline-flex;align-items:center;gap:8px;background:#ede9fe;border:1.5px solid #c4b5fd;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:600;color:#4f46e5;width:100%}
+html[data-theme="dark"] .filial-badge{background:#1e1a3a;border-color:#4c3a9e;color:#a78bfa}
+.filial-badge span{font-size:11px;font-weight:400;color:#7c3aed;margin-left:auto}
+html[data-theme="dark"] .filial-badge span{color:#c4b5fd}
+@media(max-width:400px){.mform-row{grid-template-columns:1fr}}
+.mdivider{height:1px;background:var(--mborder);margin:16px 0}.mform-footer{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+.input-search-wrap{position:relative}.input-search-wrap input{padding-right:44px;cursor:pointer}
+.btn-lupa{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#4f46e5;display:flex;align-items:center;padding:4px;border-radius:4px}
+.btn-lupa svg{width:18px;height:18px}
+.arm-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--mc);border:1.5px solid #c7d2fe;border-radius:10px;box-shadow:0 8px 24px rgba(79,70,229,.12);z-index:200;overflow:hidden;display:none}
+html[data-theme="dark"] .arm-dropdown{border-color:#2e3250;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.arm-dropdown.open{display:block;animation:mfadeUp .15s ease}
+.arm-search{padding:10px 12px;border-bottom:1px solid var(--mborder)}.arm-search input{width:100%;border:1.5px solid var(--mborder);border-radius:6px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--mtext2);outline:none;background:var(--mc2)}.arm-search input:focus{border-color:#4f46e5}
+.arm-list{max-height:220px;overflow-y:auto}
+.arm-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--mborder);transition:background .1s}.arm-item:last-child{border-bottom:none}.arm-item:hover{background:var(--mc2)}
+.arm-tag{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px}
+.arm-tag-f{background:#e0e7ff;color:#3730a3}.arm-tag-a{background:#d1fae5;color:#065f46}
+.arm-item-loc{font-size:13px;color:var(--mtext2)}.arm-empty{padding:20px;text-align:center;color:var(--mmuted);font-size:13px}
+.foto-area{border:2px dashed var(--mborder);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;overflow:hidden}
+.foto-area:hover{border-color:#4f46e5;background:var(--mc2)}.foto-area.has-foto{border-style:solid;border-color:#a7f3d0;padding:8px}
+.foto-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.foto-placeholder{color:var(--mmuted);font-size:13px}.foto-placeholder span{font-size:32px;display:block;margin-bottom:8px}.foto-placeholder strong{color:#4f46e5}
+.foto-preview{width:100%;max-height:200px;object-fit:contain;border-radius:6px;display:block}
+.foto-preview-wrap{position:relative;display:inline-block;width:100%}
+.btn-rm-foto{position:absolute;top:6px;right:6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+@keyframes mfadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<div class="mod">
+  <div class="mod-header">
+    <div><h2 id="form-titulo">Cadastrar Produto</h2><p id="form-subtitulo">Adicione um novo item ao estoque</p></div>
+    <button class="mbtn mbtn-ghost" onclick="window._editData=null;carregarModulo('get_produtos.html','nav-produtos')">← Ver Produtos</button>
+  </div>
+  <div id="edit-banner" class="edit-banner" style="display:none">✏️ <span>Modo edição — altere os campos e clique em <strong>Salvar Alterações</strong></span></div>
+  <div class="mform-card">
+    <div class="mform-group">
+      <label>Filial</label>
+      <div class="filial-badge" id="f-filial-badge">
+        🏢 <span id="f-filial-nome">—</span>
+        <span id="f-filial-codigo">—</span>
+      </div>
+    </div>
+    <div class="mform-group"><label>Foto do Produto</label>
+      <div class="foto-area" id="foto-area">
+        <input type="file" id="f-foto" accept="image/*" capture="environment" onchange="onFotoSelecionada(this)">
+        <div id="foto-conteudo"><div class="foto-placeholder"><span>📷</span><div>Toque para <strong>tirar foto</strong> ou escolher da galeria</div></div></div>
+      </div>
+    </div>
+    <div class="mform-row">
+      <div class="mform-group"><label>Código</label><input type="text" id="f-codigo" placeholder="Ex: PRD-001"></div>
+      <div class="mform-group"><label>Saldo</label><input type="number" id="f-saldo" placeholder="0" min="0" inputmode="numeric"></div>
+    </div>
+    <div class="mform-group"><label>Descrição</label><input type="text" id="f-descricao" placeholder="Nome do produto"></div>
+    <div class="mform-group"><label>Localização</label>
+      <div class="input-search-wrap" id="loc-wrap">
+        <input type="text" id="f-localizacao" placeholder="🔍 Buscar localização" readonly onclick="abrirDropdownLoc()">
+        <button class="btn-lupa" onclick="abrirDropdownLoc()" type="button"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg></button>
+        <div class="arm-dropdown" id="arm-dropdown">
+          <div class="arm-search"><input type="text" id="arm-busca" placeholder="Filtrar..." oninput="filtrarArmazensLoc(this.value)"></div>
+          <div class="arm-list" id="arm-list"><div class="arm-empty">Carregando...</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="mdivider"></div>
+    <div class="mform-footer">
+      <button class="mbtn mbtn-primary" id="btn-salvar" onclick="salvarProduto()">Salvar Produto</button>
+      <button class="mbtn mbtn-ghost" onclick="limparFormProd()">Limpar</button>
+    </div>
+  </div>
+</div>
+<script>
+window._editProdPk=null; window._fotoAtualProd=null; window._fotoFileProd=null; window._armazensLoc=[];
+// Preenche badge da filial logada
+(function(){
+  const fil = window.filialLogada;
+  const nome = document.getElementById('f-filial-nome');
+  const cod  = document.getElementById('f-filial-codigo');
+  if (fil) {
+    if (nome) nome.textContent = fil.nome;
+    if (cod)  cod.textContent  = '[' + fil.codigo + ']';
+  } else if (nome) { nome.textContent = 'Sem filial selecionada'; }
+})();
+(function(){
+  const d=window._editData; if(!d){window._editProdPk=null;window._fotoAtualProd=null;return;}
+  window._editProdPk=d.pk; window._fotoAtualProd=d.foto_url||null; window._fotoFileProd=null;
+  document.getElementById('form-titulo').textContent='Alterar Produto';
+  document.getElementById('form-subtitulo').textContent='Edite os dados e salve';
+  document.getElementById('edit-banner').style.display='flex';
+  document.getElementById('btn-salvar').textContent='Salvar Alterações';
+  document.getElementById('f-codigo').value=d.codigo??'';
+  document.getElementById('f-saldo').value=d.saldo??0;
+  document.getElementById('f-descricao').value=d.descricao??'';
+  document.getElementById('f-localizacao').value=d.localizacao??'';
+  if(d.foto_url) mostrarPreviewUrl(d.foto_url);
+  window._editData=null;
+})();
+function onFotoSelecionada(input){if(!input.files||!input.files[0])return;window._fotoFileProd=input.files[0];const r=new FileReader();r.onload=e=>mostrarPreviewLocal(e.target.result);r.readAsDataURL(window._fotoFileProd)}
+function mostrarPreviewLocal(src){document.getElementById('foto-area').classList.add('has-foto');document.getElementById('foto-conteudo').innerHTML=`<div class="foto-preview-wrap"><img class="foto-preview" src="${src}"><button class="btn-rm-foto" onclick="removerFoto(event)">✕</button></div>`}
+function mostrarPreviewUrl(url){document.getElementById('foto-area').classList.add('has-foto');document.getElementById('foto-conteudo').innerHTML=`<div class="foto-preview-wrap"><img class="foto-preview" src="${url}"><button class="btn-rm-foto" onclick="removerFoto(event)">✕</button></div>`}
+function removerFoto(e){e.stopPropagation();e.preventDefault();window._fotoFileProd=null;window._fotoAtualProd=null;document.getElementById('foto-area').classList.remove('has-foto');document.getElementById('foto-conteudo').innerHTML=`<div class="foto-placeholder"><span>📷</span><div>Toque para <strong>tirar foto</strong> ou escolher da galeria</div></div>`;const i=document.getElementById('f-foto');if(i)i.value=''}
+async function uploadFoto(file){const ext=file.name.split('.').pop();const nome=`produto_${Date.now()}.${ext}`;const{error}=await window.supabase.storage.from('produtos-fotos').upload(nome,file,{upsert:true,contentType:file.type});if(error)throw new Error('Upload: '+error.message);const{data:pub}=window.supabase.storage.from('produtos-fotos').getPublicUrl(nome);return pub.publicUrl}
+document.addEventListener('click',function(e){const w=document.getElementById('loc-wrap');if(w&&!w.contains(e.target))fecharDropdownLoc()});
+async function abrirDropdownLoc(){const dd=document.getElementById('arm-dropdown');if(!dd)return;if(dd.classList.contains('open')){fecharDropdownLoc();return}dd.classList.add('open');document.getElementById('arm-busca')?.focus();if(!window._armazensLoc.length){const fil=window.filialLogada;let q=window.supabase.from('armazem').select('pk,filial,id,localizacao').order('filial').order('id');if(fil)q=q.eq('filial',fil.codigo);const{data}=await q;window._armazensLoc=data||[]}renderArmazensLoc(window._armazensLoc)}
+function fecharDropdownLoc(){document.getElementById('arm-dropdown')?.classList.remove('open');const b=document.getElementById('arm-busca');if(b)b.value=''}
+function renderArmazensLoc(lista){const list=document.getElementById('arm-list');if(!list)return;if(!lista||!lista.length){list.innerHTML='<div class="arm-empty">Nenhuma localização encontrada</div>';return}list.innerHTML=lista.map(a=>`<div class="arm-item" onclick="selecionarLocalizacao('${a.filial}','${a.id}','${String(a.localizacao??'').replace(/'/g,"\\'")}')"><span class="arm-tag arm-tag-f">F${a.filial}</span><span class="arm-tag arm-tag-a">A${a.id}</span><span class="arm-item-loc">${a.localizacao??'—'}</span></div>`).join('')}
+function filtrarArmazensLoc(t){t=t.toLowerCase();renderArmazensLoc(window._armazensLoc.filter(a=>String(a.filial??'').includes(t)||String(a.id??'').includes(t)||(a.localizacao??'').toLowerCase().includes(t)))}
+function selecionarLocalizacao(f,i,l){document.getElementById('f-localizacao').value=`F${f} · A${i} · ${l}`;fecharDropdownLoc()}
+async function salvarProduto(){
+  const codigo=document.getElementById('f-codigo')?.value.trim();
+  const descricao=document.getElementById('f-descricao')?.value.trim();
+  const saldo=parseInt(document.getElementById('f-saldo')?.value)||0;
+  const localizacao=document.getElementById('f-localizacao')?.value.trim();
+  if(!codigo||!descricao){window.showToast('Preencha Código e Descrição.','error');return}
+  const btn=document.getElementById('btn-salvar');btn.textContent='Salvando...';btn.disabled=true;
+  try{
+    let foto_url=window._fotoAtualProd;
+    if(window._fotoFileProd){if(window._fotoAtualProd){const p=window._fotoAtualProd.split('/produtos-fotos/')[1];if(p)await window.supabase.storage.from('produtos-fotos').remove([p])}foto_url=await uploadFoto(window._fotoFileProd)}
+    const filial_pk=window.filialLogada?.pk||null;
+    const payload={codigo,descricao,saldo,localizacao,foto_url,filial_pk};
+    if(window._editProdPk){const{error}=await window.supabase.from('produtos').update(payload).eq('pk',window._editProdPk);if(error)throw error;window._editProdPk=null;window.showToast('Produto atualizado!');carregarModulo('get_produtos.html','nav-produtos')}
+    else{const{error}=await window.supabase.from('produtos').insert([payload]);if(error)throw error;window.showToast('Produto cadastrado!');limparFormProd()}
+  }catch(err){window.showToast('Erro: '+err.message,'error');btn.textContent=window._editProdPk?'Salvar Alterações':'Salvar Produto';btn.disabled=false}
+}
+function limparFormProd(){window._editProdPk=null;window._fotoFileProd=null;window._fotoAtualProd=null;window._armazensLoc=[];['f-codigo','f-descricao','f-saldo','f-localizacao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});removerFoto({stopPropagation:()=>{},preventDefault:()=>{}});const btn=document.getElementById('btn-salvar');if(btn){btn.textContent='Salvar Produto';btn.disabled=false}}
+</script>

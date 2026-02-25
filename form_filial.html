@@ -1,0 +1,110 @@
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+.mod*{box-sizing:border-box}.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mtext2:#1e1b4b;--mmuted:#6b7280}
+html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
+.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
+.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}
+.mod-header p{color:var(--mmuted);font-size:13px}
+.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
+.mbtn-ghost{background:var(--mc);color:#4f46e5;border:1px solid #c7d2fe}.mbtn-ghost:hover{background:var(--mc2)}
+.edit-banner{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e}
+html[data-theme="dark"] .edit-banner{background:#2d2000;border-color:#78350f;color:#fcd34d}
+.mform-card{background:var(--mc);border-radius:14px;padding:24px 26px;max-width:440px;box-shadow:0 4px 20px rgba(79,70,229,.08);border:1px solid var(--mborder);animation:mfadeUp .35s ease .05s both}
+html[data-theme="dark"] .mform-card{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+@media(max-width:500px){.mform-card{padding:16px;border-radius:10px}}
+.mform-group{margin-bottom:16px}
+.mform-group label{display:block;font-size:11px;font-weight:600;letter-spacing:.8px;color:var(--mmuted);margin-bottom:6px;text-transform:uppercase}
+.mform-group input,.mform-group select{width:100%;background:var(--mc2);border:1.5px solid var(--mborder);border-radius:8px;color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:15px;padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.mform-group input:focus,.mform-group select:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.mform-group input::placeholder{color:#c4c9d9}
+.input-code{font-family:'DM Mono',monospace!important;font-size:22px;font-weight:700;letter-spacing:3px;text-align:center}
+.field-hint{font-size:11px;color:var(--mmuted);margin-top:5px}
+.mform-row{display:grid;grid-template-columns:120px 1fr;gap:14px}
+@media(max-width:400px){.mform-row{grid-template-columns:1fr}}
+.mdivider{height:1px;background:var(--mborder);margin:16px 0}
+.mform-footer{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+@keyframes mfadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<div class="mod">
+  <div class="mod-header">
+    <div><h2 id="form-titulo">Cadastrar Filial</h2><p id="form-subtitulo">Adicione uma nova unidade</p></div>
+    <button class="mbtn mbtn-ghost" onclick="window._editData=null;window._editFilPk=null;carregarModulo('cadastro_filial.html','nav-filiais')">← Voltar</button>
+  </div>
+  <div id="edit-banner" class="edit-banner" style="display:none">✏️ <span>Modo edição — altere os campos e clique em <strong>Salvar Alterações</strong></span></div>
+  <div class="mform-card">
+    <div class="mform-row">
+      <div class="mform-group">
+        <label>Código</label>
+        <input class="input-code" type="text" id="fil-codigo" placeholder="01" maxlength="2" oninput="this.value=this.value.replace(/[^0-9A-Za-z]/g,'').toUpperCase()">
+        <div class="field-hint">Ex: 01, SP, RJ</div>
+      </div>
+      <div class="mform-group">
+        <label>Nome da Filial</label>
+        <input type="text" id="fil-nome" placeholder="Ex: Matriz, Filial SP...">
+      </div>
+    </div>
+    <div class="mform-group">
+      <label>Status</label>
+      <select id="fil-ativo">
+        <option value="true">✅ Ativa</option>
+        <option value="false">❌ Inativa</option>
+      </select>
+    </div>
+    <div class="mdivider"></div>
+    <div class="mform-footer">
+      <button class="mbtn mbtn-primary" id="btn-salvar-fil" onclick="salvarFilial()">Salvar Filial</button>
+      <button class="mbtn mbtn-ghost" onclick="limparFormFil()">Limpar</button>
+    </div>
+  </div>
+</div>
+<script>
+window._editFilPk = null;
+(function(){
+  const d = window._editData; window._editData = null;
+  if (!d) return;
+  window._editFilPk = d.pk;
+  document.getElementById('form-titulo').textContent    = 'Alterar Filial';
+  document.getElementById('form-subtitulo').textContent = 'Edite os dados e salve';
+  document.getElementById('edit-banner').style.display  = 'flex';
+  document.getElementById('btn-salvar-fil').textContent = 'Salvar Alterações';
+  document.getElementById('fil-codigo').value = d.codigo;
+  document.getElementById('fil-nome').value   = d.nome;
+  document.getElementById('fil-ativo').value  = String(d.ativo);
+})();
+
+async function salvarFilial() {
+  const codigo = document.getElementById('fil-codigo').value.trim().toUpperCase();
+  const nome   = document.getElementById('fil-nome').value.trim();
+  const ativo  = document.getElementById('fil-ativo').value === 'true';
+  if (!codigo) { window.showToast('Informe o código.','error'); return; }
+  if (!nome)   { window.showToast('Informe o nome.','error'); return; }
+
+  const btn = document.getElementById('btn-salvar-fil');
+  btn.disabled = true;
+  const payload = { codigo, nome, ativo };
+
+  if (window._editFilPk) {
+    const { error } = await window.supabase.from('filiais').update(payload).eq('pk', window._editFilPk);
+    btn.disabled = false;
+    if (error) { window.showToast('Erro: '+error.message,'error'); return; }
+    window._editFilPk = null;
+    window.showToast('Filial atualizada!');
+    carregarModulo('cadastro_filial.html','nav-filiais');
+  } else {
+    const { error } = await window.supabase.from('filiais').insert([payload]);
+    btn.disabled = false;
+    if (error) { window.showToast('Erro: '+error.message,'error'); return; }
+    window.showToast('Filial cadastrada!');
+    carregarModulo('cadastro_filial.html','nav-filiais');
+  }
+}
+function limparFormFil() {
+  window._editFilPk = null;
+  document.getElementById('fil-codigo').value = '';
+  document.getElementById('fil-nome').value   = '';
+  document.getElementById('fil-ativo').value  = 'true';
+  document.getElementById('btn-salvar-fil').textContent = 'Salvar Filial';
+  document.getElementById('edit-banner').style.display  = 'none';
+}
+</script>

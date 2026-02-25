@@ -1,0 +1,88 @@
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+.mod*{box-sizing:border-box}.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mtext2:#1e1b4b;--mmuted:#6b7280}
+html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
+.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
+.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}.mod-header p{color:var(--mmuted);font-size:13px}
+.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
+.mbtn-ghost{background:var(--mc);color:#4f46e5;border:1px solid #c7d2fe}.mbtn-ghost:hover{background:var(--mc2)}
+.edit-banner{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e}
+html[data-theme="dark"] .edit-banner{background:#2d2000;border-color:#78350f;color:#fcd34d}
+.mform-card{background:var(--mc);border-radius:14px;padding:22px 24px;max-width:440px;box-shadow:0 4px 20px rgba(79,70,229,.08);border:1px solid var(--mborder);animation:mfadeUp .35s ease .05s both}
+html[data-theme="dark"] .mform-card{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+@media(max-width:600px){.mform-card{padding:16px;border-radius:10px}}
+.mform-group{margin-bottom:15px}
+.mform-group label{display:block;font-size:11px;font-weight:600;letter-spacing:.8px;color:var(--mmuted);margin-bottom:5px;text-transform:uppercase}
+.mform-group input{width:100%;background:var(--mc2);border:1.5px solid var(--mborder);border-radius:8px;color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:15px;padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.mform-group input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}.mform-group input::placeholder{color:#c4c9d9}
+.input-code{font-family:'DM Mono',monospace!important;font-size:20px;font-weight:700;letter-spacing:3px;text-align:center}
+.input-locked{background:var(--mc2)!important;color:var(--mmuted)!important;cursor:not-allowed;border-color:var(--mborder)!important}
+.filial-badge{display:inline-flex;align-items:center;gap:6px;background:#e0e7ff;color:#3730a3;border-radius:8px;padding:8px 14px;font-family:'DM Mono',monospace;font-size:16px;font-weight:700;border:1px solid #c7d2fe;margin-bottom:15px}
+html[data-theme="dark"] .filial-badge{background:#2e3250;color:#a78bfa;border-color:#3d4270}
+.field-hint{font-size:11px;color:var(--mmuted);margin-top:5px}
+.mdivider{height:1px;background:var(--mborder);margin:16px 0}.mform-footer{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+@keyframes mfadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<div class="mod">
+  <div class="mod-header">
+    <div><h2 id="form-titulo">Cadastrar Localização</h2><p id="form-subtitulo">Adicione uma localização ao armazém</p></div>
+    <button class="mbtn mbtn-ghost" onclick="window._editData=null;window._editArmPk=null;carregarModulo('cadastro_armazem.html','nav-armazem')">← Voltar</button>
+  </div>
+  <div id="edit-banner" class="edit-banner" style="display:none">✏️ <span>Modo edição — altere os campos e clique em <strong>Salvar Alterações</strong></span></div>
+  <div class="mform-card">
+    <div class="mform-group">
+      <label>Filial</label>
+      <div class="filial-badge" id="filial-badge-arm">🏢 —</div>
+    </div>
+    <div class="mform-group">
+      <label>Número do Armazém</label>
+      <input class="input-code" type="text" id="a-id" placeholder="01" maxlength="2" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <div class="field-hint">Ex: 01, 02</div>
+    </div>
+    <div class="mform-group"><label>Localização</label><input type="text" id="a-localizacao" placeholder="Ex: Prateleira A1, Corredor B"></div>
+    <div class="mdivider"></div>
+    <div class="mform-footer">
+      <button class="mbtn mbtn-primary" id="btn-salvar-arm" onclick="salvarArmazem()">Salvar</button>
+      <button class="mbtn mbtn-ghost" onclick="limparFormArm()">Limpar</button>
+    </div>
+  </div>
+</div>
+<script>
+window._editArmPk=null;
+const _fil=window.filialLogada;
+// Mostra a filial logada no badge
+document.getElementById('filial-badge-arm').textContent=_fil?`🏢 ${_fil.codigo} – ${_fil.nome}`:'🏢 —';
+
+(function(){
+  const d=window._editData;window._editData=null;if(!d)return;
+  window._editArmPk=d.pk;
+  document.getElementById('form-titulo').textContent='Alterar Localização';
+  document.getElementById('form-subtitulo').textContent='Edite os dados e salve';
+  document.getElementById('edit-banner').style.display='flex';
+  document.getElementById('btn-salvar-arm').textContent='Salvar Alterações';
+  document.getElementById('a-id').value=d.id??'';
+  document.getElementById('a-localizacao').value=d.localizacao??'';
+})();
+
+async function salvarArmazem(){
+  const filial=_fil?.codigo||'01';
+  const idVal=document.getElementById('a-id')?.value.trim()||'';
+  const id=idVal.padStart(2,'0');
+  const localizacao=document.getElementById('a-localizacao')?.value.trim()||'';
+  if(!idVal||id==='00'){window.showToast('Informe o número do Armazém.','error');return}
+  if(!localizacao){window.showToast('Informe a Localização.','error');return}
+  const btn=document.getElementById('btn-salvar-arm');btn.disabled=true;
+  const payload={filial,id,localizacao};
+  if(window._editArmPk){
+    const{error}=await window.supabase.from('armazem').update(payload).eq('pk',window._editArmPk);
+    btn.disabled=false;if(error){window.showToast('Erro: '+error.message,'error');return}
+    window._editArmPk=null;window.showToast('Localização atualizada!');carregarModulo('cadastro_armazem.html','nav-armazem');
+  }else{
+    const{error}=await window.supabase.from('armazem').insert([payload]);
+    btn.disabled=false;if(error){window.showToast('Erro: '+error.message,'error');return}
+    window.showToast('Localização cadastrada!');limparFormArm();
+  }
+}
+function limparFormArm(){window._editArmPk=null;['a-id','a-localizacao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});document.getElementById('btn-salvar-arm').textContent='Salvar';document.getElementById('edit-banner').style.display='none'}
+</script>
