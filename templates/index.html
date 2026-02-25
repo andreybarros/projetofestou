@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Estoque</title>
+<style>
+:root {
+  --surface:#4f46e5;--surface-hv:#3730a3;--sidebar-act:#3730a3;
+  --sidebar-txt:#fff;--sidebar-mut:rgba(255,255,255,.55);
+  --content-bg:#f4f4f9;--border:rgba(255,255,255,.2);
+}
+[data-theme="dark"] {
+  --surface:#1a1d27;--surface-hv:#22263a;--sidebar-act:#2e3250;
+  --sidebar-txt:#e8e9f3;--sidebar-mut:rgba(255,255,255,.35);
+  --content-bg:#0f1117;--border:rgba(255,255,255,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:var(--content-bg);color:var(--sidebar-txt);display:flex;height:100vh;overflow:hidden;transition:background .2s}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;width:100%;background:var(--content-bg)}
+.login-box{background:#fff;border-radius:12px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 4px 24px rgba(0,0,0,.12);margin:16px}
+[data-theme="dark"] .login-box{background:#1a1d27}
+.login-logo{text-align:center;margin-bottom:20px}
+.login-logo div:first-child{font-size:36px;margin-bottom:6px}
+.login-logo h2{color:#4f46e5;font-size:18px;font-weight:700;margin-bottom:4px}
+.login-logo p{color:#888;font-size:12px}
+.login-box label{display:block;font-size:11px;font-weight:700;color:#666;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+[data-theme="dark"] .login-box label{color:#9ca3af}
+.login-box input,.login-box select{width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;transition:border-color .2s;background:#fff;color:#333;font-family:Arial,sans-serif}
+[data-theme="dark"] .login-box input,[data-theme="dark"] .login-box select{background:#22263a;border-color:#2e3250;color:#e8e9f3}
+.login-box input:focus,.login-box select:focus{border-color:#4f46e5}
+
+/* Filial select com badge */
+.filial-select-wrap{position:relative;margin-bottom:12px}
+.filial-select-wrap select{margin-bottom:0;appearance:none;padding-right:36px;cursor:pointer}
+.filial-select-wrap::after{content:'▾';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#4f46e5;pointer-events:none;font-size:14px}
+.filial-loading{font-size:12px;color:#888;margin-bottom:12px;padding:8px 12px;background:#f9fafb;border-radius:6px;text-align:center}
+[data-theme="dark"] .filial-loading{background:#22263a;color:#7b7fa0}
+
+.divider-form{height:1px;background:#e5e7eb;margin:4px 0 12px}
+[data-theme="dark"] .divider-form{background:#2e3250}
+.login-box .btn-entrar{width:100%;background:#4f46e5;color:#fff;border:none;padding:12px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+.login-box .btn-entrar:hover{background:#3730a3}
+.login-box .btn-entrar:disabled{background:#9ca3af;cursor:not-allowed}
+.login-error{color:#dc2626;font-size:12px;text-align:center;margin-top:8px;min-height:16px}
+
+/* OVERLAY */
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+#sidebar-overlay.show{display:block}
+
+/* SIDEBAR */
+.sidebar{width:230px;background:var(--surface);color:var(--sidebar-txt);flex-direction:column;padding:0;display:none;transition:transform .25s,background .2s;flex-shrink:0;overflow-y:auto}
+.sidebar.visible{display:flex}
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:100;transform:translateX(-100%);display:flex!important}
+  .sidebar.open{transform:translateX(0)}
+}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+.sidebar-title{font-size:13px;font-weight:bold;line-height:1.3}
+.sidebar-filial{font-size:10px;color:var(--sidebar-mut);margin-top:3px}
+.btn-close-sidebar{display:none;background:none;border:none;color:var(--sidebar-txt);font-size:22px;cursor:pointer;padding:0 4px}
+@media(max-width:768px){.btn-close-sidebar{display:block}}
+.sidebar-section{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--sidebar-mut);padding:16px 16px 6px;display:block}
+.sidebar button.nav-btn{background:transparent;border:none;color:var(--sidebar-txt);padding:10px 16px;margin:0;border-radius:0;cursor:pointer;text-align:left;font-family:Arial,sans-serif;font-size:13px;width:100%;transition:background .15s;display:block}
+.sidebar button.nav-btn:hover{background:var(--surface-hv)}
+.sidebar button.nav-btn.active{background:var(--sidebar-act);font-weight:bold}
+.sidebar-footer{margin-top:auto;border-top:1px solid var(--border);padding:14px 16px}
+.user-info{margin-bottom:10px}
+.user-info .user-name{font-size:12px;color:var(--sidebar-mut)}
+.user-info strong{color:var(--sidebar-txt);display:block;font-size:13px}
+.user-filial-badge{display:inline-block;margin-top:4px;font-size:10px;background:rgba(255,255,255,.15);color:var(--sidebar-txt);border-radius:20px;padding:2px 10px;font-weight:600}
+.theme-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.theme-toggle span{font-size:12px;color:var(--sidebar-mut)}
+.toggle-btn{position:relative;width:38px;height:20px;background:rgba(255,255,255,.2);border-radius:20px;cursor:pointer;border:none;transition:background .2s;flex-shrink:0}
+.toggle-btn::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s}
+[data-theme="dark"] .toggle-btn{background:rgba(108,99,255,.5)}
+[data-theme="dark"] .toggle-btn::after{transform:translateX(18px)}
+.btn-logout{width:100%;background:rgba(255,255,255,.1)!important;border:1px solid rgba(255,255,255,.25)!important;color:var(--sidebar-txt)!important;padding:8px 10px!important;border-radius:4px;font-size:12px;cursor:pointer;font-family:Arial,sans-serif}
+.btn-logout:hover{background:rgba(255,255,255,.2)!important}
+
+/* APP */
+#app{display:none;flex:1;flex-direction:row;overflow:hidden}
+#app.visible{display:flex}
+.topbar{display:none;align-items:center;gap:12px;background:var(--surface);padding:12px 16px;flex-shrink:0}
+@media(max-width:768px){.topbar{display:flex}}
+.btn-hamburger{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;line-height:1}
+.topbar-title{color:#fff;font-size:14px;font-weight:bold}
+.app-body{display:flex;flex:1;overflow:hidden}
+.content{flex:1;padding:20px;background:var(--content-bg);overflow-y:auto;transition:background .2s}
+.content::-webkit-scrollbar{width:5px}
+.content::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:3px}
+@media(max-width:768px){.content{padding:14px}}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:16px;left:16px;max-width:420px;margin:0 auto;background:#333;color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;display:none;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:999}
+@media(min-width:480px){#toast{left:auto;width:auto}}
+#toast.show{display:flex}
+#toast.success{background:#065f46}
+#toast.error{background:#991b1b}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div>📦</div>
+      <h2>Controle de Estoque</h2>
+      <p>Faça login para acessar o sistema</p>
+    </div>
+
+    <label>Filial</label>
+    <div class="filial-select-wrap" id="filial-wrap">
+      <div class="filial-loading" id="filial-loading">⏳ Carregando filiais...</div>
+      <select id="sel-filial" style="display:none" onkeydown="if(event.key==='Enter') document.getElementById('inp-login').focus()">
+        <option value="">Selecione a filial...</option>
+      </select>
+    </div>
+
+    <div class="divider-form"></div>
+
+    <label>Login</label>
+    <input type="text" id="inp-login" placeholder="Seu login" onkeydown="if(event.key==='Enter') document.getElementById('inp-senha').focus()">
+    <label>Senha</label>
+    <input type="password" id="inp-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter') fazerLogin()">
+    <button class="btn-entrar" id="btn-entrar" onclick="fazerLogin()" disabled>Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="sidebar-overlay" onclick="fecharSidebar()"></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div>
+        <div class="sidebar-title">📦 Controle de Estoque</div>
+        <div class="sidebar-filial" id="sidebar-filial-label">—</div>
+      </div>
+      <button class="btn-close-sidebar" onclick="fecharSidebar()">✕</button>
+    </div>
+
+    <span class="sidebar-section">Estoque</span>
+    <button class="nav-btn" id="nav-produtos" onclick="ir('get_produtos.html','nav-produtos')" style="display:none">📦 Produtos</button>
+
+    <span class="sidebar-section">Estrutura</span>
+    <button class="nav-btn" id="nav-armazem" onclick="ir('cadastro_armazem.html','nav-armazem')" style="display:none">🏭 Armazéns</button>
+
+    <span class="sidebar-section" id="sec-agenda" style="display:none">Eventos</span>
+    <button class="nav-btn" id="nav-agenda" onclick="ir('agenda.html','nav-agenda')" style="display:none">📅 Agenda</button>
+
+    <span class="sidebar-section" id="sec-admin" style="display:none">Administração</span>
+    <button class="nav-btn" id="nav-filiais"   onclick="ir('cadastro_filial.html','nav-filiais')"   style="display:none">🏢 Filiais</button>
+    <button class="nav-btn" id="nav-operador"  onclick="ir('cadastro_operador.html','nav-operador')" style="display:none">👤 Operadores</button>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-name">Logado como</div>
+        <strong id="user-display">—</strong>
+        <span class="user-filial-badge" id="user-filial-badge">—</span>
+      </div>
+      <div class="theme-toggle">
+        <span id="theme-label">☀️ Light</span>
+        <button class="toggle-btn" onclick="alternarTema()"></button>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="topbar">
+      <button class="btn-hamburger" onclick="abrirSidebar()">☰</button>
+      <span class="topbar-title">📦 Controle de Estoque</span>
+    </div>
+    <div class="content" id="content">
+      <h2 style="color:var(--sidebar-txt)">Bem-vindo ao Controle de Estoque</h2>
+      <p style="color:#888;margin-top:6px;font-size:13px">Escolha um módulo no menu lateral.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+const SUPA_URL = "https://lflpzskcpcsfzagackuy.supabase.co";
+const SUPA_KEY = "sb_publishable_5jo3h0in7z4PPCsw4K5RjA_g-TVT_NP";
+window.supabase = supabase.createClient(SUPA_URL, SUPA_KEY);
+window.operadorLogado  = null;
+window.filialLogada    = null; // { pk, codigo, nome }
+window._editData       = null;
+
+// ── Tema ───────────────────────────────────────────────────
+function aplicarTema(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('theme-label').textContent = t==='dark'?'🌙 Dark':'☀️ Light';
+  try{localStorage.setItem('tema',t)}catch(e){}
+}
+function alternarTema(){aplicarTema(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')}
+try{aplicarTema(localStorage.getItem('tema')||'light')}catch(e){aplicarTema('light')}
+
+// ── Toast ──────────────────────────────────────────────────
+window.showToast = function(msg, tipo='success'){
+  const t=document.getElementById('toast');
+  t.textContent=(tipo==='success'?'✅ ':'❌ ')+msg;
+  t.className='show '+tipo;
+  setTimeout(()=>t.className='',3500);
+};
+
+// ── Sidebar mobile ─────────────────────────────────────────
+function abrirSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('show')}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('show')}
+
+// ── Carrega filiais no login ───────────────────────────────
+(async function carregarFiliais() {
+  const { data, error } = await window.supabase
+    .from('filiais').select('pk,codigo,nome').eq('ativo', true).order('codigo');
+
+  const wrap    = document.getElementById('filial-wrap');
+  const loading = document.getElementById('filial-loading');
+  const sel     = document.getElementById('sel-filial');
+  const btn     = document.getElementById('btn-entrar');
+
+  if (error || !data || data.length === 0) {
+    loading.textContent = '⚠️ Nenhuma filial encontrada';
+    return;
+  }
+
+  data.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.pk;
+    opt.dataset.codigo = f.codigo;
+    opt.dataset.nome   = f.nome;
+    opt.textContent    = `[${f.codigo}] ${f.nome}`;
+    sel.appendChild(opt);
+  });
+
+  // Se só houver uma filial, seleciona automaticamente
+  if (data.length === 1) sel.value = data[0].pk;
+
+  loading.style.display = 'none';
+  sel.style.display = '';
+  btn.disabled = false;
+})();
+
+// ── Login ──────────────────────────────────────────────────
+async function fazerLogin() {
+  const filialPk = document.getElementById('sel-filial').value;
+  const login    = document.getElementById('inp-login').value.trim();
+  const senha    = document.getElementById('inp-senha').value.trim();
+  const erro     = document.getElementById('login-error');
+  erro.textContent = '';
+
+  if (!filialPk) { erro.textContent = 'Selecione a filial.'; return; }
+  if (!login || !senha) { erro.textContent = 'Preencha login e senha.'; return; }
+
+  // Busca operador: aceita se filial_pk bater OU se for superadmin (filial_pk null)
+  const { data, error } = await window.supabase
+    .from('operadores').select('*')
+    .eq('login', login).eq('senha', senha).eq('ativo', true);
+
+  if (error || !data || data.length === 0) { erro.textContent = 'Login ou senha inválidos.'; return; }
+
+  // Pega o operador que tem acesso a essa filial
+  const op = data.find(d => d.filial_pk === parseInt(filialPk) || d.filial_pk === null);
+  if (!op) { erro.textContent = 'Usuário sem acesso a esta filial.'; return; }
+
+  // Monta objeto da filial
+  const sel  = document.getElementById('sel-filial');
+  const opt  = sel.options[sel.selectedIndex];
+  window.filialLogada   = { pk: parseInt(filialPk), codigo: opt.dataset.codigo, nome: opt.dataset.nome };
+  window.operadorLogado = op;
+
+  // Atualiza UI
+  document.getElementById('user-display').textContent     = op.nome;
+  document.getElementById('user-filial-badge').textContent = `${window.filialLogada.codigo} · ${window.filialLogada.nome}`;
+  document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
+
+  aplicarPermissoes(op);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('sidebar').classList.add('visible');
+}
+
+function aplicarPermissoes(op) {
+  const show = (id, v) => { const el=document.getElementById(id); if(el) el.style.display=v?'':'none'; };
+  const temAgenda = op.admin || op.acesso_agenda;
+  show('nav-produtos',  op.admin || op.acesso_produtos);
+  show('nav-armazem',   op.admin || op.acesso_armazens);
+  show('nav-agenda',    temAgenda);
+  show('sec-agenda',    temAgenda);
+  show('sec-admin',     op.admin);
+  show('nav-filiais',   op.admin);
+  show('nav-operador',  op.admin);
+}
+
+function logout() {
+  window.operadorLogado = null;
+  window.filialLogada   = null;
+  window._editData      = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('sidebar').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('inp-login').value = '';
+  document.getElementById('inp-senha').value = '';
+  document.getElementById('content').innerHTML =
+    '<h2 style="color:var(--sidebar-txt)">Bem-vindo</h2><p style="color:#888;font-size:13px;margin-top:6px">Escolha um módulo no menu lateral.</p>';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+}
+
+// ── Carregador de módulos ──────────────────────────────────
+window.ir = window.carregarModulo = function(arquivo, navId) {
+  fecharSidebar();
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if (navId) document.getElementById(navId)?.classList.add('active');
+  fetch(arquivo)
+    .then(r=>{ if(!r.ok) throw new Error('Arquivo não encontrado: '+arquivo); return r.text(); })
+    .then(html=>{
+      const content = document.getElementById('content');
+      content.innerHTML = html;
+      content.scrollTo(0,0);
+      content.querySelectorAll('script').forEach(old=>{
+        const s=document.createElement('script');
+        s.textContent=old.textContent;
+        document.body.appendChild(s);
+        old.remove();
+      });
+    })
+    .catch(err=>{
+      document.getElementById('content').innerHTML=`<p style="color:#dc2626;padding:20px">❌ ${err.message}</p>`;
+    });
+};
+</script>
+</body>
+</html>
