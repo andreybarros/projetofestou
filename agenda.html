@@ -1,66 +1,498 @@
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/logo.png" type="image/png">
+<link
+  href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+  rel="stylesheet">
 <style>
-.mod*{box-sizing:border-box}
-.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mborder2:#f3f4f6;--mtext:#374151;--mtext2:#1e1b4b;--mmuted:#6b7280}
-html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mborder2:#22263a;--mtext:#c9cce0;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
-.mod-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
-.mod-header-left h2{font-size:20px;font-weight:600;color:var(--mtext2)}
-.mod-header-left p{color:var(--mmuted);font-size:13px;margin-top:2px}
-.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
-.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
-.mbtn-ghost{background:var(--mc);color:#4f46e5;border:1px solid #c7d2fe}.mbtn-ghost:hover{background:var(--mc2)}
-.mbtn-icon{padding:8px 12px;font-size:16px}
-.filial-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#e0e7ff;color:#3730a3;border-radius:20px;font-size:12px;font-weight:600}
-html[data-theme="dark"] .filial-chip{background:#2e3250;color:#a78bfa}
-.week-nav{display:flex;align-items:center;gap:8px}
-.week-label{font-size:14px;font-weight:600;color:var(--mtext2);min-width:180px;text-align:center}
-@media(max-width:500px){.week-label{min-width:110px;font-size:12px}}
-.cal-wrap{background:var(--mc);border-radius:14px;overflow:hidden;border:1px solid var(--mborder);box-shadow:0 4px 20px rgba(79,70,229,.08);animation:mfadeUp .35s ease .05s both}
-html[data-theme="dark"] .cal-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
-.cal-scroll{overflow-x:auto}
-.cal-grid{display:grid;grid-template-columns:52px repeat(7,minmax(90px,1fr));min-width:700px}
-.cal-head-corner{background:var(--mc);border-bottom:2px solid var(--mborder);border-right:1px solid var(--mborder2)}
-.cal-head-cell{padding:10px 4px;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mmuted);border-bottom:2px solid var(--mborder);background:var(--mc)}
-.cal-head-cell.today .day-num{background:#4f46e5;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px}
-.cal-head-cell .day-num{font-size:18px;font-weight:700;color:var(--mtext2);margin-bottom:2px;line-height:1}
-.cal-hour-label{padding:0 6px;text-align:right;font-size:10px;font-weight:500;color:var(--mmuted);font-family:'DM Mono',monospace;height:56px;display:flex;align-items:flex-start;padding-top:4px;border-right:1px solid var(--mborder2);flex-shrink:0}
-.cal-cell{min-height:56px;border-right:1px solid var(--mborder2);border-bottom:1px solid var(--mborder2);display:flex;flex-direction:column;gap:2px;padding:2px}
-.cal-cell:last-child{border-right:none}
-.cal-evento{position:relative;min-height:22px;color:#fff;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:600;cursor:pointer;overflow:hidden;transition:filter .15s;display:flex;flex-direction:column;justify-content:center;gap:1px;width:100%}
-.cal-evento:hover{filter:brightness(1.12)}
-.cal-evento .ev-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-.cal-evento .ev-time{font-size:9px;opacity:.85;font-family:'DM Mono',monospace}
-.cal-evento.c1{background:linear-gradient(135deg,#4f46e5,#818cf8)}
-.cal-evento.c2{background:linear-gradient(135deg,#0891b2,#38bdf8)}
-.cal-evento.c3{background:linear-gradient(135deg,#7c3aed,#a78bfa)}
-.cal-evento.c4{background:linear-gradient(135deg,#059669,#34d399)}
-.cal-evento.c5{background:linear-gradient(135deg,#dc2626,#f87171)}
-.cal-evento.c6{background:linear-gradient(135deg,#d97706,#fbbf24)}
-.cal-evento.desmont{background:linear-gradient(135deg,#7c3aed,#c084fc);opacity:.85}
-.cal-evento .ev-label{font-size:8px;opacity:.8;text-transform:uppercase;letter-spacing:.5px}
-.cal-evento.desmont{background:linear-gradient(135deg,#7c3aed,#c084fc)}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;animation:mfadeIn .15s ease;backdrop-filter:blur(3px)}
-.modal-box{background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,.5);border:1.5px solid #c7d2fe;overflow:hidden;animation:mslideUp .2s ease}
-html[data-theme="dark"] .modal-box{background:#1a1d27;border-color:#3d4270;box-shadow:0 24px 80px rgba(0,0,0,.7)}
-.modal-header{background:linear-gradient(135deg,#4f46e5,#818cf8);padding:20px 22px;color:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.modal-header h3{font-size:18px;font-weight:700;margin-bottom:6px}
-.modal-ev-meta{font-size:13px;opacity:.9;display:flex;gap:12px;flex-wrap:wrap}
-.btn-modal-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
-.btn-modal-close:hover{background:rgba(255,255,255,.35)}
-.modal-body{padding:22px}
-.modal-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--mmuted);margin-bottom:10px}
-.modal-descricao{background:var(--mc2);border:1px solid var(--mborder);border-radius:10px;padding:14px;font-size:14px;color:var(--mtext);line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:260px;overflow-y:auto}
-.modal-empty{color:var(--mmuted);font-style:italic;font-size:13px}
-.modal-info-row{font-size:14px;color:var(--mtext);background:var(--mc2);border:1px solid var(--mborder);border-radius:8px;padding:10px 14px}
-.modal-tags{display:flex;flex-wrap:wrap;gap:6px}
-.modal-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:#e0e7ff;color:#3730a3;border-radius:20px;font-size:13px;font-weight:500}
-html[data-theme="dark"] .modal-tag{background:#2e3250;color:#a78bfa}
-.modal-footer{padding:14px 22px;border-top:1px solid var(--mborder);display:flex;justify-content:flex-end;gap:10px}
-.mbtn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:8px 16px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}.mbtn-danger:hover{background:#fecaca}
-@keyframes mfadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-@keyframes mfadeIn{from{opacity:0}to{opacity:1}}
-@keyframes mslideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .mod* {
+    box-sizing: border-box
+  }
+
+  .mod {
+    font-family: 'DM Sans', sans-serif;
+    --mc: #fff;
+    --mc2: #fafafe;
+    --mborder: #e0e7ff;
+    --mborder2: #f3f4f6;
+    --mtext: #374151;
+    --mtext2: #1e1b4b;
+    --mmuted: #6b7280
+  }
+
+  html[data-theme="dark"] .mod {
+    --mc: #1a1d27;
+    --mc2: #22263a;
+    --mborder: #2e3250;
+    --mborder2: #22263a;
+    --mtext: #c9cce0;
+    --mtext2: #e8e9f3;
+    --mmuted: #7b7fa0
+  }
+
+  .mod-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    animation: mfadeUp .3s ease;
+    gap: 12px;
+    flex-wrap: wrap
+  }
+
+  .mod-header-left h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--mtext2)
+  }
+
+  .mod-header-left p {
+    color: var(--mmuted);
+    font-size: 13px;
+    margin-top: 2px
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap
+  }
+
+  .mbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .15s;
+    white-space: nowrap
+  }
+
+  .mbtn-primary {
+    background: #4f46e5;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, .25)
+  }
+
+  .mbtn-primary:hover {
+    background: #3730a3;
+    transform: translateY(-1px)
+  }
+
+  .mbtn-ghost {
+    background: var(--mc);
+    color: #4f46e5;
+    border: 1px solid #c7d2fe
+  }
+
+  .mbtn-ghost:hover {
+    background: var(--mc2)
+  }
+
+  .mbtn-icon {
+    padding: 8px 12px;
+    font-size: 16px
+  }
+
+  .filial-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600
+  }
+
+  html[data-theme="dark"] .filial-chip {
+    background: #2e3250;
+    color: #a78bfa
+  }
+
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px
+  }
+
+  .week-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--mtext2);
+    min-width: 180px;
+    text-align: center
+  }
+
+  @media(max-width:500px) {
+    .week-label {
+      min-width: 110px;
+      font-size: 12px
+    }
+  }
+
+  .cal-wrap {
+    background: var(--mc);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--mborder);
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+    animation: mfadeUp .35s ease .05s both
+  }
+
+  html[data-theme="dark"] .cal-wrap {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
+  }
+
+  .cal-scroll {
+    overflow-x: auto
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: 52px repeat(7, minmax(90px, 1fr));
+    min-width: 700px
+  }
+
+  .cal-head-corner {
+    background: var(--mc);
+    border-bottom: 2px solid var(--mborder);
+    border-right: 1px solid var(--mborder2)
+  }
+
+  .cal-head-cell {
+    padding: 10px 4px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--mmuted);
+    border-bottom: 2px solid var(--mborder);
+    background: var(--mc)
+  }
+
+  .cal-head-cell.today .day-num {
+    background: #4f46e5;
+    color: #fff;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2px
+  }
+
+  .cal-head-cell .day-num {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mtext2);
+    margin-bottom: 2px;
+    line-height: 1
+  }
+
+  .cal-hour-label {
+    padding: 0 6px;
+    text-align: right;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--mmuted);
+    font-family: 'DM Mono', monospace;
+    height: 56px;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 4px;
+    border-right: 1px solid var(--mborder2);
+    flex-shrink: 0
+  }
+
+  .cal-cell {
+    min-height: 56px;
+    border-right: 1px solid var(--mborder2);
+    border-bottom: 1px solid var(--mborder2);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px
+  }
+
+  .cal-cell:last-child {
+    border-right: none
+  }
+
+  .cal-evento {
+    position: relative;
+    min-height: 22px;
+    color: #fff;
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    overflow: hidden;
+    transition: filter .15s;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    width: 100%
+  }
+
+  .cal-evento:hover {
+    filter: brightness(1.12)
+  }
+
+  .cal-evento .ev-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%
+  }
+
+  .cal-evento .ev-time {
+    font-size: 9px;
+    opacity: .85;
+    font-family: 'DM Mono', monospace
+  }
+
+  .cal-evento.c1 {
+    background: linear-gradient(135deg, #4f46e5, #818cf8)
+  }
+
+  .cal-evento.c2 {
+    background: linear-gradient(135deg, #0891b2, #38bdf8)
+  }
+
+  .cal-evento.c3 {
+    background: linear-gradient(135deg, #7c3aed, #a78bfa)
+  }
+
+  .cal-evento.c4 {
+    background: linear-gradient(135deg, #059669, #34d399)
+  }
+
+  .cal-evento.c5 {
+    background: linear-gradient(135deg, #dc2626, #f87171)
+  }
+
+  .cal-evento.c6 {
+    background: linear-gradient(135deg, #d97706, #fbbf24)
+  }
+
+  .cal-evento.desmont {
+    background: linear-gradient(135deg, #7c3aed, #c084fc);
+    opacity: .85
+  }
+
+  .cal-evento .ev-label {
+    font-size: 8px;
+    opacity: .8;
+    text-transform: uppercase;
+    letter-spacing: .5px
+  }
+
+  .cal-evento.desmont {
+    background: linear-gradient(135deg, #7c3aed, #c084fc)
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: mfadeIn .15s ease
+  }
+
+  .modal-box {
+    background: var(--mc);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+    overflow: hidden;
+    animation: mslideUp .2s ease
+  }
+
+  html[data-theme="dark"] .modal-box {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .6)
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, #4f46e5, #818cf8);
+    padding: 20px 22px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px
+  }
+
+  .modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px
+  }
+
+  .modal-ev-meta {
+    font-size: 13px;
+    opacity: .9;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap
+  }
+
+  .btn-modal-close {
+    background: rgba(255, 255, 255, .2);
+    border: none;
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .15s
+  }
+
+  .btn-modal-close:hover {
+    background: rgba(255, 255, 255, .35)
+  }
+
+  .modal-body {
+    padding: 22px
+  }
+
+  .modal-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--mmuted);
+    margin-bottom: 10px
+  }
+
+  .modal-descricao {
+    background: var(--mc2);
+    border: 1px solid var(--mborder);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 14px;
+    color: var(--mtext);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 260px;
+    overflow-y: auto
+  }
+
+  .modal-empty {
+    color: var(--mmuted);
+    font-style: italic;
+    font-size: 13px
+  }
+
+  .modal-info-row {
+    font-size: 14px;
+    color: var(--mtext);
+    background: var(--mc2);
+    border: 1px solid var(--mborder);
+    border-radius: 8px;
+    padding: 10px 14px
+  }
+
+  .modal-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px
+  }
+
+  .modal-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500
+  }
+
+  html[data-theme="dark"] .modal-tag {
+    background: #2e3250;
+    color: #a78bfa
+  }
+
+  .modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--mborder);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px
+  }
+
+  .mbtn-danger {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer
+  }
+
+  .mbtn-danger:hover {
+    background: #fecaca
+  }
+
+  @keyframes mfadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px)
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0)
+    }
+  }
+
+  @keyframes mfadeIn {
+    from {
+      opacity: 0
+    }
+
+    to {
+      opacity: 1
+    }
+  }
+
+  @keyframes mslideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px)
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0)
+    }
+  }
 </style>
 
 <div class="mod">
@@ -76,10 +508,15 @@ html[data-theme="dark"] .modal-tag{background:#2e3250;color:#a78bfa}
         <button class="mbtn mbtn-ghost mbtn-icon" onclick="AgMod.mudarSemana(1)">›</button>
         <button class="mbtn mbtn-ghost" onclick="AgMod.irHoje()">Hoje</button>
       </div>
-      <button class="mbtn mbtn-primary" id="btn-nova-agenda" style="display:none" onclick="AgMod.novoEvento()">+ Incluir</button>
+      <button class="mbtn mbtn-primary" id="btn-nova-agenda" style="display:none" onclick="AgMod.novoEvento()">+
+        Incluir</button>
     </div>
   </div>
-  <div class="cal-wrap"><div class="cal-scroll"><div class="cal-grid" id="cal-grid"></div></div></div>
+  <div class="cal-wrap">
+    <div class="cal-scroll">
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="modal-evento" style="display:none">
@@ -111,7 +548,8 @@ html[data-theme="dark"] .modal-tag{background:#2e3250;color:#a78bfa}
       <div class="modal-descricao" id="modal-descricao"></div>
     </div>
     <div class="modal-footer">
-      <button class="mbtn-danger" id="btn-excluir-evento" style="display:none" onclick="AgMod.excluirAtual()">🗑 Excluir</button>
+      <button class="mbtn-danger" id="btn-excluir-evento" style="display:none" onclick="AgMod.excluirAtual()">🗑
+        Excluir</button>
       <button class="mbtn mbtn-ghost" onclick="AgMod.editarAtual()">✏️ Alterar</button>
       <button class="mbtn mbtn-primary" onclick="AgMod.fecharModal()">Fechar</button>
     </div>
@@ -119,224 +557,224 @@ html[data-theme="dark"] .modal-tag{background:#2e3250;color:#a78bfa}
 </div>
 
 <script>
-window.AgMod = (function() {
-  var HORAS = [7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
-  var DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  var MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  var MESES_F = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  var CORES = ['c1','c2','c3','c4','c5','c6'];
+  window.AgMod = (function () {
+    var HORAS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+    var DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    var MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    var MESES_F = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    var CORES = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'];
 
-  var offset   = 0;
-  var eventos  = [];
-  var evAtual  = null;
+    var offset = 0;
+    var eventos = [];
+    var evAtual = null;
 
-  // Botão incluir conforme permissão
-  (function(){
-    var op = window.operadorLogado;
-    var btn = document.getElementById('btn-nova-agenda');
-    if (btn && op && (op.admin || op.acesso_agenda)) btn.style.display = '';
-    var ch = document.getElementById('chip-filial-ag');
-    if (ch) { var f=window.filialLogada; ch.textContent = f ? f.codigo+' – '+f.nome : 'Todas'; }
-  })();
+    // Botão incluir conforme permissão
+    (function () {
+      var op = window.operadorLogado;
+      var btn = document.getElementById('btn-nova-agenda');
+      if (btn && op && (op.admin || op.acesso_agenda)) btn.style.display = '';
+      var ch = document.getElementById('chip-filial-ag');
+      if (ch) { var f = window.filialLogada; ch.textContent = f ? f.codigo + ' – ' + f.nome : 'Todas'; }
+    })();
 
-  function ds(d){ return d.toISOString().split('T')[0]; }
-  function hojeD(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
-  function fmtH(h){ return h ? String(h).slice(0,5) : ''; }
+    function ds(d) { return d.toISOString().split('T')[0]; }
+    function hojeD() { var d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+    function fmtH(h) { return h ? String(h).slice(0, 5) : ''; }
 
-  function inicioSemana(off) {
-    var hoje=new Date(), dow=hoje.getDay(), ini=new Date(hoje);
-    ini.setDate(hoje.getDate()-dow+off*7); ini.setHours(0,0,0,0); return ini;
-  }
-  function diasSemana(off) {
-    var ini=inicioSemana(off);
-    return Array.from({length:7},function(_,i){ var d=new Date(ini); d.setDate(ini.getDate()+i); return d; });
-  }
+    function inicioSemana(off) {
+      var hoje = new Date(), dow = hoje.getDay(), ini = new Date(hoje);
+      ini.setDate(hoje.getDate() - dow + off * 7); ini.setHours(0, 0, 0, 0); return ini;
+    }
+    function diasSemana(off) {
+      var ini = inicioSemana(off);
+      return Array.from({ length: 7 }, function (_, i) { var d = new Date(ini); d.setDate(ini.getDate() + i); return d; });
+    }
 
-  function render() {
-    var dias=diasSemana(offset), ini=dias[0], fim=dias[6];
-    var mi=MESES[ini.getMonth()], mf=MESES[fim.getMonth()];
-    var lbl = mi===mf
-      ? ini.getDate()+' – '+fim.getDate()+' '+mi+' '+ini.getFullYear()
-      : ini.getDate()+' '+mi+' – '+fim.getDate()+' '+mf+' '+fim.getFullYear();
-    var wl=document.getElementById('week-label'); if(wl) wl.textContent=lbl;
-    var grid=document.getElementById('cal-grid'); if(!grid) return;
-    grid.innerHTML='';
+    function render() {
+      var dias = diasSemana(offset), ini = dias[0], fim = dias[6];
+      var mi = MESES[ini.getMonth()], mf = MESES[fim.getMonth()];
+      var lbl = mi === mf
+        ? ini.getDate() + ' – ' + fim.getDate() + ' ' + mi + ' ' + ini.getFullYear()
+        : ini.getDate() + ' ' + mi + ' – ' + fim.getDate() + ' ' + mf + ' ' + fim.getFullYear();
+      var wl = document.getElementById('week-label'); if (wl) wl.textContent = lbl;
+      var grid = document.getElementById('cal-grid'); if (!grid) return;
+      grid.innerHTML = '';
 
-    // Corner
-    var corner=document.createElement('div'); corner.className='cal-head-corner'; grid.appendChild(corner);
-    // Cabeçalho dias
-    dias.forEach(function(d){
-      var isHoje=ds(d)===ds(hojeD());
-      var c=document.createElement('div');
-      c.className='cal-head-cell'+(isHoje?' today':'');
-      c.innerHTML='<div class="day-num">'+d.getDate()+'</div><div>'+DIAS[d.getDay()]+'</div>';
-      grid.appendChild(c);
-    });
-    // Linhas de hora
-    HORAS.forEach(function(hora){
-      var lbl=document.createElement('div');
-      lbl.className='cal-hour-label';
-      lbl.textContent=String(hora).padStart(2,'0')+'h';
-      grid.appendChild(lbl);
-      dias.forEach(function(d){
-        var cell=document.createElement('div');
-        cell.className='cal-cell';
-        var dStr=ds(d);
-        var toMin=function(h){return parseInt(h.split(':')[0])*60+parseInt((h.split(':')[1])||0);};
-        // Montagem
-        eventos.filter(function(ev){
-          return ev.data_evento===dStr && parseInt((ev.hora_inicio||'00').split(':')[0])===hora;
-        }).forEach(function(ev){
-          var blk=document.createElement('div');
-          blk.className='cal-evento '+CORES[ev.pk % CORES.length];
-          if(ev.hora_fim){ var dur=Math.max(1,toMin(ev.hora_fim)-toMin(ev.hora_inicio)); blk.style.minHeight=(dur/60*52)+'px'; }
-          blk.innerHTML='<span class="ev-label">🔧 montagem</span><span class="ev-title">'+ev.titulo+'</span><span class="ev-time">'+fmtH(ev.hora_inicio)+(ev.hora_fim?' – '+fmtH(ev.hora_fim):'')+'</span>';
-          blk.onclick=function(e){ e.stopPropagation(); abrirDetalhes(ev); };
-          cell.appendChild(blk);
-        });
-
-        // Desmontagem
-        eventos.filter(function(ev){
-          return ev.data_desmontagem===dStr &&
-                 ev.hora_desmont_inicio &&
-                 parseInt((ev.hora_desmont_inicio||'00').split(':')[0])===hora;
-        }).forEach(function(ev){
-          var blk=document.createElement('div');
-          blk.className='cal-evento desmont';
-          if(ev.hora_desmont_fim){ var durD=Math.max(1,toMin(ev.hora_desmont_fim)-toMin(ev.hora_desmont_inicio)); blk.style.minHeight=(durD/60*52)+'px'; }
-          blk.innerHTML='<span class="ev-label">📦 desmontagem</span><span class="ev-title">'+ev.titulo+'</span><span class="ev-time">'+fmtH(ev.hora_desmont_inicio)+(ev.hora_desmont_fim?' – '+fmtH(ev.hora_desmont_fim):'')+'</span>';
-          blk.onclick=function(e){ e.stopPropagation(); abrirDetalhes(ev); };
-          cell.appendChild(blk);
-        });
-        grid.appendChild(cell);
+      // Corner
+      var corner = document.createElement('div'); corner.className = 'cal-head-corner'; grid.appendChild(corner);
+      // Cabeçalho dias
+      dias.forEach(function (d) {
+        var isHoje = ds(d) === ds(hojeD());
+        var c = document.createElement('div');
+        c.className = 'cal-head-cell' + (isHoje ? ' today' : '');
+        c.innerHTML = '<div class="day-num">' + d.getDate() + '</div><div>' + DIAS[d.getDay()] + '</div>';
+        grid.appendChild(c);
       });
-    });
-  }
+      // Linhas de hora
+      HORAS.forEach(function (hora) {
+        var lbl = document.createElement('div');
+        lbl.className = 'cal-hour-label';
+        lbl.textContent = String(hora).padStart(2, '0') + 'h';
+        grid.appendChild(lbl);
+        dias.forEach(function (d) {
+          var cell = document.createElement('div');
+          cell.className = 'cal-cell';
+          var dStr = ds(d);
+          var toMin = function (h) { return parseInt(h.split(':')[0]) * 60 + parseInt((h.split(':')[1]) || 0); };
+          // Montagem
+          eventos.filter(function (ev) {
+            return ev.data_evento === dStr && parseInt((ev.hora_inicio || '00').split(':')[0]) === hora;
+          }).forEach(function (ev) {
+            var blk = document.createElement('div');
+            blk.className = 'cal-evento ' + CORES[ev.pk % CORES.length];
+            if (ev.hora_fim) { var dur = Math.max(1, toMin(ev.hora_fim) - toMin(ev.hora_inicio)); blk.style.minHeight = (dur / 60 * 52) + 'px'; }
+            blk.innerHTML = '<span class="ev-label">🔧 montagem</span><span class="ev-title">' + ev.titulo + '</span><span class="ev-time">' + fmtH(ev.hora_inicio) + (ev.hora_fim ? ' – ' + fmtH(ev.hora_fim) : '') + '</span>';
+            blk.onclick = function (e) { e.stopPropagation(); abrirDetalhes(ev); };
+            cell.appendChild(blk);
+          });
 
-  function fmtDataExtenso(d){
-    if(!d) return '';
-    var p=d.split('-'); return parseInt(p[2])+' de '+MESES_F[parseInt(p[1])-1]+' de '+p[0];
-  }
-
-  function abrirDetalhes(ev) {
-    evAtual=ev;
-    document.getElementById('modal-titulo').textContent=ev.titulo;
-    // Montagem
-    var p=ev.data_evento.split('-');
-    document.getElementById('modal-data').textContent='🔧 '+fmtDataExtenso(ev.data_evento);
-    document.getElementById('modal-hora').textContent='🕐 '+fmtH(ev.hora_inicio)+(ev.hora_fim?' – '+fmtH(ev.hora_fim):'');
-    document.getElementById('modal-criado').textContent=ev.criado_por?'👤 '+ev.criado_por:'';
-    // Desmontagem
-    var dw=document.getElementById('modal-desmont-wrap');
-    if(ev.data_desmontagem){
-      var dtxt=fmtDataExtenso(ev.data_desmontagem);
-      var htxt=ev.hora_desmont_inicio ? ' às '+fmtH(ev.hora_desmont_inicio)+(ev.hora_desmont_fim?' – '+fmtH(ev.hora_desmont_fim):'') : '';
-      document.getElementById('modal-desmont-info').textContent='📅 '+dtxt+htxt;
-      if(dw) dw.style.display='';
-    } else {
-      if(dw) dw.style.display='none';
+          // Desmontagem
+          eventos.filter(function (ev) {
+            return ev.data_desmontagem === dStr &&
+              ev.hora_desmont_inicio &&
+              parseInt((ev.hora_desmont_inicio || '00').split(':')[0]) === hora;
+          }).forEach(function (ev) {
+            var blk = document.createElement('div');
+            blk.className = 'cal-evento desmont';
+            if (ev.hora_desmont_fim) { var durD = Math.max(1, toMin(ev.hora_desmont_fim) - toMin(ev.hora_desmont_inicio)); blk.style.minHeight = (durD / 60 * 52) + 'px'; }
+            blk.innerHTML = '<span class="ev-label">📦 desmontagem</span><span class="ev-title">' + ev.titulo + '</span><span class="ev-time">' + fmtH(ev.hora_desmont_inicio) + (ev.hora_desmont_fim ? ' – ' + fmtH(ev.hora_desmont_fim) : '') + '</span>';
+            blk.onclick = function (e) { e.stopPropagation(); abrirDetalhes(ev); };
+            cell.appendChild(blk);
+          });
+          grid.appendChild(cell);
+        });
+      });
     }
-    // Equipe
-    var ew=document.getElementById('modal-equipe-wrap');
-    var et=document.getElementById('modal-equipe-tags');
-    var equipe=[];
-    if(ev.equipe){
-      try{ equipe=Array.isArray(ev.equipe)?ev.equipe:JSON.parse(ev.equipe); }catch(e){}
+
+    function fmtDataExtenso(d) {
+      if (!d) return '';
+      var p = d.split('-'); return parseInt(p[2]) + ' de ' + MESES_F[parseInt(p[1]) - 1] + ' de ' + p[0];
     }
-    if(equipe&&equipe.length){
-      if(et) et.innerHTML=equipe.map(function(m){return '<span class="modal-tag">👤 '+m.nome+'</span>';}).join('');
-      if(ew) ew.style.display='';
-    } else {
-      if(ew) ew.style.display='none';
+
+    function abrirDetalhes(ev) {
+      evAtual = ev;
+      document.getElementById('modal-titulo').textContent = ev.titulo;
+      // Montagem
+      var p = ev.data_evento.split('-');
+      document.getElementById('modal-data').textContent = '🔧 ' + fmtDataExtenso(ev.data_evento);
+      document.getElementById('modal-hora').textContent = '🕐 ' + fmtH(ev.hora_inicio) + (ev.hora_fim ? ' – ' + fmtH(ev.hora_fim) : '');
+      document.getElementById('modal-criado').textContent = ev.criado_por ? '👤 ' + ev.criado_por : '';
+      // Desmontagem
+      var dw = document.getElementById('modal-desmont-wrap');
+      if (ev.data_desmontagem) {
+        var dtxt = fmtDataExtenso(ev.data_desmontagem);
+        var htxt = ev.hora_desmont_inicio ? ' às ' + fmtH(ev.hora_desmont_inicio) + (ev.hora_desmont_fim ? ' – ' + fmtH(ev.hora_desmont_fim) : '') : '';
+        document.getElementById('modal-desmont-info').textContent = '📅 ' + dtxt + htxt;
+        if (dw) dw.style.display = '';
+      } else {
+        if (dw) dw.style.display = 'none';
+      }
+      // Equipe
+      var ew = document.getElementById('modal-equipe-wrap');
+      var et = document.getElementById('modal-equipe-tags');
+      var equipe = [];
+      if (ev.equipe) {
+        try { equipe = Array.isArray(ev.equipe) ? ev.equipe : JSON.parse(ev.equipe); } catch (e) { }
+      }
+      if (equipe && equipe.length) {
+        if (et) et.innerHTML = equipe.map(function (m) { return '<span class="modal-tag">👤 ' + m.nome + '</span>'; }).join('');
+        if (ew) ew.style.display = '';
+      } else {
+        if (ew) ew.style.display = 'none';
+      }
+      // Descrição
+      var desc = ev.descricao && ev.descricao.trim();
+      document.getElementById('modal-descricao').innerHTML = desc
+        ? desc.replace(/</g, '&lt;')
+        : '<span class="modal-empty">Nenhuma descrição informada.</span>';
+      var op = window.operadorLogado;
+      var btnEx = document.getElementById('btn-excluir-evento');
+      if (btnEx) btnEx.style.display = (op && (op.admin || op.acesso_agenda)) ? '' : 'none';
+      document.getElementById('modal-evento').style.display = 'flex';
     }
-    // Descrição
-    var desc=ev.descricao&&ev.descricao.trim();
-    document.getElementById('modal-descricao').innerHTML=desc
-      ? desc.replace(/</g,'&lt;')
-      : '<span class="modal-empty">Nenhuma descrição informada.</span>';
-    var op=window.operadorLogado;
-    var btnEx=document.getElementById('btn-excluir-evento');
-    if(btnEx) btnEx.style.display=(op&&(op.admin||op.acesso_agenda))?'':'none';
-    document.getElementById('modal-evento').style.display='flex';
-  }
 
-  function fecharModal() {
-    document.getElementById('modal-evento').style.display='none';
-    evAtual=null;
-  }
+    function fecharModal() {
+      document.getElementById('modal-evento').style.display = 'none';
+      evAtual = null;
+    }
 
-  function editarAtual() {
-    var op=window.operadorLogado;
-    if(!op||(!op.admin&&!op.acesso_agenda)){window.showToast('Sem permissão.','error');return;}
-    if(!evAtual) return;
-    window._editData=evAtual;
-    fecharModal();
-    carregarModulo('form_agenda.html','nav-agenda');
-  }
+    function editarAtual() {
+      var op = window.operadorLogado;
+      if (!op || (!op.admin && !op.acesso_agenda)) { window.showToast('Sem permissão.', 'error'); return; }
+      if (!evAtual) return;
+      window._editData = evAtual;
+      fecharModal();
+      carregarModulo('form_agenda.html', 'nav-agenda');
+    }
 
-  async function excluirAtual() {
-    if(!evAtual) return;
-    var op=window.operadorLogado;
-    if(!op||(!op.admin&&!op.acesso_agenda)){window.showToast('Sem permissão.','error');return;}
-    if(!confirm('Excluir "'+evAtual.titulo+'"?')) return;
-    var res=await window.supabase.from('agenda').delete().eq('pk',evAtual.pk);
-    if(res.error){window.showToast('Erro: '+res.error.message,'error');return;}
-    window.showToast('Evento excluído.');
-    fecharModal();
-    carregar();
-  }
+    async function excluirAtual() {
+      if (!evAtual) return;
+      var op = window.operadorLogado;
+      if (!op || (!op.admin && !op.acesso_agenda)) { window.showToast('Sem permissão.', 'error'); return; }
+      if (!confirm('Excluir "' + evAtual.titulo + '"?')) return;
+      var res = await window.supabase.from('agenda').delete().eq('pk', evAtual.pk);
+      if (res.error) { window.showToast('Erro: ' + res.error.message, 'error'); return; }
+      window.showToast('Evento excluído.');
+      fecharModal();
+      carregar();
+    }
 
-  function novoEvento() {
-    var op=window.operadorLogado;
-    if(!op||(!op.admin&&!op.acesso_agenda)){window.showToast('Sem permissão.','error');return;}
-    window._editData=null;
-    carregarModulo('form_agenda.html','nav-agenda');
-  }
+    function novoEvento() {
+      var op = window.operadorLogado;
+      if (!op || (!op.admin && !op.acesso_agenda)) { window.showToast('Sem permissão.', 'error'); return; }
+      window._editData = null;
+      carregarModulo('form_agenda.html', 'nav-agenda');
+    }
 
-  async function carregar() {
-    render(); // grade vazia imediatamente
-    try {
-      var dias=diasSemana(offset);
-      var de=ds(dias[0]), ate=ds(dias[6]);
+    async function carregar() {
+      render(); // grade vazia imediatamente
+      try {
+        var dias = diasSemana(offset);
+        var de = ds(dias[0]), ate = ds(dias[6]);
         // Busca eventos onde montagem OU desmontagem cai na semana
-      var fil=window.filialLogada;
-      var baseQ=window.supabase.from('agenda').select('*').order('data_evento').order('hora_inicio');
-      if(fil&&fil.pk) baseQ=baseQ.eq('filial_pk',fil.pk);
-      // Eventos cuja montagem está na semana
-      var q1=window.supabase.from('agenda').select('*')
-        .gte('data_evento',de).lte('data_evento',ate)
-        .order('data_evento').order('hora_inicio');
-      if(fil&&fil.pk) q1=q1.eq('filial_pk',fil.pk);
-      // Eventos cuja desmontagem está na semana
-      var q2=window.supabase.from('agenda').select('*')
-        .gte('data_desmontagem',de).lte('data_desmontagem',ate)
-        .order('data_evento').order('hora_inicio');
-      if(fil&&fil.pk) q2=q2.eq('filial_pk',fil.pk);
-      var [res1,res2]=await Promise.all([q1,q2]);
-      var res={error:res1.error||res2.error};
-      if(res.error){window.showToast('Erro ao carregar agenda: '+res.error.message,'error');return;}
-      // Merge sem duplicatas (evento pode ter montagem e desmontagem na mesma semana)
-      var map={};
-      (res1.data||[]).concat(res2.data||[]).forEach(function(ev){ map[ev.pk]=ev; });
-      eventos=Object.values(map);
-      render();
-    } catch(e){
-      window.showToast('Erro inesperado: '+e.message,'error');
+        var fil = window.filialLogada;
+        var baseQ = window.supabase.from('agenda').select('*').order('data_evento').order('hora_inicio');
+        if (fil && fil.pk) baseQ = baseQ.eq('filial_pk', fil.pk);
+        // Eventos cuja montagem está na semana
+        var q1 = window.supabase.from('agenda').select('*')
+          .gte('data_evento', de).lte('data_evento', ate)
+          .order('data_evento').order('hora_inicio');
+        if (fil && fil.pk) q1 = q1.eq('filial_pk', fil.pk);
+        // Eventos cuja desmontagem está na semana
+        var q2 = window.supabase.from('agenda').select('*')
+          .gte('data_desmontagem', de).lte('data_desmontagem', ate)
+          .order('data_evento').order('hora_inicio');
+        if (fil && fil.pk) q2 = q2.eq('filial_pk', fil.pk);
+        var [res1, res2] = await Promise.all([q1, q2]);
+        var res = { error: res1.error || res2.error };
+        if (res.error) { window.showToast('Erro ao carregar agenda: ' + res.error.message, 'error'); return; }
+        // Merge sem duplicatas (evento pode ter montagem e desmontagem na mesma semana)
+        var map = {};
+        (res1.data || []).concat(res2.data || []).forEach(function (ev) { map[ev.pk] = ev; });
+        eventos = Object.values(map);
+        render();
+      } catch (e) {
+        window.showToast('Erro inesperado: ' + e.message, 'error');
+      }
     }
-  }
 
-  // ESC fecha modal
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape') fecharModal(); });
+    // ESC fecha modal
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fecharModal(); });
 
-  carregar();
+    carregar();
 
-  return {
-    mudarSemana: function(d){ offset+=d; carregar(); },
-    irHoje:      function(){  offset=0;  carregar(); },
-    fecharModal: fecharModal,
-    editarAtual: editarAtual,
-    excluirAtual: excluirAtual,
-    novoEvento:  novoEvento
-  };
-})();
+    return {
+      mudarSemana: function (d) { offset += d; carregar(); },
+      irHoje: function () { offset = 0; carregar(); },
+      fecharModal: fecharModal,
+      editarAtual: editarAtual,
+      excluirAtual: excluirAtual,
+      novoEvento: novoEvento
+    };
+  })();
 </script>

@@ -1,0 +1,90 @@
+<div class="mod">
+    <div class="mod-header">
+        <div>
+            <h2>Dashboard</h2>
+            <p>Bem-vindo ao sistema de controle de estoque. Selecione uma opção abaixo:</p>
+        </div>
+    </div>
+
+    <div class="dash-grid">
+        <!-- Produtos -->
+        <div class="dash-card" id="dash-produtos" onclick="ir('get_produtos.html','nav-produtos')" style="display:none">
+            <div class="dash-icon">📦</div>
+            <div class="dash-info">
+                <h3>Produtos</h3>
+                <p>Gerencie o catálogo de itens, fotos e saldos de estoque.</p>
+            </div>
+        </div>
+
+        <!-- Armazéns -->
+        <div class="dash-card" id="dash-armazem" onclick="ir('cadastro_armazem.html','nav-armazem')"
+            style="display:none">
+            <div class="dash-icon">🏭</div>
+            <div class="dash-info">
+                <h3>Armazéns</h3>
+                <p>Controle as localizações físicas e endereçamento do estoque.</p>
+            </div>
+        </div>
+
+        <!-- Agenda -->
+        <div class="dash-card" id="dash-agenda" onclick="ir('agenda.html','nav-agenda')" style="display:none">
+            <div class="dash-icon">📅</div>
+            <div class="dash-info">
+                <h3>Agenda</h3>
+                <p>Visualize os eventos e compromissos agendados.</p>
+            </div>
+        </div>
+
+        <!-- Separação -->
+        <div class="dash-card" id="dash-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')"
+            style="display:none">
+            <div class="dash-icon">📋</div>
+            <div class="dash-info">
+                <h3>Separação</h3>
+                <p>Gerencie ordens de separação e saída de materiais.</p>
+            </div>
+        </div>
+
+        <!-- Filiais -->
+        <div class="dash-card" id="dash-filiais" onclick="ir('cadastro_filial.html','nav-filiais')"
+            style="display:none">
+            <div class="dash-icon">🏢</div>
+            <div class="dash-info">
+                <h3>Filiais</h3>
+                <p>Administre as unidades e endereços da empresa.</p>
+            </div>
+        </div>
+
+        <!-- Operadores -->
+        <div class="dash-card" id="dash-operador" onclick="ir('cadastro_operador.html','nav-operador')"
+            style="display:none">
+            <div class="dash-icon">👤</div>
+            <div class="dash-info">
+                <h3>Operadores</h3>
+                <p>Gerencie usuários, permissões e acessos ao sistema.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Aplica as mesmas permissões do menu lateral aos cards do dashboard
+    (function () {
+        const op = window.operadorLogado;
+        if (!op) return;
+
+        const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'flex' : 'none'; };
+
+        show('dash-produtos', op.admin || op.acesso_produtos);
+        show('dash-armazem', op.admin || op.acesso_armazens);
+
+        const temAgenda = op.admin || op.acesso_agenda;
+        show('dash-agenda', temAgenda);
+
+        const temSep = op.admin || op.acesso_separacao || op.acesso_criar_ordem;
+        show('dash-separacao', temSep);
+
+        show('dash-filiais', op.admin);
+        show('dash-operador', op.admin);
+    })();
+</script>
