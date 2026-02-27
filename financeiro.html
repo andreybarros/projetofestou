@@ -1,0 +1,636 @@
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+<style>
+    .mod* {
+        box-sizing: border-box
+    }
+
+    .mod {
+        font-family: 'DM Sans', sans-serif;
+        --mc: #fff;
+        --mc2: #fafafe;
+        --mborder: #e0e7ff;
+        --mborder2: #f3f4f6;
+        --mtext: #374151;
+        --mtext2: #1e1b4b;
+        --mmuted: #6b7280;
+        --mbrand: #4f46e5;
+        --msuccess: #059669;
+        --mdanger: #dc2626;
+        --mwarn: #d97706
+    }
+
+    html[data-theme="dark"] .mod {
+        --mc: #1a1d27;
+        --mc2: #22263a;
+        --mborder: #2e3250;
+        --mborder2: #22263a;
+        --mtext: #c9cce0;
+        --mtext2: #e8e9f3;
+        --mmuted: #7b7fa0;
+        --mbrand: #6366f1;
+        --msuccess: #10b981;
+        --mdanger: #ef4444;
+        --mwarn: #f59e0b
+    }
+
+    .mod-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        animation: mfadeUp .3s ease;
+        gap: 12px;
+        flex-wrap: wrap
+    }
+
+    .mod-header h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--mtext2);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px
+    }
+
+    .mod-header p {
+        color: var(--mmuted);
+        font-size: 13px
+    }
+
+    .tabs-wrap {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        border-bottom: 2px solid var(--mborder)
+    }
+
+    .tab-btn {
+        padding: 10px 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--mmuted);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all .15s;
+        display: flex;
+        align-items: center;
+        gap: 6px
+    }
+
+    .tab-btn.active {
+        color: var(--mbrand);
+        border-bottom-color: var(--mbrand)
+    }
+
+    .tab-btn:hover {
+        color: var(--mbrand)
+    }
+
+    .tab-panel {
+        display: none;
+        animation: mfadeUp .3s ease
+    }
+
+    .tab-panel.active {
+        display: block
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all .15s
+    }
+
+    .btn-primary {
+        background: var(--mbrand);
+        color: #fff
+    }
+
+    .btn-primary:hover {
+        opacity: .9;
+        transform: translateY(-1px)
+    }
+
+    .btn-outline {
+        background: transparent;
+        color: var(--mbrand);
+        border: 1.5px solid var(--mborder)
+    }
+
+    .btn-outline:hover {
+        background: var(--mc2);
+        border-color: var(--mbrand)
+    }
+
+    .btn-danger {
+        background: var(--mdanger);
+        color: #fff
+    }
+
+    .btn-danger:hover {
+        opacity: .9
+    }
+
+    .card {
+        background: var(--mc);
+        border-radius: 12px;
+        border: 1px solid var(--mborder);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .03);
+        overflow: hidden
+    }
+
+    html[data-theme="dark"] .card {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .2)
+    }
+
+    /* Lista Contas */
+    .contas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 16px
+    }
+
+    .conta-card {
+        background: var(--mc);
+        border: 1px solid var(--mborder);
+        border-radius: 12px;
+        padding: 20px;
+        transition: all .2s;
+        position: relative;
+        overflow: hidden
+    }
+
+    .conta-card:hover {
+        border-color: var(--mbrand);
+        box-shadow: 0 8px 24px rgba(79, 70, 229, .1);
+        transform: translateY(-2px)
+    }
+
+    .conta-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px
+    }
+
+    .conta-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--mc2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0
+    }
+
+    .conta-info {
+        flex: 1;
+        margin-left: 12px
+    }
+
+    .conta-nome {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--mtext2);
+        line-height: 1.2
+    }
+
+    .conta-tipo {
+        font-size: 12px;
+        color: var(--mmuted);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin-top: 2px;
+        font-family: 'DM Mono', monospace
+    }
+
+    .conta-saldo-label {
+        font-size: 12px;
+        color: var(--mmuted);
+        margin-bottom: 2px
+    }
+
+    .conta-saldo {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--mtext2);
+        font-family: 'DM Mono', monospace
+    }
+
+    .conta-saldo.positivo {
+        color: var(--msuccess)
+    }
+
+    .conta-saldo.negativo {
+        color: var(--mdanger)
+    }
+
+    /* Formulário Mínimo */
+    .form-group {
+        margin-bottom: 16px
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--mmuted);
+        margin-bottom: 6px
+    }
+
+    .form-input,
+    .form-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid var(--mborder);
+        border-radius: 8px;
+        background: var(--mc2);
+        color: var(--mtext2);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px;
+        outline: none;
+        transition: border-color .2s
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+        border-color: var(--mbrand)
+    }
+
+    /* Movimentações */
+    .mov-filters {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        background: var(--mc2);
+        border-bottom: 1px solid var(--mborder);
+        flex-wrap: wrap;
+        align-items: flex-end
+    }
+
+    .mov-table-wrap {
+        overflow-x: auto
+    }
+
+    .mov-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px
+    }
+
+    .mov-table th {
+        background: var(--mc2);
+        color: var(--mmuted);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--mborder)
+    }
+
+    .mov-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--mborder2);
+        font-size: 13px;
+        color: var(--mtext2)
+    }
+
+    .mov-table tr:hover {
+        background: var(--mc2)
+    }
+
+    .mov-val {
+        font-family: 'DM Mono', monospace;
+        font-weight: 700
+    }
+
+    .val-entrada {
+        color: var(--msuccess)
+    }
+
+    .val-saida {
+        color: var(--mdanger)
+    }
+
+    .tag-tipo {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        text-transform: uppercase;
+        letter-spacing: .5px
+    }
+
+    .tag-entrada {
+        background: #d1fae5;
+        color: #065f46
+    }
+
+    .tag-saida {
+        background: #fee2e2;
+        color: #991b1b
+    }
+
+    html[data-theme="dark"] .tag-entrada {
+        background: #064e3b;
+        color: #34d399
+    }
+
+    html[data-theme="dark"] .tag-saida {
+        background: #7f1d1d;
+        color: #f87171
+    }
+
+    @keyframes mfadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(8px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+</style>
+
+<div class="mod">
+    <div class="mod-header">
+        <h2>💳 Gestão Financeira</h2>
+        <p>Acompanhe contas bancárias, caixa e movimentações financeiras</p>
+    </div>
+
+    <div class="tabs-wrap">
+        <button class="tab-btn active" onclick="Fin.mudarTab('tab-contas', this)">🏦 Minhas Contas</button>
+        <button class="tab-btn" onclick="Fin.mudarTab('tab-nova-conta', this)">➕ Nova Conta</button>
+        <button class="tab-btn" onclick="Fin.mudarTab('tab-extrato', this)">🧾 Extrato Geral</button>
+    </div>
+
+    <!-- TAB CONTAS -->
+    <div id="tab-contas" class="tab-panel active">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h3 style="font-size:16px;font-weight:600;color:var(--mtext2)">Visão Geral de Saldos</h3>
+            <button class="btn btn-outline" onclick="Fin.carregarContas()">🔄 Atualizar</button>
+        </div>
+        <div id="contas-loading" style="padding:24px;text-align:center;color:var(--mmuted)">⏳ Carregando contas...</div>
+        <div class="contas-grid" id="contas-grid"></div>
+    </div>
+
+    <!-- TAB NOVA CONTA -->
+    <div id="tab-nova-conta" class="tab-panel">
+        <div class="card" style="max-width:500px;padding:24px">
+            <h3 style="font-size:16px;font-weight:600;color:var(--mtext2);margin-bottom:16px">Cadastrar Nova Conta</h3>
+            <div class="form-group">
+                <label>Nome da Conta</label>
+                <input type="text" id="fc-nome" class="form-input" placeholder="Ex: Caixa Diário, NuBank, Itaú...">
+            </div>
+            <div class="form-group">
+                <label>Tipo de Conta</label>
+                <select id="fc-tipo" class="form-select">
+                    <option value="pix">📱 Pix</option>
+                    <option value="debito">💳 Cartão de Débito</option>
+                    <option value="credito">💳 Cartão de Crédito</option>
+                    <option value="dinheiro">💵 Dinheiro em Espécie (Caixa)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Saldo Inicial (R$)</label>
+                <input type="number" id="fc-saldo" class="form-input" value="0.00" step="0.01">
+            </div>
+            <div style="margin-top:24px;display:flex;justify-content:flex-end">
+                <button class="btn btn-primary" id="btn-salvar-conta" onclick="Fin.salvarConta()">Salvar Conta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB EXTRATO -->
+    <div id="tab-extrato" class="tab-panel">
+        <div class="card">
+            <div class="mov-filters">
+                <div style="flex:1;min-width:200px">
+                    <label
+                        style="display:block;font-size:11px;font-weight:600;color:var(--mmuted);margin-bottom:4px;text-transform:uppercase">Filtrar
+                        por Conta</label>
+                    <select id="fm-conta" class="form-select" style="padding:8px 12px;font-size:13px"
+                        onchange="Fin.carregarExtrato()">
+                        <option value="">Todas as Contas</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-outline" onclick="Fin.carregarExtrato()">Aplicar Filtro</button>
+                </div>
+            </div>
+            <div class="mov-table-wrap">
+                <table class="mov-table">
+                    <thead>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Conta</th>
+                            <th>Tipo</th>
+                            <th>Descrição</th>
+                            <th style="text-align:right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mov-tbody">
+                        <tr>
+                            <td colspan="5" style="text-align:center;padding:24px">⏳ Carregando movimentações...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    window.Fin = (function () {
+        var contasCache = [];
+
+        function fmtMsg(m, isErr) { window.showToast(m, isErr ? 'error' : 'success'); }
+        function fmtVal(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+        function dtFmt(dStr) {
+            if (!dStr) return '—';
+            var d = new Date(dStr);
+            return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function mudarTab(id, btn) {
+            document.querySelectorAll('.tab-panel').forEach(function (e) { e.classList.remove('active'); });
+            document.querySelectorAll('.tab-btn').forEach(function (e) { e.classList.remove('active'); });
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+
+            if (id === 'tab-contas') carregarContas();
+            if (id === 'tab-extrato') {
+                preencherComboContas();
+                carregarExtrato();
+            }
+        }
+
+        async function carregarContas() {
+            var grid = document.getElementById('contas-grid');
+            var load = document.getElementById('contas-loading');
+            grid.innerHTML = '';
+            load.style.display = 'block';
+
+            var f = window.filialLogada;
+            var q = window.supabase.from('contas_bancarias').select('*').order('nome');
+            if (f && f.pk) q = q.eq('filial_pk', f.pk);
+
+            var res = await q;
+            load.style.display = 'none';
+            if (res.error) {
+                grid.innerHTML = '<div style="color:var(--mdanger);padding:16px">Erro: ' + res.error.message + '</div>';
+                return;
+            }
+
+            contasCache = res.data || [];
+            if (!contasCache.length) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--mmuted);background:var(--mc2);border-radius:12px;border:1px dashed var(--mborder)">Nenhuma conta financeira cadastrada.</div>';
+                return;
+            }
+
+            grid.innerHTML = contasCache.map(function (c) {
+                var ico = '🏦';
+                if (c.tipo === 'pix') ico = '📱';
+                else if (c.tipo === 'dinheiro' || c.tipo === 'caixa') ico = '💵';
+                else if (c.tipo === 'debito' || c.tipo === 'credito') ico = '💳';
+
+                var valV = parseFloat(c.saldo || 0);
+                var corVal = valV >= 0 ? 'positivo' : 'negativo';
+                return '<div class="conta-card">' +
+                    '<div class="conta-head">' +
+                    '<div style="display:flex;align-items:center">' +
+                    '<div class="conta-icon">' + ico + '</div>' +
+                    '<div class="conta-info">' +
+                    '<div class="conta-nome">' + (c.nome) + '</div>' +
+                    '<div class="conta-tipo">' + (c.tipo) + '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="conta-saldo-label">Saldo Atual</div>' +
+                    '<div class="conta-saldo ' + corVal + '">' + fmtVal(valV) + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function preencherComboContas() {
+            var cb = document.getElementById('fm-conta');
+            var selec = cb.value;
+            cb.innerHTML = '<option value="">Todas as Contas</option>';
+            contasCache.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.pk;
+                opt.textContent = c.nome;
+                cb.appendChild(opt);
+            });
+            cb.value = selec;
+        }
+
+        async function salvarConta() {
+            var btn = document.getElementById('btn-salvar-conta');
+            var nome = document.getElementById('fc-nome').value.trim();
+            var tipo = document.getElementById('fc-tipo').value;
+            var saldo = document.getElementById('fc-saldo').value;
+
+            if (!nome) return fmtMsg('Informe o nome da conta.', true);
+
+            btn.disabled = true; btn.textContent = 'Salvando...';
+            var f = window.filialLogada;
+            var res = await window.supabase.from('contas_bancarias').insert([{
+                filial_pk: f ? f.pk : null,
+                nome: nome,
+                tipo: tipo,
+                saldo: parseFloat(saldo) || 0
+            }]);
+
+            btn.disabled = false; btn.textContent = 'Salvar Conta';
+            if (res.error) return fmtMsg(res.error.message, true);
+
+            fmtMsg('Conta criada com sucesso!');
+            document.getElementById('fc-nome').value = '';
+            document.getElementById('fc-saldo').value = '0.00';
+            document.querySelector('.tab-btn').click(); // Volta p contas
+        }
+
+        async function carregarExtrato() {
+            var tb = document.getElementById('mov-tbody');
+            tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px">⏳ Buscando movimentações...</td></tr>';
+
+            var ctaFiltro = document.getElementById('fm-conta').value;
+            var q = window.supabase.from('movimentacoes_financeiras')
+                .select('*, contas_bancarias(nome)')
+                .order('data_movimento', { ascending: false })
+                .limit(100);
+
+            if (ctaFiltro) q = q.eq('conta_pk', ctaFiltro);
+            else if (window.filialLogada && window.filialLogada.pk) {
+                // filtrou as movimentações cujo conta_pk pertence a essa filial
+                var rContas = await window.supabase.from('contas_bancarias').select('pk').eq('filial_pk', window.filialLogada.pk);
+                if (!rContas.error && rContas.data) {
+                    var pks = rContas.data.map(function (cc) { return cc.pk });
+                    if (pks.length) q = q.in('conta_pk', pks);
+                    else { tb.innerHTML = '<tr><td colspan="5" style="text-align:center">Nenhuma conta/movimentação encontrada.</td></tr>'; return; }
+                }
+            }
+
+            var res = await q;
+            if (res.error) {
+                tb.innerHTML = '<tr><td colspan="5" style="color:red;text-align:center">' + res.error.message + '</td></tr>';
+                return;
+            }
+
+            var movs = res.data || [];
+            if (!movs.length) {
+                tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--mmuted)">Nenhuma movimentação registrada.</td></tr>';
+                return;
+            }
+
+            tb.innerHTML = movs.map(function (m) {
+                var isEntrada = m.tipo_movimento === 'entrada';
+                var tag = isEntrada ? '<span class="tag-tipo tag-entrada">Entrada</span>' : '<span class="tag-tipo tag-saida">Saída</span>';
+                var vClass = isEntrada ? 'val-entrada' : 'val-saida';
+                var vSinal = isEntrada ? '+ ' : '- ';
+                var cNome = m.contas_bancarias ? m.contas_bancarias.nome : 'Conta Removida';
+
+                var desc = m.descricao || '—';
+                if (m.venda_pk) desc += ' <span style="font-size:11px;color:var(--mmuted)">(Venda #' + m.venda_pk + ')</span>';
+
+                return '<tr>' +
+                    '<td>' + dtFmt(m.data_movimento) + '</td>' +
+                    '<td style="font-weight:600">' + cNome + '</td>' +
+                    '<td>' + tag + '</td>' +
+                    '<td>' + desc + '</td>' +
+                    '<td style="text-align:right" class="mov-val ' + vClass + '">' + vSinal + fmtVal(m.valor) + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        // init
+        setTimeout(carregarContas, 100);
+
+        return { mudarTab, carregarContas, salvarConta, carregarExtrato };
+    })();
+</script>

@@ -1,0 +1,89 @@
+<link rel="icon" href="img/logo.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+.mod*{box-sizing:border-box}
+.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mborder2:#f3f4f6;--mtext:#374151;--mtext2:#1e1b4b;--mmuted:#6b7280}
+html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mborder2:#22263a;--mtext:#c9cce0;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
+.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
+.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}.mod-header p{color:var(--mmuted);font-size:13px}
+.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
+.mbtn-edit{background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;padding:6px 12px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer}.mbtn-edit:hover{background:#c7d2fe}
+html[data-theme="dark"] .mbtn-edit{background:#2e3250;color:#a78bfa;border-color:#3d4270}
+.mbtn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:6px 12px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer}.mbtn-danger:hover{background:#fecaca}
+.filial-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#e0e7ff;color:#3730a3;border-radius:20px;font-size:12px;font-weight:600}
+html[data-theme="dark"] .filial-chip{background:#2e3250;color:#a78bfa}
+.mtable-wrap{background:var(--mc);border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(79,70,229,.08);border:1px solid var(--mborder);animation:mfadeUp .35s ease .05s both}
+html[data-theme="dark"] .mtable-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.mtable{width:100%;border-collapse:collapse}
+.mtable thead tr{background:linear-gradient(90deg,#4f46e5,#6366f1)}
+.mtable th{padding:12px 16px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.9);font-weight:600;text-align:left}
+.mtable td{padding:12px 16px;font-size:14px;color:var(--mtext);border-bottom:1px solid var(--mborder2);vertical-align:middle}
+.mtable tbody tr:last-child td{border-bottom:none}.mtable tbody tr:hover{background:var(--mc2)}
+.acoes-cell{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.mstate td{text-align:center;padding:52px;color:var(--mmuted);font-size:14px}
+.mstate-icon{font-size:34px;display:block;margin-bottom:10px}
+@media(max-width:600px){
+  .mtable-wrap{border-radius:10px;overflow:visible;background:transparent;border:none;box-shadow:none}
+  .mtable thead{display:none}
+  .mtable tbody tr{display:block;background:var(--mc);border:1px solid var(--mborder);border-radius:10px;margin-bottom:12px;padding:14px;box-shadow:0 2px 8px rgba(79,70,229,.06)}
+  .mtable tbody tr:hover{background:var(--mc)}
+  .mtable td{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--mborder2);font-size:13px}
+  .mtable td:last-child{border-bottom:none;padding-top:10px}
+  .mtable td::before{content:attr(data-label);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mmuted);font-weight:600;min-width:90px;flex-shrink:0}
+}
+@keyframes mfadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<div class="mod">
+  <div class="mod-header">
+    <div><h2>🏷️ Categorias de Produtos</h2><p>Filial: <span class="filial-chip" id="chip-fil-cat">—</span></p></div>
+    <button class="mbtn mbtn-primary" onclick="window._editData=null;carregarModulo('form_categoria.html','nav-categoria')">+ Nova Categoria</button>
+  </div>
+  <div class="mtable-wrap">
+    <table class="mtable">
+      <thead><tr><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead>
+      <tbody id="tabela-cats"><tr class="mstate"><td colspan="3"><span class="mstate-icon">⏳</span>Carregando...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+<script>
+window.CatMod = (function(){
+  var lista=[];
+  (function(){var el=document.getElementById('chip-fil-cat'),f=window.filialLogada;if(el)el.textContent=f?f.codigo+' – '+f.nome:'Todas';})();
+  function setTbody(h){var el=document.getElementById('tabela-cats');if(el)el.innerHTML=h;}
+  function render(data){
+    if(!data||!data.length){setTbody('<tr class="mstate"><td colspan="3"><span class="mstate-icon">🏷️</span>Nenhuma categoria cadastrada</td></tr>');return;}
+    setTbody(data.map(function(c){
+      return '<tr id="cat-row-'+c.pk+'">'+
+        '<td data-label="Nome"><strong style="color:var(--mtext2)">'+c.nome+'</strong></td>'+
+        '<td data-label="Descrição">'+(c.descricao||'<span style="color:var(--mmuted);font-style:italic">—</span>')+'</td>'+
+        '<td data-label="Ações"><div class="acoes-cell">'+
+          '<button class="mbtn-edit" onclick="CatMod.editar('+c.pk+')">Alterar</button>'+
+          '<button class="mbtn-danger" onclick="CatMod.excluir('+c.pk+')">Excluir</button>'+
+        '</div></td></tr>';
+    }).join(''));
+  }
+  function editar(pk){var c=lista.find(function(x){return x.pk===pk;});if(!c)return;window._editData=c;carregarModulo('form_categoria.html','nav-categoria');}
+  async function excluir(pk){
+    var c=lista.find(function(x){return x.pk===pk;});
+    if(!c||!confirm('Excluir categoria "'+c.nome+'"?'))return;
+    var res=await window.supabase.from('categorias').delete().eq('pk',pk);
+    if(res.error){window.showToast('Erro: '+res.error.message,'error');return;}
+    lista=lista.filter(function(x){return x.pk!==pk;});
+    var row=document.getElementById('cat-row-'+pk);if(row)row.remove();
+    window.showToast('Categoria excluída.');
+    if(!lista.length)render([]);
+  }
+  async function carregar(){
+    setTbody('<tr class="mstate"><td colspan="3"><span class="mstate-icon">⏳</span>Carregando...</td></tr>');
+    var f=window.filialLogada;
+    var q=window.supabase.from('categorias').select('*').order('nome');
+    if(f&&f.pk) q=q.eq('filial_pk',f.pk);
+    var res=await q;
+    if(res.error){setTbody('<tr class="mstate"><td colspan="3"><span class="mstate-icon">❌</span>Erro: '+res.error.message+'</td></tr>');return;}
+    lista=res.data||[];render(lista);
+  }
+  carregar();
+  return {editar,excluir};
+})();
+</script>

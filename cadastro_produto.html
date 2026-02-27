@@ -13,8 +13,7 @@
     --mc2: #fafafe;
     --mborder: #e0e7ff;
     --mtext2: #1e1b4b;
-    --mmuted: #6b7280;
-    --mtext: #374151
+    --mmuted: #6b7280
   }
 
   html[data-theme="dark"] .mod {
@@ -22,8 +21,7 @@
     --mc2: #22263a;
     --mborder: #2e3250;
     --mtext2: #e8e9f3;
-    --mmuted: #7b7fa0;
-    --mtext: #c9cce0
+    --mmuted: #7b7fa0
   }
 
   .mod-header {
@@ -84,6 +82,16 @@
     background: var(--mc2)
   }
 
+  .mbtn-success {
+    background: #059669;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, .2)
+  }
+
+  .mbtn-success:hover {
+    background: #047857
+  }
+
   .edit-banner {
     display: flex;
     align-items: center;
@@ -103,11 +111,49 @@
     color: #fcd34d
   }
 
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--mborder)
+  }
+
+  .tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mmuted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all .15s
+  }
+
+  .tab-btn.active {
+    color: #4f46e5;
+    border-bottom-color: #4f46e5
+  }
+
+  .tab-btn:hover {
+    color: #4f46e5
+  }
+
+  .tab-panel {
+    display: none
+  }
+
+  .tab-panel.active {
+    display: block
+  }
+
   .mform-card {
     background: var(--mc);
     border-radius: 14px;
-    padding: 24px 26px;
-    max-width: 560px;
+    padding: 26px 30px;
+    max-width: 720px;
     box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
     border: 1px solid var(--mborder);
     animation: mfadeUp .35s ease .05s both
@@ -117,7 +163,7 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
   }
 
-  @media(max-width:520px) {
+  @media(max-width:600px) {
     .mform-card {
       padding: 16px;
       border-radius: 10px
@@ -134,24 +180,26 @@
     font-weight: 600;
     letter-spacing: .8px;
     color: var(--mmuted);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     text-transform: uppercase
   }
 
-  .mform-group input {
+  .mform-group input,
+  .mform-group select {
     width: 100%;
     background: var(--mc2);
     border: 1.5px solid var(--mborder);
     border-radius: 8px;
     color: var(--mtext2);
     font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    padding: 11px 14px;
+    font-size: 16px;
+    padding: 14px 16px;
     outline: none;
     transition: border-color .2s, box-shadow .2s
   }
 
-  .mform-group input:focus {
+  .mform-group input:focus,
+  .mform-group select:focus {
     border-color: #4f46e5;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
   }
@@ -166,10 +214,42 @@
     gap: 14px
   }
 
-  @media(max-width:400px) {
+  @media(max-width:420px) {
     .mform-row {
       grid-template-columns: 1fr
     }
+  }
+
+  .mform-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px
+  }
+
+  @media(max-width:520px) {
+    .mform-row-3 {
+      grid-template-columns: 1fr 1fr
+    }
+  }
+
+  .filial-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    border: 1px solid #c7d2fe
+  }
+
+  html[data-theme="dark"] .filial-badge {
+    background: #2e3250;
+    color: #a78bfa;
+    border-color: #3d4270
   }
 
   .mdivider {
@@ -182,26 +262,6 @@
     display: flex;
     gap: 10px;
     flex-wrap: wrap
-  }
-
-  .filial-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #ede9fe;
-    border: 1.5px solid #c4b5fd;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #4f46e5;
-    width: 100%
-  }
-
-  html[data-theme="dark"] .filial-badge {
-    background: #1e1a3a;
-    border-color: #4c3a9e;
-    color: #a78bfa
   }
 
   /* Foto */
@@ -235,9 +295,9 @@
   }
 
   .foto-placeholder span {
-    font-size: 32px;
+    font-size: 28px;
     display: block;
-    margin-bottom: 8px
+    margin-bottom: 6px
   }
 
   .foto-placeholder strong {
@@ -246,7 +306,7 @@
 
   .foto-preview {
     width: 100%;
-    max-height: 200px;
+    max-height: 180px;
     object-fit: contain;
     border-radius: 6px;
     display: block
@@ -268,7 +328,7 @@
     border-radius: 50%;
     width: 26px;
     height: 26px;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -276,14 +336,13 @@
     z-index: 2
   }
 
-  /* Localização dropdown */
+  /* Loc dropdown */
   .loc-wrap {
     position: relative
   }
 
   .loc-input-row {
-    display: flex;
-    gap: 0
+    display: flex
   }
 
   .loc-input-row input {
@@ -314,7 +373,7 @@
     top: calc(100% + 6px);
     left: 0;
     right: 0;
-    background: var(--mc);
+    background: #fff;
     border: 1.5px solid #c7d2fe;
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(79, 70, 229, .18);
@@ -324,6 +383,7 @@
   }
 
   html[data-theme="dark"] .loc-dropdown {
+    background: #1a1d27;
     border-color: #3d4270;
     box-shadow: 0 8px 32px rgba(0, 0, 0, .4)
   }
@@ -345,10 +405,6 @@
     color: var(--mtext2)
   }
 
-  .loc-search input:focus {
-    border-color: #4f46e5
-  }
-
   .loc-list {
     max-height: 220px;
     overflow-y: auto
@@ -362,10 +418,6 @@
     gap: 10px;
     align-items: center;
     transition: background .1s
-  }
-
-  .loc-item:last-child {
-    border-bottom: none
   }
 
   .loc-item:hover {
@@ -396,16 +448,142 @@
     color: #a78bfa
   }
 
-  html[data-theme="dark"] .loc-tag-a {
-    background: #064e3b;
+  .loc-tag-a {
+    background: #052e16;
     color: #6ee7b7
   }
 
-  .loc-empty {
-    padding: 20px;
+  /* Import Excel */
+  .import-card {
+    background: var(--mc);
+    border-radius: 14px;
+    padding: 22px 24px;
+    max-width: 580px;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+    border: 1px solid var(--mborder)
+  }
+
+  .import-drop {
+    border: 2px dashed #a5b4fc;
+    border-radius: 10px;
+    padding: 32px;
     text-align: center;
-    color: var(--mmuted);
+    cursor: pointer;
+    position: relative;
+    transition: all .2s;
+    background: var(--mc2)
+  }
+
+  .import-drop:hover,
+  .import-drop.drag-over {
+    border-color: #4f46e5;
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .import-drop:hover,
+  .import-drop.drag-over {
+    background: #2e3250
+  }
+
+  .import-drop input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%
+  }
+
+  .import-drop-icon {
+    font-size: 36px;
+    display: block;
+    margin-bottom: 8px
+  }
+
+  .import-table-wrap {
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--mborder);
+    border-radius: 8px;
+    margin-top: 14px
+  }
+
+  .import-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 13px
+  }
+
+  .import-table th {
+    background: #4f46e5;
+    color: #fff;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: sticky;
+    top: 0
+  }
+
+  .import-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--mborder2);
+    color: var(--mtext)
+  }
+
+  .import-table tbody tr:hover {
+    background: var(--mc2)
+  }
+
+  .import-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #1e40af;
+    margin-bottom: 14px
+  }
+
+  html[data-theme="dark"] .import-info {
+    background: #0d1f3c;
+    border-color: #1e3a5f;
+    color: #93c5fd
+  }
+
+  .import-info code {
+    background: #dbeafe;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: #1d4ed8
+  }
+
+  html[data-theme="dark"] .import-info code {
+    background: #1e3a5f;
+    color: #93c5fd
+  }
+
+  .badge-import-ok {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+    padding: 2px 7px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600
+  }
+
+  .badge-import-err {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    padding: 2px 7px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600
   }
 
   @keyframes mfadeUp {
@@ -421,6 +599,9 @@
   }
 </style>
 
+<!-- SheetJS para leitura de Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 <div class="mod">
   <div class="mod-header">
     <div>
@@ -430,142 +611,221 @@
     <button class="mbtn mbtn-ghost" onclick="window._editData=null;carregarModulo('get_produtos.html','nav-produtos')">←
       Ver Produtos</button>
   </div>
-  <div id="edit-banner" class="edit-banner" style="display:none">
-    ✏️ <span>Modo edição — altere os campos e clique em <strong>Salvar Alterações</strong></span>
+  <div id="edit-banner" class="edit-banner" style="display:none">✏️ <span>Modo edição — altere os campos e clique em
+      <strong>Salvar Alterações</strong></span></div>
+
+  <!-- Tabs: só mostra importar se filial 2 e modo cadastro -->
+  <div class="tabs" id="prod-tabs" style="display:none">
+    <button class="tab-btn active" onclick="ProdForm.trocarTab('tab-form',this)">✏️ Cadastrar</button>
+    <button class="tab-btn" onclick="ProdForm.trocarTab('tab-import',this)">📂 Importar Excel</button>
   </div>
-  <div class="mform-card">
-    <!-- Filial -->
-    <div class="mform-group">
-      <label>Filial</label>
-      <div class="filial-badge">🏢 <span id="f-filial-nome">—</span></div>
-    </div>
-    <!-- Foto -->
-    <div class="mform-group">
-      <label>Foto do Produto</label>
-      <div class="foto-area" id="foto-area">
-        <input type="file" id="f-foto" accept="image/*" capture="environment" onchange="ProdForm.onFoto(this)">
-        <div id="foto-conteudo">
-          <div class="foto-placeholder"><span>📷</span>
-            <div>Toque para <strong>tirar foto</strong> ou escolher da galeria</div>
+
+  <!-- TAB FORMULÁRIO -->
+  <div id="tab-form" class="tab-panel active">
+    <div class="mform-card">
+      <div class="mform-group">
+        <label>Filial</label>
+        <div class="filial-badge">🏢 <span id="f-filial-nome">—</span></div>
+      </div>
+      <div class="mform-group">
+        <label>Foto do Produto</label>
+        <div class="foto-area" id="foto-area">
+          <input type="file" id="f-foto" accept="image/*" capture="environment" onchange="ProdForm.onFoto(this)">
+          <div id="foto-conteudo">
+            <div class="foto-placeholder"><span>📷</span>
+              <div>Toque para <strong>tirar foto</strong> ou escolher da galeria</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <!-- Código + Saldo -->
-    <div class="mform-row">
-      <div class="mform-group"><label>Código</label><input type="text" id="f-codigo" placeholder="Ex: PRD-001"></div>
-      <div class="mform-group"><label>Saldo</label><input type="number" id="f-saldo" placeholder="0" min="0"
-          inputmode="numeric"></div>
-    </div>
-    <!-- Descrição -->
-    <div class="mform-group"><label>Descrição</label><input type="text" id="f-descricao" placeholder="Nome do produto">
-    </div>
-    <!-- Localização -->
-    <div class="mform-group">
-      <label>Localização</label>
-      <div class="loc-wrap" id="loc-wrap">
-        <div class="loc-input-row">
-          <input type="text" id="f-localizacao" placeholder="🔍 Buscar localização..." readonly
-            onclick="ProdForm.abrirLoc()" style="cursor:pointer">
-          <button class="btn-lupa" onclick="ProdForm.abrirLoc()" type="button">
-            <svg viewBox="0 0 24 24" stroke-width="2">
-              <circle cx="11" cy="11" r="7" />
-              <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
-            </svg>
-          </button>
+      <div class="mform-row">
+        <div class="mform-group"><label>Código</label><input type="text" id="f-codigo" placeholder="Ex: PRD-001"></div>
+        <div class="mform-group"><label>Saldo</label><input type="number" id="f-saldo" placeholder="0" min="0"
+            inputmode="numeric"></div>
+      </div>
+      <div class="mform-group"><label>Descrição</label><input type="text" id="f-descricao"
+          placeholder="Nome do produto"></div>
+      <!-- Filial 2: Categoria + Preço -->
+      <div id="f2-fields" style="display:none">
+        <div class="mform-row">
+          <div class="mform-group">
+            <label>Cód. Barras</label>
+            <input type="text" id="f-codigo-barras" placeholder="Leitor de barras">
+          </div>
+          <div class="mform-group">
+            <label>Categoria</label>
+            <select id="f-categoria">
+              <option value="">Sem categoria</option>
+            </select>
+          </div>
         </div>
-        <div class="loc-dropdown" id="loc-dropdown">
-          <div class="loc-search"><input type="text" id="loc-busca" placeholder="Filtrar..."
-              oninput="ProdForm.filtrarLoc(this.value)"></div>
-          <div class="loc-list" id="loc-list">
-            <div class="loc-empty">⏳ Carregando...</div>
+        <div class="mform-row-3" style="margin-top: 5px;">
+          <div class="mform-group">
+            <label>Valor Custo (R$)</label>
+            <input type="number" id="f-custo" placeholder="0,00" min="0" step="0.01" inputmode="decimal"
+              oninput="ProdForm.calcVenda()" style="font-weight: 600; color: #10b981;">
+          </div>
+          <div class="mform-group">
+            <label>Markup (%)</label>
+            <input type="number" id="f-markup" placeholder="0,00" min="0" step="0.01" inputmode="decimal"
+              oninput="ProdForm.calcVenda()" style="font-weight: 600; color: #6366f1;">
+          </div>
+          <div class="mform-group">
+            <label>Valor Venda (R$)</label>
+            <input type="number" id="f-venda" placeholder="0,00" min="0" step="0.01" inputmode="decimal"
+              oninput="ProdForm.calcMarkup()" style="font-weight: 700; color: var(--mtext2);">
           </div>
         </div>
       </div>
+      <div class="mform-group">
+        <label>Localização</label>
+        <div class="loc-wrap" id="loc-wrap">
+          <div class="loc-input-row">
+            <input type="text" id="f-localizacao" placeholder="🔍 Buscar localização..." readonly
+              onclick="ProdForm.abrirLoc()" style="cursor:pointer">
+            <button class="btn-lupa" onclick="ProdForm.abrirLoc()" type="button">
+              <svg viewBox="0 0 24 24" stroke-width="2">
+                <circle cx="11" cy="11" r="7" />
+                <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
+              </svg>
+            </button>
+          </div>
+          <div class="loc-dropdown" id="loc-dropdown">
+            <div class="loc-search"><input type="text" id="loc-busca" placeholder="Filtrar..."
+                oninput="ProdForm.filtrarLoc(this.value)"></div>
+            <div class="loc-list" id="loc-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mdivider"></div>
+      <div class="mform-footer">
+        <button class="mbtn mbtn-primary" id="btn-salvar" onclick="ProdForm.salvar()">Salvar Produto</button>
+        <button class="mbtn mbtn-ghost" onclick="ProdForm.limpar()">Limpar</button>
+      </div>
     </div>
-    <div class="mdivider"></div>
-    <div class="mform-footer">
-      <button class="mbtn mbtn-primary" id="btn-salvar" onclick="ProdForm.salvar()">Salvar Produto</button>
-      <button class="mbtn mbtn-ghost" onclick="ProdForm.limpar()">Limpar</button>
+  </div>
+
+  <!-- TAB IMPORTAR EXCEL (filial 2 only) -->
+  <div id="tab-import" class="tab-panel">
+    <div class="import-card">
+      <div class="import-info">
+        📋 O arquivo Excel deve ter as colunas nessa ordem:<br>
+        <code>codigo</code> | <code>descricao</code> | <code>saldo</code> | <code>preco</code> |
+        <code>localizacao</code> | <code>categoria</code> | <code>codigo_barras</code><br>
+        <small style="opacity:.8;margin-top:4px;display:block">A primeira linha deve ser o cabeçalho. Categoria deve
+          ser
+          o nome exato cadastrado no sistema (pode ficar vazio). Código de Barras é opcional.</small>
+      </div>
+      <div class="import-drop" id="import-drop" ondragover="ProdForm.dragOver(event)"
+        ondragleave="ProdForm.dragLeave(event)" ondrop="ProdForm.onDrop(event)">
+        <input type="file" accept=".xlsx,.xls,.csv" onchange="ProdForm.lerExcel(this.files[0])">
+        <span class="import-drop-icon">📂</span>
+        <strong style="color:var(--mtext2);font-size:15px">Arraste o arquivo Excel aqui</strong>
+        <div style="font-size:13px;color:var(--mmuted);margin-top:4px">ou clique para selecionar (.xlsx, .xls, .csv)
+        </div>
+      </div>
+      <div id="import-preview"></div>
+      <div id="import-actions" style="display:none;margin-top:14px;display:none">
+        <button class="mbtn mbtn-success" id="btn-importar" onclick="ProdForm.importar()">⬆️ Importar
+          Produtos</button>
+        <button class="mbtn mbtn-ghost" onclick="ProdForm.limparImport()">✕ Limpar</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
   window.ProdForm = (function () {
-    var editPk = null;
-    var fotoAtual = null;
-    var fotoFile = null;
-    var armazens = [];
-    var armFiltro = [];
+    var editPk = null, fotoAtual = null, fotoFile = null, armazens = [], isFilial2 = false;
+    var importRows = [], importCats = {};
 
-    // Filial badge
-    (function () {
+    // Inicialização
+    (function init() {
       var f = window.filialLogada;
       var el = document.getElementById('f-filial-nome');
-      if (el) el.textContent = f ? f.codigo + ' – ' + f.nome : 'Sem filial';
+      if (el) el.textContent = f ? f.codigo + ' – ' + f.nome : '—';
+      isFilial2 = !!(f && f.codigo === '02');
+      var f2 = document.getElementById('f2-fields');
+      if (f2) f2.style.display = isFilial2 ? '' : 'none';
+      var tabs = document.getElementById('prod-tabs');
+      // Só mostra tabs se filial 2 e modo criação (sem editPk ainda)
+      if (tabs && isFilial2) tabs.style.display = '';
+      if (isFilial2) carregarCategorias();
     })();
 
+    async function carregarCategorias() {
+      var f = window.filialLogada;
+      var q = window.supabase.from('categorias').select('pk,nome').order('nome');
+      if (f && f.pk) q = q.eq('filial_pk', f.pk);
+      var res = await q;
+      var sel = document.getElementById('f-categoria');
+      if (sel && !res.error) {
+        (res.data || []).forEach(function (c) {
+          var o = document.createElement('option'); o.value = c.pk; o.textContent = c.nome; sel.appendChild(o);
+          importCats[c.nome.toLowerCase()] = c.pk;
+        });
+      }
+    }
+
     // Modo edição
-    (function () {
-      var d = window._editData; window._editData = null;
-      if (!d) { editPk = null; fotoAtual = null; return; }
+    (function applyEdit() {
+      var d = window._editData; window._editData = null; if (!d) return;
       editPk = d.pk; fotoAtual = d.foto_url || null;
       document.getElementById('form-titulo').textContent = 'Alterar Produto';
       document.getElementById('form-subtitulo').textContent = 'Edite os dados e salve';
       document.getElementById('edit-banner').style.display = 'flex';
       document.getElementById('btn-salvar').textContent = 'Salvar Alterações';
+      document.getElementById('prod-tabs').style.display = 'none'; // sem tabs no edit
       document.getElementById('f-codigo').value = d.codigo || '';
       document.getElementById('f-saldo').value = d.saldo ?? 0;
       document.getElementById('f-descricao').value = d.descricao || '';
       document.getElementById('f-localizacao').value = d.localizacao || '';
+      if (isFilial2) {
+        document.getElementById('f-codigo-barras').value = d.codigo_barras || '';
+        document.getElementById('f-custo').value = d.preco_custo || '';
+        document.getElementById('f-markup').value = d.markup || '';
+        document.getElementById('f-venda').value = d.valor_venda || d.preco || '';
+        // categoria será selecionada após carregarCategorias via setTimeout
+        if (d.categoria_pk) setTimeout(function () {
+          var sel = document.getElementById('f-categoria'); if (sel) sel.value = d.categoria_pk;
+        }, 600);
+      }
       if (d.foto_url) mostrarPreviewUrl(d.foto_url);
     })();
 
     // Fecha dropdown clicando fora
     document.addEventListener('click', function (e) {
-      var wrap = document.getElementById('loc-wrap');
-      if (wrap && !wrap.contains(e.target)) fecharLoc();
+      var w = document.getElementById('loc-wrap'); if (w && !w.contains(e.target)) fecharLoc();
     });
 
-    function fecharLoc() {
-      var dd = document.getElementById('loc-dropdown');
-      if (dd) dd.style.display = 'none';
-    }
+    function fecharLoc() { var dd = document.getElementById('loc-dropdown'); if (dd) dd.style.display = 'none'; }
 
     async function abrirLoc() {
-      var dd = document.getElementById('loc-dropdown');
-      if (!dd) return;
+      var dd = document.getElementById('loc-dropdown'); if (!dd) return;
       if (dd.style.display === 'block') { fecharLoc(); return; }
       dd.style.display = 'block';
       var lb = document.getElementById('loc-busca');
       if (lb) { lb.value = ''; setTimeout(function () { lb.focus(); }, 60); }
-
       if (!armazens.length) {
-        setLocList('<div class="loc-empty">⏳ Carregando...</div>');
+        setLocList('<div style="padding:14px;text-align:center;color:var(--mmuted)">⏳ Carregando...</div>');
         try {
-          var fil = window.filialLogada;
+          var f = window.filialLogada;
           var q = window.supabase.from('armazem').select('pk,filial,id,localizacao').order('filial').order('id');
-          if (fil && fil.codigo) q = q.eq('filial', fil.codigo);
-          var res = await q;
-          if (res.error) throw res.error;
-          armazens = (res.data || []);
-        } catch (e) {
-          setLocList('<div class="loc-empty" style="color:#ef4444">❌ ' + e.message + '</div>');
-          return;
-        }
+          if (f && f.codigo) q = q.eq('filial', f.codigo);
+          var res = await q; if (res.error) throw res.error;
+          armazens = res.data || [];
+        } catch (e) { setLocList('<div style="padding:14px;text-align:center;color:#ef4444">❌ ' + e.message + '</div>'); return; }
       }
-      armFiltro = armazens.slice();
-      renderLoc(armFiltro);
+      renderLoc(armazens);
     }
 
     function setLocList(h) { var el = document.getElementById('loc-list'); if (el) el.innerHTML = h; }
 
     function renderLoc(lista) {
-      if (!lista || !lista.length) { setLocList('<div class="loc-empty">Nenhuma localização encontrada</div>'); return; }
+      if (!lista || !lista.length) { setLocList('<div style="padding:14px;text-align:center;color:var(--mmuted)">Nenhum resultado</div>'); return; }
       setLocList(lista.map(function (a) {
         var loc = (a.localizacao || '').replace(/'/g, "\\'");
-        return '<div class="loc-item" onclick="ProdForm.selecionar(\'' + a.filial + '\',\'' + a.id + '\',\'' + loc + '\')">' +
+        return '<div class="loc-item" onclick="ProdForm.selLoc(\'' + a.filial + '\',\'' + a.id + '\',\'' + loc + '\')">' +
           '<span class="loc-tag loc-tag-f">F' + a.filial + '</span>' +
           '<span class="loc-tag loc-tag-a">A' + a.id + '</span>' +
           '<span style="font-size:14px;color:var(--mtext2)">' + (a.localizacao || '') + '</span>' +
@@ -575,47 +835,19 @@
 
     function filtrarLoc(t) {
       t = (t || '').toLowerCase();
-      armFiltro = t ? armazens.filter(function (a) {
-        return String(a.filial || '').toLowerCase().includes(t) ||
-          String(a.id || '').toLowerCase().includes(t) ||
-          (a.localizacao || '').toLowerCase().includes(t);
-      }) : armazens.slice();
-      renderLoc(armFiltro);
+      renderLoc(t ? armazens.filter(function (a) { return String(a.filial || '').toLowerCase().includes(t) || String(a.id || '').toLowerCase().includes(t) || (a.localizacao || '').toLowerCase().includes(t); }) : armazens);
     }
 
-    function selecionar(f, i, l) {
-      var el = document.getElementById('f-localizacao');
-      if (el) el.value = 'F' + f + ' · A' + i + ' · ' + l;
-      fecharLoc();
-    }
+    function selLoc(f, i, l) { var el = document.getElementById('f-localizacao'); if (el) el.value = 'F' + f + ' · A' + i + ' · ' + l; fecharLoc(); }
 
     // Foto
-    function onFoto(input) {
-      if (!input.files || !input.files[0]) return;
-      fotoFile = input.files[0];
-      var r = new FileReader();
-      r.onload = function (e) { mostrarPreviewLocal(e.target.result); };
-      r.readAsDataURL(fotoFile);
-    }
-    function mostrarPreviewLocal(src) {
-      document.getElementById('foto-conteudo').innerHTML =
-        '<div class="foto-preview-wrap"><img class="foto-preview" src="' + src + '"><button class="btn-rm-foto" onclick="ProdForm.removerFoto(event)">✕</button></div>';
-    }
-    function mostrarPreviewUrl(url) {
-      document.getElementById('foto-conteudo').innerHTML =
-        '<div class="foto-preview-wrap"><img class="foto-preview" src="' + url + '"><button class="btn-rm-foto" onclick="ProdForm.removerFoto(event)">✕</button></div>';
-    }
-    function removerFoto(e) {
-      if (e) { e.stopPropagation(); e.preventDefault(); }
-      fotoFile = null; fotoAtual = null;
-      document.getElementById('foto-conteudo').innerHTML =
-        '<div class="foto-placeholder"><span>📷</span><div>Toque para <strong>tirar foto</strong> ou escolher da galeria</div></div>';
-      var fi = document.getElementById('f-foto'); if (fi) fi.value = '';
-    }
+    function onFoto(input) { if (!input.files || !input.files[0]) return; fotoFile = input.files[0]; var r = new FileReader(); r.onload = function (e) { mostrarPreviewLocal(e.target.result); }; r.readAsDataURL(fotoFile); }
+    function mostrarPreviewLocal(src) { document.getElementById('foto-conteudo').innerHTML = '<div class="foto-preview-wrap"><img class="foto-preview" src="' + src + '"><button class="btn-rm-foto" onclick="ProdForm.removerFoto(event)">✕</button></div>'; }
+    function mostrarPreviewUrl(url) { document.getElementById('foto-conteudo').innerHTML = '<div class="foto-preview-wrap"><img class="foto-preview" src="' + url + '"><button class="btn-rm-foto" onclick="ProdForm.removerFoto(event)">✕</button></div>'; }
+    function removerFoto(e) { if (e) { e.stopPropagation(); e.preventDefault(); } fotoFile = null; fotoAtual = null; document.getElementById('foto-conteudo').innerHTML = '<div class="foto-placeholder"><span>📷</span><div>Toque para <strong>tirar foto</strong> ou escolher da galeria</div></div>'; var fi = document.getElementById('f-foto'); if (fi) fi.value = ''; }
 
     async function uploadFoto(file) {
-      var ext = file.name.split('.').pop();
-      var nome = 'produto_' + Date.now() + '.' + ext;
+      var ext = file.name.split('.').pop(); var nome = 'produto_' + Date.now() + '.' + ext;
       var res = await window.supabase.storage.from('produtos-fotos').upload(nome, file, { upsert: true, contentType: file.type });
       if (res.error) throw new Error('Upload: ' + res.error.message);
       return window.supabase.storage.from('produtos-fotos').getPublicUrl(nome).data.publicUrl;
@@ -626,46 +858,162 @@
       var descricao = (document.getElementById('f-descricao')?.value || '').trim();
       var saldo = parseInt(document.getElementById('f-saldo')?.value) || 0;
       var localizacao = (document.getElementById('f-localizacao')?.value || '').trim();
-
       if (!codigo) { window.showToast('Informe o código.', 'error'); return; }
       if (!descricao) { window.showToast('Informe a descrição.', 'error'); return; }
-
-      var btn = document.getElementById('btn-salvar');
-      btn.disabled = true; btn.textContent = 'Salvando...';
-
+      var btn = document.getElementById('btn-salvar'); btn.disabled = true; btn.textContent = 'Salvando...';
       try {
         var foto_url = fotoAtual;
         if (fotoFile) foto_url = await uploadFoto(fotoFile);
-
         var payload = { codigo, descricao, saldo, localizacao, foto_url, filial_pk: window.filialLogada?.pk || null };
-        var res;
-        if (editPk) {
-          res = await window.supabase.from('produtos').update(payload).eq('pk', editPk);
-        } else {
-          res = await window.supabase.from('produtos').insert([payload]);
+        if (isFilial2) {
+          payload.preco_custo = parseFloat(document.getElementById('f-custo')?.value) || 0;
+          payload.markup = parseFloat(document.getElementById('f-markup')?.value) || 0;
+          payload.valor_venda = parseFloat(document.getElementById('f-venda')?.value) || 0;
+          payload.preco = payload.valor_venda; // mantém compatibilidade de leitura do valor original
+          payload.categoria_pk = parseInt(document.getElementById('f-categoria')?.value) || null;
+          payload.codigo_barras = (document.getElementById('f-codigo-barras')?.value || '').trim() || null;
         }
+        var res;
+        if (editPk) { res = await window.supabase.from('produtos').update(payload).eq('pk', editPk); }
+        else { res = await window.supabase.from('produtos').insert([payload]); }
         if (res.error) throw new Error(res.error.message);
         window.showToast(editPk ? 'Produto atualizado!' : 'Produto cadastrado!');
-        editPk = null;
-        carregarModulo('get_produtos.html', 'nav-produtos');
-      } catch (e) {
-        window.showToast('Erro: ' + e.message, 'error');
-        btn.disabled = false;
-        btn.textContent = editPk ? 'Salvar Alterações' : 'Salvar Produto';
-      }
+        editPk = null; carregarModulo('get_produtos.html', 'nav-produtos');
+      } catch (e) { window.showToast('Erro: ' + e.message, 'error'); btn.disabled = false; btn.textContent = editPk ? 'Salvar Alterações' : 'Salvar Produto'; }
     }
 
     function limpar() {
       editPk = null; fotoFile = null; fotoAtual = null; armazens = [];
-      ['f-codigo', 'f-descricao', 'f-saldo', 'f-localizacao'].forEach(function (id) {
-        var el = document.getElementById(id); if (el) el.value = '';
-      });
+      ['f-codigo', 'f-descricao', 'f-saldo', 'f-localizacao', 'f-custo', 'f-markup', 'f-venda', 'f-codigo-barras'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+      var sel = document.getElementById('f-categoria'); if (sel) sel.value = '';
       removerFoto();
       document.getElementById('btn-salvar').textContent = 'Salvar Produto';
       document.getElementById('edit-banner').style.display = 'none';
       document.getElementById('form-titulo').textContent = 'Cadastrar Produto';
     }
 
-    return { abrirLoc, filtrarLoc, selecionar, onFoto, removerFoto, salvar, limpar };
+    function trocarTab(tabId, btn) {
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      var el = document.getElementById(tabId); if (el) el.classList.add('active');
+      if (btn) btn.classList.add('active');
+    }
+
+    // ── IMPORTADOR EXCEL ────────────────────────────────────────
+    function dragOver(e) { e.preventDefault(); document.getElementById('import-drop').classList.add('drag-over'); }
+    function dragLeave(e) { document.getElementById('import-drop').classList.remove('drag-over'); }
+    function onDrop(e) { e.preventDefault(); document.getElementById('import-drop').classList.remove('drag-over'); var f = e.dataTransfer.files[0]; if (f) lerExcel(f); }
+
+    function lerExcel(file) {
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          var wb = XLSX.read(e.target.result, { type: 'array' });
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          var data = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+          importRows = data;
+          renderPreview(data);
+        } catch (err) { window.showToast('Erro ao ler arquivo: ' + err.message, 'error'); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderPreview(rows) {
+      var el = document.getElementById('import-preview');
+      var act = document.getElementById('import-actions');
+      if (!rows || !rows.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--mmuted)">Nenhum dado encontrado no arquivo.</div>'; return; }
+      var headers = ['codigo', 'descricao', 'saldo', 'preco', 'localizacao', 'categoria', 'codigo_barras'];
+      // Auto-detect columns
+      var sample = rows[0];
+      var colMap = {};
+      Object.keys(sample).forEach(function (k) {
+        var kl = k.toLowerCase().trim();
+        headers.forEach(function (h) { if (kl.includes(h) || h.includes(kl)) colMap[h] = k; });
+      });
+      // Render preview (first 10)
+      var preview = rows.slice(0, 10);
+      el.innerHTML = '<div style="margin-top:10px;font-size:12px;color:var(--mmuted)">Pré-visualização dos primeiros ' + Math.min(rows.length, 10) + ' de ' + rows.length + ' itens:</div>' +
+        '<div class="import-table-wrap"><table class="import-table"><thead><tr>' +
+        headers.map(function (h) { return '<th>' + h + '</th>'; }).join('') + '<th>Status</th>' +
+        '</tr></thead><tbody>' +
+        preview.map(function (row) {
+          var cod = row[colMap.codigo] || row.codigo || row.Codigo || row.CODIGO || '';
+          var desc = row[colMap.descricao] || row.descricao || row.Descricao || row.DESCRICAO || '';
+          var ok = cod && desc;
+          return '<tr>' +
+            headers.map(function (h) { return '<td>' + (row[colMap[h]] || row[h] || '—') + '</td>'; }).join('') +
+            '<td>' + (ok ? '<span class="badge-import-ok">✓ ok</span>' : '<span class="badge-import-err">⚠ faltam dados</span>') + '</td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody></table></div>';
+      act.style.display = 'flex'; act.style.gap = '8px';
+    }
+
+    async function importar() {
+      if (!importRows.length) { window.showToast('Nenhum dado para importar.', 'error'); return; }
+      var btn = document.getElementById('btn-importar');
+      btn.disabled = true; btn.textContent = 'Importando...';
+      var f = window.filialLogada;
+      var sample = importRows[0];
+      var keys = Object.keys(sample);
+      function col(row, names) { for (var i = 0; i < names.length; i++) { var k = keys.find(function (k) { return k.toLowerCase().includes(names[i]); }); if (k && row[k]) return row[k]; } return ''; }
+      var payload = importRows.map(function (row) {
+        var catNome = (col(row, ['categoria']) || '').toLowerCase().trim();
+        return {
+          codigo: (col(row, ['codigo']) || '').trim(),
+          descricao: (col(row, ['descricao']) || '').trim(),
+          saldo: parseInt(col(row, ['saldo'])) || 0,
+          preco: parseFloat((col(row, ['preco']) || '').replace(',', '.')) || 0,
+          localizacao: (col(row, ['localiz']) || '').trim(),
+          categoria_pk: importCats[catNome] || null,
+          codigo_barras: (col(row, ['barra', 'codigo_barra', 'cod_barra']) || '').trim() || null,
+          filial_pk: f?.pk || null
+        };
+      }).filter(function (r) { return r.codigo && r.descricao; });
+      if (!payload.length) { window.showToast('Nenhum item válido (precisam de código e descrição).', 'error'); btn.disabled = false; btn.textContent = '⬆️ Importar Produtos'; return; }
+      // Insert em lotes de 50
+      var ok = 0, err = 0;
+      for (var i = 0; i < payload.length; i += 50) {
+        var lote = payload.slice(i, i + 50);
+        var res = await window.supabase.from('produtos').upsert(lote, { onConflict: 'codigo,filial_pk', ignoreDuplicates: false });
+        if (res.error) { err += lote.length; console.error(res.error); } else { ok += lote.length; }
+      }
+      btn.disabled = false; btn.textContent = '⬆️ Importar Produtos';
+      if (err) { window.showToast(ok + ' importados, ' + err + ' com erro.'); } else { window.showToast(ok + ' produtos importados com sucesso!'); }
+      if (ok > 0) setTimeout(function () { carregarModulo('get_produtos.html', 'nav-produtos'); }, 1200);
+    }
+
+    function limparImport() {
+      importRows = [];
+      var el = document.getElementById('import-preview'); if (el) el.innerHTML = '';
+      var act = document.getElementById('import-actions'); if (act) act.style.display = 'none';
+    }
+
+    function calcVenda() {
+      var custo = parseFloat(document.getElementById('f-custo')?.value) || 0;
+      var markup = parseFloat(document.getElementById('f-markup')?.value) || 0;
+      var elVenda = document.getElementById('f-venda');
+      if (!elVenda) return;
+      if (custo >= 0) {
+        var venda = custo + (custo * (markup / 100));
+        elVenda.value = venda > 0 ? venda.toFixed(2) : '';
+      }
+    }
+
+    function calcMarkup() {
+      var custo = parseFloat(document.getElementById('f-custo')?.value) || 0;
+      var venda = parseFloat(document.getElementById('f-venda')?.value) || 0;
+      var elMarkup = document.getElementById('f-markup');
+      if (!elMarkup) return;
+      if (custo > 0) {
+        var markup = ((venda - custo) / custo) * 100;
+        elMarkup.value = markup.toFixed(2);
+      } else {
+        elMarkup.value = '0.00';
+      }
+    }
+
+    return { calcVenda, calcMarkup, salvar, limpar, abrirLoc, filtrarLoc, selLoc, removerFoto, onFoto, trocarTab, dragOver, dragLeave, onDrop, lerExcel, importar, limparImport };
   })();
 </script>

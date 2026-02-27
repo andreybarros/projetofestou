@@ -1,0 +1,1715 @@
+<link
+  href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+  rel="stylesheet">
+<style>
+  .mod* {
+    box-sizing: border-box
+  }
+
+  .mod {
+    font-family: 'DM Sans', sans-serif;
+    --mc: #fff;
+    --mc2: #fafafe;
+    --mborder: #e0e7ff;
+    --mborder2: #f3f4f6;
+    --mtext: #374151;
+    --mtext2: #1e1b4b;
+    --mmuted: #6b7280
+  }
+
+  html[data-theme="dark"] .mod {
+    --mc: #1a1d27;
+    --mc2: #22263a;
+    --mborder: #2e3250;
+    --mborder2: #22263a;
+    --mtext: #c9cce0;
+    --mtext2: #e8e9f3;
+    --mmuted: #7b7fa0
+  }
+
+  /* Layout principal 2 colunas */
+  .pdv-layout {
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: 16px;
+    min-height: 500px;
+    height: 75vh;
+  }
+
+  @media(max-width:900px) {
+    .pdv-layout {
+      grid-template-columns: 1fr;
+      height: auto
+    }
+  }
+
+  /* Coluna esquerda — produtos */
+  .pdv-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden
+  }
+
+  .pdv-search-bar {
+    display: flex;
+    gap: 8px
+  }
+
+  .pdv-search-wrap {
+    position: relative;
+    flex: 1
+  }
+
+  .pdv-search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    stroke: var(--mmuted);
+    fill: none;
+    pointer-events: none
+  }
+
+  .pdv-search-inp {
+    width: 100%;
+    padding: 10px 12px 10px 34px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    background: var(--mc);
+    color: var(--mtext2);
+    outline: none
+  }
+
+  .pdv-search-inp:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
+  }
+
+  .pdv-produtos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 2px
+  }
+
+  .prod-card {
+    background: var(--mc);
+    border: 1.5px solid var(--mborder);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    user-select: none
+  }
+
+  .prod-card:hover {
+    border-color: #a5b4fc;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, .12);
+    transform: translateY(-1px)
+  }
+
+  .prod-card:active {
+    transform: scale(.97)
+  }
+
+  .prod-card-foto {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 6px;
+    background: var(--mc2)
+  }
+
+  .prod-card-foto-ph {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: var(--mc2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px
+  }
+
+  .prod-card-cod {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #4f46e5;
+    font-weight: 600
+  }
+
+  html[data-theme="dark"] .prod-card-cod {
+    color: #a78bfa
+  }
+
+  .prod-card-nome {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mtext2);
+    line-height: 1.3;
+    flex: 1
+  }
+
+  .prod-card-preco {
+    font-size: 15px;
+    font-weight: 700;
+    color: #059669;
+    font-family: 'DM Mono', monospace
+  }
+
+  .prod-card-sem-preco {
+    font-size: 11px;
+    color: var(--mmuted);
+    font-style: italic
+  }
+
+  .pdv-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--mmuted);
+    font-size: 14px
+  }
+
+  .pdv-empty-icon {
+    font-size: 36px;
+    display: block;
+    margin-bottom: 8px
+  }
+
+  /* Coluna direita — carrinho */
+  .pdv-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--mc);
+    border-radius: 14px;
+    border: 1px solid var(--mborder);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08)
+  }
+
+  html[data-theme="dark"] .pdv-right {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
+  }
+
+  .pdv-right-head {
+    background: linear-gradient(90deg, #4f46e5, #6366f1);
+    padding: 14px 16px;
+    color: #fff
+  }
+
+  .pdv-right-head h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 2px
+  }
+
+  .pdv-right-head p {
+    font-size: 11px;
+    opacity: .8
+  }
+
+  .pdv-cliente {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--mborder);
+    display: flex;
+    gap: 8px;
+    align-items: center
+  }
+
+  .pdv-cliente input {
+    flex: 1;
+    border: 1.5px solid var(--mborder);
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    background: var(--mc2);
+    color: var(--mtext) !important;
+    outline: none;
+    cursor: default
+  }
+
+  .pdv-cliente input:focus {
+    border-color: #4f46e5
+  }
+
+  .pdv-cliente input::placeholder {
+    color: var(--mmuted)
+  }
+
+  .btn-cliente-search {
+    width: 34px;
+    height: 34px;
+    border-radius: 7px;
+    border: none;
+    background: #4f46e5;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    flex-shrink: 0
+  }
+
+  .btn-cliente-search:hover {
+    background: #3730a3
+  }
+
+  .btn-cliente-rm {
+    width: 34px;
+    height: 34px;
+    border-radius: 7px;
+    border: 1px solid #fca5a5;
+    background: #fef2f2;
+    color: #dc2626;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    flex-shrink: 0;
+    display: none
+  }
+
+  .btn-cliente-rm:hover {
+    background: #fee2e2
+  }
+
+  /* Itens do carrinho */
+  .pdv-itens {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0
+  }
+
+  .pdv-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--mborder2);
+    display: flex;
+    flex-direction: column;
+    gap: 4px
+  }
+
+  .pdv-item-row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px
+  }
+
+  .pdv-item-nome {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mtext2);
+    flex: 1;
+    line-height: 1.3
+  }
+
+  .pdv-item-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: #059669;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap
+  }
+
+  .pdv-item-total.com-desc {
+    color: #4f46e5
+  }
+
+  .pdv-item-row2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap
+  }
+
+  .qtd-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 4px
+  }
+
+  .qtd-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 1px solid var(--mborder);
+    background: var(--mc2);
+    color: var(--mtext2);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .1s;
+    flex-shrink: 0
+  }
+
+  .qtd-btn:hover {
+    background: #e0e7ff;
+    border-color: #a5b4fc;
+    color: #4f46e5
+  }
+
+  .qtd-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    color: var(--mtext2)
+  }
+
+  .preco-unit {
+    font-size: 11px;
+    color: var(--mmuted)
+  }
+
+  .desc-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto
+  }
+
+  .desc-chk {
+    width: 14px;
+    height: 14px;
+    accent-color: #4f46e5;
+    cursor: pointer
+  }
+
+  .desc-label {
+    font-size: 11px;
+    color: var(--mmuted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap
+  }
+
+  .desc-pct-inp {
+    width: 50px;
+    padding: 3px 6px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 5px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--mc2);
+    color: #4f46e5;
+    text-align: center;
+    outline: none
+  }
+
+  .desc-pct-inp:focus {
+    border-color: #4f46e5
+  }
+
+  .btn-rm-item {
+    background: none;
+    border: none;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    line-height: 1;
+    opacity: .6;
+    flex-shrink: 0
+  }
+
+  .btn-rm-item:hover {
+    opacity: 1
+  }
+
+  .pdv-vazio {
+    padding: 32px;
+    text-align: center;
+    color: var(--mmuted);
+    font-size: 13px
+  }
+
+  /* Desconto em lote */
+  .desc-lote-bar {
+    padding: 8px 12px;
+    background: #eff6ff;
+    border-bottom: 1px solid #bfdbfe;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap
+  }
+
+  html[data-theme="dark"] .desc-lote-bar {
+    background: #0d1f3c;
+    border-color: #1e3a5f
+  }
+
+  .desc-lote-bar span {
+    font-size: 12px;
+    color: #1d4ed8;
+    font-weight: 500;
+    flex: 1
+  }
+
+  html[data-theme="dark"] .desc-lote-bar span {
+    color: #93c5fd
+  }
+
+  .desc-lote-inp {
+    width: 55px;
+    padding: 4px 6px;
+    border: 1.5px solid #93c5fd;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    background: #fff;
+    color: #1d4ed8;
+    text-align: center;
+    outline: none
+  }
+
+  html[data-theme="dark"] .desc-lote-inp {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-color: #2563eb
+  }
+
+  .btn-lote {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all .15s
+  }
+
+  .btn-lote-apply {
+    background: #1d4ed8;
+    color: #fff
+  }
+
+  .btn-lote-apply:hover {
+    background: #1e40af
+  }
+
+  .btn-lote-clear {
+    background: #e0e7ff;
+    color: #3730a3
+  }
+
+  .btn-lote-clear:hover {
+    background: #c7d2fe
+  }
+
+  html[data-theme="dark"] .btn-lote-clear {
+    background: #2e3250;
+    color: #a78bfa
+  }
+
+  /* Totais + pagamento */
+  .pdv-totais {
+    padding: 10px 12px;
+    border-top: 2px solid var(--mborder);
+    background: var(--mc2)
+  }
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--mmuted);
+    margin-bottom: 3px
+  }
+
+  .total-row.principal {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mtext2);
+    margin-top: 4px
+  }
+
+  .total-val {
+    font-family: 'DM Mono', monospace
+  }
+
+  .total-val.verde {
+    color: #059669
+  }
+
+  .total-val.roxo {
+    color: #4f46e5
+  }
+
+  .pagamentos-section {
+    padding: 10px 12px;
+    border-top: 1px solid var(--mborder)
+  }
+
+  .pag-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--mmuted);
+    margin-bottom: 8px
+  }
+
+  .pag-formas {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px
+  }
+
+  .pag-btn {
+    padding: 6px 10px;
+    border-radius: 7px;
+    border: 1.5px solid var(--mborder);
+    background: var(--mc);
+    color: var(--mtext2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 4px
+  }
+
+  .pag-btn:hover {
+    border-color: #a5b4fc;
+    background: #e0e7ff;
+    color: #3730a3
+  }
+
+  .pag-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 8px
+  }
+
+  .pag-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--mc2);
+    border-radius: 7px;
+    padding: 6px 10px
+  }
+
+  .pag-item-forma {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mtext2);
+    flex: 1
+  }
+
+  .pag-item-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: #059669
+  }
+
+  .pag-item-rm {
+    background: none;
+    border: none;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: .6
+  }
+
+  .pag-item-rm:hover {
+    opacity: 1
+  }
+
+  .troco-info {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 7px;
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px
+  }
+
+  html[data-theme="dark"] .troco-info {
+    background: #052e16;
+    border-color: #166534
+  }
+
+  .troco-info span {
+    font-size: 12px;
+    color: #166534;
+    font-weight: 600
+  }
+
+  html[data-theme="dark"] .troco-info span {
+    color: #4ade80
+  }
+
+  .troco-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: #166534
+  }
+
+  html[data-theme="dark"] .troco-val {
+    color: #4ade80
+  }
+
+  .falta-info {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 7px;
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px
+  }
+
+  .falta-info span {
+    font-size: 12px;
+    color: #92400e;
+    font-weight: 600
+  }
+
+  .falta-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: #dc2626
+  }
+
+  .btn-finalizar {
+    width: 100%;
+    padding: 13px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    margin-top: 4px
+  }
+
+  .btn-finalizar:hover {
+    background: #047857;
+    transform: translateY(-1px)
+  }
+
+  .btn-finalizar:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none
+  }
+
+  .btn-cancelar {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all .15s
+  }
+
+  .btn-cancelar:hover {
+    background: #fee2e2
+  }
+
+  /* Modal pagamento dinheiro */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .75);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(3px)
+  }
+
+  .modal-box {
+    background: #fff;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 340px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+    border: 1.5px solid #c7d2fe;
+    overflow: hidden
+  }
+
+  html[data-theme="dark"] .modal-box {
+    background: #1a1d27;
+    border-color: #3d4270
+  }
+
+  .modal-head {
+    background: linear-gradient(90deg, #4f46e5, #6366f1);
+    padding: 14px 18px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center
+  }
+
+  .modal-head h3 {
+    font-size: 15px;
+    font-weight: 700
+  }
+
+  .btn-mclose {
+    background: rgba(255, 255, 255, .2);
+    border: none;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center
+  }
+
+  .btn-mclose:hover {
+    background: rgba(255, 255, 255, .35)
+  }
+
+  .modal-body {
+    padding: 18px
+  }
+
+  .modal-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .8px;
+    color: var(--mmuted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block
+  }
+
+  .modal-inp {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--mtext2);
+    background: var(--mc2);
+    outline: none;
+    text-align: right
+  }
+
+  .modal-inp:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
+  }
+
+  .modal-troco {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f0fdf4;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 10px
+  }
+
+  .modal-troco span {
+    font-size: 12px;
+    color: #166534;
+    font-weight: 600
+  }
+
+  .modal-troco-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #166534
+  }
+
+  html[data-theme="dark"] .modal-troco {
+    background: #052e16
+  }
+
+  html[data-theme="dark"] .modal-troco span,
+  .modal-troco-val {
+    color: #4ade80
+  }
+
+  .modal-footer {
+    padding: 10px 18px 16px;
+    display: flex;
+    gap: 8px
+  }
+
+  .mbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .15s;
+    flex: 1
+  }
+
+  .mbtn-ok {
+    background: #059669;
+    color: #fff
+  }
+
+  .mbtn-ok:hover {
+    background: #047857
+  }
+
+  .mbtn-ghost {
+    background: var(--mc);
+    color: #4f46e5;
+    border: 1px solid #c7d2fe
+  }
+
+  .mbtn-ghost:hover {
+    background: var(--mc2)
+  }
+
+  /* Modal Seleção Cliente */
+  .modal-clientes .modal-box {
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column
+  }
+
+  .modal-clientes .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px
+  }
+
+  .pesquisa-cliente-wrap {
+    position: relative;
+    margin-bottom: 12px
+  }
+
+  .pesquisa-cliente-wrap input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none
+  }
+
+  .pesquisa-cliente-wrap input:focus {
+    border-color: #4f46e5
+  }
+
+  .clientes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px
+  }
+
+  .cliente-item {
+    padding: 12px;
+    border: 1px solid var(--mborder);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center
+  }
+
+  .cliente-item:hover {
+    border-color: #4f46e5;
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .cliente-item:hover {
+    background: #22263a;
+    border-color: #6366f1
+  }
+
+  .cliente-item-nome {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--mtext2)
+  }
+
+  .cliente-item-tel {
+    font-size: 12px;
+    color: var(--mmuted);
+    margin-top: 2px
+  }
+
+  .tag-decorador {
+    font-size: 10px;
+    font-weight: 700;
+    background: #fef08a;
+    color: #854d0e;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: .5px
+  }
+
+  html[data-theme="dark"] .tag-decorador {
+    background: #713f12;
+    color: #fde047
+  }
+
+  .hist-container {
+    margin-top: 24px;
+    border-top: 2px dashed var(--mborder);
+    padding-top: 24px
+  }
+
+  @keyframes mfadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px)
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0)
+    }
+  }
+</style>
+
+<div class="mod" style="height:100%;display:flex;flex-direction:column;gap:12px">
+  <div
+    style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;animation:mfadeUp .3s ease">
+    <div>
+      <h2 style="font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:2px">🛒 PDV — Ponto de Venda</h2>
+      <p style="font-size:12px;color:var(--mmuted)">Filial: <strong id="pdv-filial">—</strong> &nbsp;·&nbsp; Operador:
+        <strong id="pdv-op">—</strong>
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="pdv-vendedor"
+        style="padding:6px 10px;border-radius:8px;border:1px solid var(--mborder);background:var(--mc);color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer">
+        <option value="">Carregando Vendedores...</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="pdv-layout">
+    <!-- ESQUERDA: catálogo -->
+    <div class="pdv-left">
+      <div class="pdv-search-bar">
+        <div class="pdv-search-wrap">
+          <svg viewBox="0 0 24 24" stroke-width="2">
+            <circle cx="11" cy="11" r="7" />
+            <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
+          </svg>
+          <input class="pdv-search-inp" id="pdv-busca" type="text"
+            placeholder="Buscar produto por código, barra ou nome..." oninput="PDV.filtrar(this.value)">
+        </div>
+      </div>
+      <div class="pdv-produtos-grid" id="pdv-grid">
+        <div class="pdv-empty"><span class="pdv-empty-icon">⏳</span>Carregando produtos...</div>
+      </div>
+    </div>
+
+    <!-- DIREITA: carrinho -->
+    <div class="pdv-right">
+      <div class="pdv-right-head">
+        <h3>🛒 Carrinho</h3>
+        <p id="pdv-num-venda">Nova Venda</p>
+      </div>
+      <div class="pdv-cliente">
+        <input type="text" id="pdv-cliente-nome" placeholder="👤 Buscar ou selecionar cliente..." readonly
+          onclick="PDV.abrirBuscaCliente()">
+        <button class="btn-cliente-search" onclick="PDV.abrirBuscaCliente()" title="Buscar Cliente">🔍</button>
+        <button class="btn-cliente-rm" id="btn-cliente-rm" onclick="PDV.removerCliente()"
+          title="Remover Cliente">✕</button>
+      </div>
+
+      <!-- Barra desconto em lote -->
+      <div class="desc-lote-bar">
+        <span>🎈 Desconto Balão</span>
+        <input class="desc-lote-inp" id="desc-lote-pct" type="number" min="0" max="100" value="10" placeholder="%">
+        <span style="font-size:12px;color:#1d4ed8;font-weight:700">%</span>
+        <button class="btn-lote btn-lote-apply" onclick="PDV.aplicarDescontoBalao()">Aplicar</button>
+        <button class="btn-lote btn-lote-clear" onclick="PDV.limparDescontos()">Limpar</button>
+      </div>
+
+      <div class="pdv-itens" id="pdv-itens">
+        <div class="pdv-vazio">Nenhum item adicionado.<br>Clique em um produto para adicionar.</div>
+      </div>
+
+      <div class="pdv-totais">
+        <div class="total-row"><span>Subtotal</span><span class="total-val" id="pdv-subtotal">R$ 0,00</span></div>
+        <div class="total-row"><span>Desconto</span><span class="total-val roxo" id="pdv-desconto">- R$ 0,00</span>
+        </div>
+        <div class="total-row principal"><span>Total</span><span class="total-val verde" id="pdv-total">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div class="pagamentos-section">
+        <div class="pag-title">Pagamento</div>
+        <div class="pag-formas">
+          <button class="pag-btn" onclick="PDV.addPag('dinheiro')">💵 Dinheiro</button>
+          <button class="pag-btn" onclick="PDV.addPag('pix')">📱 Pix</button>
+          <button class="pag-btn" onclick="PDV.addPag('credito')">💳 Crédito</button>
+          <button class="pag-btn" onclick="PDV.addPag('debito')">💳 Débito</button>
+        </div>
+        <div class="pag-lista" id="pag-lista"></div>
+        <div id="troco-wrap" style="display:none"></div>
+        <button class="btn-finalizar" id="btn-finalizar" onclick="PDV.finalizar()" disabled>✓ Finalizar Venda</button>
+        <button class="btn-cancelar" onclick="PDV.cancelar()">✕ Cancelar Venda</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal dinheiro -->
+<div class="modal-overlay" id="modal-dinheiro" style="display:none">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>💵 Pagamento em Dinheiro</h3>
+      <button class="btn-mclose" onclick="PDV.fecharModalDinheiro()">✕</button>
+    </div>
+    <div class="modal-body">
+      <span class="modal-label">Valor recebido</span>
+      <input class="modal-inp" id="din-recebido" type="number" min="0" step="0.01" placeholder="0,00"
+        oninput="PDV.calcTroco()">
+      <div class="modal-troco">
+        <span>Troco</span>
+        <span class="modal-troco-val" id="din-troco">R$ 0,00</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-ghost" onclick="PDV.fecharModalDinheiro()">Cancelar</button>
+      <button class="mbtn mbtn-ok" onclick="PDV.confirmarDinheiro()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Buscar Cliente -->
+<div class="modal-overlay modal-clientes" id="modal-cli" style="display:none">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>👥 Escolher Cliente</h3>
+      <button class="btn-mclose" onclick="PDV.fecharBuscaCliente()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pesquisa-cliente-wrap">
+        <input type="text" id="inp-busca-cli" placeholder="Digite o nome ou telefone..."
+          oninput="PDV.filtrarClientes(this.value)">
+      </div>
+      <div id="loading-cli" style="text-align:center;padding:20px;display:none;color:var(--mmuted)">⏳ Buscando...</div>
+      <div class="clientes-list" id="lista-cli"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.PDV = (function () {
+    var todos = [];
+    var filtrado = [];
+    var carrinho = [];   // [{produto_pk,codigo,descricao,preco_unit,qtd,desconto_pct,foto_url}]
+    var pagamentos = []; // [{forma,valor,conta_pk}]
+    var pagDinheiroValor = 0;
+    var clienteLogado = null; // Guardar id, nome e isDecorador
+    var listaClientesFull = [];
+    var contasBancarias = []; // Lista de contas cadastradas No Financeiro
+
+    // Info header e Vendedores
+    (async function () {
+      var f = window.filialLogada, op = window.operadorLogado;
+      var ef = document.getElementById('pdv-filial'), eo = document.getElementById('pdv-op');
+      if (ef) ef.textContent = f ? f.codigo + ' – ' + f.nome : '—';
+      if (eo) eo.textContent = op ? op.nome : '—';
+
+      // Carregar vendedores
+      var q_vend = window.supabase.from('operadores').select('*').eq('ativo', true);
+      var res_vend = await q_vend;
+      var selVend = document.getElementById('pdv-vendedor');
+      if (selVend && !res_vend.error) {
+        var vends = res_vend.data.filter(function (v) { return v.admin || v.acesso_pdv || v.filial_pk === (f ? f.pk : null); });
+        selVend.innerHTML = '<option value="">👤 Selecione o Vendedor...</option>';
+        vends.forEach(function (v) {
+          var o = document.createElement('option');
+          o.value = v.login || v.nome;
+          o.textContent = v.nome;
+          selVend.appendChild(o);
+        });
+        if (!vends.length) selVend.innerHTML = '<option value="">Nenhum Vendedor Encontrado</option>';
+      }
+
+      // Carregar Contas Bancárias (Financeiro) para vincular aos pagamentos
+      var q_conta = window.supabase.from('contas_bancarias').select('*').order('nome');
+      if (f && f.pk) q_conta = q_conta.eq('filial_pk', f.pk);
+      var rs_conta = await q_conta;
+      if (rs_conta.data) contasBancarias = rs_conta.data;
+
+      // Historico abaixo removido para ficar em módulo próprio da sidebar
+    })();
+
+    function fmt(v) { return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+    function parseFmt(v) { return parseFloat(String(v || 0).replace(',', '.')) || 0; }
+
+    // ── Carrega produtos ─────────────────────────────────────────
+    (async function () {
+      try {
+        var fil = window.filialLogada;
+        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo').order('descricao');
+        if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
+        var res = await q;
+        if (res.error) throw res.error;
+        todos = (res.data || []);
+        filtrado = todos.slice();
+        renderGrid(filtrado);
+      } catch (err) {
+        document.getElementById('pdv-grid').innerHTML = '<div class="pdv-empty" style="color:#ef4444"><span class="pdv-empty-icon">❌</span>Erro ao carregar produtos:<br>' + err.message + '</div>';
+      }
+    })();
+
+    function renderGrid(lista) {
+      var el = document.getElementById('pdv-grid');
+      if (!el) return;
+      if (!lista || !lista.length) {
+        el.innerHTML = '<div class="pdv-empty"><span class="pdv-empty-icon">📭</span>Nenhum produto encontrado</div>';
+        return;
+      }
+      el.innerHTML = lista.map(function (p) {
+        var foto = p.foto_url ? '<img class="prod-card-foto" src="' + p.foto_url + '" alt="">' : '<div class="prod-card-foto-ph">📦</div>';
+        var preco = p.preco > 0 ? '<span class="prod-card-preco">' + fmt(p.preco) + '</span>' : '<span class="prod-card-sem-preco">sem preço</span>';
+        return '<div class="prod-card" onclick="PDV.add(' + p.pk + ')" title="' + p.descricao + '">' +
+          foto +
+          '<span class="prod-card-cod">' + (p.codigo || '—') + '</span>' +
+          '<span class="prod-card-nome">' + p.descricao + '</span>' +
+          preco +
+          '</div>';
+      }).join('');
+    }
+
+    function filtrar(t) {
+      t = (t || '').toLowerCase();
+
+      // Se digitou mais rapido (scanner) e encontrou exato codigo barras, adiciona e limpa
+      var exatoStr = t.trim();
+      if (exatoStr.length > 2) {
+        var exato = todos.find(function (p) { return (p.codigo_barras || '').toLowerCase() === exatoStr; });
+        // Adicional: verificar se o input acabou de receber enter via scanner
+        if (exato) {
+          add(exato.pk);
+          var inpb = document.getElementById('pdv-busca');
+          if (inpb) { inpb.value = ''; }
+          renderGrid(todos);
+          return;
+        }
+      }
+
+      filtrado = t ? todos.filter(function (p) {
+        return (p.codigo || '').toLowerCase().includes(t) ||
+          (p.codigo_barras || '').toLowerCase().includes(t) ||
+          (p.descricao || '').toLowerCase().includes(t);
+      }) : todos.slice();
+      renderGrid(filtrado);
+    }
+
+    // ── Carrinho ────────────────────────────────────────────────
+    function add(pk) {
+      var p = todos.find(function (x) { return x.pk === pk; });
+      if (!p) return;
+      var ex = carrinho.find(function (i) { return i.produto_pk === pk; });
+      if (ex) { ex.qtd++; }
+      else {
+        carrinho.push({ produto_pk: p.pk, codigo: p.codigo || '', descricao: p.descricao, preco_unit: p.preco || 0, qtd: 1, desconto_pct: 0, foto_url: p.foto_url || '' });
+      }
+      renderCarrinho();
+    }
+
+    function removeItem(idx) { carrinho.splice(idx, 1); renderCarrinho(); }
+    function setQtd(idx, v) {
+      var q = Math.max(1, parseInt(v) || 1);
+      carrinho[idx].qtd = q;
+      renderCarrinho();
+    }
+    function setDesc(idx, v) {
+      if (!podeAplicarDesconto()) {
+        window.showToast('Só é possível aplicar descontos para clientes cadastrados como Decoradores.', 'error');
+
+        var inp = document.getElementById('dinp-' + idx);
+        if (inp) inp.value = '';
+
+        carrinho[idx].desconto_pct = 0;
+        renderCarrinho();
+        return;
+      }
+      carrinho[idx].desconto_pct = Math.min(100, Math.max(0, parseFloat(v) || 0));
+      renderCarrinho();
+    }
+
+    function calcItem(it) {
+      var bruto = it.preco_unit * it.qtd;
+      var desc = bruto * (it.desconto_pct / 100);
+      return { bruto: bruto, desc: desc, liq: bruto - desc };
+    }
+
+    function renderCarrinho() {
+      var el = document.getElementById('pdv-itens');
+      if (!el) return;
+      if (!carrinho.length) {
+        el.innerHTML = '<div class="pdv-vazio">Nenhum item adicionado.<br>Clique em um produto para adicionar.</div>';
+        atualizarTotais(); return;
+      }
+      el.innerHTML = carrinho.map(function (it, idx) {
+        var calc = calcItem(it);
+        var temDesc = it.desconto_pct > 0;
+        return '<div class="pdv-item">' +
+          '<div class="pdv-item-row1">' +
+          '<span class="pdv-item-nome">' + it.descricao + '</span>' +
+          '<span class="pdv-item-total' + (temDesc ? ' com-desc' : '') + '">' + fmt(calc.liq) + '</span>' +
+          '</div>' +
+          '<div class="pdv-item-row2">' +
+          '<div class="qtd-ctrl">' +
+          '<button class="qtd-btn" onclick="PDV.setQtd(' + idx + ',' + Math.max(1, it.qtd - 1) + ')">−</button>' +
+          '<span class="qtd-val">' + it.qtd + '</span>' +
+          '<button class="qtd-btn" onclick="PDV.setQtd(' + idx + ',' + (it.qtd + 1) + ')">+</button>' +
+          '</div>' +
+          '<span class="preco-unit">' + fmt(it.preco_unit) + ' un.</span>' +
+          '<div class="desc-wrap">' +
+          '<input type="checkbox" class="desc-chk" id="dchk-' + idx + '" ' + (temDesc ? 'checked' : '') + ' onchange="PDV.toggleDesc(' + idx + ',this.checked)">' +
+          '<label class="desc-label" for="dchk-' + idx + '">Desc.</label>' +
+          '<input class="desc-pct-inp" type="number" min="0" max="100" value="' + (it.desconto_pct || '') + '" placeholder="%" style="display:' + (temDesc ? 'block' : 'none') + '" id="dinp-' + idx + '" oninput="PDV.setDesc(' + idx + ',this.value)">' +
+          '<span style="font-size:11px;color:#4f46e5;display:' + (temDesc ? 'inline' : 'none') + '" id="dpct-' + idx + '">%</span>' +
+          '</div>' +
+          '<button class="btn-rm-item" onclick="PDV.removeItem(' + idx + ')" title="Remover">🗑</button>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+      atualizarTotais();
+    }
+
+    function toggleDesc(idx, on) {
+      if (on && !podeAplicarDesconto()) {
+        window.showToast('Descontos permitidos apenas para clientes Decoradores.', 'error');
+        var chk = document.getElementById('dchk-' + idx);
+        if (chk) chk.checked = false;
+        return;
+      }
+      if (!on) carrinho[idx].desconto_pct = 0;
+      renderCarrinho();
+      if (on) setTimeout(function () { var inp = document.getElementById('dinp-' + idx); if (inp) { inp.style.display = 'block'; inp.focus(); inp.select(); } }, 30);
+    }
+
+    function atualizarTotais() {
+      var sub = 0, desc = 0;
+      carrinho.forEach(function (it) {
+        var c = calcItem(it); sub += c.bruto; desc += c.desc;
+      });
+      var total = sub - desc;
+      document.getElementById('pdv-subtotal').textContent = fmt(sub);
+      document.getElementById('pdv-desconto').textContent = '- ' + fmt(desc);
+      document.getElementById('pdv-total').textContent = fmt(total);
+      renderTroco();
+      // Botão finalizar: precisa ter itens e pagamento suficiente
+      var pago = pagamentos.reduce(function (s, p) { return s + p.valor; }, 0);
+      var btn = document.getElementById('btn-finalizar');
+      if (btn) btn.disabled = !(carrinho.length && pago >= total && total > 0);
+    }
+
+    function podeAplicarDesconto() {
+      // Regra de negócio: O clienteLogado deve existir e ser decorador = true
+      return clienteLogado && clienteLogado.decorador === true;
+    }
+
+    // ── Desconto Balão ──────────────────────────────────────────
+    function aplicarDescontoBalao() {
+      if (!podeAplicarDesconto()) {
+        window.showToast('Descontos permitidos apenas para clientes Decoradores selecionados na venda.', 'error');
+        return;
+      }
+      var pct = parseFloat(document.getElementById('desc-lote-pct')?.value) || 0;
+      if (!pct) { window.showToast('Informe o % de desconto.', 'error'); return; }
+      var count = 0;
+      carrinho.forEach(function (it) {
+        if ((it.descricao || '').toLowerCase().includes('bal')) { it.desconto_pct = pct; count++; }
+      });
+      renderCarrinho();
+      window.showToast(count ? count + ' item(s) com desconto de ' + pct + '% aplicado!' : 'Nenhum item com "balão" no carrinho.');
+    }
+
+    function limparDescontos() {
+      carrinho.forEach(function (it) { it.desconto_pct = 0; });
+      renderCarrinho();
+      window.showToast('Descontos removidos.');
+    }
+
+    // ── Pagamentos ──────────────────────────────────────────────
+    var FORMA_LABEL = { 'dinheiro': '💵 Dinheiro', 'pix': '📱 Pix', 'credito': '💳 Crédito', 'debito': '💳 Débito' };
+
+    function addPag(forma) {
+      if (forma === 'dinheiro') { abrirModalDinheiro(); return; }
+      // Outras formas: calcula o valor restante
+      var total = getTotalLiq();
+      var pago = pagamentos.reduce(function (s, p) { return s + p.valor; }, 0);
+      var falta = Math.max(0, total - pago);
+      if (falta <= 0) { window.showToast('Venda já coberta pelos pagamentos.'); return; }
+
+      // Auto-selecionar conta ideal (Se dinheiro -> prioritizar tipo 'caixa', senão 'banco')
+      var contaBusca = (forma === 'dinheiro') ? 'caixa' : 'banco';
+      var contaPadraoId = '';
+      var ccPref = contasBancarias.find(function (cb) { return cb.tipo === contaBusca; });
+      if (ccPref) contaPadraoId = ccPref.pk;
+      else if (contasBancarias.length > 0) contaPadraoId = contasBancarias[0].pk;
+
+      pagamentos.push({ forma: forma, valor: falta, conta_pk: contaPadraoId });
+      renderPagamentos();
+    }
+
+    function remPag(idx) { pagamentos.splice(idx, 1); renderPagamentos(); }
+
+    function setPagConta(idx, conta_pk) {
+      pagamentos[idx].conta_pk = conta_pk;
+    }
+
+    function renderPagamentos() {
+      var el = document.getElementById('pag-lista');
+      if (!el) return;
+      el.innerHTML = pagamentos.map(function (p, i) {
+        var cNome = 'Sem conta';
+        var c = contasBancarias.find(function (cb) { return cb.pk === p.conta_pk; });
+        if (c) cNome = c.nome;
+
+        var contaHtml = p.conta_pk ?
+          '<div style="width:100%;font-size:10px;color:var(--mmuted);margin-top:2px">▸ Destino: ' + cNome + '</div>' :
+          '<div style="font-size:10px;color:red;margin-top:2px;width:100%">▸ Nenhuma conta ' + (p.forma) + ' cadastrada</div>';
+
+        return '<div class="pag-item" style="flex-wrap:wrap">' +
+          '<div style="display:flex;width:100%;align-items:center;gap:8px">' +
+          '<span class="pag-item-forma">' + (FORMA_LABEL[p.forma] || p.forma) + '</span>' +
+          '<span class="pag-item-val">' + fmt(p.valor) + '</span>' +
+          '<button class="pag-item-rm" onclick="PDV.remPag(' + i + ')" title="Remover">✕</button>' +
+          '</div>' +
+          contaHtml +
+          '</div>';
+      }).join('');
+      renderTroco();
+      atualizarTotais();
+    }
+
+    function getTotalLiq() {
+      var sub = 0, desc = 0;
+      carrinho.forEach(function (it) { var c = calcItem(it); sub += c.bruto; desc += c.desc; });
+      return sub - desc;
+    }
+
+    function renderTroco() {
+      var wrap = document.getElementById('troco-wrap');
+      if (!wrap) return;
+      var total = getTotalLiq();
+      var pago = pagamentos.reduce(function (s, p) { return s + p.valor; }, 0);
+      var diff = pago - total;
+      if (!pagamentos.length || total <= 0) { wrap.style.display = 'none'; return; }
+      wrap.style.display = '';
+      if (diff >= 0) {
+        wrap.innerHTML = '<div class="troco-info"><span>Troco</span><span class="troco-val">' + fmt(diff) + '</span></div>';
+      } else {
+        wrap.innerHTML = '<div class="falta-info"><span>Falta receber</span><span class="falta-val">' + fmt(Math.abs(diff)) + '</span></div>';
+      }
+    }
+
+    // ── Modal dinheiro ──────────────────────────────────────────
+    function abrirModalDinheiro() {
+      var total = getTotalLiq();
+      var pago = pagamentos.filter(function (p) { return p.forma !== 'dinheiro'; }).reduce(function (s, p) { return s + p.valor; }, 0);
+      var falta = Math.max(0, total - pago);
+      var inp = document.getElementById('din-recebido');
+      if (inp) { inp.value = falta.toFixed(2); }
+      calcTroco();
+      document.getElementById('modal-dinheiro').style.display = 'flex';
+      setTimeout(function () { if (inp) { inp.focus(); inp.select(); } }, 60);
+    }
+    function fecharModalDinheiro() { document.getElementById('modal-dinheiro').style.display = 'none'; }
+
+    function calcTroco() {
+      var total = getTotalLiq();
+      var outrosPagos = pagamentos.filter(function (p) { return p.forma !== 'dinheiro'; }).reduce(function (s, p) { return s + p.valor; }, 0);
+      var rec = parseFmt(document.getElementById('din-recebido')?.value);
+      var troco = rec - (total - outrosPagos);
+      trocoDinheiro = Math.max(0, troco);
+      pagDinheiroValor = rec;
+      var el = document.getElementById('din-troco');
+      if (el) el.textContent = fmt(Math.max(0, troco));
+    }
+
+    function confirmarDinheiro() {
+      var rec = parseFmt(document.getElementById('din-recebido')?.value);
+      if (rec <= 0) { window.showToast('Informe o valor recebido.', 'error'); return; }
+      // Remove pagamento dinheiro anterior se existir
+      pagamentos = pagamentos.filter(function (p) { return p.forma !== 'dinheiro'; });
+
+      // Auto-selecionar conta de tipo dinheiro (caixa)
+      var contaPadraoId = '';
+      var ccPref = contasBancarias.find(function (cb) { return cb.tipo === 'caixa' || cb.tipo === 'dinheiro'; });
+      if (ccPref) contaPadraoId = ccPref.pk;
+      else if (contasBancarias.length > 0) contaPadraoId = contasBancarias[0].pk;
+
+      pagamentos.push({ forma: 'dinheiro', valor: rec, troco: trocoDinheiro, conta_pk: contaPadraoId });
+      fecharModalDinheiro();
+      renderPagamentos();
+    }
+
+    // ── Finalizar ───────────────────────────────────────────────
+    async function finalizar() {
+      var total = getTotalLiq();
+      if (!carrinho.length) { window.showToast('Carrinho vazio.', 'error'); return; }
+      if (total <= 0) { window.showToast('Total inválido.', 'error'); return; }
+
+      var selVend = document.getElementById('pdv-vendedor');
+      var vendedor = selVend ? selVend.value : '';
+      if (!vendedor) {
+        window.showToast('Por favor, selecione quem está fazendo a venda.', 'error');
+        if (selVend) {
+          selVend.focus();
+          selVend.style.borderColor = '#ef4444';
+          setTimeout(function () { selVend.style.borderColor = ''; }, 2000);
+        }
+        return;
+      }
+
+      var btn = document.getElementById('btn-finalizar');
+      btn.disabled = true; btn.textContent = 'Salvando...';
+
+      try {
+        var fil = window.filialLogada, op = window.operadorLogado;
+        // Número da venda por filial
+        var qn = window.supabase.from('vendas').select('numero').order('numero', { ascending: false }).limit(1);
+        if (fil && fil.pk) qn = qn.eq('filial_pk', fil.pk);
+        var rn = await qn;
+        var numero = (rn.data && rn.data.length ? rn.data[0].numero : 999) + 1;
+
+        var sub = carrinho.reduce(function (s, i) { return s + calcItem(i).bruto; }, 0);
+        var desc = carrinho.reduce(function (s, i) { return s + calcItem(i).desc; }, 0);
+        var nomeCliParaVenda = clienteLogado ? clienteLogado.nome : null;
+
+        // Salva venda
+        var rv = await window.supabase.from('vendas').insert([{
+          filial_pk: fil?.pk || null, numero, cliente: nomeCliParaVenda,
+          subtotal: sub, desconto_total: desc, total,
+          operador: vendedor, status: 'finalizada'
+        }]).select('pk').single();
+        if (rv.error) throw rv.error;
+        var vendaPk = rv.data.pk;
+
+        // Salva itens
+        var ri = await window.supabase.from('itens_venda').insert(carrinho.map(function (it) {
+          var c = calcItem(it);
+          return {
+            venda_pk: vendaPk, produto_pk: it.produto_pk || null, codigo: it.codigo,
+            descricao: it.descricao, preco_unit: it.preco_unit, qtd: it.qtd,
+            desconto_pct: it.desconto_pct, desconto_val: c.desc, total_item: c.liq
+          };
+        }));
+        if (ri.error) throw ri.error;
+
+        // Salva pagamentos
+        var rp = await window.supabase.from('pagamentos_venda').insert(pagamentos.map(function (p) {
+          return { venda_pk: vendaPk, forma: p.forma, valor: p.valor, conta_pk: p.conta_pk || null };
+        }));
+        if (rp.error) throw rp.error;
+
+        // Injeta movimentacao financeira para cada pagamento que tem conta_pk
+        for (var i = 0; i < pagamentos.length; i++) {
+          var p = pagamentos[i];
+          if (p.conta_pk) {
+            await window.supabase.from('movimentacoes_financeiras').insert([{
+              conta_pk: p.conta_pk,
+              venda_pk: vendaPk,
+              tipo_movimento: 'entrada',
+              valor: p.valor,
+              descricao: 'Recebimento Venda #' + String(numero).padStart(4, '0') + ' (' + (FORMA_LABEL[p.forma] || p.forma) + ')'
+            }]);
+          }
+        }
+
+        window.showToast('Venda #' + numero + ' finalizada!');
+        // Imprime cupom
+        imprimirCupom(vendaPk, numero, nomeCliParaVenda, sub, desc, total, pagamentos);
+        limparVenda();
+        // Atualiza histórico se a funcVendas existir
+        if (window.carregarVendas) window.carregarVendas();
+      } catch (e) {
+        window.showToast('Erro: ' + e.message, 'error');
+        btn.disabled = false; btn.textContent = '✓ Finalizar Venda';
+      }
+    }
+
+    function cancelar() {
+      if (carrinho.length && !confirm('Cancelar a venda atual? Todos os itens serão removidos.')) return;
+      limparVenda();
+      window.showToast('Venda cancelada.');
+    }
+
+    function limparVenda() {
+      carrinho = []; pagamentos = []; trocoDinheiro = 0;
+      removerCliente();
+      renderCarrinho(); renderPagamentos();
+      var selVend = document.getElementById('pdv-vendedor');
+      if (selVend) selVend.value = '';
+      var wrap = document.getElementById('troco-wrap'); if (wrap) wrap.style.display = 'none';
+      var btn = document.getElementById('btn-finalizar'); if (btn) { btn.disabled = true; btn.textContent = '✓ Finalizar Venda'; }
+    }
+
+    // ── Clientes Buscador ───────────────────────────────────────
+    async function abrirBuscaCliente() {
+      document.getElementById('modal-cli').style.display = 'flex';
+      var inp = document.getElementById('inp-busca-cli');
+      inp.value = '';
+      document.getElementById('loading-cli').style.display = 'block';
+
+      var q = window.supabase.from('clientes').select('pk,nome,telefone,decorador').order('nome').limit(200);
+      var fil = window.filialLogada;
+      if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
+
+      var res = await q;
+      document.getElementById('loading-cli').style.display = 'none';
+      if (!res.error) {
+        listaClientesFull = res.data || [];
+        filtrarClientes('');
+      } else {
+        window.showToast('Erro ao carregar clientes: ' + res.error.message, 'error');
+      }
+      setTimeout(function () { inp.focus() }, 100);
+    }
+
+    function fecharBuscaCliente() {
+      document.getElementById('modal-cli').style.display = 'none';
+    }
+
+    function filtrarClientes(t) {
+      t = (t || '').toLowerCase();
+      var res = listaClientesFull.filter(function (c) {
+        return (c.nome || '').toLowerCase().includes(t) || (c.telefone || '').includes(t);
+      });
+      var el = document.getElementById('lista-cli');
+      if (!res.length) {
+        el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--mmuted)">Nenhum cliente encontrado.</div>';
+        return;
+      }
+      el.innerHTML = res.map(function (c, idx) {
+        var tag = c.decorador ? '<span class="tag-decorador">Decorador</span>' : '';
+        return '<div class="cliente-item" onclick="PDV.escolherCliente(' + idx + ')">' +
+          '<div>' +
+          '<div class="cliente-item-nome">' + c.nome + '</div>' +
+          '<div class="cliente-item-tel">' + (c.telefone || '—') + '</div>' +
+          '</div>' +
+          tag +
+          '</div>';
+      }).join('');
+    }
+
+    function escolherCliente(idx) {
+      var txt = document.getElementById('inp-busca-cli').value.toLowerCase();
+      var arr = listaClientesFull.filter(function (c) {
+        return (c.nome || '').toLowerCase().includes(txt) || (c.telefone || '').includes(txt);
+      });
+      var cli = arr[idx];
+      clienteLogado = cli;
+      document.getElementById('pdv-cliente-nome').value = cli.nome + (cli.decorador ? ' (Decorador)' : '');
+      document.getElementById('btn-cliente-rm').style.display = 'flex';
+      fecharBuscaCliente();
+    }
+
+    function removerCliente() {
+      clienteLogado = null;
+      var el = document.getElementById('pdv-cliente-nome');
+      if (el) el.value = '';
+      var rm = document.getElementById('btn-cliente-rm');
+      if (rm) rm.style.display = 'none';
+      limparDescontos(); // Ao remover cliente, removemos descontos p/ segurança
+    }
+
+    // ── Cupom ───────────────────────────────────────────────────
+    function imprimirCupom(pk, num, cliente, sub, desc, total, pags) {
+      var f = window.filialLogada, op = window.operadorLogado;
+      var agora = new Date().toLocaleString('pt-BR');
+      var itensTxt = carrinho.map(function (it) {
+        var c = calcItem(it);
+        var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
+        return it.qtd + 'x ' + it.descricao + descTxt + '\n   ' + fmt(it.preco_unit) + ' x ' + it.qtd + ' = ' + fmt(c.liq);
+      }).join('\n');
+      var pagTxt = pags.map(function (p) { return '  ' + (FORMA_LABEL[p.forma] || p.forma) + ': ' + fmt(p.valor); }).join('\n');
+      var troco = pags.find(function (p) { return p.forma === 'dinheiro' && p.troco > 0; });
+      var trocoTxt = troco ? '\n  Troco: ' + fmt(troco.troco) : '';
+      var html = '<html><head><title>Cupom #' + num + '</title><style>' +
+        'body{font-family:monospace;font-size:12px;width:300px;margin:0 auto;padding:10px}' +
+        'h2{text-align:center;font-size:14px}p{margin:2px 0}.linha{border-top:1px dashed #000;margin:6px 0}' +
+        '</style></head><body>' +
+        '<h2>' + (f ? f.nome : '') + '</h2>' +
+        '<p style="text-align:center">Cupom de Venda #' + String(num).padStart(4, '0') + '</p>' +
+        '<p style="text-align:center">' + agora + '</p>' +
+        (cliente ? '<p>Cliente: ' + cliente + '</p>' : '') +
+        (op ? '<p>Operador: ' + op.nome + '</p>' : '') +
+        '<div class="linha"></div>' +
+        '<pre>' + itensTxt + '</pre>' +
+        '<div class="linha"></div>' +
+        '<p>Subtotal: ' + fmt(sub) + '</p>' +
+        (desc > 0 ? '<p>Desconto: - ' + fmt(desc) + '</p>' : '') +
+        '<p><strong>TOTAL: ' + fmt(total) + '</strong></p>' +
+        '<div class="linha"></div>' +
+        '<p>Pagamentos:</p><pre>' + pagTxt + trocoTxt + '</pre>' +
+        '<div class="linha"></div>' +
+        '<p style="text-align:center">Obrigado pela preferência!</p>' +
+        '</' + 'body></' + 'html>';
+      var w = window.open('', '_blank', 'width=340,height=600');
+      if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 400); }
+    }
+
+    return {
+      filtrar, add, removeItem, setQtd, setDesc, toggleDesc, aplicarDescontoBalao, limparDescontos,
+      addPag, remPag, calcTroco, confirmarDinheiro, fecharModalDinheiro, finalizar, cancelar,
+      abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente
+    };
+  })();
+</script>

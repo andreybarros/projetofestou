@@ -5,17 +5,43 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Estoque</title>
-  <link rel="icon" href="img/logo.png" type="image/png">
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
-    rel="stylesheet">
-  <link rel="stylesheet" href="css/shared.css">
   <style>
-    /* Estilos específicos do layout principal (Sidebar e Login) que ainda não foram totalmente abstraídos ou são estruturais */
+    :root {
+      --surface: #4f46e5;
+      --surface-hv: #3730a3;
+      --sidebar-act: #3730a3;
+      --sidebar-txt: #fff;
+      --sidebar-mut: rgba(255, 255, 255, .55);
+      --content-bg: #f4f4f9;
+      --border: rgba(255, 255, 255, .2);
+    }
+
+    [data-theme="dark"] {
+      --surface: #1a1d27;
+      --surface-hv: #22263a;
+      --sidebar-act: #2e3250;
+      --sidebar-txt: #e8e9f3;
+      --sidebar-mut: rgba(255, 255, 255, .35);
+      --content-bg: #0f1117;
+      --border: rgba(255, 255, 255, .08);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
     body {
+      font-family: Arial, sans-serif;
+      background: var(--content-bg);
+      color: var(--sidebar-txt);
       display: flex;
       height: 100vh;
       overflow: hidden;
+      transition: background .2s
     }
 
     /* LOGIN */
@@ -24,7 +50,7 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      background: var(--content-bg);
+      background: var(--content-bg)
     }
 
     .login-box {
@@ -34,33 +60,33 @@
       width: 100%;
       max-width: 380px;
       box-shadow: 0 4px 24px rgba(0, 0, 0, .12);
-      margin: 16px;
+      margin: 16px
     }
 
     [data-theme="dark"] .login-box {
-      background: #1a1d27;
+      background: #1a1d27
     }
 
     .login-logo {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 20px
     }
 
     .login-logo div:first-child {
       font-size: 36px;
-      margin-bottom: 6px;
+      margin-bottom: 6px
     }
 
     .login-logo h2 {
       color: #4f46e5;
       font-size: 18px;
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 4px
     }
 
     .login-logo p {
       color: #888;
-      font-size: 12px;
+      font-size: 12px
     }
 
     .login-box label {
@@ -70,11 +96,11 @@
       color: #666;
       margin-bottom: 4px;
       text-transform: uppercase;
-      letter-spacing: .5px;
+      letter-spacing: .5px
     }
 
     [data-theme="dark"] .login-box label {
-      color: #9ca3af;
+      color: #9ca3af
     }
 
     .login-box input,
@@ -89,24 +115,32 @@
       transition: border-color .2s;
       background: #fff;
       color: #333;
+      font-family: Arial, sans-serif
     }
 
     [data-theme="dark"] .login-box input,
     [data-theme="dark"] .login-box select {
       background: #22263a;
       border-color: #2e3250;
-      color: #e8e9f3;
+      color: #e8e9f3
     }
 
+    .login-box input:focus,
+    .login-box select:focus {
+      border-color: #4f46e5
+    }
+
+    /* Filial select com badge */
     .filial-select-wrap {
       position: relative;
-      margin-bottom: 12px;
+      margin-bottom: 12px
     }
 
     .filial-select-wrap select {
+      margin-bottom: 0;
       appearance: none;
       padding-right: 36px;
-      cursor: pointer;
+      cursor: pointer
     }
 
     .filial-select-wrap::after {
@@ -117,6 +151,54 @@
       transform: translateY(-50%);
       color: #4f46e5;
       pointer-events: none;
+      font-size: 14px
+    }
+
+    .filial-loading {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-radius: 6px;
+      text-align: center
+    }
+
+    [data-theme="dark"] .filial-loading {
+      background: #22263a;
+      color: #7b7fa0
+    }
+
+    .divider-form {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 4px 0 12px
+    }
+
+    [data-theme="dark"] .divider-form {
+      background: #2e3250
+    }
+
+    .login-box .btn-entrar {
+      width: 100%;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s
+    }
+
+    .login-box .btn-entrar:hover {
+      background: #3730a3
+    }
+
+    .login-box .btn-entrar:disabled {
+      background: #9ca3af;
+      cursor: not-allowed
     }
 
     .login-error {
@@ -124,27 +206,60 @@
       font-size: 12px;
       text-align: center;
       margin-top: 8px;
-      min-height: 16px;
+      min-height: 16px
+    }
+
+    /* OVERLAY */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      z-index: 99
+    }
+
+    #sidebar-overlay.show {
+      display: block
     }
 
     /* SIDEBAR */
     .sidebar {
-      width: 230px;
+      width: 240px;
       background: var(--surface);
       color: var(--sidebar-txt);
       flex-direction: column;
       padding: 0;
       display: none;
-      transition: transform .25s;
+      transition: width .25s, transform .25s, background .2s;
       flex-shrink: 0;
+      display: flex;
+      /* Garante que o flex funcione */
+    }
+
+    .sidebar-scroller {
+      flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .sidebar-scroller::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar-scroller::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
     }
 
     .sidebar.visible {
-      display: flex;
+      display: flex
     }
 
-    @media(max-width: 768px) {
+    .sidebar.collapsed {
+      width: 70px
+    }
+
+    @media(max-width:768px) {
       .sidebar {
         position: fixed;
         left: 0;
@@ -152,12 +267,18 @@
         bottom: 0;
         z-index: 100;
         transform: translateX(-100%);
-        display: flex !important;
+        display: flex !important
       }
 
       .sidebar.open {
-        transform: translateX(0);
+        transform: translateX(0)
       }
+
+      .sidebar.collapsed {
+        width: 240px
+      }
+
+      /* Não colapsar no mobile */
     }
 
     .sidebar-head {
@@ -165,18 +286,29 @@
       align-items: center;
       justify-content: space-between;
       padding: 16px 16px 12px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border)
+    }
+
+    .sidebar.collapsed .sidebar-head {
+      justify-content: center
+    }
+
+    .sidebar.collapsed .sidebar-titles {
+      display: none
     }
 
     .sidebar-title {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: bold;
+      line-height: 1.3;
+      white-space: nowrap
     }
 
     .sidebar-filial {
-      font-size: 10px;
+      font-size: 11px;
       color: var(--sidebar-mut);
       margin-top: 3px;
+      white-space: nowrap
     }
 
     .btn-close-sidebar {
@@ -186,11 +318,35 @@
       color: var(--sidebar-txt);
       font-size: 22px;
       cursor: pointer;
+      padding: 0 4px
     }
 
-    @media(max-width: 768px) {
+    .btn-collapse-sidebar {
+      background: none;
+      border: none;
+      color: var(--sidebar-txt);
+      font-size: 18px;
+      cursor: pointer;
+      opacity: .7;
+      transition: all .2s;
+      display: block
+    }
+
+    .btn-collapse-sidebar:hover {
+      opacity: 1
+    }
+
+    .sidebar.collapsed .btn-collapse-sidebar {
+      transform: rotate(180deg)
+    }
+
+    @media(max-width:768px) {
       .btn-close-sidebar {
-        display: block;
+        display: block
+      }
+
+      .btn-collapse-sidebar {
+        display: none
       }
     }
 
@@ -200,44 +356,108 @@
       letter-spacing: 1.5px;
       color: var(--sidebar-mut);
       padding: 16px 16px 6px;
+      display: block;
+      white-space: nowrap
+    }
+
+    .sidebar.collapsed .sidebar-section {
+      display: none
     }
 
     .sidebar button.nav-btn {
       background: transparent;
       border: none;
       color: var(--sidebar-txt);
-      padding: 10px 16px;
+      padding: 12px 16px;
+      margin: 0;
+      border-radius: 0;
       cursor: pointer;
       text-align: left;
-      font-size: 13px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
       width: 100%;
       transition: background .15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap
+    }
+
+    .sidebar button.nav-btn .nav-icon {
+      font-size: 18px;
+      min-width: 24px;
+      text-align: center
+    }
+
+    .sidebar.collapsed button.nav-btn {
+      padding: 14px 0;
+      justify-content: center
+    }
+
+    .sidebar.collapsed button.nav-btn .nav-icon {
+      font-size: 22px
+    }
+
+    .sidebar.collapsed button.nav-btn .nav-text {
+      display: none
     }
 
     .sidebar button.nav-btn:hover {
-      background: var(--surface-hv);
+      background: var(--surface-hv)
     }
 
     .sidebar button.nav-btn.active {
       background: var(--sidebar-act);
-      font-weight: bold;
+      font-weight: bold
     }
 
     .sidebar-footer {
-      margin-top: auto;
       border-top: 1px solid var(--border);
       padding: 14px 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: inherit;
+    }
+
+    .sidebar.collapsed .sidebar-footer {
+      padding: 14px 8px;
+      text-align: center
+    }
+
+    .sidebar.collapsed .user-info {
+      display: none
+    }
+
+    .sidebar.collapsed .theme-label {
+      display: none
+    }
+
+    .sidebar.collapsed .theme-toggle {
+      justify-content: center
+    }
+
+    .sidebar.collapsed .btn-logout span {
+      display: none
+    }
+
+    .sidebar.collapsed .btn-logout::before {
+      content: '🚪'
+    }
+
+    .user-info {
+      margin-bottom: 10px
     }
 
     .user-info .user-name {
       font-size: 12px;
-      color: var(--sidebar-mut);
+      color: var(--sidebar-mut)
     }
 
     .user-info strong {
       color: var(--sidebar-txt);
       display: block;
-      font-size: 13px;
+      font-size: 13px
     }
 
     .user-filial-badge {
@@ -245,17 +465,22 @@
       margin-top: 4px;
       font-size: 10px;
       background: rgba(255, 255, 255, .15);
+      color: var(--sidebar-txt);
       border-radius: 20px;
       padding: 2px 10px;
+      font-weight: 600
     }
 
     .theme-toggle {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 10px
+    }
+
+    .theme-toggle span {
       font-size: 12px;
-      color: var(--sidebar-mut);
+      color: var(--sidebar-mut)
     }
 
     .toggle-btn {
@@ -267,6 +492,7 @@
       cursor: pointer;
       border: none;
       transition: background .2s;
+      flex-shrink: 0
     }
 
     .toggle-btn::after {
@@ -278,37 +504,43 @@
       border-radius: 50%;
       top: 3px;
       left: 3px;
-      transition: transform .2s;
+      transition: transform .2s
     }
 
     [data-theme="dark"] .toggle-btn {
-      background: rgba(108, 99, 255, .5);
+      background: rgba(108, 99, 255, .5)
     }
 
     [data-theme="dark"] .toggle-btn::after {
-      transform: translateX(18px);
+      transform: translateX(18px)
     }
 
     .btn-logout {
       width: 100%;
       background: rgba(255, 255, 255, .1) !important;
       border: 1px solid rgba(255, 255, 255, .25) !important;
-      color: #fff !important;
-      padding: 8px;
+      color: var(--sidebar-txt) !important;
+      padding: 8px 10px !important;
       border-radius: 4px;
       font-size: 12px;
       cursor: pointer;
+      font-family: Arial, sans-serif
     }
 
-    /* APP STRUCTURE */
+    .btn-logout:hover {
+      background: rgba(255, 255, 255, .2) !important
+    }
+
+    /* APP */
     #app {
       display: none;
       flex: 1;
-      overflow: hidden;
+      flex-direction: row;
+      overflow: hidden
     }
 
     #app.visible {
-      display: flex;
+      display: flex
     }
 
     .topbar {
@@ -317,12 +549,36 @@
       gap: 12px;
       background: var(--surface);
       padding: 12px 16px;
+      flex-shrink: 0
     }
 
-    @media(max-width: 768px) {
+    @media(max-width:768px) {
       .topbar {
-        display: flex;
+        display: flex
       }
+    }
+
+    .btn-hamburger {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1
+    }
+
+    .topbar-title {
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold
+    }
+
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      background: var(--content-bg);
     }
 
     .content {
@@ -330,20 +586,25 @@
       padding: 20px;
       background: var(--content-bg);
       overflow-y: auto;
+      transition: background .2s
     }
 
-    #sidebar-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, .5);
-      z-index: 99;
+    .content::-webkit-scrollbar {
+      width: 5px
     }
 
-    #sidebar-overlay.show {
-      display: block;
+    .content::-webkit-scrollbar-thumb {
+      background: #c7d2fe;
+      border-radius: 3px
     }
 
+    @media(max-width:768px) {
+      .content {
+        padding: 14px
+      }
+    }
+
+    /* TOAST */
     #toast {
       position: fixed;
       bottom: 20px;
@@ -360,19 +621,45 @@
       align-items: center;
       gap: 8px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
-      z-index: 999;
+      z-index: 999
+    }
+
+    .sidebar-logo {
+      padding: 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo img {
+      max-width: 140px;
+      height: auto;
+    }
+
+    .sidebar.collapsed .sidebar-logo {
+      padding: 10px 5px;
+    }
+
+    .sidebar.collapsed .sidebar-logo img {
+      max-width: 45px;
+    }
+
+    @media(min-width:480px) {
+      #toast {
+        left: auto;
+        width: auto
+      }
     }
 
     #toast.show {
-      display: flex;
+      display: flex
     }
 
     #toast.success {
-      background: #065f46;
+      background: #065f46
     }
 
     #toast.error {
-      background: #991b1b;
+      background: #991b1b
     }
   </style>
 </head>
@@ -383,75 +670,90 @@
   <div id="login-screen">
     <div class="login-box">
       <div class="login-logo">
-        <img src="img/logo.png" alt="Logo" style="width: 140px; height: auto; margin-bottom: 12px;">
-        <h2>Controle de Estoque</h2>
+        <img src="img/logo.png" alt="Logo" style="max-width: 180px; margin-bottom: 12px;">
+        <h2 style="display:none">Controle de Estoque</h2>
         <p>Faça login para acessar o sistema</p>
       </div>
 
       <label>Filial</label>
       <div class="filial-select-wrap" id="filial-wrap">
-        <div id="filial-loading" style="font-size:12px;color:#888;text-align:center;padding:10px">⏳ Carregando
-          filiais...</div>
+        <div class="filial-loading" id="filial-loading">⏳ Carregando filiais...</div>
         <select id="sel-filial" style="display:none"
           onkeydown="if(event.key==='Enter') document.getElementById('inp-login').focus()">
           <option value="">Selecione a filial...</option>
         </select>
       </div>
 
-      <div style="height:1px;background:#e5e7eb;margin:12px 0"></div>
+      <div class="divider-form"></div>
 
       <label>Login</label>
       <input type="text" id="inp-login" placeholder="Seu login"
         onkeydown="if(event.key==='Enter') document.getElementById('inp-senha').focus()">
       <label>Senha</label>
       <input type="password" id="inp-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter') fazerLogin()">
-      <button class="mbtn mbtn-primary" style="width:100%;padding:12px" id="btn-entrar" onclick="fazerLogin()"
-        disabled>Entrar</button>
+      <button class="btn-entrar" id="btn-entrar" onclick="fazerLogin()" disabled>Entrar</button>
       <div class="login-error" id="login-error"></div>
     </div>
   </div>
 
   <!-- APP -->
   <div id="app">
-    <div id="sidebar-overlay" onclick="carregarModulo(null)"></div>
+    <div id="sidebar-overlay" onclick="fecharSidebar()"></div>
 
     <div class="sidebar" id="sidebar">
       <div class="sidebar-head">
-        <div>
-          <div class="sidebar-title">
-            <img src="img/logo.png" alt="Logo" style="width: 24px; vertical-align: middle; margin-right: 6px;">
-            Controle de Estoque
-          </div>
+        <div class="sidebar-titles">
+          <div class="sidebar-title">📦 Controle de Estoque</div>
           <div class="sidebar-filial" id="sidebar-filial-label">—</div>
         </div>
-        <button class="btn-close-sidebar"
-          onclick="document.getElementById('sidebar').classList.remove('open')">✕</button>
+        <button class="btn-collapse-sidebar" onclick="toggleSidebarCollapse()" title="Encolher Menu">◀</button>
+        <button class="btn-close-sidebar" onclick="fecharSidebar()">✕</button>
       </div>
 
-      <span class="sidebar-section">Geral</span>
-      <button class="nav-btn" id="nav-home" onclick="ir('home.html','nav-home')">🏠 Home</button>
+      <div class="sidebar-scroller">
+        <div class="sidebar-logo" onclick="ir('home.html')" style="cursor:pointer">
+          <img src="img/logo.png" alt="Logo">
+        </div>
 
-      <span class="sidebar-section">Estoque</span>
-      <button class="nav-btn" id="nav-produtos" onclick="ir('get_produtos.html','nav-produtos')" style="display:none">📦
-        Produtos</button>
+        <button class="nav-btn" id="nav-home" onclick="ir('home.html','nav-home')">
+          <span class="nav-icon">🏠</span><span class="nav-text">Início</span>
+        </button>
 
-      <span class="sidebar-section">Estrutura</span>
-      <button class="nav-btn" id="nav-armazem" onclick="ir('cadastro_armazem.html','nav-armazem')"
-        style="display:none">🏭 Armazéns</button>
+        <span class="sidebar-section">Estoque</span>
+        <button class="nav-btn" id="nav-produtos" onclick="ir('get_produtos.html','nav-produtos')"
+          style="display:none"><span class="nav-icon">📦</span><span class="nav-text">Produtos</span></button>
+        <button class="nav-btn" id="nav-categoria" onclick="ir('cadastro_categoria.html','nav-categoria')"
+          style="display:none"><span class="nav-icon">🏷️</span><span class="nav-text">Categorias</span></button>
+        <button class="nav-btn" id="nav-clientes" onclick="ir('cadastro_clientes.html','nav-clientes')"
+          style="display:none"><span class="nav-icon">👥</span><span class="nav-text">Clientes</span></button>
 
-      <span class="sidebar-section" id="sec-agenda" style="display:none">Eventos</span>
-      <button class="nav-btn" id="nav-agenda" onclick="ir('agenda.html','nav-agenda')" style="display:none">📅
-        Agenda</button>
+        <span class="sidebar-section">Estrutura</span>
+        <button class="nav-btn" id="nav-armazem" onclick="ir('cadastro_armazem.html','nav-armazem')"
+          style="display:none"><span class="nav-icon">🏭</span><span class="nav-text">Armazéns</span></button>
 
-      <span class="sidebar-section" id="sec-separacao" style="display:none">Separação</span>
-      <button class="nav-btn" id="nav-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')"
-        style="display:none">📋 Separação de Material</button>
+        <span class="sidebar-section" id="sec-agenda" style="display:none">Agenda</span>
+        <button class="nav-btn" id="nav-agenda" onclick="ir('agenda.html','nav-agenda')" style="display:none"><span
+            class="nav-icon">📅</span><span class="nav-text">Eventos</span></button>
 
-      <span class="sidebar-section" id="sec-admin" style="display:none">Administração</span>
-      <button class="nav-btn" id="nav-filiais" onclick="ir('cadastro_filial.html','nav-filiais')"
-        style="display:none">🏢 Filiais</button>
-      <button class="nav-btn" id="nav-operador" onclick="ir('cadastro_operador.html','nav-operador')"
-        style="display:none">👤 Operadores</button>
+        <span class="sidebar-section" id="sec-pdv" style="display:none">Vendas</span>
+        <button class="nav-btn" id="nav-pdv" onclick="ir('pdv.html','nav-pdv')" style="display:none"><span
+            class="nav-icon">🛒</span><span class="nav-text">Ponto de Venda</span></button>
+        <button class="nav-btn" id="nav-historico" onclick="ir('historico_vendas.html','nav-historico')"
+          style="display:none"><span class="nav-icon">📊</span><span class="nav-text">Histórico de
+            Vendas</span></button>
+
+        <span class="sidebar-section" id="sec-separacao" style="display:none">Operação</span>
+        <button class="nav-btn" id="nav-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')"
+          style="display:none"><span class="nav-icon">📋</span><span class="nav-text">Separação</span></button>
+
+        <span class="sidebar-section" id="sec-admin" style="display:none">Administração</span>
+        <button class="nav-btn" id="nav-financeiro" onclick="ir('financeiro.html','nav-financeiro')"
+          style="display:none"><span class="nav-icon">💳</span><span class="nav-text">Financeiro</span></button>
+        <button class="nav-btn" id="nav-filiais" onclick="ir('cadastro_filial.html','nav-filiais')"
+          style="display:none"><span class="nav-icon">🏢</span><span class="nav-text">Filiais</span></button>
+        <button class="nav-btn" id="nav-operador" onclick="ir('cadastro_operador.html','nav-operador')"
+          style="display:none"><span class="nav-icon">👤</span><span class="nav-text">Operadores</span></button>
+      </div>
 
       <div class="sidebar-footer">
         <div class="user-info">
@@ -460,28 +762,20 @@
           <span class="user-filial-badge" id="user-filial-badge">—</span>
         </div>
         <div class="theme-toggle">
-          <span id="theme-label">☀️ Light</span>
+          <span class="theme-label" id="theme-label">☀️ Light</span>
           <button class="toggle-btn" onclick="alternarTema()"></button>
         </div>
-        <button class="btn-logout" onclick="logout()">Sair</button>
+        <button class="btn-logout" onclick="logout()"><span>Sair do Sistema</span></button>
       </div>
     </div>
 
     <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
       <div class="topbar">
-        <button style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer"
-          onclick="document.getElementById('sidebar').classList.add('open')">☰</button>
-        <span style="color:#fff;font-size:14px;font-weight:bold">
-          <img src="img/logo.png" alt="Logo" style="width: 20px; vertical-align: middle; margin-right: 6px;">
-          Controle de Estoque
-        </span>
+        <button class="btn-hamburger" onclick="abrirSidebar()">☰</button>
+        <span class="topbar-title">📦 Controle de Estoque</span>
       </div>
       <div class="content" id="content">
-        <div style="text-align: center; margin-top: 40px;">
-          <img src="img/logo.png" alt="Logo" style="width: 180px; margin-bottom: 20px;">
-          <h2 style="color:var(--mtext2)">Bem-vindo ao Controle de Estoque</h2>
-          <p style="color:var(--mmuted);margin-top:6px;font-size:13px">Escolha um módulo no menu lateral.</p>
-        </div>
+        <!-- Dashboard inicial -->
       </div>
     </div>
   </div>
@@ -489,94 +783,48 @@
   <div id="toast"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <script src="js/shared.js"></script>
   <script>
-    // Lógica de Login específica da index
-    async function fazerLogin() {
-      const filialPk = document.getElementById('sel-filial').value;
-      const login = document.getElementById('inp-login').value.trim();
-      const senha = document.getElementById('inp-senha').value.trim();
-      const erro = document.getElementById('login-error');
-      erro.textContent = '';
+    const SUPA_URL = "https://lflpzskcpcsfzagackuy.supabase.co";
+    const SUPA_KEY = "sb_publishable_5jo3h0in7z4PPCsw4K5RjA_g-TVT_NP";
+    window.supabase = supabase.createClient(SUPA_URL, SUPA_KEY);
+    window.operadorLogado = null;
+    window.filialLogada = null; // { pk, codigo, nome }
+    window._editData = null;
 
-      if (!filialPk) { erro.textContent = 'Selecione a filial.'; return; }
-      if (!login || !senha) { erro.textContent = 'Preencha login e senha.'; return; }
+    // ── Tema ───────────────────────────────────────────────────
+    function aplicarTema(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('theme-label').textContent = t === 'dark' ? '🌙 Dark' : '☀️ Light';
+      try { localStorage.setItem('tema', t) } catch (e) { }
+    }
+    function alternarTema() { aplicarTema(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark') }
+    try { aplicarTema(localStorage.getItem('tema') || 'light') } catch (e) { aplicarTema('light') }
 
+    // ── Toast ──────────────────────────────────────────────────
+    window.showToast = function (msg, tipo = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = (tipo === 'success' ? '✅ ' : '❌ ') + msg;
+      t.className = 'show ' + tipo;
+      setTimeout(() => t.className = '', 3500);
+    };
+
+    // ── Sidebar ────────────────────────────────────────────────
+    function abrirSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show') }
+    function fecharSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show') }
+    function toggleSidebarCollapse() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+    // ── Carrega filiais no login ───────────────────────────────
+    (async function carregarFiliais() {
       const { data, error } = await window.supabase
-        .from('operadores').select('*')
-        .eq('login', login).eq('senha', senha).eq('ativo', true);
+        .from('filiais').select('pk,codigo,nome').eq('ativo', true).order('codigo');
 
-      if (error || !data || data.length === 0) { erro.textContent = 'Login ou senha inválidos.'; return; }
-
-      const op = data.find(d => d.filial_pk === parseInt(filialPk) || d.filial_pk === null);
-      if (!op) { erro.textContent = 'Usuário sem acesso a esta filial.'; return; }
-
-      const sel = document.getElementById('sel-filial');
-      const opt = sel.options[sel.selectedIndex];
-      const filialLogada = { pk: parseInt(filialPk), codigo: opt.dataset.codigo, nome: opt.dataset.nome };
-
-      window.setSessao(filialLogada, op);
-
-      document.getElementById('user-display').textContent = op.nome;
-      document.getElementById('user-filial-badge').textContent = `${window.filialLogada.codigo} · ${window.filialLogada.nome}`;
-      document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
-
-      aplicarPermissoes(op);
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').classList.add('visible');
-      document.getElementById('sidebar').classList.add('visible');
-      ir('home.html', 'nav-home');
-    }
-
-    // Tenta restaurar sessão ao carregar a página
-    (function restaurarSessao() {
-      if (window.filialLogada && window.operadorLogado) {
-        document.getElementById('user-display').textContent = window.operadorLogado.nome;
-        document.getElementById('user-filial-badge').textContent = `${window.filialLogada.codigo} · ${window.filialLogada.nome}`;
-        document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
-        aplicarPermissoes(window.operadorLogado);
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').classList.add('visible');
-        document.getElementById('sidebar').classList.add('visible');
-        ir('home.html', 'nav-home');
-      }
-    })();
-
-    function aplicarPermissoes(op) {
-      const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
-      const temAgenda = op.admin || op.acesso_agenda;
-      show('nav-produtos', op.admin || op.acesso_produtos);
-      show('nav-armazem', op.admin || op.acesso_armazens);
-      show('nav-agenda', temAgenda);
-      show('sec-agenda', temAgenda);
-      const temSep = op.admin || op.acesso_separacao || op.acesso_criar_ordem;
-      show('nav-separacao', temSep);
-      show('sec-separacao', temSep);
-      show('sec-admin', op.admin);
-      show('nav-filiais', op.admin);
-      show('nav-operador', op.admin);
-    }
-
-    function logout() {
-      window.operadorLogado = null;
-      window.filialLogada = null;
-      document.getElementById('app').classList.remove('visible');
-      document.getElementById('sidebar').classList.remove('visible');
-      document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('content').innerHTML = `
-    <h2 style="color:var(--mtext2)">Bem-vindo</h2>
-    <p style="color:var(--mmuted);font-size:13px;margin-top:6px">Escolha um módulo no menu lateral.</p>`;
-    }
-
-    // Carrega filiais ao iniciar
-    (async function init() {
-      const { data, error } = await window.supabase.from('filiais').select('pk,codigo,nome').eq('ativo', true).order('codigo');
+      const wrap = document.getElementById('filial-wrap');
       const loading = document.getElementById('filial-loading');
       const sel = document.getElementById('sel-filial');
       const btn = document.getElementById('btn-entrar');
 
       if (error || !data || data.length === 0) {
-        if (loading) loading.textContent = '⚠️ Nenhuma filial encontrada';
+        loading.textContent = '⚠️ Nenhuma filial encontrada';
         return;
       }
 
@@ -589,11 +837,118 @@
         sel.appendChild(opt);
       });
 
+      // Se só houver uma filial, seleciona automaticamente
       if (data.length === 1) sel.value = data[0].pk;
-      if (loading) loading.style.display = 'none';
+
+      loading.style.display = 'none';
       sel.style.display = '';
       btn.disabled = false;
     })();
+
+    // ── Login ──────────────────────────────────────────────────
+    async function fazerLogin() {
+      const filialPk = document.getElementById('sel-filial').value;
+      const login = document.getElementById('inp-login').value.trim();
+      const senha = document.getElementById('inp-senha').value.trim();
+      const erro = document.getElementById('login-error');
+      erro.textContent = '';
+
+      if (!filialPk) { erro.textContent = 'Selecione a filial.'; return; }
+      if (!login || !senha) { erro.textContent = 'Preencha login e senha.'; return; }
+
+      // Busca operador: aceita se filial_pk bater OU se for superadmin (filial_pk null)
+      const { data, error } = await window.supabase
+        .from('operadores').select('*')
+        .eq('login', login).eq('senha', senha).eq('ativo', true);
+
+      if (error || !data || data.length === 0) { erro.textContent = 'Login ou senha inválidos.'; return; }
+
+      // Pega o operador que tem acesso a essa filial
+      const op = data.find(d => d.filial_pk === parseInt(filialPk) || d.filial_pk === null);
+      if (!op) { erro.textContent = 'Usuário sem acesso a esta filial.'; return; }
+
+      // Monta objeto da filial
+      const sel = document.getElementById('sel-filial');
+      const opt = sel.options[sel.selectedIndex];
+      window.filialLogada = { pk: parseInt(filialPk), codigo: opt.dataset.codigo, nome: opt.dataset.nome };
+      window.operadorLogado = op;
+
+      // Atualiza UI
+      document.getElementById('user-display').textContent = op.nome;
+      document.getElementById('user-filial-badge').textContent = `${window.filialLogada.codigo} · ${window.filialLogada.nome}`;
+      document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
+
+      aplicarPermissoes(op);
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      document.getElementById('sidebar').classList.add('visible');
+
+      // Carrega a Home por padrão
+      ir('home.html', 'nav-home');
+    }
+
+    function aplicarPermissoes(op) {
+      const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+      const temAgenda = op.admin || op.acesso_agenda;
+      show('nav-produtos', op.admin || op.acesso_produtos);
+      show('nav-armazem', op.admin || op.acesso_armazens);
+      show('nav-agenda', temAgenda);
+      show('sec-agenda', temAgenda);
+      var fil = window.filialLogada;
+      var isFilial2 = fil && fil.codigo === '02';
+      var temPdv = isFilial2 && (op.admin || op.acesso_pdv);
+      show('nav-pdv', temPdv);
+      show('nav-historico', temPdv); // vinculamos historioco à mesma permissão do pdv
+      show('sec-pdv', temPdv);
+      var temClientes = op.admin || op.acesso_clientes;
+      show('nav-clientes', temClientes);
+      var temCat = isFilial2 && (op.admin || op.acesso_produtos);
+      show('nav-categoria', temCat);
+      var temSep = op.admin || op.acesso_separacao || op.acesso_criar_ordem;
+      show('nav-separacao', temSep);
+      show('sec-separacao', temSep);
+      show('sec-admin', op.admin);
+      show('nav-financeiro', op.admin);
+      show('nav-filiais', op.admin);
+      show('nav-operador', op.admin);
+    }
+
+    function logout() {
+      window.operadorLogado = null;
+      window.filialLogada = null;
+      window._editData = null;
+      document.getElementById('app').classList.remove('visible');
+      document.getElementById('sidebar').classList.remove('visible');
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('inp-login').value = '';
+      document.getElementById('inp-senha').value = '';
+      document.getElementById('content').innerHTML =
+        '<h2 style="color:var(--sidebar-txt)">Bem-vindo</h2><p style="color:#888;font-size:13px;margin-top:6px">Escolha um módulo no menu lateral.</p>';
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    // ── Carregador de módulos ──────────────────────────────────
+    window.ir = window.carregarModulo = function (arquivo, navId) {
+      fecharSidebar();
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      if (navId) document.getElementById(navId)?.classList.add('active');
+      fetch(arquivo)
+        .then(r => { if (!r.ok) throw new Error('Arquivo não encontrado: ' + arquivo); return r.text(); })
+        .then(html => {
+          const content = document.getElementById('content');
+          content.innerHTML = html;
+          content.scrollTo(0, 0);
+          content.querySelectorAll('script').forEach(old => {
+            const s = document.createElement('script');
+            s.textContent = old.textContent;
+            document.body.appendChild(s);
+            old.remove();
+          });
+        })
+        .catch(err => {
+          document.getElementById('content').innerHTML = `<p style="color:#dc2626;padding:20px">❌ ${err.message}</p>`;
+        });
+    };
   </script>
 </body>
 

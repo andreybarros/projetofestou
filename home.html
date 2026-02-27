@@ -1,9 +1,108 @@
+<style>
+    .mod {
+        font-family: 'DM Sans', sans-serif;
+        --mtext2: #1e1b4b;
+        --mmuted: #6b7280;
+        --mc: #fff;
+        --mborder: #e0e7ff;
+    }
+
+    html[data-theme="dark"] .mod {
+        --mtext2: #e8e9f3;
+        --mmuted: #7b7fa0;
+        --mc: #1a1d27;
+        --mborder: #2e3250;
+    }
+
+    .mod-header {
+        margin-bottom: 24px;
+    }
+
+    .mod-header h2 {
+        font-size: 22px;
+        color: var(--mtext2);
+        margin-bottom: 5px;
+    }
+
+    .mod-header p {
+        color: var(--mmuted);
+        font-size: 14px;
+    }
+
+    /* GRID DO DASHBOARD */
+    .dash-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        animation: mfadeUp 0.4s ease both;
+    }
+
+    .dash-card {
+        background: var(--mc);
+        border: 1px solid var(--mborder);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .dash-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(79, 70, 229, 0.12);
+        border-color: #c7d2fe;
+    }
+
+    .dash-icon {
+        font-size: 30px;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(79, 70, 229, 0.06);
+        border-radius: 10px;
+        flex-shrink: 0;
+    }
+
+    .dash-info h3 {
+        font-size: 16px;
+        color: var(--mtext2);
+        margin-bottom: 3px;
+    }
+
+    .dash-info p {
+        font-size: 12px;
+        color: var(--mmuted);
+        line-height: 1.4;
+    }
+
+    @keyframes mfadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .dash-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
 <div class="mod">
     <div class="mod-header">
-        <div>
-            <h2>Dashboard</h2>
-            <p>Bem-vindo ao sistema de controle de estoque. Selecione uma opção abaixo:</p>
-        </div>
+        <h2>Dashboard</h2>
+        <p>Bem-vindo ao sistema de controle de estoque. Selecione uma opção abaixo:</p>
     </div>
 
     <div class="dash-grid">
@@ -45,6 +144,26 @@
             </div>
         </div>
 
+        <!-- Clientes -->
+        <div class="dash-card" id="dash-clientes" onclick="ir('cadastro_clientes.html','nav-clientes')"
+            style="display:none">
+            <div class="dash-icon">👥</div>
+            <div class="dash-info">
+                <h3>Clientes</h3>
+                <p>Cadastre clientes e decoradores parceiros.</p>
+            </div>
+        </div>
+
+        <!-- Categorias -->
+        <div class="dash-card" id="dash-categoria" onclick="ir('cadastro_categoria.html','nav-categoria')"
+            style="display:none">
+            <div class="dash-icon">🏷️</div>
+            <div class="dash-info">
+                <h3>Categorias</h3>
+                <p>Categorias de produtos para o PDV da Filial 2.</p>
+            </div>
+        </div>
+
         <!-- Filiais -->
         <div class="dash-card" id="dash-filiais" onclick="ir('cadastro_filial.html','nav-filiais')"
             style="display:none">
@@ -64,27 +183,56 @@
                 <p>Gerencie usuários, permissões e acessos ao sistema.</p>
             </div>
         </div>
+
+        <!-- PDV -->
+        <div class="dash-card" id="dash-pdv" onclick="ir('pdv.html','nav-pdv')" style="display:none">
+            <div class="dash-icon">🛒</div>
+            <div class="dash-info">
+                <h3>PDV</h3>
+                <p>Realize vendas e emissão de cupons.</p>
+            </div>
+        </div>
+
+        <!-- Histórico -->
+        <div class="dash-card" id="dash-historico" onclick="ir('historico_vendas.html','nav-historico')"
+            style="display:none">
+            <div class="dash-icon">📊</div>
+            <div class="dash-info">
+                <h3>Vendas</h3>
+                <p>Consulte o histórico de vendas e estornos.</p>
+            </div>
+        </div>
+
+        <!-- Financeiro -->
+        <div class="dash-card" id="dash-financeiro" onclick="ir('financeiro.html','nav-financeiro')"
+            style="display:none">
+            <div class="dash-icon">💰</div>
+            <div class="dash-info">
+                <h3>Financeiro</h3>
+                <p>Controle de contas bancárias e extratos.</p>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // Aplica as mesmas permissões do menu lateral aos cards do dashboard
     (function () {
         const op = window.operadorLogado;
         if (!op) return;
-
         const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'flex' : 'none'; };
+        const fil = window.filialLogada;
+        const isF2 = fil && fil.codigo === '02';
 
         show('dash-produtos', op.admin || op.acesso_produtos);
         show('dash-armazem', op.admin || op.acesso_armazens);
-
-        const temAgenda = op.admin || op.acesso_agenda;
-        show('dash-agenda', temAgenda);
-
-        const temSep = op.admin || op.acesso_separacao || op.acesso_criar_ordem;
-        show('dash-separacao', temSep);
-
+        show('dash-agenda', op.admin || op.acesso_agenda);
+        show('dash-separacao', op.admin || op.acesso_separacao || op.acesso_criar_ordem);
+        show('dash-clientes', op.admin || op.acesso_clientes);
+        show('dash-categoria', isF2 && (op.admin || op.acesso_produtos));
         show('dash-filiais', op.admin);
         show('dash-operador', op.admin);
+        show('dash-pdv', isF2 && (op.admin || op.acesso_pdv));
+        show('dash-historico', isF2 && (op.admin || op.acesso_pdv));
+        show('dash-financeiro', op.admin);
     })();
 </script>
