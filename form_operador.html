@@ -1,150 +1,558 @@
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link
+  href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+  rel="stylesheet">
 <style>
-.mod*{box-sizing:border-box}.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mtext2:#1e1b4b;--mmuted:#6b7280}
-html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
-.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
-.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}.mod-header p{color:var(--mmuted);font-size:13px}
-.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
-.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
-.mbtn-ghost{background:var(--mc);color:#4f46e5;border:1px solid #c7d2fe}.mbtn-ghost:hover{background:var(--mc2)}
-.edit-banner{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#92400e}
-html[data-theme="dark"] .edit-banner{background:#2d2000;border-color:#78350f;color:#fcd34d}
-.mform-card{background:var(--mc);border-radius:14px;padding:22px 24px;max-width:520px;box-shadow:0 4px 20px rgba(79,70,229,.08);border:1px solid var(--mborder);animation:mfadeUp .35s ease .05s both}
-html[data-theme="dark"] .mform-card{box-shadow:0 4px 20px rgba(0,0,0,.3)}
-@media(max-width:600px){.mform-card{padding:16px;border-radius:10px}}
-.mform-group{margin-bottom:15px}
-.mform-group label{display:block;font-size:11px;font-weight:600;letter-spacing:.8px;color:var(--mmuted);margin-bottom:5px;text-transform:uppercase}
-.mform-group input,.mform-group select{width:100%;background:var(--mc2);border:1.5px solid var(--mborder);border-radius:8px;color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:15px;padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
-.mform-group input:focus,.mform-group select:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
-.mform-group input::placeholder{color:#c4c9d9}.field-hint{font-size:11px;color:var(--mmuted);margin-top:4px}
-.mform-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:400px){.mform-row{grid-template-columns:1fr}}
-.mdivider{height:1px;background:var(--mborder);margin:16px 0}.mform-footer{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
-.mperm-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--mmuted);margin:4px 0 10px}
-.mperm-item{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--mc2);border:1.5px solid var(--mborder);border-radius:8px;margin-bottom:8px}
-.mperm-item span{font-size:13px;color:var(--mtext2)}
-.mperm-item.admin-row{background:#eef2ff;border-color:#c7d2fe}
-html[data-theme="dark"] .mperm-item.admin-row{background:#1e1a3a;border-color:#3d4270}
-.toggle{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
-.toggle input{opacity:0;width:0;height:0}
-.toggle-slider{position:absolute;inset:0;background:#d1d5db;border-radius:24px;cursor:pointer;transition:.2s}
-.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.toggle input:checked+.toggle-slider{background:#4f46e5}
-.toggle input:checked+.toggle-slider:before{transform:translateX(20px)}
-@keyframes mfadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .mod* {
+    box-sizing: border-box
+  }
+
+  .mod {
+    font-family: 'DM Sans', sans-serif;
+    --mc: #fff;
+    --mc2: #fafafe;
+    --mborder: #e0e7ff;
+    --mtext2: #1e1b4b;
+    --mmuted: #6b7280
+  }
+
+  html[data-theme="dark"] .mod {
+    --mc: #1a1d27;
+    --mc2: #22263a;
+    --mborder: #2e3250;
+    --mtext2: #e8e9f3;
+    --mmuted: #7b7fa0
+  }
+
+  .mod-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    animation: mfadeUp .3s ease;
+    gap: 12px;
+    flex-wrap: wrap
+  }
+
+  .mod-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--mtext2);
+    margin-bottom: 4px
+  }
+
+  .mod-header p {
+    color: var(--mmuted);
+    font-size: 13px
+  }
+
+  .mbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .15s;
+    white-space: nowrap
+  }
+
+  .mbtn-primary {
+    background: #4f46e5;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, .25)
+  }
+
+  .mbtn-primary:hover {
+    background: #3730a3;
+    transform: translateY(-1px)
+  }
+
+  .mbtn-ghost {
+    background: var(--mc);
+    color: #4f46e5;
+    border: 1px solid #c7d2fe
+  }
+
+  .mbtn-ghost:hover {
+    background: var(--mc2)
+  }
+
+  .edit-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #92400e
+  }
+
+  html[data-theme="dark"] .edit-banner {
+    background: #2d2000;
+    border-color: #78350f;
+    color: #fcd34d
+  }
+
+  .mform-card {
+    background: var(--mc);
+    border-radius: 14px;
+    padding: 22px 24px;
+    max-width: 520px;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+    border: 1px solid var(--mborder);
+    animation: mfadeUp .35s ease .05s both
+  }
+
+  html[data-theme="dark"] .mform-card {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
+  }
+
+  @media(max-width:600px) {
+    .mform-card {
+      padding: 16px;
+      border-radius: 10px
+    }
+  }
+
+  .mform-group {
+    margin-bottom: 15px
+  }
+
+  .mform-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .8px;
+    color: var(--mmuted);
+    margin-bottom: 5px;
+    text-transform: uppercase
+  }
+
+  .mform-group input,
+  .mform-group select {
+    width: 100%;
+    background: var(--mc2);
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    color: var(--mtext2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    padding: 11px 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s
+  }
+
+  .mform-group input:focus,
+  .mform-group select:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
+  }
+
+  .mform-group input::placeholder {
+    color: #c4c9d9
+  }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--mmuted);
+    margin-top: 4px
+  }
+
+  .mform-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px
+  }
+
+  @media(max-width:400px) {
+    .mform-row {
+      grid-template-columns: 1fr
+    }
+  }
+
+  .mdivider {
+    height: 1px;
+    background: var(--mborder);
+    margin: 16px 0
+  }
+
+  .mform-footer {
+    margin-top: 18px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap
+  }
+
+  .mperm-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--mmuted);
+    margin: 4px 0 10px
+  }
+
+  .mperm-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    background: var(--mc2);
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    margin-bottom: 8px
+  }
+
+  .mperm-item span {
+    font-size: 13px;
+    color: var(--mtext2)
+  }
+
+  .mperm-item.admin-row {
+    background: #eef2ff;
+    border-color: #c7d2fe
+  }
+
+  html[data-theme="dark"] .mperm-item.admin-row {
+    background: #1e1a3a;
+    border-color: #3d4270
+  }
+
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0
+  }
+
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0
+  }
+
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #d1d5db;
+    border-radius: 24px;
+    cursor: pointer;
+    transition: .2s
+  }
+
+  .toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2)
+  }
+
+  .toggle input:checked+.toggle-slider {
+    background: #4f46e5
+  }
+
+  .toggle input:checked+.toggle-slider:before {
+    transform: translateX(20px)
+  }
+
+  .rotinas-card {
+    background: var(--mc);
+    border-radius: 14px;
+    padding: 24px 26px;
+    max-width: 560px;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+    border: 1px solid var(--mborder);
+    animation: mfadeUp .4s ease .1s both;
+    margin-top: 16px
+  }
+
+  .rotinas-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mtext2);
+    margin-bottom: 4px
+  }
+
+  .rotinas-card p {
+    font-size: 12px;
+    color: var(--mmuted);
+    margin-bottom: 16px
+  }
+
+  .rotinas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px
+  }
+
+  .rotina-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .15s;
+    background: var(--mc2)
+  }
+
+  .rotina-item:hover {
+    border-color: #a5b4fc;
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .rotina-item:hover {
+    background: #22263a;
+    border-color: #6366f1
+  }
+
+  .rotina-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #4f46e5;
+    cursor: pointer;
+    flex-shrink: 0
+  }
+
+  .rotina-item.checked {
+    border-color: #4f46e5;
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .rotina-item.checked {
+    background: #22263a;
+    border-color: #6366f1
+  }
+
+  .rotina-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mtext2);
+    cursor: pointer;
+    user-select: none
+  }
+
+  .rotina-icon {
+    font-size: 18px;
+    flex-shrink: 0
+  }
+
+  @keyframes mfadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px)
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0)
+    }
+  }
 </style>
 <div class="mod">
   <div class="mod-header">
-    <div><h2 id="form-titulo">Cadastrar Operador</h2><p id="form-subtitulo">Adicione um novo usuário ao sistema</p></div>
-    <button class="mbtn mbtn-ghost" onclick="window._editData=null;window._editOpId=null;carregarModulo('cadastro_operador.html','nav-operador')">← Voltar</button>
+    <div>
+      <h2 id="form-titulo">Cadastrar Operador</h2>
+      <p id="form-subtitulo">Adicione um novo usuário ao sistema</p>
+    </div>
+    <button class="mbtn mbtn-ghost"
+      onclick="window._editData=null;window._editOpId=null;carregarModulo('cadastro_operador.html','nav-operador')">←
+      Voltar</button>
   </div>
-  <div id="edit-banner" class="edit-banner" style="display:none">✏️ <span>Modo edição — altere os campos e clique em <strong>Salvar Alterações</strong></span></div>
+  <div id="edit-banner" class="edit-banner" style="display:none">✏️ <span>Modo edição — altere os campos e clique em
+      <strong>Salvar Alterações</strong></span></div>
   <div class="mform-card">
-    <div class="mform-group"><label>Nome Completo</label><input type="text" id="op-nome" placeholder="Ex: João Silva" autocomplete="name"></div>
+    <div class="mform-group"><label>Nome Completo</label><input type="text" id="op-nome" placeholder="Ex: João Silva"
+        autocomplete="name"></div>
     <div class="mform-row">
-      <div class="mform-group"><label>Login</label><input type="text" id="op-login" placeholder="Ex: joao" autocomplete="off"></div>
-      <div class="mform-group"><label>Senha</label><input type="password" id="op-senha" placeholder="Senha" autocomplete="new-password"><div class="field-hint" id="senha-hint"></div></div>
+      <div class="mform-group"><label>Login</label><input type="text" id="op-login" placeholder="Ex: joao"
+          autocomplete="off"></div>
+      <div class="mform-group"><label>Senha</label><input type="password" id="op-senha" placeholder="Senha"
+          autocomplete="new-password">
+        <div class="field-hint" id="senha-hint"></div>
+      </div>
     </div>
     <div class="mform-group">
       <label>Filial</label>
-      <select id="op-filial"><option value="">⚡ Superadmin (acesso a todas as filiais)</option></select>
+      <select id="op-filial">
+        <option value="">⚡ Superadmin (acesso a todas as filiais)</option>
+      </select>
     </div>
     <div class="mdivider"></div>
     <div class="mperm-title">Permissões de Acesso</div>
     <div class="mperm-item admin-row">
       <span>🔐 Administrador</span>
-      <label class="toggle"><input type="checkbox" id="perm-admin" onchange="toggleAdmin(this)"><span class="toggle-slider"></span></label>
+      <label class="toggle"><input type="checkbox" id="perm-admin" onchange="toggleAdmin(this)"><span
+          class="toggle-slider"></span></label>
     </div>
-    <div class="mperm-item"><span>📦 Produtos</span><label class="toggle"><input type="checkbox" id="perm-produtos"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>🏭 Armazéns</span><label class="toggle"><input type="checkbox" id="perm-armazens"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>📅 Agenda</span><label class="toggle"><input type="checkbox" id="perm-agenda"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>🛒 PDV</span><label class="toggle"><input type="checkbox" id="perm-pdv"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>👥 Clientes</span><label class="toggle"><input type="checkbox" id="perm-clientes"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>📋 Executar Separação</span><label class="toggle"><input type="checkbox" id="perm-separacao"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>📝 Criar Ordem de Separação</span><label class="toggle"><input type="checkbox" id="perm-criar-ordem"><span class="toggle-slider"></span></label></div>
-    <div class="mperm-item"><span>🗑 Excluir Ordem de Separação</span><label class="toggle"><input type="checkbox" id="perm-excluir-ordem"><span class="toggle-slider"></span></label></div>
     <div class="mform-footer">
       <button class="mbtn mbtn-primary" id="btn-salvar-op" onclick="salvarOperador()">Salvar Operador</button>
       <button class="mbtn mbtn-ghost" onclick="limparFormOp()">Limpar</button>
     </div>
   </div>
+
+  <!-- Rotinas / Módulos do Operador -->
+  <div class="rotinas-card">
+    <h3>🔧 Módulos / Rotinas</h3>
+    <p>Escolha quais rotinas este operador terá acesso no sistema.</p>
+    <div class="rotinas-grid" id="rotinas-grid"></div>
+  </div>
 </div>
 <script>
-window._editOpId=null;
+  window._editOpId = null;
 
-// Carrega filiais no select
-(async function(){
-  const{data}=await window.supabase.from('filiais').select('pk,codigo,nome').eq('ativo',true).order('codigo');
-  const sel=document.getElementById('op-filial');
-  (data||[]).forEach(f=>{
-    const o=document.createElement('option');
-    o.value=f.pk;o.textContent=`[${f.codigo}] ${f.nome}`;sel.appendChild(o);
-  });
-  // Depois de carregar filiais, aplica modo edição
-  aplicarEdicao();
-})();
+  // Rotinas disponíveis para o operador (mesmo padrão da filial + itens extras de separação)
+  var ROTINAS_OPERADOR = [
+    { id: 'produtos', icon: '📦', label: 'Produtos / Estoque', campo: 'acesso_produtos' },
+    { id: 'armazens', icon: '🏭', label: 'Armazéns', campo: 'acesso_armazens' },
+    { id: 'clientes', icon: '👥', label: 'Clientes', campo: 'acesso_clientes' },
+    { id: 'agenda', icon: '📅', label: 'Agenda', campo: 'acesso_agenda' },
+    { id: 'separacao', icon: '📋', label: 'Separação', campo: 'acesso_separacao' },
+    { id: 'criar_ordem', icon: '📝', label: 'Criar Ordem de Separação', campo: 'acesso_criar_ordem' },
+    { id: 'excluir_ordem', icon: '🗑', label: 'Excluir Ordem de Separação', campo: 'acesso_excluir_ordem' },
+    { id: 'pdv', icon: '🛒', label: 'PDV (Ponto de Venda)', campo: 'acesso_pdv' },
+    { id: 'historico', icon: '📊', label: 'Histórico de Vendas', campo: 'acesso_historico' },
+    { id: 'receitas', icon: '📒', label: 'Contas a Receber', campo: 'acesso_receitas' },
+    { id: 'categorias', icon: '🏷️', label: 'Categorias', campo: 'acesso_categorias' },
+    { id: 'despesas', icon: '📉', label: 'Despesas', campo: 'acesso_despesas' },
+    { id: 'financeiro', icon: '💳', label: 'Financeiro', campo: 'acesso_financeiro' },
+    { id: 'dashboard', icon: '📈', label: 'Dashboard de Vendas', campo: 'acesso_dashboard' },
+    { id: 'fechamento', icon: '💰', label: 'Fechamento de Caixa', campo: 'acesso_fechamento' }
+  ];
 
-function aplicarEdicao(){
-  const d=window._editData;window._editData=null;if(!d)return;
-  window._editOpId=d.id;
-  document.getElementById('form-titulo').textContent='Alterar Operador';
-  document.getElementById('form-subtitulo').textContent='Edite os dados e salve';
-  document.getElementById('edit-banner').style.display='flex';
-  document.getElementById('btn-salvar-op').textContent='Salvar Alterações';
-  document.getElementById('senha-hint').textContent='Deixe em branco para manter a senha atual';
-  document.getElementById('op-nome').value=d.nome??'';
-  document.getElementById('op-login').value=d.login??'';
-  document.getElementById('op-filial').value=d.filial_pk??'';
-  document.getElementById('perm-admin').checked=d.admin??false;
-  document.getElementById('perm-produtos').checked=d.acesso_produtos??false;
-  document.getElementById('perm-armazens').checked=d.acesso_armazens??false;
-  document.getElementById('perm-agenda').checked=d.acesso_agenda??false;
-  document.getElementById('perm-pdv').checked=d.acesso_pdv??false;
-  document.getElementById('perm-clientes').checked=d.acesso_clientes??false;
-  document.getElementById('perm-separacao').checked=d.acesso_separacao??false;
-  document.getElementById('perm-criar-ordem').checked=d.acesso_criar_ordem??false;
-  document.getElementById('perm-excluir-ordem').checked=d.acesso_excluir_ordem??false;
-  if(d.admin)toggleAdmin({checked:true});
-}
-
-function toggleAdmin(cb){
-  ['perm-produtos','perm-armazens','perm-agenda','perm-pdv','perm-clientes','perm-separacao','perm-criar-ordem','perm-excluir-ordem'].forEach(id=>{
-    const el=document.getElementById(id);if(el){el.checked=cb.checked;el.disabled=cb.checked}
-  });
-}
-
-async function salvarOperador(){
-  const nome=document.getElementById('op-nome')?.value.trim();
-  const login=document.getElementById('op-login')?.value.trim();
-  const senha=document.getElementById('op-senha')?.value.trim();
-  const filial_pk=document.getElementById('op-filial')?.value||null;
-  const admin=document.getElementById('perm-admin')?.checked??false;
-  const acesso_produtos=document.getElementById('perm-produtos')?.checked??false;
-  const acesso_armazens=document.getElementById('perm-armazens')?.checked??false;
-  const acesso_agenda=document.getElementById('perm-agenda')?.checked??false;
-  if(!nome||!login){window.showToast('Preencha Nome e Login.','error');return}
-  if(!window._editOpId&&!senha){window.showToast('Preencha a Senha.','error');return}
-  const btn=document.getElementById('btn-salvar-op');btn.disabled=true;
-  const payload={nome,login,admin,acesso_produtos,acesso_armazens,acesso_agenda,acesso_pdv:document.getElementById('perm-pdv')?.checked??false,acesso_clientes:document.getElementById('perm-clientes')?.checked??false,acesso_separacao:document.getElementById('perm-separacao')?.checked??false,acesso_criar_ordem:document.getElementById('perm-criar-ordem')?.checked??false,acesso_excluir_ordem:document.getElementById('perm-excluir-ordem')?.checked??false,filial_pk:filial_pk?parseInt(filial_pk):null};
-  if(window._editOpId){
-    if(senha)payload.senha=senha;
-    const{error}=await window.supabase.from('operadores').update(payload).eq('id',window._editOpId);
-    btn.disabled=false;if(error){window.showToast('Erro: '+error.message,'error');return}
-    window._editOpId=null;window.showToast('Operador atualizado!');carregarModulo('cadastro_operador.html','nav-operador');
-  }else{
-    payload.senha=senha;payload.ativo=true;
-    const{error}=await window.supabase.from('operadores').insert([payload]);
-    btn.disabled=false;if(error){window.showToast('Erro: '+error.message,'error');return}
-    window.showToast('Operador cadastrado!');limparFormOp();
+  function renderRotinasOp(ativosMap) {
+    var grid = document.getElementById('rotinas-grid');
+    if (!grid) return;
+    grid.innerHTML = ROTINAS_OPERADOR.map(function (r) {
+      var checked = ativosMap[r.campo] ? 'checked' : '';
+      var cls = ativosMap[r.campo] ? 'rotina-item checked' : 'rotina-item';
+      return '<label class="' + cls + '" id="rot-lbl-' + r.id + '">' +
+        '<input type="checkbox" id="rot-' + r.id + '" value="' + r.id + '" ' + checked +
+        ' onchange="toggleRotinaLabelOp(\'' + r.id + '\')">' +
+        '<span class="rotina-icon">' + r.icon + '</span>' +
+        '<span class="rotina-label">' + r.label + '</span></label>';
+    }).join('');
   }
-}
-function limparFormOp(){
-  window._editOpId=null;
-  ['op-nome','op-login','op-senha'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
-  document.getElementById('op-filial').value='';
-  ['perm-admin','perm-produtos','perm-armazens','perm-agenda','perm-pdv','perm-clientes','perm-separacao','perm-criar-ordem','perm-excluir-ordem'].forEach(id=>{const el=document.getElementById(id);if(el){el.checked=false;el.disabled=false}});
-  document.getElementById('btn-salvar-op').textContent='Salvar Operador';
-  document.getElementById('edit-banner').style.display='none';
-  document.getElementById('senha-hint').textContent='';
-}
+
+  function toggleRotinaLabelOp(id) {
+    var chk = document.getElementById('rot-' + id);
+    var lbl = document.getElementById('rot-lbl-' + id);
+    if (!lbl) return;
+    lbl.classList.toggle('checked', chk.checked);
+  }
+
+  function getRotinasOpPayload() {
+    var p = {};
+    ROTINAS_OPERADOR.forEach(function (r) {
+      var el = document.getElementById('rot-' + r.id);
+      p[r.campo] = el ? el.checked : false;
+    });
+    return p;
+  }
+
+  function getAllPermIds() {
+    return ROTINAS_OPERADOR.map(function (r) { return 'rot-' + r.id; });
+  }
+
+  // Carrega filiais no select
+  (async function () {
+    const { data } = await window.supabase.from('filiais').select('pk,codigo,nome').eq('ativo', true).order('codigo');
+    const sel = document.getElementById('op-filial');
+    (data || []).forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.pk; o.textContent = `[${f.codigo}] ${f.nome}`; sel.appendChild(o);
+    });
+    aplicarEdicao();
+  })();
+
+  function aplicarEdicao() {
+    const d = window._editData; window._editData = null;
+    var ativosMap = {};
+    if (d) {
+      window._editOpId = d.id;
+      document.getElementById('form-titulo').textContent = 'Alterar Operador';
+      document.getElementById('form-subtitulo').textContent = 'Edite os dados e salve';
+      document.getElementById('edit-banner').style.display = 'flex';
+      document.getElementById('btn-salvar-op').textContent = 'Salvar Alterações';
+      document.getElementById('senha-hint').textContent = 'Deixe em branco para manter a senha atual';
+      document.getElementById('op-nome').value = d.nome ?? '';
+      document.getElementById('op-login').value = d.login ?? '';
+      document.getElementById('op-filial').value = d.filial_pk ?? '';
+      document.getElementById('perm-admin').checked = d.admin ?? false;
+      ROTINAS_OPERADOR.forEach(function (r) {
+        ativosMap[r.campo] = d[r.campo] ?? false;
+      });
+      if (d.admin) toggleAdmin({ checked: true });
+    }
+    renderRotinasOp(ativosMap);
+  }
+
+  function toggleAdmin(cb) {
+    var ids = getAllPermIds();
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.checked = cb.checked; el.disabled = cb.checked; }
+    });
+  }
+
+  async function salvarOperador() {
+    const nome = document.getElementById('op-nome')?.value.trim();
+    const login = document.getElementById('op-login')?.value.trim();
+    const senha = document.getElementById('op-senha')?.value.trim();
+    const filial_pk = document.getElementById('op-filial')?.value || null;
+    const admin = document.getElementById('perm-admin')?.checked ?? false;
+    if (!nome || !login) { window.showToast('Preencha Nome e Login.', 'error'); return }
+    if (!window._editOpId && !senha) { window.showToast('Preencha a Senha.', 'error'); return }
+    const btn = document.getElementById('btn-salvar-op'); btn.disabled = true;
+    const rotinasPayload = getRotinasOpPayload();
+    const payload = {
+      nome, login, admin,
+      filial_pk: filial_pk ? parseInt(filial_pk) : null,
+      ...rotinasPayload
+    };
+    if (window._editOpId) {
+      if (senha) payload.senha = senha;
+      const { error } = await window.supabase.from('operadores').update(payload).eq('id', window._editOpId);
+      btn.disabled = false;
+      if (error) { window.showToast('Erro: ' + error.message, 'error'); return }
+      window._editOpId = null; window.showToast('Operador atualizado!');
+      carregarModulo('cadastro_operador.html', 'nav-operador');
+    } else {
+      payload.senha = senha; payload.ativo = true;
+      const { error } = await window.supabase.from('operadores').insert([payload]);
+      btn.disabled = false;
+      if (error) { window.showToast('Erro: ' + error.message, 'error'); return }
+      window.showToast('Operador cadastrado!'); limparFormOp();
+    }
+  }
+
+  function limparFormOp() {
+    window._editOpId = null;
+    ['op-nome', 'op-login', 'op-senha'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '' });
+    document.getElementById('op-filial').value = '';
+    document.getElementById('perm-admin').checked = false;
+    renderRotinasOp({});
+    getAllPermIds().forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.checked = false; el.disabled = false; }
+    });
+    document.getElementById('btn-salvar-op').textContent = 'Salvar Operador';
+    document.getElementById('edit-banner').style.display = 'none';
+    document.getElementById('senha-hint').textContent = '';
+  }
 </script>

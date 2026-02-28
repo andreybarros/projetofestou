@@ -210,6 +210,89 @@
       transform: translateY(0)
     }
   }
+
+  .rotinas-card {
+    background: var(--mc);
+    border-radius: 14px;
+    padding: 24px 26px;
+    max-width: 560px;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+    border: 1px solid var(--mborder);
+    animation: mfadeUp .4s ease .1s both;
+    margin-top: 16px
+  }
+
+  .rotinas-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--mtext2);
+    margin-bottom: 4px
+  }
+
+  .rotinas-card p {
+    font-size: 12px;
+    color: var(--mmuted);
+    margin-bottom: 16px
+  }
+
+  .rotinas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px
+  }
+
+  .rotina-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .15s;
+    background: var(--mc2)
+  }
+
+  .rotina-item:hover {
+    border-color: #a5b4fc;
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .rotina-item:hover {
+    background: #22263a;
+    border-color: #6366f1
+  }
+
+  .rotina-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #4f46e5;
+    cursor: pointer;
+    flex-shrink: 0
+  }
+
+  .rotina-item.checked {
+    border-color: #4f46e5;
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .rotina-item.checked {
+    background: #22263a;
+    border-color: #6366f1
+  }
+
+  .rotina-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mtext2);
+    cursor: pointer;
+    user-select: none
+  }
+
+  .rotina-icon {
+    font-size: 18px;
+    flex-shrink: 0
+  }
 </style>
 <div class="mod">
   <div class="mod-header">
@@ -232,16 +315,27 @@
         <div class="field-hint">Ex: 01, SP, RJ</div>
       </div>
       <div class="mform-group">
-        <label>Nome da Filial</label>
+        <label>Nome da Filial (Nome Fantasia)</label>
         <input type="text" id="fil-nome" placeholder="Ex: Matriz, Filial SP...">
       </div>
     </div>
     <div class="mform-group">
-      <label>Status</label>
-      <select id="fil-ativo">
-        <option value="true">✅ Ativa</option>
-        <option value="false">❌ Inativa</option>
-      </select>
+      <label>Razão Social</label>
+      <input type="text" id="fil-razao" placeholder="Ex: Festou Festas Ltda.">
+    </div>
+    <div class="mform-row">
+      <div class="mform-group">
+        <label>CNPJ</label>
+        <input type="text" id="fil-cnpj" placeholder="00.000.000/0000-00"
+          oninput="this.value=this.value.replace(/[^0-9.\-/]/g,'')">
+      </div>
+      <div class="mform-group">
+        <label>Status</label>
+        <select id="fil-ativo">
+          <option value="true">✅ Ativa</option>
+          <option value="false">❌ Inativa</option>
+        </select>
+      </div>
     </div>
     <div class="mdivider"></div>
     <div class="mform-footer">
@@ -249,54 +343,152 @@
       <button class="mbtn mbtn-ghost" onclick="limparFormFil()">Limpar</button>
     </div>
   </div>
+
+  <!-- Rotinas / Módulos da Filial -->
+  <div class="rotinas-card">
+    <h3>🔧 Módulos / Rotinas</h3>
+    <p>Escolha quais módulos esta filial terá acesso no sistema.</p>
+    <div class="rotinas-grid" id="rotinas-grid">
+      <!-- Gerado via JS -->
+    </div>
+  </div>
 </div>
 <script>
+  // Lista de todos os módulos disponíveis no sistema
+  var ROTINAS_DISPONIVEIS = [
+    { id: 'produtos', icon: '📦', label: 'Produtos / Estoque' },
+    { id: 'armazens', icon: '🏭', label: 'Armazéns' },
+    { id: 'clientes', icon: '👥', label: 'Clientes' },
+    { id: 'agenda', icon: '📅', label: 'Agenda' },
+    { id: 'separacao', icon: '📋', label: 'Separação' },
+    { id: 'pdv', icon: '🛒', label: 'PDV (Ponto de Venda)' },
+    { id: 'historico', icon: '📊', label: 'Histórico de Vendas' },
+    { id: 'receitas', icon: '📒', label: 'Contas a Receber' },
+    { id: 'categorias', icon: '🏷️', label: 'Categorias' },
+    { id: 'despesas', icon: '📉', label: 'Despesas' },
+    { id: 'financeiro', icon: '💳', label: 'Financeiro' },
+  ];
+
+  // Renderiza os checkboxes de rotinas
+  function renderRotinas(ativosSet) {
+    var grid = document.getElementById('rotinas-grid');
+    if (!grid) return;
+    grid.innerHTML = ROTINAS_DISPONIVEIS.map(function (r) {
+      var checked = ativosSet.has(r.id) ? 'checked' : '';
+      var cls = ativosSet.has(r.id) ? 'rotina-item checked' : 'rotina-item';
+      return '<label class="' + cls + '" id="rot-lbl-' + r.id + '">' +
+        '<input type="checkbox" id="rot-' + r.id + '" value="' + r.id + '" ' + checked +
+        ' onchange="toggleRotinaLabel(\'' + r.id + '\')">' +
+        '<span class="rotina-icon">' + r.icon + '</span>' +
+        '<span class="rotina-label">' + r.label + '</span>' +
+        '</label>';
+    }).join('');
+  }
+
+  function toggleRotinaLabel(id) {
+    var chk = document.getElementById('rot-' + id);
+    var lbl = document.getElementById('rot-lbl-' + id);
+    if (!lbl) return;
+    lbl.classList.toggle('checked', chk.checked);
+  }
+
+  function getRotinasChecked() {
+    return ROTINAS_DISPONIVEIS
+      .filter(function (r) { return document.getElementById('rot-' + r.id)?.checked; })
+      .map(function (r) { return r.id; });
+  }
+
   window._editFilPk = null;
-  (function () {
-    const d = window._editData; window._editData = null;
-    if (!d) return;
-    window._editFilPk = d.pk;
-    document.getElementById('form-titulo').textContent = 'Alterar Filial';
-    document.getElementById('form-subtitulo').textContent = 'Edite os dados e salve';
-    document.getElementById('edit-banner').style.display = 'flex';
-    document.getElementById('btn-salvar-fil').textContent = 'Salvar Alterações';
-    document.getElementById('fil-codigo').value = d.codigo;
-    document.getElementById('fil-nome').value = d.nome;
-    document.getElementById('fil-ativo').value = String(d.ativo);
+
+  // Inicialização
+  (async function () {
+    var d = window._editData; window._editData = null;
+    var ativosSet = new Set();
+
+    if (d) {
+      window._editFilPk = d.pk;
+      document.getElementById('form-titulo').textContent = 'Alterar Filial';
+      document.getElementById('form-subtitulo').textContent = 'Edite os dados e salve';
+      document.getElementById('edit-banner').style.display = 'flex';
+      document.getElementById('btn-salvar-fil').textContent = 'Salvar Alterações';
+      document.getElementById('fil-codigo').value = d.codigo || '';
+      document.getElementById('fil-nome').value = d.nome || '';
+      document.getElementById('fil-razao').value = d.razao_social || '';
+      document.getElementById('fil-cnpj').value = d.cnpj || '';
+      document.getElementById('fil-ativo').value = String(d.ativo);
+
+      // Carrega módulos já ativos desta filial
+      var rs = await window.supabase.from('modulos_filiais')
+        .select('modulo').eq('filial_pk', d.pk).eq('ativo', true);
+      if (rs.data) rs.data.forEach(function (m) { ativosSet.add(m.modulo); });
+    }
+
+    renderRotinas(ativosSet);
   })();
 
   async function salvarFilial() {
-    const codigo = document.getElementById('fil-codigo').value.trim().toUpperCase();
-    const nome = document.getElementById('fil-nome').value.trim();
-    const ativo = document.getElementById('fil-ativo').value === 'true';
+    var codigo = document.getElementById('fil-codigo').value.trim().toUpperCase();
+    var nome = document.getElementById('fil-nome').value.trim();
+    var razao_social = document.getElementById('fil-razao').value.trim();
+    var cnpj = document.getElementById('fil-cnpj').value.trim();
+    var ativo = document.getElementById('fil-ativo').value === 'true';
+
     if (!codigo) { window.showToast('Informe o código.', 'error'); return; }
-    if (!nome) { window.showToast('Informe o nome.', 'error'); return; }
+    if (!nome) { window.showToast('Informe o nome fantasia.', 'error'); return; }
 
-    const btn = document.getElementById('btn-salvar-fil');
+    var btn = document.getElementById('btn-salvar-fil');
     btn.disabled = true;
-    const payload = { codigo, nome, ativo };
+    btn.textContent = 'Salvando...';
+    var payload = {
+      codigo: codigo,
+      nome: nome,
+      razao_social: razao_social || null,
+      cnpj: cnpj || null,
+      ativo: ativo
+    };
 
-    if (window._editFilPk) {
-      const { error } = await window.supabase.from('filiais').update(payload).eq('pk', window._editFilPk);
-      btn.disabled = false;
-      if (error) { window.showToast('Erro: ' + error.message, 'error'); return; }
-      window._editFilPk = null;
-      window.showToast('Filial atualizada!');
+    try {
+      var filialPk;
+      if (window._editFilPk) {
+        var { error } = await window.supabase.from('filiais').update(payload).eq('pk', window._editFilPk);
+        if (error) throw error;
+        filialPk = window._editFilPk;
+        window._editFilPk = null;
+      } else {
+        var rs = await window.supabase.from('filiais').insert([payload]).select('pk').single();
+        if (rs.error) throw rs.error;
+        filialPk = rs.data.pk;
+      }
+
+      // Salva rotinas: remove todas e re-insere as marcadas
+      await window.supabase.from('modulos_filiais').delete().eq('filial_pk', filialPk);
+      var rotinas = getRotinasChecked();
+      if (rotinas.length > 0) {
+        var rowsRotinas = rotinas.map(function (mod) {
+          return { filial_pk: filialPk, modulo: mod, ativo: true };
+        });
+        var rr = await window.supabase.from('modulos_filiais').insert(rowsRotinas);
+        if (rr.error) throw rr.error;
+      }
+
+      window.showToast('Filial salva com sucesso!');
       carregarModulo('cadastro_filial.html', 'nav-filiais');
-    } else {
-      const { error } = await window.supabase.from('filiais').insert([payload]);
+    } catch (e) {
+      window.showToast('Erro: ' + e.message, 'error');
       btn.disabled = false;
-      if (error) { window.showToast('Erro: ' + error.message, 'error'); return; }
-      window.showToast('Filial cadastrada!');
-      carregarModulo('cadastro_filial.html', 'nav-filiais');
+      btn.textContent = window._editFilPk ? 'Salvar Alterações' : 'Salvar Filial';
     }
   }
+
   function limparFormFil() {
     window._editFilPk = null;
     document.getElementById('fil-codigo').value = '';
     document.getElementById('fil-nome').value = '';
+    document.getElementById('fil-razao').value = '';
+    document.getElementById('fil-cnpj').value = '';
     document.getElementById('fil-ativo').value = 'true';
     document.getElementById('btn-salvar-fil').textContent = 'Salvar Filial';
     document.getElementById('edit-banner').style.display = 'none';
+    renderRotinas(new Set());
   }
 </script>

@@ -68,4 +68,64 @@ ADD COLUMN IF NOT EXISTS preco_custo numeric(12,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS valor_venda numeric(12,2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS markup numeric(6,2) DEFAULT 0;
 
+-- 6. Adição das colunas de Locação na tabela de vendas
+ALTER TABLE vendas 
+ADD COLUMN IF NOT EXISTS tipo_venda text DEFAULT 'venda', -- 'venda' ou 'locacao'
+ADD COLUMN IF NOT EXISTS data_locacao timestamp without time zone,
+ADD COLUMN IF NOT EXISTS data_devolucao_prevista timestamp without time zone,
+ADD COLUMN IF NOT EXISTS status_locacao text; -- 'pendente', 'devolvida' (apenas para tipo = locacao)
+
+-- 7. Adição da coluna venda_pk na agenda para vinculação de Locação
+ALTER TABLE agenda ADD COLUMN IF NOT EXISTS venda_pk bigint REFERENCES vendas(pk) ON DELETE SET NULL;
+
+-- 8. Tabela de Fornecedores
+CREATE TABLE IF NOT EXISTS fornecedores (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  nome text NOT NULL,
+  cnpj_cpf text,
+  telefone text,
+  email text,
+  criado_em timestamptz DEFAULT now()
+);
+ALTER TABLE fornecedores ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fornecedores' AND policyname='forn_all') THEN
+    CREATE POLICY "forn_all" ON fornecedores USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- 9. Tabela de Despesas (Contas a Pagar)
+CREATE TABLE IF NOT EXISTS despesas (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  fornecedor_pk bigint REFERENCES fornecedores(pk) ON DELETE SET NULL,
+  conta_pk bigint REFERENCES contas_bancarias(pk) ON DELETE SET NULL,
+  descricao text NOT NULL,
+  categoria text,
+  valor numeric(12,2) DEFAULT 0,
+  vencimento date NOT NULL,
+  status text DEFAULT 'pendente', -- 'pendente', 'paga'
+  data_pagamento timestamptz,
+  criado_em timestamptz DEFAULT now()
+);
+ALTER TABLE despesas ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='despesas' AND policyname='desp_all') THEN
+    CREATE POLICY "desp_all" ON despesas USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- 10. Adição de colunas para Crediário na tabela de vendas
+ALTER TABLE vendas 
+ADD COLUMN IF NOT EXISTS data_vencimento_crediario date,
+ADD COLUMN IF NOT EXISTS status_crediario text; -- 'pendente', 'recebido'
+
+-- 11. Novas permissões por rotina na tabela operadores
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_historico boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_receitas boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_categorias boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_despesas boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_financeiro boolean DEFAULT false;
+
 NOTIFY pgrst, 'reload schema';

@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Estoque</title>
+  <link rel="stylesheet" href="css/shared.css">
   <style>
     :root {
       --surface: #4f46e5;
@@ -13,6 +14,8 @@
       --sidebar-txt: #fff;
       --sidebar-mut: rgba(255, 255, 255, .55);
       --content-bg: #f4f4f9;
+      --content-txt: #1e1b4b;
+      --content-muted: #6b7280;
       --border: rgba(255, 255, 255, .2);
     }
 
@@ -23,6 +26,8 @@
       --sidebar-txt: #e8e9f3;
       --sidebar-mut: rgba(255, 255, 255, .35);
       --content-bg: #0f1117;
+      --content-txt: #e8e9f3;
+      --content-muted: #7b7fa0;
       --border: rgba(255, 255, 255, .08);
     }
 
@@ -585,8 +590,9 @@
       flex: 1;
       padding: 20px;
       background: var(--content-bg);
+      color: var(--content-txt);
       overflow-y: auto;
-      transition: background .2s
+      transition: background .2s, color .2s
     }
 
     .content::-webkit-scrollbar {
@@ -726,6 +732,8 @@
           style="display:none"><span class="nav-icon">🏷️</span><span class="nav-text">Categorias</span></button>
         <button class="nav-btn" id="nav-clientes" onclick="ir('cadastro_clientes.html','nav-clientes')"
           style="display:none"><span class="nav-icon">👥</span><span class="nav-text">Clientes</span></button>
+        <button class="nav-btn" id="nav-fornecedores" onclick="ir('cadastro_fornecedores.html','nav-fornecedores')"
+          style="display:none"><span class="nav-icon">🤝</span><span class="nav-text">Fornecedores</span></button>
 
         <span class="sidebar-section">Estrutura</span>
         <button class="nav-btn" id="nav-armazem" onclick="ir('cadastro_armazem.html','nav-armazem')"
@@ -736,21 +744,30 @@
             class="nav-icon">📅</span><span class="nav-text">Eventos</span></button>
 
         <span class="sidebar-section" id="sec-pdv" style="display:none">Vendas</span>
+        <button class="nav-btn" id="nav-dashboard" onclick="ir('dashboard.html','nav-dashboard')"
+          style="display:none"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></button>
         <button class="nav-btn" id="nav-pdv" onclick="ir('pdv.html','nav-pdv')" style="display:none"><span
             class="nav-icon">🛒</span><span class="nav-text">Ponto de Venda</span></button>
         <button class="nav-btn" id="nav-historico" onclick="ir('historico_vendas.html','nav-historico')"
-          style="display:none"><span class="nav-icon">📊</span><span class="nav-text">Histórico de
+          style="display:none"><span class="nav-icon">📋</span><span class="nav-text">Histórico de
             Vendas</span></button>
+        <button class="nav-btn" id="nav-receitas" onclick="ir('receitas.html','nav-receitas')"
+          style="display:none"><span class="nav-icon">📒</span><span class="nav-text">Contas a Receber</span></button>
 
         <span class="sidebar-section" id="sec-separacao" style="display:none">Operação</span>
         <button class="nav-btn" id="nav-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')"
           style="display:none"><span class="nav-icon">📋</span><span class="nav-text">Separação</span></button>
 
         <span class="sidebar-section" id="sec-admin" style="display:none">Administração</span>
+        <button class="nav-btn" id="nav-despesas" onclick="ir('despesas.html','nav-despesas')"
+          style="display:none"><span class="nav-icon">📉</span><span class="nav-text">Despesas</span></button>
         <button class="nav-btn" id="nav-financeiro" onclick="ir('financeiro.html','nav-financeiro')"
           style="display:none"><span class="nav-icon">💳</span><span class="nav-text">Financeiro</span></button>
         <button class="nav-btn" id="nav-filiais" onclick="ir('cadastro_filial.html','nav-filiais')"
           style="display:none"><span class="nav-icon">🏢</span><span class="nav-text">Filiais</span></button>
+        <button class="nav-btn" id="nav-fechamento" onclick="ir('fechamento_caixa.html','nav-fechamento')"
+          style="display:none"><span class="nav-icon">💰</span><span class="nav-text">Fechamento de
+            Caixa</span></button>
         <button class="nav-btn" id="nav-operador" onclick="ir('cadastro_operador.html','nav-operador')"
           style="display:none"><span class="nav-icon">👤</span><span class="nav-text">Operadores</span></button>
       </div>
@@ -782,31 +799,14 @@
 
   <div id="toast"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="js/shared.js"></script>
   <script>
-    const SUPA_URL = "https://lflpzskcpcsfzagackuy.supabase.co";
-    const SUPA_KEY = "sb_publishable_5jo3h0in7z4PPCsw4K5RjA_g-TVT_NP";
-    window.supabase = supabase.createClient(SUPA_URL, SUPA_KEY);
     window.operadorLogado = null;
-    window.filialLogada = null; // { pk, codigo, nome }
+    window.filialLogada = null;
     window._editData = null;
-
-    // ── Tema ───────────────────────────────────────────────────
-    function aplicarTema(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      document.getElementById('theme-label').textContent = t === 'dark' ? '🌙 Dark' : '☀️ Light';
-      try { localStorage.setItem('tema', t) } catch (e) { }
-    }
-    function alternarTema() { aplicarTema(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark') }
-    try { aplicarTema(localStorage.getItem('tema') || 'light') } catch (e) { aplicarTema('light') }
-
-    // ── Toast ──────────────────────────────────────────────────
-    window.showToast = function (msg, tipo = 'success') {
-      const t = document.getElementById('toast');
-      t.textContent = (tipo === 'success' ? '✅ ' : '❌ ') + msg;
-      t.className = 'show ' + tipo;
-      setTimeout(() => t.className = '', 3500);
-    };
+    window._modulosFilial = new Set();
 
     // ── Sidebar ────────────────────────────────────────────────
     function abrirSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('show') }
@@ -878,7 +878,7 @@
       document.getElementById('user-filial-badge').textContent = `${window.filialLogada.codigo} · ${window.filialLogada.nome}`;
       document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
 
-      aplicarPermissoes(op);
+      await aplicarPermissoes(op);
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').classList.add('visible');
       document.getElementById('sidebar').classList.add('visible');
@@ -887,30 +887,47 @@
       ir('home.html', 'nav-home');
     }
 
-    function aplicarPermissoes(op) {
+    async function aplicarPermissoes(op) {
       const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
-      const temAgenda = op.admin || op.acesso_agenda;
-      show('nav-produtos', op.admin || op.acesso_produtos);
-      show('nav-armazem', op.admin || op.acesso_armazens);
+      const fil = window.filialLogada;
+
+      // Busca módulos habilitados para esta filial
+      const { data: modsData } = await window.supabase
+        .from('modulos_filiais').select('modulo').eq('filial_pk', fil.pk).eq('ativo', true);
+      const mods = new Set((modsData || []).map(m => m.modulo));
+      window._modulosFilial = mods;
+
+      const temAgenda = mods.has('agenda') && (op.admin || op.acesso_agenda);
+      const temPdv = mods.has('pdv') && (op.admin || op.acesso_pdv);
+      const temDash = mods.has('pdv') && (op.admin || op.acesso_dashboard);
+      const temHist = mods.has('historico') && (op.admin || op.acesso_pdv || op.acesso_historico);
+      const temReceitas = mods.has('receitas') && (op.admin || op.acesso_pdv || op.acesso_receitas);
+      const temCat = mods.has('categorias') && (op.admin || op.acesso_produtos || op.acesso_categorias);
+      const temSep = mods.has('separacao') && (op.admin || op.acesso_separacao || op.acesso_criar_ordem);
+      const temClientes = mods.has('clientes') && (op.admin || op.acesso_clientes);
+      const temDespesas = mods.has('despesas') && (op.admin || op.acesso_despesas);
+      const temFinanceiro = mods.has('financeiro') && (op.admin || op.acesso_financeiro);
+
+      show('nav-produtos', mods.has('produtos') && (op.admin || op.acesso_produtos));
+      show('nav-armazem', mods.has('armazens') && (op.admin || op.acesso_armazens));
       show('nav-agenda', temAgenda);
       show('sec-agenda', temAgenda);
-      var fil = window.filialLogada;
-      var isFilial2 = fil && fil.codigo === '02';
-      var temPdv = isFilial2 && (op.admin || op.acesso_pdv);
+      show('nav-dashboard', temDash);
       show('nav-pdv', temPdv);
-      show('nav-historico', temPdv); // vinculamos historioco à mesma permissão do pdv
-      show('sec-pdv', temPdv);
-      var temClientes = op.admin || op.acesso_clientes;
+      show('nav-historico', temHist);
+      show('nav-receitas', temReceitas);
+      show('sec-pdv', temDash || temPdv || temHist || temReceitas);
       show('nav-clientes', temClientes);
-      var temCat = isFilial2 && (op.admin || op.acesso_produtos);
+      show('nav-fornecedores', temClientes);
       show('nav-categoria', temCat);
-      var temSep = op.admin || op.acesso_separacao || op.acesso_criar_ordem;
       show('nav-separacao', temSep);
       show('sec-separacao', temSep);
       show('sec-admin', op.admin);
-      show('nav-financeiro', op.admin);
+      show('nav-financeiro', temFinanceiro);
+      show('nav-despesas', temDespesas);
       show('nav-filiais', op.admin);
       show('nav-operador', op.admin);
+      show('nav-fechamento', op.admin || op.acesso_fechamento);
     }
 
     function logout() {
@@ -923,7 +940,7 @@
       document.getElementById('inp-login').value = '';
       document.getElementById('inp-senha').value = '';
       document.getElementById('content').innerHTML =
-        '<h2 style="color:var(--sidebar-txt)">Bem-vindo</h2><p style="color:#888;font-size:13px;margin-top:6px">Escolha um módulo no menu lateral.</p>';
+        '<h2 style="color:var(--content-txt)">Bem-vindo</h2><p style="color:var(--content-muted);font-size:13px;margin-top:6px">Escolha um módulo no menu lateral.</p>';
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     }
 

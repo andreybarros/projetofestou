@@ -548,10 +548,34 @@
       <div class="modal-descricao" id="modal-descricao"></div>
     </div>
     <div class="modal-footer">
+      <button class="mbtn" id="btn-registrar-dev" style="display:none;background:#f59e0b;color:#fff;border:none"
+        onclick="AgMod.iniciarDevolucao()">📦 Registrar Devolução</button>
       <button class="mbtn-danger" id="btn-excluir-evento" style="display:none" onclick="AgMod.excluirAtual()">🗑
         Excluir</button>
       <button class="mbtn mbtn-ghost" onclick="AgMod.editarAtual()">✏️ Alterar</button>
       <button class="mbtn mbtn-primary" onclick="AgMod.fecharModal()">Fechar</button>
+    </div>
+    <div class="modal-devolucao" id="ag-devolucao"
+      style="display:none; padding:18px; border-top:1px dashed var(--mborder); background:var(--mc2);">
+      <h4 style="margin:0 0 10px 0;font-size:13px;color:var(--mtext2)">Concluir Devolução</h4>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:11px;color:var(--mmuted);margin-bottom:4px">Taxa de Atraso / Reposição
+          (R$)</label>
+        <input type="number" id="ag-dev-taxa" value="0.00" step="0.01"
+          style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--mborder);background:var(--mc);color:var(--mtext);font-family:'DM Sans',sans-serif;">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;color:var(--mmuted);margin-bottom:4px">Conta de Destino (para a
+          taxa)</label>
+        <select id="ag-dev-conta"
+          style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--mborder);background:var(--mc);color:var(--mtext);font-family:'DM Sans',sans-serif;"></select>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="mbtn mbtn-ghost"
+          onclick="document.getElementById('ag-devolucao').style.display='none'">Cancelar</button>
+        <button class="mbtn" style="background:#059669;color:#fff;border:none"
+          onclick="AgMod.salvarDevolucao()">Confirmar Devolução</button>
+      </div>
     </div>
   </div>
 </div>
@@ -692,15 +716,71 @@
       document.getElementById('modal-descricao').innerHTML = desc
         ? desc.replace(/</g, '&lt;')
         : '<span class="modal-empty">Nenhuma descrição informada.</span>';
+
       var op = window.operadorLogado;
       var btnEx = document.getElementById('btn-excluir-evento');
       if (btnEx) btnEx.style.display = (op && (op.admin || op.acesso_agenda)) ? '' : 'none';
+
+      // Locação Dev
+      var btnDev = document.getElementById('btn-registrar-dev');
+      document.getElementById('ag-devolucao').style.display = 'none';
+      if (btnDev) btnDev.style.display = 'none';
+
+      if (ev.venda_pk && btnDev) {
+        window.supabase.from('vendas').select('status_locacao, numero').eq('pk', ev.venda_pk).single().then(function (rv) {
+          if (rv.data && rv.data.status_locacao === 'pendente') {
+            evAtual.num_venda_locacao = rv.data.numero; // store extra info for fee description
+            btnDev.style.display = '';
+            var selConta = document.getElementById('ag-dev-conta');
+            window.supabase.from('contas_bancarias').select('*').order('nome').then(function (rc) {
+              var opts = '<option value="">(Selecione uma conta se houver taxa)</option>';
+              if (rc.data) rc.data.forEach(function (c) { opts += '<option value="' + c.pk + '">' + c.nome + '</option>'; });
+              if (selConta) selConta.innerHTML = opts;
+            });
+          }
+        });
+      }
+
       document.getElementById('modal-evento').style.display = 'flex';
     }
 
     function fecharModal() {
       document.getElementById('modal-evento').style.display = 'none';
+      document.getElementById('ag-devolucao').style.display = 'none';
       evAtual = null;
+    }
+
+    function iniciarDevolucao() {
+      document.getElementById('ag-devolucao').style.display = 'block';
+      document.getElementById('ag-dev-taxa').value = '0.00';
+    }
+
+    async function salvarDevolucao() {
+      if (!evAtual || !evAtual.venda_pk) return;
+      var vPk = evAtual.venda_pk;
+      var taxa = Number(document.getElementById('ag-dev-taxa').value) || 0;
+      var contaPk = document.getElementById('ag-dev-conta').value;
+
+      if (taxa > 0 && !contaPk) {
+        window.showToast('Selecione a conta para receber a taxa de atraso/reposição.', 'error'); return;
+      }
+
+      if (taxa > 0) {
+        var numStr = evAtual.num_venda_locacao ? String(evAtual.num_venda_locacao).padStart(4, '0') : '?';
+        var rm = await window.supabase.from('movimentacoes_financeiras').insert([{
+          conta_pk: contaPk, venda_pk: vPk, tipo_movimento: 'entrada', valor: taxa,
+          descricao: 'Taxa de Atraso/Reposição - Locação #' + numStr
+        }]);
+        if (rm.error) { window.showToast('Erro ao gravar taxa: ' + rm.error.message, 'error'); return; }
+      }
+
+      var ru = await window.supabase.from('vendas').update({ status_locacao: 'devolvida' }).eq('pk', vPk);
+      if (ru.error) { window.showToast('Erro ao atualizar locação: ' + ru.error.message, 'error'); return; }
+
+      window.showToast('Devolução concluída com sucesso!');
+      fecharModal();
+      // Atualiza PDV e relatórios se em contexto global
+      if (window.carregarVendas) window.carregarVendas();
     }
 
     function editarAtual() {
@@ -774,7 +854,9 @@
       fecharModal: fecharModal,
       editarAtual: editarAtual,
       excluirAtual: excluirAtual,
-      novoEvento: novoEvento
+      novoEvento: novoEvento,
+      iniciarDevolucao: iniciarDevolucao,
+      salvarDevolucao: salvarDevolucao
     };
   })();
 </script>

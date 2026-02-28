@@ -29,17 +29,103 @@
 
   /* Layout principal 2 colunas */
   .pdv-layout {
-    display: grid;
-    grid-template-columns: 1fr 480px;
-    gap: 16px;
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 120px);
     min-height: 500px;
-    height: 75vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pdv-mobile-footer {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--mc);
+    border-top: 2px solid #4f46e5;
+    padding: 12px 16px;
+    z-index: 450;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+    animation: slideUp .3s ease;
+  }
+
+  .btn-mclose-cart {
+    display: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
   }
 
   @media(max-width:900px) {
     .pdv-layout {
-      grid-template-columns: 1fr;
-      height: auto
+      flex-direction: column;
+      height: auto;
+      overflow: visible;
+    }
+
+    .pdv-left {
+      padding-right: 0 !important;
+      padding-bottom: 90px;
+      /* Espaço barra mobile */
+      height: auto;
+      overflow: visible;
+    }
+
+    .pdv-right {
+      position: fixed !important;
+      top: 0;
+      right: -100%;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      z-index: 1000;
+      transition: right 0.3s ease;
+      border-left: none !important;
+      border-top: none !important;
+      border-radius: 0 !important;
+    }
+
+    .pdv-right.open {
+      right: 0 !important;
+    }
+
+    .pdv-mobile-footer {
+      display: flex;
+    }
+
+    .btn-mclose-cart {
+      display: flex !important;
+    }
+
+    .pdv-produtos-grid {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      overflow: visible;
+      padding-bottom: 20px;
+    }
+
+    .prod-card {
+      padding: 10px;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
     }
   }
 
@@ -48,7 +134,9 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    overflow: hidden
+    overflow: hidden;
+    flex: 1;
+    padding-right: 16px;
   }
 
   .pdv-search-bar {
@@ -186,30 +274,36 @@
     margin-bottom: 8px
   }
 
-  /* Coluna direita — carrinho */
+  /* Coluna direita — carrinho (sidebar) */
   .pdv-right {
+    width: 480px;
+    min-width: 400px;
+    max-width: 600px;
     display: flex;
     flex-direction: column;
-    gap: 0;
     background: var(--mc);
-    border-radius: 14px;
-    border: 1px solid var(--mborder);
+    border-left: 1px solid var(--mborder);
+    border-top: 2px solid #4f46e5;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(79, 70, 229, .08)
+    box-shadow: -6px 0 28px rgba(79, 70, 229, .10);
+    flex-shrink: 0;
+    border-radius: 0 0 0 0;
   }
 
   html[data-theme="dark"] .pdv-right {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
+    box-shadow: -6px 0 28px rgba(0, 0, 0, .35);
+    border-left-color: #2e3250;
   }
 
   .pdv-right-head {
-    background: linear-gradient(90deg, #4f46e5, #6366f1);
-    padding: 14px 16px;
-    color: #fff
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    padding: 18px 16px 14px;
+    color: #fff;
+    flex-shrink: 0;
   }
 
   .pdv-right-head h3 {
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 700;
     margin-bottom: 2px
   }
@@ -291,15 +385,22 @@
   .pdv-itens {
     flex: 1;
     overflow-y: auto;
-    min-height: 0
+    min-height: 0;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px
   }
 
   .pdv-item {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--mborder2);
+    padding: 12px 16px;
+    border: 1.5px solid var(--mborder);
+    border-radius: 10px;
+    background: var(--mc2);
     display: flex;
     flex-direction: column;
-    gap: 4px
+    gap: 6px;
+    flex-shrink: 0
   }
 
   .pdv-item-row1 {
@@ -310,7 +411,7 @@
   }
 
   .pdv-item-nome {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--mtext2);
     flex: 1;
@@ -318,7 +419,7 @@
   }
 
   .pdv-item-total {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     color: #059669;
     font-family: 'DM Mono', monospace;
@@ -442,6 +543,50 @@
     font-size: 13px
   }
 
+  .pdv-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px
+  }
+
+  .pdv-item-saldo {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #f0fdf4;
+    color: #059669;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: 600;
+    font-size: 10px;
+    white-space: nowrap
+  }
+
+  html[data-theme="dark"] .pdv-item-saldo {
+    background: #052e16;
+    color: #4ade80
+  }
+
+  .pdv-item-saldo.baixo {
+    background: #fff7ed;
+    color: #c2410c
+  }
+
+  html[data-theme="dark"] .pdv-item-saldo.baixo {
+    background: #431407;
+    color: #fb923c
+  }
+
+  .pdv-item-saldo.zerado {
+    background: #fef2f2;
+    color: #dc2626
+  }
+
+  html[data-theme="dark"] .pdv-item-saldo.zerado {
+    background: #450a0a;
+    color: #f87171
+  }
+
   /* Desconto em lote */
   .desc-lote-bar {
     padding: 8px 12px;
@@ -525,25 +670,28 @@
 
   /* Totais + pagamento */
   .pdv-totais {
-    padding: 10px 12px;
+    padding: 12px 16px;
     border-top: 2px solid var(--mborder);
-    background: var(--mc2)
+    background: var(--mc2);
+    flex-shrink: 0;
   }
 
   .total-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--mmuted);
-    margin-bottom: 3px
+    margin-bottom: 4px
   }
 
   .total-row.principal {
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--mtext2);
-    margin-top: 4px
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--mborder);
   }
 
   .total-val {
@@ -560,8 +708,14 @@
 
   .pagamentos-section {
     padding: 10px 12px;
-    border-top: 1px solid var(--mborder)
+    border-top: 1px solid var(--mborder);
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column
   }
+
 
   .pag-title {
     font-size: 11px;
@@ -748,6 +902,308 @@
 
   .btn-cancelar:hover {
     background: #fee2e2
+  }
+
+  /* Passos do PDV */
+  .pdv-passo1-extra {
+    padding: 12px 16px;
+    border-top: 1px solid var(--mborder);
+    background: var(--mc);
+    flex-shrink: 0;
+  }
+
+  .pdv-tipo-operacao {
+    background: var(--mc2);
+    border: 1.5px solid var(--mborder);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 0;
+  }
+
+  .pdv-tipo-operacao-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--mmuted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 8px;
+  }
+
+  .pdv-tipo-operacao-radios {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .pdv-tipo-radio {
+    font-size: 13px;
+    color: var(--mtext);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .pdv-tipo-radio input {
+    accent-color: #4f46e5;
+  }
+
+  .pdv-locacao-datas {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--mborder);
+  }
+
+  .pdv-locacao-datas.show {
+    display: block;
+  }
+
+  .pdv-locacao-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .pdv-locacao-field {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .pdv-locacao-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mmuted);
+    margin-bottom: 4px;
+  }
+
+  .pdv-locacao-field input {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--mborder);
+    background: var(--mc);
+    color: var(--mtext2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    outline: none;
+  }
+
+  .pdv-passo1-footer {
+    padding: 12px 16px;
+    border-top: 2px solid var(--mborder);
+    background: var(--mc2);
+    flex-shrink: 0;
+  }
+
+  /* Passo 2: tela cheia de pagamentos */
+  .pdv-passo2-full {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .pdv-passo2-full.visible {
+    display: flex !important;
+  }
+
+  .pdv-passo2-totais-compact {
+    padding: 12px 16px;
+    background: var(--mc2);
+    border-bottom: 1px solid var(--mborder);
+    flex-shrink: 0;
+  }
+
+  .pdv-crediario-wrap {
+    display: none;
+    background: var(--mc);
+    border: 1.5px solid #7c3aed;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 12px 16px;
+    flex-shrink: 0;
+  }
+
+  .pdv-crediario-wrap.visible {
+    display: block;
+  }
+
+  .pdv-crediario-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #7c3aed;
+    margin-bottom: 8px;
+  }
+
+  .pdv-crediario-input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1.5px solid #7c3aed;
+    background: var(--mc2);
+    color: var(--mtext2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .pdv-crediario-aviso {
+    font-size: 11px;
+    color: var(--mmuted);
+    margin-top: 6px;
+  }
+
+  .pdv-pagamentos-full {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .pdv-pagamentos-full .pag-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--mtext2);
+    margin-bottom: 10px;
+  }
+
+  .pdv-pagamentos-full .pag-formas {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .pdv-pagamentos-full .pag-btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .pdv-pagamentos-full .pag-lista {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .pdv-pagamentos-full .pag-item {
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  .pdv-pagamentos-full .pag-item-val {
+    font-size: 16px;
+  }
+
+  .pdv-pagamentos-full .btn-finalizar-wrap {
+    margin-top: 16px;
+  }
+
+  .pdv-pagamentos-full .btn-finalizar {
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  .pdv-pagamentos-full .btn-orcamento {
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .btn-avancar {
+    width: 100%;
+    padding: 12px;
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s
+  }
+
+  .btn-avancar:hover {
+    background: #3730a3;
+    transform: translateY(-1px)
+  }
+
+  .btn-avancar:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none
+  }
+
+  .pdv-passo2-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-top: 1px solid var(--mborder);
+    background: var(--mc2)
+  }
+
+  .btn-voltar-passo {
+    background: none;
+    border: none;
+    color: #4f46e5;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background .15s
+  }
+
+  .btn-voltar-passo:hover {
+    background: #e0e7ff
+  }
+
+  html[data-theme="dark"] .btn-voltar-passo:hover {
+    background: #22263a
+  }
+
+  .pdv-passo2-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--mmuted);
+    text-transform: uppercase;
+    letter-spacing: .8px
+  }
+
+  .btn-finalizar-wrap {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px
+  }
+
+  .btn-finalizar-wrap .btn-finalizar {
+    width: auto;
+    flex: 1
+  }
+
+  .btn-orcamento {
+    padding: 13px 14px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap
+  }
+
+  .btn-orcamento:hover {
+    background: #15803d;
+    transform: translateY(-1px)
   }
 
   /* Modal pagamento dinheiro */
@@ -1022,26 +1478,14 @@
   }
 </style>
 
-<div class="mod" style="height:100%;display:flex;flex-direction:column;gap:12px">
-  <div
-    style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;animation:mfadeUp .3s ease">
-    <div>
-      <h2 style="font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:2px">🛒 PDV — Ponto de Venda</h2>
-      <p style="font-size:12px;color:var(--mmuted)">Filial: <strong id="pdv-filial">—</strong> &nbsp;·&nbsp; Operador:
-        <strong id="pdv-op">—</strong>
-      </p>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <select id="pdv-vendedor"
-        style="padding:6px 10px;border-radius:8px;border:1px solid var(--mborder);background:var(--mc);color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer">
-        <option value="">Carregando Vendedores...</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="pdv-layout">
+<div class="mod" style="height:100%;display:flex;flex-direction:column;gap:0;overflow:hidden">
+  <div class="pdv-layout" style="flex:1;min-height:0;overflow:hidden">
     <!-- ESQUERDA: catálogo -->
     <div class="pdv-left">
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:4px">
+        <h2 style="font-size:17px;font-weight:700;color:var(--mtext2)">🛒 PDV — Catálogo</h2>
+        <span style="font-size:11px;color:var(--mmuted)" id="pdv-filial-top"></span>
+      </div>
       <div class="pdv-search-bar">
         <div class="pdv-search-wrap">
           <svg viewBox="0 0 24 24" stroke-width="2">
@@ -1049,7 +1493,7 @@
             <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
           </svg>
           <input class="pdv-search-inp" id="pdv-busca" type="text"
-            placeholder="Buscar produto por código, barra ou nome..." oninput="PDV.filtrar(this.value)">
+            placeholder="Buscar produto... (ex: 4*balão = 4 unidades)" oninput="PDV.filtrar(this.value)">
         </div>
       </div>
       <div class="pdv-produtos-grid" id="pdv-grid">
@@ -1057,11 +1501,23 @@
       </div>
     </div>
 
-    <!-- DIREITA: carrinho -->
-    <div class="pdv-right">
+    <div class="pdv-right" id="pdv-sidebar">
       <div class="pdv-right-head">
-        <h3>🛒 Carrinho</h3>
-        <p id="pdv-num-venda">Nova Venda</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+          <div>
+            <h3>🛒 Carrinho</h3>
+            <p id="pdv-num-venda" style="opacity:.75;font-size:11px;margin-top:1px">Nova Venda</p>
+          </div>
+          <button class="btn-mclose-cart" onclick="PDV.toggleCarrinho(false)">✕</button>
+          <div style="text-align:right;font-size:11px;opacity:.75;line-height:1.5">
+            <div id="pdv-filial">—</div>
+            <div id="pdv-op">—</div>
+          </div>
+        </div>
+        <select id="pdv-vendedor"
+          style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;appearance:auto">
+          <option value="" style="color:#1e1b4b">Carregando Vendedores...</option>
+        </select>
       </div>
       <div class="pdv-cliente">
         <input type="text" id="pdv-cliente-nome" placeholder="👤 Buscar ou selecionar cliente..." readonly
@@ -1072,7 +1528,7 @@
       </div>
 
       <!-- Barra desconto em lote -->
-      <div class="desc-lote-bar">
+      <div class="desc-lote-bar" id="pdv-desc-lote">
         <span>🎈 Desconto Balão</span>
         <input class="desc-lote-inp" id="desc-lote-pct" type="number" min="0" max="100" value="10" placeholder="%">
         <span style="font-size:12px;color:#1d4ed8;font-weight:700">%</span>
@@ -1084,28 +1540,94 @@
         <div class="pdv-vazio">Nenhum item adicionado.<br>Clique em um produto para adicionar.</div>
       </div>
 
-      <div class="pdv-totais">
-        <div class="total-row"><span>Subtotal</span><span class="total-val" id="pdv-subtotal">R$ 0,00</span></div>
-        <div class="total-row"><span>Desconto</span><span class="total-val roxo" id="pdv-desconto">- R$ 0,00</span>
+      <!-- PASSO 1: tipo de operação + botão avançar -->
+      <div id="pdv-passo1-extra" class="pdv-passo1-extra">
+        <div class="pdv-tipo-operacao">
+          <div class="pdv-tipo-operacao-title">TIPO DE OPERAÇÃO</div>
+          <div class="pdv-tipo-operacao-radios">
+            <label class="pdv-tipo-radio">
+              <input type="radio" name="pdv_tipo_venda" value="venda" checked onchange="PDV.toggleTipoVenda()">
+              Venda Normal
+            </label>
+            <label class="pdv-tipo-radio">
+              <input type="radio" name="pdv_tipo_venda" value="locacao" onchange="PDV.toggleTipoVenda()">
+              🎊 Locação
+            </label>
+          </div>
+          <div id="pdv-locacao-datas" class="pdv-locacao-datas">
+            <div class="pdv-locacao-row">
+              <div class="pdv-locacao-field">
+                <span class="pdv-locacao-label">RETIRADA</span>
+                <input type="datetime-local" id="loc-retirada">
+              </div>
+              <div class="pdv-locacao-field">
+                <span class="pdv-locacao-label">DEVOLUÇÃO</span>
+                <input type="datetime-local" id="loc-devolucao">
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="total-row principal"><span>Total</span><span class="total-val verde" id="pdv-total">R$ 0,00</span>
-        </div>
+      </div>
+      <div id="pdv-passo1-footer" class="pdv-passo1-footer">
+        <button class="btn-avancar" id="btn-avancar" onclick="PDV.avancar()" disabled>Avançar → Pagamento</button>
       </div>
 
-      <div class="pagamentos-section">
-        <div class="pag-title">Pagamento</div>
-        <div class="pag-formas">
-          <button class="pag-btn" onclick="PDV.addPag('dinheiro')">💵 Dinheiro</button>
-          <button class="pag-btn" onclick="PDV.addPag('pix')">📱 Pix</button>
-          <button class="pag-btn" onclick="PDV.addPag('credito')">💳 Crédito</button>
-          <button class="pag-btn" onclick="PDV.addPag('debito')">💳 Débito</button>
+      <!-- PASSO 2: somente pagamentos (ocupa todo o espaço do carrinho) -->
+      <div id="pdv-passo2" class="pdv-passo2-full">
+        <div class="pdv-passo2-nav">
+          <button class="btn-voltar-passo" onclick="PDV.voltarPasso1()">← Voltar aos itens</button>
+          <span class="pdv-passo2-label">Pagamento</span>
         </div>
-        <div class="pag-lista" id="pag-lista"></div>
-        <div id="troco-wrap" style="display:none"></div>
-        <button class="btn-finalizar" id="btn-finalizar" onclick="PDV.finalizar()" disabled>✓ Finalizar Venda</button>
-        <button class="btn-cancelar" onclick="PDV.cancelar()">✕ Cancelar Venda</button>
+
+        <div class="pdv-passo2-totais-compact">
+          <div class="total-row"><span>Subtotal</span><span class="total-val" id="pdv-subtotal">R$ 0,00</span></div>
+          <div class="total-row"><span>Desconto</span><span class="total-val roxo" id="pdv-desconto">- R$ 0,00</span>
+          </div>
+          <div class="total-row principal"><span>Total</span><span class="total-val verde" id="pdv-total">R$ 0,00</span>
+          </div>
+        </div>
+
+        <!-- Crediário: vencimento (visível quando crediário selecionado) -->
+        <div id="pdv-crediario-wrap" class="pdv-crediario-wrap">
+          <div class="pdv-crediario-title">📒 CREDIÁRIO — DATA DE VENCIMENTO</div>
+          <input type="date" id="crediario-vencimento" class="pdv-crediario-input">
+          <p class="pdv-crediario-aviso">⚠️ É obrigatório ter um <strong>Cliente selecionado</strong> para venda em
+            crediário.</p>
+        </div>
+
+        <div class="pagamentos-section pdv-pagamentos-full">
+          <div class="pag-title">Pagamento</div>
+          <div class="pag-formas">
+            <button class="pag-btn" onclick="PDV.addPag('dinheiro')">💵 Dinheiro</button>
+            <button class="pag-btn" onclick="PDV.addPag('pix')">📱 Pix</button>
+            <button class="pag-btn" onclick="PDV.addPag('credito')">💳 Crédito</button>
+            <button class="pag-btn" onclick="PDV.addPag('debito')">💳 Débito</button>
+            <button class="pag-btn" onclick="PDV.addPag('crediario')" style="background:#7c3aed;color:#fff">📒
+              Crediário</button>
+          </div>
+          <div class="pag-lista" id="pag-lista"></div>
+          <div id="troco-wrap" style="display:none"></div>
+          <div class="btn-finalizar-wrap">
+            <button class="btn-orcamento" onclick="PDV.gerarOrcamento()">📋 Orçamento</button>
+            <button class="btn-finalizar" id="btn-finalizar" onclick="PDV.finalizar()" disabled>✓ Finalizar
+              Venda</button>
+          </div>
+          <button class="btn-cancelar" onclick="PDV.cancelar()">✕ Cancelar Venda</button>
+        </div>
       </div>
     </div>
+  </div>
+
+  <!-- Barra inferior mobile -->
+  <div class="pdv-mobile-footer" id="pdv-footer-mobile">
+    <div style="display:flex;flex-direction:column">
+      <span style="font-size:11px;color:var(--mmuted);font-weight:600;text-transform:uppercase">Total do Carrinho</span>
+      <span class="money" id="pdv-mobile-total" style="font-size:20px;font-weight:800;color:#059669">R$ 0,00</span>
+    </div>
+    <button class="mbtn mbtn-ok" onclick="PDV.toggleCarrinho(true)"
+      style="flex:none;width:auto;padding:12px 20px;background:#4f46e5;font-size:14px">
+      Ver Carrinho 🛒
+    </button>
   </div>
 </div>
 
@@ -1160,6 +1682,8 @@
     var clienteLogado = null; // Guardar id, nome e isDecorador
     var listaClientesFull = [];
     var contasBancarias = []; // Lista de contas cadastradas No Financeiro
+    var pendingQtd = 1;      // Quantidade pré-definida via prefixo N* na busca (ex: "4*balão")
+    var passo = 1;           // 1 = adicionar itens, 2 = pagamento
 
     // Info header e Vendedores
     (async function () {
@@ -1232,13 +1756,23 @@
     }
 
     function filtrar(t) {
-      t = (t || '').toLowerCase();
+      t = (t || '');
+
+      // Detecta prefixo de quantidade: ex. "4*balão" ou "4*" → pendingQtd = 4
+      var qtdMatch = t.match(/^\s*(\d+)\s*\*/);
+      if (qtdMatch) {
+        pendingQtd = parseInt(qtdMatch[1]) || 1;
+        t = t.slice(qtdMatch[0].length);
+      } else {
+        pendingQtd = 1;
+      }
+
+      t = t.toLowerCase();
 
       // Se digitou mais rapido (scanner) e encontrou exato codigo barras, adiciona e limpa
       var exatoStr = t.trim();
       if (exatoStr.length > 2) {
         var exato = todos.find(function (p) { return (p.codigo_barras || '').toLowerCase() === exatoStr; });
-        // Adicional: verificar se o input acabou de receber enter via scanner
         if (exato) {
           add(exato.pk);
           var inpb = document.getElementById('pdv-busca');
@@ -1260,12 +1794,18 @@
     function add(pk) {
       var p = todos.find(function (x) { return x.pk === pk; });
       if (!p) return;
+      var qty = pendingQtd;
+      pendingQtd = 1;
+      // Se havia prefixo N*, limpa o campo de busca
+      var inp = document.getElementById('pdv-busca');
+      if (inp && /^\s*\d+\s*\*/.test(inp.value)) { inp.value = ''; renderGrid(todos); }
       var ex = carrinho.find(function (i) { return i.produto_pk === pk; });
-      if (ex) { ex.qtd++; }
+      if (ex) { ex.qtd += qty; }
       else {
-        carrinho.push({ produto_pk: p.pk, codigo: p.codigo || '', descricao: p.descricao, preco_unit: p.preco || 0, qtd: 1, desconto_pct: 0, foto_url: p.foto_url || '' });
+        carrinho.push({ produto_pk: p.pk, codigo: p.codigo || '', descricao: p.descricao, preco_unit: p.preco || 0, qtd: qty, desconto_pct: 0, foto_url: p.foto_url || '', saldo: p.saldo != null ? p.saldo : null });
       }
       renderCarrinho();
+      window.showToast('Item: ' + p.descricao + ' adicionado!');
     }
 
     function removeItem(idx) { carrinho.splice(idx, 1); renderCarrinho(); }
@@ -1305,11 +1845,17 @@
       el.innerHTML = carrinho.map(function (it, idx) {
         var calc = calcItem(it);
         var temDesc = it.desconto_pct > 0;
+        var saldoHtml = '';
+        if (it.saldo != null) {
+          var saldoCls = it.saldo <= 0 ? ' zerado' : (it.qtd > it.saldo ? ' baixo' : '');
+          saldoHtml = '<span class="pdv-item-saldo' + saldoCls + '">📦 ' + it.saldo + ' em estoque</span>';
+        }
         return '<div class="pdv-item">' +
           '<div class="pdv-item-row1">' +
           '<span class="pdv-item-nome">' + it.descricao + '</span>' +
           '<span class="pdv-item-total' + (temDesc ? ' com-desc' : '') + '">' + fmt(calc.liq) + '</span>' +
           '</div>' +
+          (saldoHtml ? '<div class="pdv-item-meta">' + saldoHtml + '</div>' : '') +
           '<div class="pdv-item-row2">' +
           '<div class="qtd-ctrl">' +
           '<button class="qtd-btn" onclick="PDV.setQtd(' + idx + ',' + Math.max(1, it.qtd - 1) + ')">−</button>' +
@@ -1351,11 +1897,24 @@
       document.getElementById('pdv-subtotal').textContent = fmt(sub);
       document.getElementById('pdv-desconto').textContent = '- ' + fmt(desc);
       document.getElementById('pdv-total').textContent = fmt(total);
+
+      // Atualiza total mobile
+      var elMob = document.getElementById('pdv-mobile-total');
+      if (elMob) elMob.textContent = fmt(total);
+
       renderTroco();
       // Botão finalizar: precisa ter itens e pagamento suficiente
       var pago = pagamentos.reduce(function (s, p) { return s + p.valor; }, 0);
       var btn = document.getElementById('btn-finalizar');
       if (btn) btn.disabled = !(carrinho.length && pago >= total && total > 0);
+      // Botão avançar: habilita quando há itens no carrinho
+      var btnAv = document.getElementById('btn-avancar');
+      if (btnAv) btnAv.disabled = !carrinho.length;
+    }
+
+    function toggleCarrinho(open) {
+      var side = document.getElementById('pdv-sidebar');
+      if (side) side.classList.toggle('open', open);
     }
 
     function podeAplicarDesconto() {
@@ -1370,7 +1929,7 @@
         return;
       }
       var pct = parseFloat(document.getElementById('desc-lote-pct')?.value) || 0;
-      if (!pct) { window.showToast('Informe o % de desconto.', 'error'); return; }
+      if (!pct) { window.showToast('Iforme o % de desconto.', 'error'); return; }
       var count = 0;
       carrinho.forEach(function (it) {
         if ((it.descricao || '').toLowerCase().includes('bal')) { it.desconto_pct = pct; count++; }
@@ -1390,24 +1949,40 @@
 
     function addPag(forma) {
       if (forma === 'dinheiro') { abrirModalDinheiro(); return; }
-      // Outras formas: calcula o valor restante
+
       var total = getTotalLiq();
       var pago = pagamentos.reduce(function (s, p) { return s + p.valor; }, 0);
       var falta = Math.max(0, total - pago);
-      if (falta <= 0) { window.showToast('Venda já coberta pelos pagamentos.'); return; }
 
-      // Auto-selecionar conta ideal (Se dinheiro -> prioritizar tipo 'caixa', senão 'banco')
-      var contaBusca = (forma === 'dinheiro') ? 'caixa' : 'banco';
+      // Se total já coberto: substitui se há 1 pagamento, bloqueia se há mais
+      if (falta <= 0) {
+        if (pagamentos.length === 1) {
+          // Troca a forma do único pagamento existente
+          var valorAnterior = pagamentos[0].valor;
+          pagamentos = [];
+          falta = valorAnterior;
+        } else {
+          window.showToast('Venda já coberta pelos pagamentos.'); return;
+        }
+      }
+
+      // Máximo de 3 formas de pagamento por venda
+      if (pagamentos.length >= 3) {
+        window.showToast('Máximo de 3 formas de pagamento por venda.', 'error'); return;
+      }
+
+      // Auto-selecionar conta ideal pela forma
       var contaPadraoId = '';
-      var ccPref = contasBancarias.find(function (cb) { return cb.tipo === contaBusca; });
+      var ccPref = contasBancarias.find(function (cb) { return cb.tipo === forma; });
       if (ccPref) contaPadraoId = ccPref.pk;
       else if (contasBancarias.length > 0) contaPadraoId = contasBancarias[0].pk;
 
-      pagamentos.push({ forma: forma, valor: falta, conta_pk: contaPadraoId });
+      pagamentos.push({ forma: forma, valor: falta, conta_pk: forma === 'crediario' ? '' : contaPadraoId });
       renderPagamentos();
+      toggleCrediario();
     }
 
-    function remPag(idx) { pagamentos.splice(idx, 1); renderPagamentos(); }
+    function remPag(idx) { pagamentos.splice(idx, 1); renderPagamentos(); toggleCrediario(); }
 
     function setPagConta(idx, conta_pk) {
       pagamentos[idx].conta_pk = conta_pk;
@@ -1417,12 +1992,21 @@
       var el = document.getElementById('pag-lista');
       if (!el) return;
       el.innerHTML = pagamentos.map(function (p, i) {
-        var cNome = 'Sem conta';
-        var c = contasBancarias.find(function (cb) { return cb.pk === p.conta_pk; });
-        if (c) cNome = c.nome;
+        var optionsHtml = '<option value="">Sem conta configurada</option>';
+        if (contasBancarias.length > 0) {
+          optionsHtml = contasBancarias.map(function (cb) {
+            var isSel = (cb.pk === p.conta_pk) ? 'selected' : '';
+            return '<option value="' + cb.pk + '" ' + isSel + '>' + cb.nome + '</option>';
+          }).join('');
+        }
 
-        var contaHtml = p.conta_pk ?
-          '<div style="width:100%;font-size:10px;color:var(--mmuted);margin-top:2px">▸ Destino: ' + cNome + '</div>' :
+        var contaHtml = p.conta_pk || contasBancarias.length ?
+          '<div style="width:100%;font-size:11px;color:var(--mmuted);margin-top:4px;display:flex;align-items:center;gap:6px">' +
+          '<span>▸ Destino:</span>' +
+          '<select onchange="PDV.setPagConta(' + i + ', this.value)" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--mborder);background:var(--mc2);color:var(--mtext2);font-family:\'DM Sans\',sans-serif;font-size:11px;outline:none;cursor:pointer">' +
+          optionsHtml +
+          '</select>' +
+          '</div>' :
           '<div style="font-size:10px;color:red;margin-top:2px;width:100%">▸ Nenhuma conta ' + (p.forma) + ' cadastrada</div>';
 
         return '<div class="pag-item" style="flex-wrap:wrap">' +
@@ -1533,14 +2117,73 @@
         var desc = carrinho.reduce(function (s, i) { return s + calcItem(i).desc; }, 0);
         var nomeCliParaVenda = clienteLogado ? clienteLogado.nome : null;
 
-        // Salva venda
-        var rv = await window.supabase.from('vendas').insert([{
+        // Locação payload
+        var tipoOperacao = document.querySelector('input[name="pdv_tipo_venda"]:checked').value;
+        var payloadVenda = {
           filial_pk: fil?.pk || null, numero, cliente: nomeCliParaVenda,
           subtotal: sub, desconto_total: desc, total,
-          operador: vendedor, status: 'finalizada'
-        }]).select('pk').single();
+          operador: vendedor, status: 'finalizada', tipo_venda: tipoOperacao
+        };
+
+        var dtRet = null, dtDev = null;
+        if (tipoOperacao === 'locacao') {
+          var ir = document.getElementById('loc-retirada').value;
+          var idv = document.getElementById('loc-devolucao').value;
+          if (!ir || !idv) { throw new Error("Para locações, informe data de retirada e devolução."); }
+          dtRet = new Date(ir); dtDev = new Date(idv);
+          if (dtDev <= dtRet) { throw new Error("A devolução deve ser posterior à retirada."); }
+          payloadVenda.data_locacao = dtRet.toISOString();
+          payloadVenda.data_devolucao_prevista = dtDev.toISOString();
+          payloadVenda.status_locacao = 'pendente';
+        }
+
+        // Crediário: validação
+        var temCrediario = pagamentos.some(function (p) { return p.forma === 'crediario'; });
+        if (temCrediario) {
+          if (!clienteLogado) { throw new Error("Crediário exige um cliente selecionado. Selecione o cliente e tente novamente."); }
+          var dtCred = document.getElementById('crediario-vencimento').value;
+          if (!dtCred) { throw new Error("Informe a data de vencimento do crediário."); }
+          payloadVenda.data_vencimento_crediario = dtCred;
+          payloadVenda.status_crediario = 'pendente';
+        }
+
+        // Salva venda
+        var rv = await window.supabase.from('vendas').insert([payloadVenda]).select('pk').single();
         if (rv.error) throw rv.error;
         var vendaPk = rv.data.pk;
+
+        // Se locação, insere na agenda automaticamente
+        if (tipoOperacao === 'locacao') {
+          var descItens = carrinho.map(function (it) { return it.qtd + 'x ' + it.descricao; }).join('\n');
+          var nomeAgendaCli = nomeCliParaVenda ? (' - ' + nomeCliParaVenda) : '';
+          var ra = await window.supabase.from('agenda').insert([{
+            titulo: 'Locação PDV #' + String(numero).padStart(4, '0') + nomeAgendaCli,
+            data_evento: dtRet.toISOString().slice(0, 10),
+            hora_inicio: dtRet.toISOString().slice(11, 16),
+            data_desmontagem: dtDev.toISOString().slice(0, 10),
+            hora_desmont_inicio: dtDev.toISOString().slice(11, 16),
+            descricao: 'Gerado pelo PDV.\nItens:\n' + descItens,
+            criado_por: op ? op.login : null,
+            filial_pk: fil ? fil.pk : null,
+            venda_pk: vendaPk
+          }]);
+          if (ra.error) console.error("Erro ao gerar agenda:", ra.error);
+        }
+
+        // Se crediário, insere na agenda no dia do vencimento
+        if (temCrediario) {
+          var dtCr = document.getElementById('crediario-vencimento').value;
+          var nomeCliAgCr = nomeCliParaVenda ? (' - ' + nomeCliParaVenda) : '';
+          var raCr = await window.supabase.from('agenda').insert([{
+            titulo: 'Vencimento Crediário #' + String(numero).padStart(4, '0') + nomeCliAgCr,
+            data_evento: dtCr,
+            descricao: 'Pagamento de crediário gerado pelo PDV. Total: R$ ' + total.toFixed(2).replace('.', ','),
+            criado_por: op ? op.login : null,
+            filial_pk: fil ? fil.pk : null,
+            venda_pk: vendaPk
+          }]);
+          if (raCr.error) console.error("Erro ao gerar agenda crediário:", raCr.error);
+        }
 
         // Salva itens
         var ri = await window.supabase.from('itens_venda').insert(carrinho.map(function (it) {
@@ -1559,10 +2202,10 @@
         }));
         if (rp.error) throw rp.error;
 
-        // Injeta movimentacao financeira para cada pagamento que tem conta_pk
+        // Injeta movimentacao financeira para cada pagamento que tem conta_pk (exceto crediário que é pendente)
         for (var i = 0; i < pagamentos.length; i++) {
           var p = pagamentos[i];
-          if (p.conta_pk) {
+          if (p.conta_pk && p.forma !== 'crediario') {
             await window.supabase.from('movimentacoes_financeiras').insert([{
               conta_pk: p.conta_pk,
               venda_pk: vendaPk,
@@ -1597,8 +2240,105 @@
       renderCarrinho(); renderPagamentos();
       var selVend = document.getElementById('pdv-vendedor');
       if (selVend) selVend.value = '';
+
+      // Reseta tipo_venda
+      var radoNs = document.querySelectorAll('input[name="pdv_tipo_venda"]');
+      if (radoNs.length > 0) radoNs[0].checked = true;
+      toggleTipoVenda();
+      document.getElementById('loc-retirada').value = '';
+      document.getElementById('loc-devolucao').value = '';
+      // Reseta crediário
+      var cv = document.getElementById('crediario-vencimento'); if (cv) cv.value = '';
+      toggleCrediario();
       var wrap = document.getElementById('troco-wrap'); if (wrap) wrap.style.display = 'none';
       var btn = document.getElementById('btn-finalizar'); if (btn) { btn.disabled = true; btn.textContent = '✓ Finalizar Venda'; }
+      // Volta ao passo 1
+      passo = 1;
+      var pi = document.getElementById('pdv-itens'); if (pi) pi.style.display = 'flex';
+      var pe = document.getElementById('pdv-passo1-extra'); if (pe) pe.style.display = '';
+      var pf = document.getElementById('pdv-passo1-footer'); if (pf) pf.style.display = '';
+      var dl = document.getElementById('pdv-desc-lote'); if (dl) dl.style.display = '';
+      var p2 = document.getElementById('pdv-passo2'); if (p2) p2.classList.remove('visible');
+      var nv = document.getElementById('pdv-num-venda'); if (nv) nv.textContent = 'Nova Venda';
+    }
+
+    // ── Passo a Passo ────────────────────────────────────────────
+    function toggleTipoVenda() {
+      var sel = document.querySelector('input[name="pdv_tipo_venda"]:checked').value;
+      var el = document.getElementById('pdv-locacao-datas');
+      if (el) el.classList.toggle('show', sel === 'locacao');
+    }
+
+    function toggleCrediario() {
+      var temCred = pagamentos.some(function (p) { return p.forma === 'crediario'; });
+      var wrap = document.getElementById('pdv-crediario-wrap');
+      if (wrap) wrap.classList.toggle('visible', temCred);
+    }
+    function avancar() {
+      if (!carrinho.length) { window.showToast('Adicione itens ao carrinho.', 'error'); return; }
+      passo = 2;
+      document.getElementById('pdv-itens').style.display = 'none';
+      document.getElementById('pdv-passo1-extra').style.display = 'none';
+      document.getElementById('pdv-passo1-footer').style.display = 'none';
+      document.getElementById('pdv-desc-lote').style.display = 'none';
+      document.getElementById('pdv-passo2').classList.add('visible');
+      var nv = document.getElementById('pdv-num-venda');
+      if (nv) nv.textContent = 'Passo 2 — Pagamento';
+    }
+
+    function voltarPasso1() {
+      passo = 1;
+      document.getElementById('pdv-itens').style.display = 'flex';
+      document.getElementById('pdv-passo1-extra').style.display = '';
+      document.getElementById('pdv-passo1-footer').style.display = '';
+      document.getElementById('pdv-desc-lote').style.display = '';
+      document.getElementById('pdv-passo2').classList.remove('visible');
+      var nv = document.getElementById('pdv-num-venda');
+      if (nv) nv.textContent = 'Nova Venda';
+    }
+
+    // ── Orçamento What───────────────────────────────────
+    function gerarOrcamento() {
+      if (!carrinho.length) { window.showToast('Carrinho vazio.', 'error'); return; }
+      var f = window.filialLogada;
+      var linhas = [];
+      linhas.push('🎉 *Orçamento' + (f ? ' — ' + f.nome : '') + '*');
+      linhas.push('━━━━━━━━━━━━━━━━━━━━━');
+      if (clienteLogado) linhas.push('👤 *Cliente:* ' + clienteLogado.nome);
+      linhas.push('');
+      carrinho.forEach(function (it) {
+        var c = calcItem(it);
+        var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
+        linhas.push('📦 *' + it.descricao + '*' + descTxt);
+        linhas.push('   ' + it.qtd + 'x ' + fmt(it.preco_unit) + ' → *' + fmt(c.liq) + '*');
+      });
+      var sub = 0, desc = 0;
+      carrinho.forEach(function (it) { var c = calcItem(it); sub += c.bruto; desc += c.desc; });
+      var total = sub - desc;
+      linhas.push('');
+      linhas.push('━━━━━━━━━━━━━━━━━━━━━');
+      if (desc > 0) {
+        linhas.push('Subtotal: ' + fmt(sub));
+        linhas.push('Desconto: − ' + fmt(desc));
+      }
+      linhas.push('*💰 Total: ' + fmt(total) + '*');
+      linhas.push('━━━━━━━━━━━━━━━━━━━━━');
+      var texto = linhas.join('\n');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(texto).then(function () {
+          window.showToast('Orçamento copiado! Cole no WhatsApp. 📋');
+        }).catch(function () { _abrirWhatsApp(texto); });
+      } else {
+        _abrirWhatsApp(texto);
+      }
+    }
+
+    function _abrirWhatsApp(texto) {
+      var num = clienteLogado && clienteLogado.telefone ? clienteLogado.telefone.replace(/\D/g, '') : '';
+      var url = num
+        ? 'https://wa.me/55' + num + '?text=' + encodeURIComponent(texto)
+        : 'https://wa.me/?text=' + encodeURIComponent(texto);
+      window.open(url, '_blank');
     }
 
     // ── Clientes Buscador ───────────────────────────────────────
@@ -1684,13 +2424,16 @@
       var trocoTxt = troco ? '\n  Troco: ' + fmt(troco.troco) : '';
       var html = '<html><head><title>Cupom #' + num + '</title><style>' +
         'body{font-family:monospace;font-size:12px;width:300px;margin:0 auto;padding:10px}' +
-        'h2{text-align:center;font-size:14px}p{margin:2px 0}.linha{border-top:1px dashed #000;margin:6px 0}' +
+        'h2{text-align:center;font-size:14px;margin-bottom:2px}p{margin:2px 0;text-align:center;font-size:11px}.linha{border-top:1px dashed #000;margin:6px 0}' +
         '</style></head><body>' +
         '<h2>' + (f ? f.nome : '') + '</h2>' +
-        '<p style="text-align:center">Cupom de Venda #' + String(num).padStart(4, '0') + '</p>' +
-        '<p style="text-align:center">' + agora + '</p>' +
-        (cliente ? '<p>Cliente: ' + cliente + '</p>' : '') +
-        (op ? '<p>Operador: ' + op.nome + '</p>' : '') +
+        (f && f.razao_social ? '<p>' + f.razao_social + '</p>' : '') +
+        (f && f.cnpj ? '<p>CNPJ: ' + f.cnpj + '</p>' : '') +
+        '<p>Cupom de Venda #' + String(num).padStart(4, '0') + '</p>' +
+        '<p>' + agora + '</p>' +
+        '<div class="linha"></div>' +
+        (cliente ? '<p style="text-align:left">Cliente: ' + cliente + '</p>' : '') +
+        (op ? '<p style="text-align:left">Operador: ' + op.nome + '</p>' : '') +
         '<div class="linha"></div>' +
         '<pre>' + itensTxt + '</pre>' +
         '<div class="linha"></div>' +
@@ -1708,7 +2451,8 @@
 
     return {
       filtrar, add, removeItem, setQtd, setDesc, toggleDesc, aplicarDescontoBalao, limparDescontos,
-      addPag, remPag, calcTroco, confirmarDinheiro, fecharModalDinheiro, finalizar, cancelar,
+      addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro, finalizar, cancelar,
+      avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
       abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente
     };
   })();

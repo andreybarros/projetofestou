@@ -5,6 +5,8 @@
   --sidebar-txt: #fff;
   --sidebar-mut: rgba(255, 255, 255, .55);
   --content-bg: #f4f4f9;
+  --content-txt: #1e1b4b;
+  --content-muted: #6b7280;
   --border: rgba(255, 255, 255, .2);
 
   /* Modular variables from fragments */
@@ -24,6 +26,8 @@
   --sidebar-txt: #e8e9f3;
   --sidebar-mut: rgba(255, 255, 255, .35);
   --content-bg: #0f1117;
+  --content-txt: #e8e9f3;
+  --content-muted: #7b7fa0;
   --border: rgba(255, 255, 255, .08);
 
   /* Modular variables dark mode */
@@ -52,6 +56,12 @@ body {
   height: 100vh;
   overflow: hidden;
   transition: background .2s;
+}
+
+/* Área de conteúdo principal: texto escuro no light mode, claro no dark */
+.content {
+  color: var(--content-txt);
+  transition: color .2s;
 }
 
 /* Modals / Fragments Common Styles */

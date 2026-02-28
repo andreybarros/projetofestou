@@ -154,6 +154,16 @@
             </div>
         </div>
 
+        <!-- Fornecedores -->
+        <div class="dash-card" id="dash-fornecedores" onclick="ir('cadastro_fornecedores.html','nav-fornecedores')"
+            style="display:none">
+            <div class="dash-icon">🤝</div>
+            <div class="dash-info">
+                <h3>Fornecedores</h3>
+                <p>Gerencie dados das empresas parceiras e prestadores.</p>
+            </div>
+        </div>
+
         <!-- Categorias -->
         <div class="dash-card" id="dash-categoria" onclick="ir('cadastro_categoria.html','nav-categoria')"
             style="display:none">
@@ -193,13 +203,31 @@
             </div>
         </div>
 
-        <!-- Histórico -->
+        <!-- Histórico de Vendas -->
         <div class="dash-card" id="dash-historico" onclick="ir('historico_vendas.html','nav-historico')"
             style="display:none">
             <div class="dash-icon">📊</div>
             <div class="dash-info">
                 <h3>Vendas</h3>
                 <p>Consulte o histórico de vendas e estornos.</p>
+            </div>
+        </div>
+
+        <!-- Contas a Receber -->
+        <div class="dash-card" id="dash-receitas" onclick="ir('receitas.html','nav-receitas')" style="display:none">
+            <div class="dash-icon">📒</div>
+            <div class="dash-info">
+                <h3>Contas a Receber</h3>
+                <p>Gerencie e baixe crediários pendentes.</p>
+            </div>
+        </div>
+
+        <!-- Despesas -->
+        <div class="dash-card" id="dash-despesas" onclick="ir('despesas.html','nav-despesas')" style="display:none">
+            <div class="dash-icon">📉</div>
+            <div class="dash-info">
+                <h3>Despesas</h3>
+                <p>Controle de contas a pagar e saída de dinheiro.</p>
             </div>
         </div>
 
@@ -220,19 +248,28 @@
         const op = window.operadorLogado;
         if (!op) return;
         const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'flex' : 'none'; };
-        const fil = window.filialLogada;
-        const isF2 = fil && fil.codigo === '02';
+        const mods = window._modulosFilial || new Set();
 
-        show('dash-produtos', op.admin || op.acesso_produtos);
-        show('dash-armazem', op.admin || op.acesso_armazens);
-        show('dash-agenda', op.admin || op.acesso_agenda);
-        show('dash-separacao', op.admin || op.acesso_separacao || op.acesso_criar_ordem);
-        show('dash-clientes', op.admin || op.acesso_clientes);
-        show('dash-categoria', isF2 && (op.admin || op.acesso_produtos));
+        const temClientes = mods.has('clientes') && (op.admin || op.acesso_clientes);
+        const temDespesas = mods.has('despesas') && (op.admin || op.acesso_despesas);
+        const temFinanceiro = mods.has('financeiro') && (op.admin || op.acesso_financeiro);
+        const temReceitas = mods.has('receitas') && (op.admin || op.acesso_pdv || op.acesso_receitas);
+        const temHist = mods.has('historico') && (op.admin || op.acesso_pdv || op.acesso_historico);
+        const temCat = mods.has('categorias') && (op.admin || op.acesso_produtos || op.acesso_categorias);
+
+        show('dash-produtos', mods.has('produtos') && (op.admin || op.acesso_produtos));
+        show('dash-armazem', mods.has('armazens') && (op.admin || op.acesso_armazens));
+        show('dash-agenda', mods.has('agenda') && (op.admin || op.acesso_agenda));
+        show('dash-separacao', mods.has('separacao') && (op.admin || op.acesso_separacao || op.acesso_criar_ordem));
+        show('dash-clientes', temClientes);
+        show('dash-fornecedores', temClientes);
+        show('dash-categoria', temCat);
         show('dash-filiais', op.admin);
         show('dash-operador', op.admin);
-        show('dash-pdv', isF2 && (op.admin || op.acesso_pdv));
-        show('dash-historico', isF2 && (op.admin || op.acesso_pdv));
-        show('dash-financeiro', op.admin);
+        show('dash-pdv', mods.has('pdv') && (op.admin || op.acesso_pdv));
+        show('dash-historico', temHist);
+        show('dash-receitas', temReceitas);
+        show('dash-despesas', temDespesas);
+        show('dash-financeiro', temFinanceiro);
     })();
 </script>

@@ -1,55 +1,477 @@
 <link rel="icon" href="img/logo.png" type="image/png">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link
+  href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+  rel="stylesheet">
 <style>
-.mod*{box-sizing:border-box}
-.mod{font-family:'DM Sans',sans-serif;--mc:#fff;--mc2:#fafafe;--mborder:#e0e7ff;--mborder2:#f3f4f6;--mtext:#374151;--mtext2:#1e1b4b;--mmuted:#6b7280}
-html[data-theme="dark"] .mod{--mc:#1a1d27;--mc2:#22263a;--mborder:#2e3250;--mborder2:#22263a;--mtext:#c9cce0;--mtext2:#e8e9f3;--mmuted:#7b7fa0}
-.mod-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;animation:mfadeUp .3s ease;gap:12px;flex-wrap:wrap}
-.mod-header h2{font-size:20px;font-weight:600;color:var(--mtext2);margin-bottom:4px}
-.mod-header p{color:var(--mmuted);font-size:13px}
-.mbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
-.mbtn-primary{background:#4f46e5;color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.25)}.mbtn-primary:hover{background:#3730a3;transform:translateY(-1px)}
-.mbtn-edit{background:#e0e7ff;color:#3730a3;border:1px solid #c7d2fe;padding:6px 12px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer}.mbtn-edit:hover{background:#c7d2fe}
-html[data-theme="dark"] .mbtn-edit{background:#2e3250;color:#a78bfa;border-color:#3d4270}
-.mbtn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:6px 12px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer}.mbtn-danger:hover{background:#fecaca}
-.filial-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#e0e7ff;color:#3730a3;border-radius:20px;font-size:12px;font-weight:600}
-html[data-theme="dark"] .filial-chip{background:#2e3250;color:#a78bfa}
-.search-wrap{position:relative;flex:1;min-width:200px;max-width:380px}
-.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--mmuted);fill:none;pointer-events:none}
-.search-input{width:100%;background:var(--mc);border:1.5px solid var(--mborder);border-radius:10px;color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px 10px 34px;outline:none;transition:border-color .2s}
-.search-input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
-.header-actions{display:flex;gap:10px;align-items:center;width:100%;flex-wrap:wrap}
-.mtable-wrap{background:var(--mc);border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(79,70,229,.08);border:1px solid var(--mborder);animation:mfadeUp .35s ease .05s both}
-html[data-theme="dark"] .mtable-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
-.mtable{width:100%;border-collapse:collapse}
-.mtable thead tr{background:linear-gradient(90deg,#4f46e5,#6366f1)}
-.mtable th{padding:12px 16px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.9);font-weight:600;text-align:left}
-.mtable td{padding:12px 16px;font-size:14px;color:var(--mtext);border-bottom:1px solid var(--mborder2);vertical-align:middle}
-.mtable tbody tr:last-child td{border-bottom:none}.mtable tbody tr:hover{background:var(--mc2)}
-.code-cell{font-family:'DM Mono',monospace!important;font-size:13px;color:#4f46e5;font-weight:500}
-html[data-theme="dark"] .code-cell{color:#a78bfa}
-.preco-cell{font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:#059669}
-.badge-ok{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}
-.badge-low{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5}
-.badge-cat{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;background:#f3f0ff;color:#4f46e5;border:1px solid #ddd6fe}
-html[data-theme="dark"] .badge-cat{background:#2e1a60;color:#a78bfa;border-color:#4c3a9e}
-.prod-foto{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--mborder2)}
-.prod-foto-ph{width:44px;height:44px;border-radius:6px;background:var(--mc2);border:1px solid var(--mborder2);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--mmuted)}
-.acoes-cell{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.mstate td{text-align:center;padding:52px;color:var(--mmuted);font-size:14px}
-.mstate-icon{font-size:34px;display:block;margin-bottom:10px}
-@media(max-width:700px){
-  .header-actions{flex-direction:column;align-items:flex-start}
-  .search-wrap{max-width:100%;width:100%}
-  .mtable-wrap{border-radius:10px;overflow:visible;background:transparent;border:none;box-shadow:none}
-  .mtable thead{display:none}
-  .mtable tbody tr{display:block;background:var(--mc);border:1px solid var(--mborder);border-radius:10px;margin-bottom:12px;padding:14px;box-shadow:0 2px 8px rgba(79,70,229,.06)}
-  .mtable tbody tr:hover{background:var(--mc)}
-  .mtable td{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--mborder2);font-size:13px}
-  .mtable td:last-child{border-bottom:none;padding-top:10px}
-  .mtable td::before{content:attr(data-label);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mmuted);font-weight:600;min-width:90px;flex-shrink:0}
-}
-@keyframes mfadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .mod* {
+    box-sizing: border-box
+  }
+
+  .mod {
+    font-family: 'DM Sans', sans-serif;
+    --mc: #fff;
+    --mc2: #fafafe;
+    --mborder: #e0e7ff;
+    --mborder2: #f3f4f6;
+    --mtext: #374151;
+    --mtext2: #1e1b4b;
+    --mmuted: #6b7280
+  }
+
+  html[data-theme="dark"] .mod {
+    --mc: #1a1d27;
+    --mc2: #22263a;
+    --mborder: #2e3250;
+    --mborder2: #22263a;
+    --mtext: #c9cce0;
+    --mtext2: #e8e9f3;
+    --mmuted: #7b7fa0
+  }
+
+  .mod-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    animation: mfadeUp .3s ease;
+    gap: 12px;
+    flex-wrap: wrap
+  }
+
+  .mod-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--mtext2);
+    margin-bottom: 4px
+  }
+
+  .mod-header p {
+    color: var(--mmuted);
+    font-size: 13px
+  }
+
+  .mbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .15s;
+    white-space: nowrap
+  }
+
+  .mbtn-primary {
+    background: #4f46e5;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, .25)
+  }
+
+  .mbtn-primary:hover {
+    background: #3730a3;
+    transform: translateY(-1px)
+  }
+
+  .mbtn-edit {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer
+  }
+
+  .mbtn-edit:hover {
+    background: #c7d2fe
+  }
+
+  html[data-theme="dark"] .mbtn-edit {
+    background: #2e3250;
+    color: #a78bfa;
+    border-color: #3d4270
+  }
+
+  .mbtn-danger {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer
+  }
+
+  .mbtn-danger:hover {
+    background: #fecaca
+  }
+
+  .filial-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: #e0e7ff;
+    color: #3730a3;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600
+  }
+
+  html[data-theme="dark"] .filial-chip {
+    background: #2e3250;
+    color: #a78bfa
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 380px
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    stroke: var(--mmuted);
+    fill: none;
+    pointer-events: none
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--mc);
+    border: 1.5px solid var(--mborder);
+    border-radius: 10px;
+    color: var(--mtext2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px 10px 34px;
+    outline: none;
+    transition: border-color .2s
+  }
+
+  .search-input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap
+  }
+
+  .mtable-wrap {
+    background: var(--mc);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+    border: 1px solid var(--mborder);
+    animation: mfadeUp .35s ease .05s both
+  }
+
+  html[data-theme="dark"] .mtable-wrap {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
+  }
+
+  .mtable {
+    width: 100%;
+    border-collapse: collapse
+  }
+
+  .mtable thead tr {
+    background: linear-gradient(90deg, #4f46e5, #6366f1)
+  }
+
+  .mtable th {
+    padding: 12px 16px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .9);
+    font-weight: 600;
+    text-align: left
+  }
+
+  .mtable td {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--mtext);
+    border-bottom: 1px solid var(--mborder2);
+    vertical-align: middle
+  }
+
+  .mtable tbody tr:last-child td {
+    border-bottom: none
+  }
+
+  .mtable tbody tr:hover {
+    background: var(--mc2)
+  }
+
+  .code-cell {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 13px;
+    color: #4f46e5;
+    font-weight: 500
+  }
+
+  html[data-theme="dark"] .code-cell {
+    color: #a78bfa
+  }
+
+  .preco-cell {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #059669
+  }
+
+  .badge-ok {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0
+  }
+
+  .badge-low {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5
+  }
+
+  .badge-cat {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #f3f0ff;
+    color: #4f46e5;
+    border: 1px solid #ddd6fe
+  }
+
+  html[data-theme="dark"] .badge-cat {
+    background: #2e1a60;
+    color: #a78bfa;
+    border-color: #4c3a9e
+  }
+
+  .prod-foto {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--mborder2)
+  }
+
+  .prod-foto-ph {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: var(--mc2);
+    border: 1px solid var(--mborder2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--mmuted)
+  }
+
+  .acoes-cell {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap
+  }
+
+  .mstate td {
+    text-align: center;
+    padding: 52px;
+    color: var(--mmuted);
+    font-size: 14px
+  }
+
+  .mstate-icon {
+    font-size: 34px;
+    display: block;
+    margin-bottom: 10px
+  }
+
+  @media(max-width:700px) {
+    .header-actions {
+      flex-direction: column;
+      align-items: flex-start
+    }
+
+    .search-wrap {
+      max-width: 100%;
+      width: 100%
+    }
+
+    .mtable-wrap {
+      border-radius: 10px;
+      overflow: visible;
+      background: transparent;
+      border: none;
+      box-shadow: none
+    }
+
+    .mtable thead {
+      display: none
+    }
+
+    .mtable tbody tr {
+      display: block;
+      background: var(--mc);
+      border: 1px solid var(--mborder);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, .06)
+    }
+
+    .mtable tbody tr:hover {
+      background: var(--mc)
+    }
+
+    .mtable td {
+      display: flex;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--mborder2);
+      font-size: 13px
+    }
+
+    .mtable td:last-child {
+      border-bottom: none;
+      padding-top: 10px
+    }
+
+    .mtable td::before {
+      content: attr(data-label);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--mmuted);
+      font-weight: 600;
+      min-width: 90px;
+      flex-shrink: 0
+    }
+  }
+
+  @keyframes mfadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px)
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0)
+    }
+  }
+
+  /* Paginação */
+  .mpagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 14px;
+    flex-wrap: wrap;
+    animation: mfadeUp .3s ease .1s both
+  }
+
+  .mpagination-info {
+    font-size: 13px;
+    color: var(--mmuted)
+  }
+
+  .mpagination-info strong {
+    color: var(--mtext2)
+  }
+
+  .mpagination-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px
+  }
+
+  .mpag-btn {
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--mborder);
+    background: var(--mc);
+    color: var(--mtext2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s
+  }
+
+  .mpag-btn:hover:not(:disabled) {
+    border-color: #4f46e5;
+    color: #4f46e5;
+    background: var(--mc2)
+  }
+
+  .mpag-btn.active {
+    background: #4f46e5;
+    color: #fff;
+    border-color: #4f46e5
+  }
+
+  .mpag-btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    background: var(--mborder2)
+  }
+
+  .mpag-select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--mborder);
+    background: var(--mc);
+    color: var(--mtext2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer
+  }
+
+  .mpag-select:focus {
+    border-color: #4f46e5
+  }
 </style>
 
 <div class="mod">
@@ -60,10 +482,15 @@ html[data-theme="dark"] .badge-cat{background:#2e1a60;color:#a78bfa;border-color
     </div>
     <div class="header-actions">
       <div class="search-wrap">
-        <svg viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/></svg>
-        <input class="search-input" id="busca-produto" type="text" placeholder="Pesquisar por código, descrição..." oninput="ProdMod.filtrar(this.value)">
+        <svg viewBox="0 0 24 24" stroke-width="2">
+          <circle cx="11" cy="11" r="7" />
+          <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
+        </svg>
+        <input class="search-input" id="busca-produto" type="text" placeholder="Pesquisar por código, descrição..."
+          oninput="ProdMod.filtrar(this.value)">
       </div>
-      <button class="mbtn mbtn-primary" onclick="carregarModulo('cadastro_produto.html','nav-produtos')">+ Cadastrar Produto</button>
+      <button class="mbtn mbtn-primary" onclick="carregarModulo('cadastro_produto.html','nav-produtos')">+ Cadastrar
+        Produto</button>
     </div>
   </div>
 
@@ -82,91 +509,176 @@ html[data-theme="dark"] .badge-cat{background:#2e1a60;color:#a78bfa;border-color
         </tr>
       </thead>
       <tbody id="tabela-produtos">
-        <tr class="mstate"><td colspan="8"><span class="mstate-icon">⏳</span>Carregando produtos...</td></tr>
+        <tr class="mstate">
+          <td colspan="8"><span class="mstate-icon">⏳</span>Carregando produtos...</td>
+        </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="mpagination" id="prod-pagination" style="display:none">
+    <div class="mpagination-info">
+      Mostrando <strong id="pag-de">0</strong>-<strong id="pag-ate">0</strong> de <strong id="pag-total">0</strong>
+      produtos
+    </div>
+    <div class="mpagination-btns" id="pag-btns"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--mmuted)">Itens por página:</span>
+      <select class="mpag-select" id="pag-size" onchange="ProdMod.mudarTamanho(this.value)">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+    </div>
   </div>
 </div>
 
 <script>
-window.ProdMod = (function(){
-  var lista = [];
-  var isFilial2 = false;
+  window.ProdMod = (function () {
+    var lista = [];
+    var isFilial2 = false;
+    var p_index = 0; // 0-based index for Supabase range
+    var p_size = 50;
+    var p_total = 0;
+    var buscaTimeout = null;
 
-  function setChip(){
-    var el=document.getElementById('chip-filial-prod');
-    var f=window.filialLogada;
-    if(el) el.textContent = f ? f.codigo+' – '+f.nome : 'Todas';
-    isFilial2 = !!(f && f.codigo === '02');
-    var thCat=document.getElementById('th-cat'), thPreco=document.getElementById('th-preco');
-    if(thCat)   thCat.style.display   = isFilial2 ? '' : 'none';
-    if(thPreco) thPreco.style.display = isFilial2 ? '' : 'none';
-  }
+    function setChip() {
+      var el = document.getElementById('chip-filial-prod');
+      var f = window.filialLogada;
+      if (el) el.textContent = f ? f.codigo + ' – ' + f.nome : 'Todas';
+      isFilial2 = !!(f && f.codigo === '02');
+      var thCat = document.getElementById('th-cat'), thPreco = document.getElementById('th-preco');
+      if (thCat) thCat.style.display = isFilial2 ? '' : 'none';
+      if (thPreco) thPreco.style.display = isFilial2 ? '' : 'none';
+    }
 
-  function setTbody(html){var el=document.getElementById('tabela-produtos');if(el)el.innerHTML=html;}
+    function setTbody(html) { var el = document.getElementById('tabela-produtos'); if (el) el.innerHTML = html; }
 
-  function render(data){
-    if(!data||!data.length){setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">📭</span>Nenhum produto encontrado</td></tr>');return;}
-    setTbody(data.map(function(p){
-      var catTd  = isFilial2 ? '<td data-label="Categoria">'+(p._cat?'<span class="badge-cat">'+p._cat+'</span>':'—')+'</td>' : '';
-      var precoTd= isFilial2 ? '<td data-label="Preço" class="preco-cell">'+(p.preco>0?'R$ '+Number(p.preco).toFixed(2).replace('.',','):'—')+'</td>' : '';
-      return '<tr id="prow-'+p.pk+'">'+
-        '<td data-label="">'+(p.foto_url?'<img class="prod-foto" src="'+p.foto_url+'" alt="foto">':'<div class="prod-foto-ph">📷</div>')+'</td>'+
-        '<td data-label="Código" class="code-cell">'+(p.codigo||'—')+'</td>'+
-        '<td data-label="Descrição">'+(p.descricao||'—')+'</td>'+
-        catTd+
-        '<td data-label="Saldo"><span class="'+((p.saldo||0)<5?'badge-low':'badge-ok')+'">'+(p.saldo||0)+'</span></td>'+
-        precoTd+
-        '<td data-label="Localização">'+(p.localizacao||'—')+'</td>'+
-        '<td data-label="Ações"><div class="acoes-cell">'+
-          '<button class="mbtn-edit" onclick="ProdMod.editar('+p.pk+')">Alterar</button>'+
-          '<button class="mbtn-danger" onclick="ProdMod.excluir('+p.pk+')">Excluir</button>'+
-        '</div></td>'+
-        '</tr>';
-    }).join(''));
-  }
+    function render(data) {
+      if (!data || !data.length) { setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">📭</span>Nenhum produto encontrado</td></tr>'); return; }
+      setTbody(data.map(function (p) {
+        var catTd = isFilial2 ? '<td data-label="Categoria">' + (p._cat ? '<span class="badge-cat">' + p._cat + '</span>' : '—') + '</td>' : '';
+        var precoTd = isFilial2 ? '<td data-label="Preço" class="preco-cell">' + (p.preco > 0 ? 'R$ ' + Number(p.preco).toFixed(2).replace('.', ',') : '—') + '</td>' : '';
+        return '<tr id="prow-' + p.pk + '">' +
+          '<td data-label="">' + (p.foto_url ? '<img class="prod-foto" src="' + p.foto_url + '" alt="foto">' : '<div class="prod-foto-ph">📷</div>') + '</td>' +
+          '<td data-label="Código" class="code-cell">' + (p.codigo || '—') + '</td>' +
+          '<td data-label="Descrição">' + (p.descricao || '—') + '</td>' +
+          catTd +
+          '<td data-label="Saldo"><span class="' + ((p.saldo || 0) < 5 ? 'badge-low' : 'badge-ok') + '">' + (p.saldo || 0) + '</span></td>' +
+          precoTd +
+          '<td data-label="Localização">' + (p.localizacao || '—') + '</td>' +
+          '<td data-label="Ações"><div class="acoes-cell">' +
+          '<button class="mbtn-edit" onclick="ProdMod.editar(' + p.pk + ')">Alterar</button>' +
+          '<button class="mbtn-danger" onclick="ProdMod.excluir(' + p.pk + ')">Excluir</button>' +
+          '</div></td>' +
+          '</tr>';
+      }).join(''));
+    }
 
-  function filtrar(termo){
-    if(!termo||!termo.trim()){render(lista);return;}
-    var t=termo.toLowerCase();
-    render(lista.filter(function(p){
-      return (p.codigo||'').toLowerCase().includes(t)||(p.descricao||'').toLowerCase().includes(t)||(p.localizacao||'').toLowerCase().includes(t)||(p._cat||'').toLowerCase().includes(t);
-    }));
-  }
+    function renderPagination() {
+      var elPagination = document.getElementById('prod-pagination');
+      var elBtns = document.getElementById('pag-btns');
+      if (!elPagination || !elBtns) return;
 
-  function editar(pk){
-    var p=lista.find(function(x){return x.pk===pk;});
-    if(!p){window.showToast('Produto não encontrado.','error');return;}
-    window._editData=p; carregarModulo('cadastro_produto.html','nav-produtos');
-  }
+      if (p_total === 0) { elPagination.style.display = 'none'; return; }
+      elPagination.style.display = 'flex';
 
-  async function excluir(pk){
-    var p=lista.find(function(x){return x.pk===pk;});
-    if(!p||!confirm('Excluir "'+( p.descricao||'')+'"?\nEsta ação não pode ser desfeita.')) return;
-    if(p.foto_url){var path=p.foto_url.split('/produtos-fotos/')[1];if(path)await window.supabase.storage.from('produtos-fotos').remove([path]);}
-    var res=await window.supabase.from('produtos').delete().eq('pk',pk);
-    if(res.error){window.showToast('Erro: '+res.error.message,'error');return;}
-    lista=lista.filter(function(x){return x.pk!==pk;});
-    var row=document.getElementById('prow-'+pk);if(row)row.remove();
-    window.showToast('"'+p.descricao+'" excluído.');
-    filtrar(document.getElementById('busca-produto')?.value||'');
-  }
+      var totalPages = Math.ceil(p_total / p_size);
+      var currentPage = Math.floor(p_index / p_size) + 1;
 
-  async function carregar(){
-    setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">⏳</span>Carregando produtos...</td></tr>');
-    setChip();
-    try{
-      var fil=window.filialLogada;
-      var q=window.supabase.from('produtos').select('*,categorias(nome)').order('codigo',{ascending:true});
-      if(fil&&fil.pk) q=q.eq('filial_pk',fil.pk);
-      var res=await q;
-      if(res.error){setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">❌</span>Erro: '+res.error.message+'</td></tr>');return;}
-      lista=(res.data||[]).map(function(p){p._cat=p.categorias?p.categorias.nome:null;return p;});
-      render(lista);
-    } catch(e){setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">❌</span>Erro: '+e.message+'</td></tr>');}
-  }
+      document.getElementById('pag-de').textContent = p_index + 1;
+      document.getElementById('pag-ate').textContent = Math.min(p_index + p_size, p_total);
+      document.getElementById('pag-total').textContent = p_total;
 
-  carregar();
-  return {filtrar:filtrar, editar:editar, excluir:excluir};
-})();
+      var html = '';
+
+      // Primeiro e Anterior
+      html += `<button class="mpag-btn" onclick="ProdMod.irPara(0)" ${currentPage === 1 ? 'disabled' : ''} title="Primeira Página">«</button>`;
+      html += `<button class="mpag-btn" onclick="ProdMod.irPara(${(currentPage - 2) * p_size})" ${currentPage === 1 ? 'disabled' : ''} title="Página Anterior">‹</button>`;
+
+      // Lógica para mostrar algumas páginas (ex: 5 em volta da atual)
+      var start = Math.max(1, currentPage - 2);
+      var end = Math.min(totalPages, start + 4);
+      if (end - start < 4) start = Math.max(1, end - 4);
+
+      for (var i = start; i <= end; i++) {
+        html += `<button class="mpag-btn ${i === currentPage ? 'active' : ''}" onclick="ProdMod.irPara(${(i - 1) * p_size})">${i}</button>`;
+      }
+
+      // Próximo e Último
+      html += `<button class="mpag-btn" onclick="ProdMod.irPara(${currentPage * p_size})" ${currentPage === totalPages ? 'disabled' : ''} title="Próxima Página">›</button>`;
+      html += `<button class="mpag-btn" onclick="ProdMod.irPara(${(totalPages - 1) * p_size})" ${currentPage === totalPages ? 'disabled' : ''} title="Última Página">»</button>`;
+
+      elBtns.innerHTML = html;
+    }
+
+    function irPara(idx) {
+      p_index = idx;
+      carregar();
+    }
+
+    function mudarTamanho(size) {
+      p_size = parseInt(size);
+      p_index = 0;
+      carregar();
+    }
+
+    function filtrar(termo) {
+      clearTimeout(buscaTimeout);
+      buscaTimeout = setTimeout(function () {
+        p_index = 0;
+        carregar(termo);
+      }, 400);
+    }
+
+    function editar(pk) {
+      var p = lista.find(function (x) { return x.pk === pk; });
+      if (!p) { window.showToast('Produto não encontrado.', 'error'); return; }
+      window._editData = p; carregarModulo('cadastro_produto.html', 'nav-produtos');
+    }
+
+    async function excluir(pk) {
+      var p = lista.find(function (x) { return x.pk === pk; });
+      if (!p || !confirm('Excluir "' + (p.descricao || '') + '"?\nEsta ação não pode ser desfeita.')) return;
+      if (p.foto_url) { var path = p.foto_url.split('/produtos-fotos/')[1]; if (path) await window.supabase.storage.from('produtos-fotos').remove([path]); }
+      var res = await window.supabase.from('produtos').delete().eq('pk', pk);
+      if (res.error) { window.showToast('Erro: ' + res.error.message, 'error'); return; }
+      window.showToast('"' + p.descricao + '" excluído.');
+      carregar(); // Recarregar página atual
+    }
+
+    async function carregar(filtro) {
+      setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">⏳</span>Carregando produtos...</td></tr>');
+      setChip();
+      try {
+        var fil = window.filialLogada;
+        var q = window.supabase.from('produtos').select('*,categorias(nome)', { count: 'exact' });
+
+        // Filtros
+        if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
+
+        var termo = (filtro !== undefined ? filtro : document.getElementById('busca-produto')?.value || '').trim().toLowerCase();
+        if (termo) {
+          var filtros = [`descricao.ilike.%${termo}%`, `localizacao.ilike.%${termo}%` || ''];
+          if (/^\d+$/.test(termo)) filtros.push(`codigo.eq.${termo}`);
+          q = q.or(filtros.join(','));
+        }
+
+        // Range para paginação
+        q = q.order('codigo', { ascending: true }).range(p_index, p_index + p_size - 1);
+
+        var res = await q;
+        if (res.error) { setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">❌</span>Erro: ' + res.error.message + '</td></tr>'); return; }
+
+        lista = (res.data || []).map(function (p) { p._cat = p.categorias ? p.categorias.nome : null; return p; });
+        p_total = res.count || 0;
+
+        render(lista);
+        renderPagination();
+      } catch (e) { setTbody('<tr class="mstate"><td colspan="8"><span class="mstate-icon">❌</span>Erro: ' + e.message + '</td></tr>'); }
+    }
+
+    carregar();
+    return { filtrar: filtrar, editar: editar, excluir: excluir, irPara: irPara, mudarTamanho: mudarTamanho };
+  })();
 </script>
