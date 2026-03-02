@@ -380,8 +380,10 @@
     <div class="mform-group"><label>Filial</label>
       <div class="filial-badge" id="cli-filial-badge">🏢 —</div>
     </div>
-    <div class="mform-group"><label>Nome Completo *</label><input type="text" id="cli-nome"
-        placeholder="Ex: Maria Oliveira" autocomplete="name"></div>
+    <div class="mform-group"><label>Nome / Nome Fantasia *</label><input type="text" id="cli-nome"
+        placeholder="Ex: Maria Oliveira ou Festou Eventos" autocomplete="name"></div>
+    <div class="mform-group"><label>Razão Social</label><input type="text" id="cli-razao"
+        placeholder="Ex: Maria Oliveira LTDA"></div>
     <div class="mform-row">
       <div class="mform-group"><label>Telefone / WhatsApp</label><input type="tel" id="cli-tel"
           placeholder="(92) 9 9999-9999" inputmode="tel"></div>
@@ -483,6 +485,7 @@
     document.getElementById('edit-banner').style.display = 'flex';
     document.getElementById('btn-salvar-cli').textContent = 'Salvar Alterações';
     document.getElementById('cli-nome').value = d.nome || '';
+    document.getElementById('cli-razao').value = d.razao_social || '';
     document.getElementById('cli-tel').value = d.telefone || '';
     document.getElementById('cli-cpf').value = d.cpf || '';
     document.getElementById('cli-email').value = d.email || '';
@@ -533,20 +536,19 @@
     var cidade = (document.getElementById('cli-cidade')?.value || '').trim();
     var uf = (document.getElementById('cli-uf')?.value || '').trim();
     var cep = (document.getElementById('cli-cep')?.value || '').trim();
+
     if (!cidade && !logr && !cep) return;
+
     var query = [logr, num, bairro, cidade, uf, 'Brasil'].filter(Boolean).join(', ');
-    try {
-      var resp = await fetch(
-        'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1&countrycodes=br',
-        { headers: { 'Accept-Language': 'pt-BR' } }
-      );
-      var data = await resp.json();
-      if (!data || !data.length) { window.showToast('Endereço não encontrado no mapa.', 'error'); return; }
-      var lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon), d = 0.007;
-      document.getElementById('mapa-frame').src =
-        'https://www.openstreetmap.org/export/embed.html?bbox=' + (lon - d) + ',' + (lat - d) + ',' + (lon + d) + ',' + (lat + d) + '&layer=mapnik&marker=' + lat + ',' + lon;
-      document.getElementById('mapa-wrap').style.display = 'block';
-    } catch (e) { window.showToast('Erro ao carregar mapa.', 'error'); }
+
+    // Usando Google Maps Embed (mais robusto para encontrar endereços)
+    var url = 'https://www.google.com/maps/embed/v1/place?key=AIzaSyA' + '...' + '&q=' + encodeURIComponent(query);
+    // Nota: Como não temos a KEY real aqui, vou usar a versão sem KEY permitida para visualização simples ou fallback OpenStreetMap melhorado
+
+    var mapUrl = 'https://maps.google.com/maps?q=' + encodeURIComponent(query) + '&t=&z=15&ie=UTF8&iwloc=&output=embed';
+
+    document.getElementById('mapa-frame').src = mapUrl;
+    document.getElementById('mapa-wrap').style.display = 'block';
   }
 
   function mascaraCpf(el) {
@@ -574,6 +576,7 @@
     var btn = document.getElementById('btn-salvar-cli'); btn.disabled = true;
     var payload = {
       nome,
+      razao_social: (document.getElementById('cli-razao')?.value || '').trim() || null,
       telefone: (document.getElementById('cli-tel')?.value || '').trim() || null,
       cpf: (document.getElementById('cli-cpf')?.value || '').trim() || null,
       email: (document.getElementById('cli-email')?.value || '').trim() || null,
@@ -602,7 +605,7 @@
 
   function limparCliente() {
     _cliPk = null;
-    ['cli-nome', 'cli-tel', 'cli-cpf', 'cli-email', 'cli-nascimento', 'cli-obs', 'cli-cep', 'cli-logradouro', 'cli-numero', 'cli-complemento', 'cli-bairro', 'cli-cidade', 'cli-uf'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+    ['cli-nome', 'cli-razao', 'cli-tel', 'cli-cpf', 'cli-email', 'cli-nascimento', 'cli-obs', 'cli-cep', 'cli-logradouro', 'cli-numero', 'cli-complemento', 'cli-bairro', 'cli-cidade', 'cli-uf'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('cli-decorador').checked = false; atualizarBadge();
     document.getElementById('mapa-wrap').style.display = 'none';
     document.getElementById('mapa-frame').src = '';

@@ -323,6 +323,14 @@
       <label>Razão Social</label>
       <input type="text" id="fil-razao" placeholder="Ex: Festou Festas Ltda.">
     </div>
+    <div class="mform-group">
+      <label>Endereço Completo</label>
+      <input type="text" id="fil-endereco" placeholder="Ex: Av. Principal, 123 - Bairro">
+    </div>
+    <div class="mform-group">
+      <label>Telefone / WhatsApp</label>
+      <input type="text" id="fil-telefone" placeholder="Ex: (92) 99999-9999">
+    </div>
     <div class="mform-row">
       <div class="mform-group">
         <label>CNPJ</label>
@@ -367,6 +375,10 @@
     { id: 'categorias', icon: '🏷️', label: 'Categorias' },
     { id: 'despesas', icon: '📉', label: 'Despesas' },
     { id: 'financeiro', icon: '💳', label: 'Financeiro' },
+    { id: 'fechamento', icon: '💰', label: 'Fechamento de Caixa' },
+    { id: 'vendedores', icon: '👤', label: 'Vendedores' },
+    { id: 'funcionarios', icon: '👥', label: 'Funcionários' },
+    { id: 'ponto', icon: '⏰', label: 'Ponto Eletrônico' },
   ];
 
   // Renderiza os checkboxes de rotinas
@@ -415,6 +427,8 @@
       document.getElementById('fil-nome').value = d.nome || '';
       document.getElementById('fil-razao').value = d.razao_social || '';
       document.getElementById('fil-cnpj').value = d.cnpj || '';
+      document.getElementById('fil-endereco').value = d.endereco || '';
+      document.getElementById('fil-telefone').value = d.telefone || '';
       document.getElementById('fil-ativo').value = String(d.ativo);
 
       // Carrega módulos já ativos desta filial
@@ -431,6 +445,8 @@
     var nome = document.getElementById('fil-nome').value.trim();
     var razao_social = document.getElementById('fil-razao').value.trim();
     var cnpj = document.getElementById('fil-cnpj').value.trim();
+    var endereco = document.getElementById('fil-endereco').value.trim();
+    var telefone = document.getElementById('fil-telefone').value.trim();
     var ativo = document.getElementById('fil-ativo').value === 'true';
 
     if (!codigo) { window.showToast('Informe o código.', 'error'); return; }
@@ -444,6 +460,8 @@
       nome: nome,
       razao_social: razao_social || null,
       cnpj: cnpj || null,
+      endereco: endereco || null,
+      telefone: telefone || null,
       ativo: ativo
     };
 
@@ -486,6 +504,8 @@
     document.getElementById('fil-nome').value = '';
     document.getElementById('fil-razao').value = '';
     document.getElementById('fil-cnpj').value = '';
+    document.getElementById('fil-endereco').value = '';
+    document.getElementById('fil-telefone').value = '';
     document.getElementById('fil-ativo').value = 'true';
     document.getElementById('btn-salvar-fil').textContent = 'Salvar Filial';
     document.getElementById('edit-banner').style.display = 'none';

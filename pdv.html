@@ -598,6 +598,17 @@
     flex-wrap: wrap
   }
 
+  /* Desconto em lote */
+  .desc-lote-bar {
+    padding: 8px 12px;
+    background: #eff6ff;
+    border-bottom: 1px solid #bfdbfe;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap
+  }
+
   html[data-theme="dark"] .desc-lote-bar {
     background: #0d1f3c;
     border-color: #1e3a5f
@@ -1373,8 +1384,9 @@
 
   /* Modal Seleção Cliente */
   .modal-clientes .modal-box {
-    max-width: 500px;
-    max-height: 80vh;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
     display: flex;
     flex-direction: column
   }
@@ -1505,7 +1517,7 @@
       <div class="pdv-right-head">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
           <div>
-            <h3>🛒 Carrinho</h3>
+            <h3>🛒 Carrinho (<span id="pdv-qtd-itens">0</span> itens)</h3>
             <p id="pdv-num-venda" style="opacity:.75;font-size:11px;margin-top:1px">Nova Venda</p>
           </div>
           <button class="btn-mclose-cart" onclick="PDV.toggleCarrinho(false)">✕</button>
@@ -1515,8 +1527,8 @@
           </div>
         </div>
         <select id="pdv-vendedor"
-          style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.3);background:rgba(255,255,255,.15);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;appearance:auto">
-          <option value="" style="color:#1e1b4b">Carregando Vendedores...</option>
+          style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid rgba(255,255,255,.4);background:rgba(0,0,0,0.1);color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;appearance:auto">
+          <option value="" style="color:#1e1b4b">👤 Selecione o Vendedor...</option>
         </select>
       </div>
       <div class="pdv-cliente">
@@ -1672,6 +1684,7 @@
   </div>
 </div>
 
+
 <script>
   window.PDV = (function () {
     var todos = [];
@@ -1692,20 +1705,22 @@
       if (ef) ef.textContent = f ? f.codigo + ' – ' + f.nome : '—';
       if (eo) eo.textContent = op ? op.nome : '—';
 
-      // Carregar vendedores
-      var q_vend = window.supabase.from('operadores').select('*').eq('ativo', true);
+      // Carregar vendedores da nova tabela
+      var q_vend = window.supabase.from('vendedores').select('*').eq('ativo', true).order('nome');
+      if (f && f.pk) q_vend = q_vend.eq('filial_pk', f.pk);
       var res_vend = await q_vend;
       var selVend = document.getElementById('pdv-vendedor');
       if (selVend && !res_vend.error) {
-        var vends = res_vend.data.filter(function (v) { return v.admin || v.acesso_pdv || v.filial_pk === (f ? f.pk : null); });
+        var vends = res_vend.data || [];
         selVend.innerHTML = '<option value="">👤 Selecione o Vendedor...</option>';
         vends.forEach(function (v) {
           var o = document.createElement('option');
-          o.value = v.login || v.nome;
+          o.value = v.nome;
           o.textContent = v.nome;
+          o.style.color = '#1e1b4b'; // Cor escura para visibilidade no dropdown
           selVend.appendChild(o);
         });
-        if (!vends.length) selVend.innerHTML = '<option value="">Nenhum Vendedor Encontrado</option>';
+        if (!vends.length) selVend.innerHTML = '<option value="" style="color:#1e1b4b">❌ Nenhum Vendedor Encontrado</option>';
       }
 
       // Carregar Contas Bancárias (Financeiro) para vincular aos pagamentos
@@ -1897,6 +1912,11 @@
       document.getElementById('pdv-subtotal').textContent = fmt(sub);
       document.getElementById('pdv-desconto').textContent = '- ' + fmt(desc);
       document.getElementById('pdv-total').textContent = fmt(total);
+
+      // Quantidade de itens
+      var totalItens = carrinho.reduce(function (s, i) { return s + i.qtd; }, 0);
+      var elQtd = document.getElementById('pdv-qtd-itens');
+      if (elQtd) elQtd.textContent = totalItens;
 
       // Atualiza total mobile
       var elMob = document.getElementById('pdv-mobile-total');
@@ -2217,8 +2237,11 @@
         }
 
         window.showToast('Venda #' + numero + ' finalizada!');
-        // Imprime cupom
+
+        // Imprime cupom automaticamente
         imprimirCupom(vendaPk, numero, nomeCliParaVenda, sub, desc, total, pagamentos);
+
+        // Limpa a venda e volta para o catálogo (fluxo rápido)
         limparVenda();
         // Atualiza histórico se a funcVendas existir
         if (window.carregarVendas) window.carregarVendas();
@@ -2348,7 +2371,7 @@
       inp.value = '';
       document.getElementById('loading-cli').style.display = 'block';
 
-      var q = window.supabase.from('clientes').select('pk,nome,telefone,decorador').order('nome').limit(200);
+      var q = window.supabase.from('clientes').select('pk,nome,razao_social,telefone,decorador').order('nome').limit(200);
       var fil = window.filialLogada;
       if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
 
@@ -2370,7 +2393,9 @@
     function filtrarClientes(t) {
       t = (t || '').toLowerCase();
       var res = listaClientesFull.filter(function (c) {
-        return (c.nome || '').toLowerCase().includes(t) || (c.telefone || '').includes(t);
+        return (c.nome || '').toLowerCase().includes(t) ||
+          (c.razao_social || '').toLowerCase().includes(t) ||
+          (c.telefone || '').includes(t);
       });
       var el = document.getElementById('lista-cli');
       if (!res.length) {
@@ -2379,9 +2404,11 @@
       }
       el.innerHTML = res.map(function (c, idx) {
         var tag = c.decorador ? '<span class="tag-decorador">Decorador</span>' : '';
+        var razao = c.razao_social ? '<div style="font-size:11px;color:var(--mmuted)">Razão: ' + c.razao_social + '</div>' : '';
         return '<div class="cliente-item" onclick="PDV.escolherCliente(' + idx + ')">' +
           '<div>' +
           '<div class="cliente-item-nome">' + c.nome + '</div>' +
+          razao +
           '<div class="cliente-item-tel">' + (c.telefone || '—') + '</div>' +
           '</div>' +
           tag +
@@ -2392,7 +2419,9 @@
     function escolherCliente(idx) {
       var txt = document.getElementById('inp-busca-cli').value.toLowerCase();
       var arr = listaClientesFull.filter(function (c) {
-        return (c.nome || '').toLowerCase().includes(txt) || (c.telefone || '').includes(txt);
+        return (c.nome || '').toLowerCase().includes(txt) ||
+          (c.razao_social || '').toLowerCase().includes(txt) ||
+          (c.telefone || '').includes(txt);
       });
       var cli = arr[idx];
       clienteLogado = cli;
@@ -2417,36 +2446,48 @@
       var itensTxt = carrinho.map(function (it) {
         var c = calcItem(it);
         var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
-        return it.qtd + 'x ' + it.descricao + descTxt + '\n   ' + fmt(it.preco_unit) + ' x ' + it.qtd + ' = ' + fmt(c.liq);
-      }).join('\n');
-      var pagTxt = pags.map(function (p) { return '  ' + (FORMA_LABEL[p.forma] || p.forma) + ': ' + fmt(p.valor); }).join('\n');
+        return it.qtd + 'x ' + it.descricao + descTxt + '<br>' +
+          '<span style="font-size:10px;color:#666">   ' + fmt(it.preco_unit) + ' x ' + it.qtd + ' = ' + fmt(c.liq) + '</span>';
+      }).join('<br>');
+      var pagTxt = pags.map(function (p) { return '<div style="display:flex;justify-content:space-between"><span>' + (FORMA_LABEL[p.forma] || p.forma) + ':</span> <span>' + fmt(p.valor) + '</span></div>'; }).join('');
       var troco = pags.find(function (p) { return p.forma === 'dinheiro' && p.troco > 0; });
-      var trocoTxt = troco ? '\n  Troco: ' + fmt(troco.troco) : '';
+      var trocoTxt = troco ? '<div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:4px"><span>Troco:</span> <span>' + fmt(troco.troco) + '</span></div>' : '';
+
+      var totalQtd = carrinho.reduce(function (acc, item) { return acc + item.qtd; }, 0);
+
       var html = '<html><head><title>Cupom #' + num + '</title><style>' +
-        'body{font-family:monospace;font-size:12px;width:300px;margin:0 auto;padding:10px}' +
-        'h2{text-align:center;font-size:14px;margin-bottom:2px}p{margin:2px 0;text-align:center;font-size:11px}.linha{border-top:1px dashed #000;margin:6px 0}' +
+        'body{font-family:"Courier New",Courier,monospace;font-size:12px;width:300px;margin:0 auto;padding:10px;color:#000}' +
+        'h2{text-align:center;font-size:16px;margin:5px 0 2px 0}p{margin:2px 0;text-align:center;font-size:11px}.l{border-top:1px dashed #000;margin:8px 0}' +
+        '.item-list{font-size:11px;line-height:1.4}.total-row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0}' +
         '</style></head><body>' +
-        '<h2>' + (f ? f.nome : '') + '</h2>' +
+        '<h2>' + (f ? f.nome : 'FESTOU FESTAS') + '</h2>' +
         (f && f.razao_social ? '<p>' + f.razao_social + '</p>' : '') +
-        (f && f.cnpj ? '<p>CNPJ: ' + f.cnpj + '</p>' : '') +
-        '<p>Cupom de Venda #' + String(num).padStart(4, '0') + '</p>' +
-        '<p>' + agora + '</p>' +
-        '<div class="linha"></div>' +
-        (cliente ? '<p style="text-align:left">Cliente: ' + cliente + '</p>' : '') +
-        (op ? '<p style="text-align:left">Operador: ' + op.nome + '</p>' : '') +
-        '<div class="linha"></div>' +
-        '<pre>' + itensTxt + '</pre>' +
-        '<div class="linha"></div>' +
-        '<p>Subtotal: ' + fmt(sub) + '</p>' +
-        (desc > 0 ? '<p>Desconto: - ' + fmt(desc) + '</p>' : '') +
-        '<p><strong>TOTAL: ' + fmt(total) + '</strong></p>' +
-        '<div class="linha"></div>' +
-        '<p>Pagamentos:</p><pre>' + pagTxt + trocoTxt + '</pre>' +
-        '<div class="linha"></div>' +
-        '<p style="text-align:center">Obrigado pela preferência!</p>' +
-        '</' + 'body></' + 'html>';
+        (f && f.cnpj ? '<p>CNPJ: ' + f.cnpj + '</p>' : '<p>CNPJ: —</p>') +
+        (f && f.endereco ? '<p>' + f.endereco + '</p>' : '<p>Endereço: —</p>') +
+        (f && f.telefone ? '<p>Tel: ' + f.telefone + '</p>' : '') +
+        '<div class="l"></div>' +
+        '<p><strong>CUPOM DE VENDA #' + String(num).padStart(4, '0') + '</strong></p>' +
+        '<p style="font-size:9px;font-weight:bold;margin-bottom:4px">NÃO É DOCUMENTO FISCAL</p>' +
+        '<p>Emissão: ' + agora + '</p>' +
+        '<div class="l"></div>' +
+        (cliente ? '<div style="font-size:11px">Cliente: <strong>' + cliente + '</strong></div>' : '') +
+        (op ? '<div style="font-size:11px">Vendedor: ' + op.nome + '</div>' : '') +
+        '<div class="l"></div>' +
+        '<div class="item-list">' + itensTxt + '</div>' +
+        '<div class="l"></div>' +
+        '<div class="total-row"><span>Qtd. Total de Itens:</span> <span>' + totalQtd + '</span></div>' +
+        '<div class="total-row"><span>Subtotal:</span> <span>' + fmt(sub) + '</span></div>' +
+        '<div class="total-row"><span>Desconto Total:</span> <span>- ' + fmt(desc) + '</span></div>' +
+        '<div class="total-row" style="font-size:15px;font-weight:bold;margin-top:5px"><span>VALOR TOTAL:</span> <span>' + fmt(total) + '</span></div>' +
+        '<div class="l"></div>' +
+        '<div style="font-size:11px;margin-bottom:5px">FORMAS DE PAGAMENTO:</div>' +
+        '<div style="font-size:11px">' + pagTxt + trocoTxt + '</div>' +
+        '<div class="l"></div>' +
+        '<p style="text-align:center;font-size:12px;font-weight:bold;margin-top:10px">OBRIGADO PELA PREFERÊNCIA!</p>' +
+        '<p style="text-align:center;font-size:8px;margin-top:10px;color:#666">Impresso em: ' + agora + '</p>' +
+        '</body></html>';
       var w = window.open('', '_blank', 'width=340,height=600');
-      if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 400); }
+      if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 500); }
     }
 
     return {

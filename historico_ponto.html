@@ -1,0 +1,443 @@
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+<style>
+    .mod* {
+        box-sizing: border-box
+    }
+
+    .mod {
+        font-family: 'DM Sans', sans-serif;
+        --mc: #fff;
+        --mc2: #fafafe;
+        --mborder: #e0e7ff;
+        --mtext2: #1e1b4b;
+        --mmuted: #6b7280;
+        --mprimary: #4f46e5;
+    }
+
+    html[data-theme="dark"] .mod {
+        --mc: #1a1d27;
+        --mc2: #22263a;
+        --mborder: #2e3250;
+        --mtext2: #e8e9f3;
+        --mmuted: #7b7fa0
+    }
+
+    .mod-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        animation: mfadeUp .3s ease;
+        gap: 12px;
+        flex-wrap: wrap
+    }
+
+    .mod-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--mtext2);
+        margin-bottom: 4px
+    }
+
+    .mbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all .15s;
+    }
+
+    .mbtn-ghost {
+        background: var(--mc);
+        color: var(--mprimary);
+        border: 1px solid var(--mborder)
+    }
+
+    .calendar-container {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 20px;
+        height: calc(100vh - 180px);
+        min-height: 500px;
+    }
+
+    @media (max-width: 1000px) {
+        .calendar-container {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+    }
+
+    .calendar-card {
+        background: var(--mc);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .calendar-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        flex: 1;
+    }
+
+    .calendar-day-head {
+        text-align: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--mmuted);
+        text-transform: uppercase;
+        padding-bottom: 8px;
+    }
+
+    .calendar-day {
+        min-height: 80px;
+        background: var(--mc2);
+        border: 1px solid var(--mborder);
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+    }
+
+    .calendar-day.empty {
+        background: transparent;
+        border: none;
+    }
+
+    .day-num {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--mmuted);
+    }
+
+    .punch-card {
+        font-size: 10px;
+        padding: 4px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: transform 0.1s;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .punch-card:hover {
+        transform: scale(1.02);
+    }
+
+    .punch-in {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+
+    .punch-out {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecdd3;
+    }
+
+    .side-info {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .map-card {
+        background: var(--mc);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        height: 250px;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    }
+
+    .details-card {
+        background: var(--mc);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        flex: 1;
+    }
+
+    .details-card h3 {
+        font-size: 14px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--mborder);
+        padding-bottom: 8px;
+    }
+
+    .edit-form-group {
+        margin-bottom: 12px;
+    }
+
+    .edit-form-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--mmuted);
+        margin-bottom: 4px;
+    }
+
+    .edit-form-group input {
+        width: 100%;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid var(--mborder);
+        background: var(--mc2);
+        color: var(--mtext2);
+    }
+
+    @keyframes mfadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(8px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+</style>
+
+<div class="mod">
+    <div class="mod-header">
+        <div>
+            <h2 id="hist-emp-name">Histórico de Ponto</h2>
+            <p id="hist-emp-subtitle">Selecine um mês para visualizar o histórico</p>
+        </div>
+        <button class="mbtn mbtn-ghost" onclick="carregarModulo('cadastro_funcionario.html','nav-funcionario')">←
+            Voltar</button>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-card">
+            <div class="calendar-controls">
+                <select id="sel-mes" class="mbtn mbtn-ghost" onchange="HistPonto.carregar()"></select>
+                <select id="sel-ano" class="mbtn mbtn-ghost" onchange="HistPonto.carregar()"></select>
+                <div style="flex:1"></div>
+            </div>
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- Header dias da semana -->
+                <div class="calendar-day-head">Dom</div>
+                <div class="calendar-day-head">Seg</div>
+                <div class="calendar-day-head">Ter</div>
+                <div class="calendar-day-head">Qua</div>
+                <div class="calendar-day-head">Qui</div>
+                <div class="calendar-day-head">Sex</div>
+                <div class="calendar-day-head">Sáb</div>
+            </div>
+        </div>
+
+        <div class="side-info">
+            <div class="map-card">
+                <div id="map"></div>
+            </div>
+            <div class="details-card" id="details-view">
+                <h3>Detalhes da Batida</h3>
+                <p style="color:var(--mmuted); font-size: 13px; text-align: center; margin-top: 40px;">Selecione uma
+                    batida no calendário para ver os detalhes e localização.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script do Leaflet já está no index.html -->
+<script>
+    window.HistPonto = (function () {
+        var func = window._funcPonto;
+        var map = null;
+        var marker = null;
+        var punches = [];
+        var selectedPunch = null;
+
+        async function init() {
+            if (!func) {
+                carregarModulo('cadastro_funcionario.html', 'nav-funcionario');
+                return;
+            }
+
+            document.getElementById('hist-emp-name').textContent = "Ponto: " + func.nome;
+            document.getElementById('hist-emp-subtitle').textContent = "Matrícula: " + (func.matricula || '--');
+
+            preencherSelects();
+            initMap();
+            // Pequeno delay para garantir que os selects tenham valores lidos corretamente
+            setTimeout(() => carregar(), 100);
+        }
+
+        function preencherSelects() {
+            var m = document.getElementById('sel-mes');
+            var a = document.getElementById('sel-ano');
+            var meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            var hoje = new Date();
+
+            m.innerHTML = meses.map((nome, i) => `<option value="${i + 1}" ${i === hoje.getMonth() ? 'selected' : ''}>${nome}</option>`).join('');
+
+            var anoAtual = hoje.getFullYear();
+            var anos = [];
+            for (var i = anoAtual - 2; i <= anoAtual + 1; i++) anos.push(i);
+            a.innerHTML = anos.map(v => `<option value="${v}" ${v === anoAtual ? 'selected' : ''}>${v}</option>`).join('');
+        }
+
+        function initMap() {
+            if (map) return;
+            map = L.map('map').setView([-15, -50], 4);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // Garante que o mapa renderize corretamente após o carregamento do DOM
+            setTimeout(() => { map.invalidateSize(); }, 500);
+        }
+
+        async function carregar() {
+            var mes = document.getElementById('sel-mes').value;
+            var ano = document.getElementById('sel-ano').value;
+            var dataInicio = `${ano}-${String(mes).padStart(2, '0')}-01`;
+            var dataFim = new Date(ano, mes, 0).toISOString().split('T')[0];
+
+            // Limpa o calendário (mantém apenas o header)
+            var grid = document.getElementById('calendar-grid');
+            var heads = grid.querySelectorAll('.calendar-day-head');
+            grid.innerHTML = '';
+            heads.forEach(h => grid.appendChild(h));
+
+            var { data, error } = await window.supabase
+                .from('registro_ponto')
+                .select('*')
+                .eq('funcionario_pk', func.pk)
+                .gte('data', dataInicio)
+                .lte('data', dataFim)
+                .order('hora', { ascending: true });
+
+            if (error) { window.showToast("Erro ao carregar batidas: " + error.message, "error"); return; }
+            punches = data || [];
+
+            renderCalendar(ano, mes);
+        }
+
+        function renderCalendar(ano, mes) {
+            var grid = document.getElementById('calendar-grid');
+            var primeiroDia = new Date(ano, mes - 1, 1).getDay();
+            var totalDias = new Date(ano, mes, 0).getDate();
+
+            // Células vazias antes do primeiro dia
+            for (var i = 0; i < primeiroDia; i++) {
+                var div = document.createElement('div');
+                div.className = 'calendar-day empty';
+                grid.appendChild(div);
+            }
+
+            // Dias do mês
+            for (var dia = 1; dia <= totalDias; dia++) {
+                var dataStr = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                var batidasDia = punches.filter(p => p.data === dataStr);
+
+                var div = document.createElement('div');
+                div.className = 'calendar-day';
+                div.innerHTML = `<span class="day-num">${dia}</span>`;
+
+                batidasDia.forEach(p => {
+                    var pdiv = document.createElement('div');
+                    pdiv.className = `punch-card punch-${p.tipo}`;
+                    pdiv.innerHTML = `<span>${p.tipo === 'entrada' ? 'ENT' : 'SAÍ'}</span> <strong>${p.hora.substring(0, 5)}</strong>`;
+                    pdiv.onclick = (e) => { e.stopPropagation(); verDetalhes(p); };
+                    div.appendChild(pdiv);
+                });
+
+                grid.appendChild(div);
+            }
+        }
+
+        function verDetalhes(p) {
+            selectedPunch = p;
+            var view = document.getElementById('details-view');
+            var isAdmin = window.operadorLogado && window.operadorLogado.admin;
+
+            view.innerHTML = `
+                <h3>Detalhes da Batida</h3>
+                <div style="font-size: 13px; line-height: 1.6;">
+                    <p><strong>Tipo:</strong> ${p.tipo.toUpperCase()}</p>
+                    <p><strong>Data:</strong> ${new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Hora:</strong> ${p.hora.substring(0, 5)}</p>
+                    <p><strong>GPS:</strong> ${p.latitude ? p.latitude.toFixed(6) + ', ' + p.longitude.toFixed(6) : 'Indisponível'}</p>
+                </div>
+                ${isAdmin ? `
+                <div class="mdivider" style="margin: 15px 0; border-top:1px solid var(--mborder)"></div>
+                <div class="edit-form-group">
+                    <label>Alterar Hora</label>
+                    <input type="time" id="edit-time" value="${p.hora.substring(0, 5)}">
+                </div>
+                <button class="mbtn mbtn-primary" style="width:100%; margin-top:10px" onclick="HistPonto.salvarEdicao(${p.pk})">Salvar Alteração</button>
+                <button class="mbtn mbtn-ghost" style="width:100%; margin-top:8px; color:#dc2626" onclick="HistPonto.excluirBatida(${p.pk})">Excluir Batida</button>
+                ` : ''}
+            `;
+
+            if (p.latitude && p.longitude) {
+                var loc = [p.latitude, p.longitude];
+                map.invalidateSize(); // Garante o tamanho correto do mapa
+                map.setView(loc, 15);
+                if (marker) marker.remove();
+                marker = L.marker(loc).addTo(map).bindPopup(p.tipo.toUpperCase() + ": " + p.hora.substring(0, 5)).openPopup();
+            } else {
+                if (marker) marker.remove();
+            }
+        }
+
+        async function salvarEdicao(pk) {
+            if (!confirm("Confirmar alteração de horário?")) return;
+            var novaHora = document.getElementById('edit-time').value;
+            if (!novaHora) return;
+
+            var { error } = await window.supabase.from('registro_ponto').update({ hora: novaHora }).eq('pk', pk);
+            if (error) { window.showToast("Erro ao editar: " + error.message, "error"); }
+            else { window.showToast("Batida alterada!"); carregar(); }
+        }
+
+        async function excluirBatida(pk) {
+            if (!confirm("Deseja realmente excluir esta batida de ponto?")) return;
+            var { error } = await window.supabase.from('registro_ponto').delete().eq('pk', pk);
+            if (error) { window.showToast("Erro ao excluir: " + error.message, "error"); }
+            else {
+                window.showToast("Batida excluída!");
+                document.getElementById('details-view').innerHTML = '<h3>Detalhes da Batida</h3><p style="text-align:center; margin-top:40px; font-size:13px; color:var(--mmuted)">Selecione uma batida.</p>';
+                if (marker) marker.remove();
+                carregar();
+            }
+        }
+
+        init();
+        return { carregar, salvarEdicao, excluirBatida };
+    })();
+</script>

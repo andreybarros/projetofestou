@@ -379,6 +379,8 @@
   <div class="mform-card">
     <div class="mform-group"><label>Nome Completo</label><input type="text" id="op-nome" placeholder="Ex: João Silva"
         autocomplete="name"></div>
+    <div class="mform-group"><label>Matrícula</label><input type="text" id="op-matricula" placeholder="Ex: OP-001"
+        autocomplete="off"></div>
     <div class="mform-row">
       <div class="mform-group"><label>Login</label><input type="text" id="op-login" placeholder="Ex: joao"
           autocomplete="off"></div>
@@ -432,7 +434,11 @@
     { id: 'despesas', icon: '📉', label: 'Despesas', campo: 'acesso_despesas' },
     { id: 'financeiro', icon: '💳', label: 'Financeiro', campo: 'acesso_financeiro' },
     { id: 'dashboard', icon: '📈', label: 'Dashboard de Vendas', campo: 'acesso_dashboard' },
-    { id: 'fechamento', icon: '💰', label: 'Fechamento de Caixa', campo: 'acesso_fechamento' }
+    { id: 'fechamento', icon: '💰', label: 'Fechamento de Caixa', campo: 'acesso_fechamento' },
+    { id: 'vendedores', icon: '👤', label: 'Vendedores', campo: 'acesso_pdv' },
+    { id: 'funcionarios', icon: '👥', label: 'Funcionários', campo: 'acesso_funcionarios' },
+    { id: 'ponto', icon: '⏰', label: 'Ponto Eletrônico', campo: 'acesso_ponto' },
+    { id: 'fechamento_ponto', icon: '🧾', label: 'Fechamento de Ponto', campo: 'acesso_fechamento_ponto' }
   ];
 
   function renderRotinasOp(ativosMap) {
@@ -492,6 +498,7 @@
       document.getElementById('senha-hint').textContent = 'Deixe em branco para manter a senha atual';
       document.getElementById('op-nome').value = d.nome ?? '';
       document.getElementById('op-login').value = d.login ?? '';
+      document.getElementById('op-matricula').value = d.matricula ?? '';
       document.getElementById('op-filial').value = d.filial_pk ?? '';
       document.getElementById('perm-admin').checked = d.admin ?? false;
       ROTINAS_OPERADOR.forEach(function (r) {
@@ -513,6 +520,7 @@
   async function salvarOperador() {
     const nome = document.getElementById('op-nome')?.value.trim();
     const login = document.getElementById('op-login')?.value.trim();
+    const matricula = document.getElementById('op-matricula')?.value.trim();
     const senha = document.getElementById('op-senha')?.value.trim();
     const filial_pk = document.getElementById('op-filial')?.value || null;
     const admin = document.getElementById('perm-admin')?.checked ?? false;
@@ -521,7 +529,7 @@
     const btn = document.getElementById('btn-salvar-op'); btn.disabled = true;
     const rotinasPayload = getRotinasOpPayload();
     const payload = {
-      nome, login, admin,
+      nome, login, admin, matricula,
       filial_pk: filial_pk ? parseInt(filial_pk) : null,
       ...rotinasPayload
     };
@@ -543,7 +551,7 @@
 
   function limparFormOp() {
     window._editOpId = null;
-    ['op-nome', 'op-login', 'op-senha'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '' });
+    ['op-nome', 'op-login', 'op-senha', 'op-matricula'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '' });
     document.getElementById('op-filial').value = '';
     document.getElementById('perm-admin').checked = false;
     renderRotinasOp({});

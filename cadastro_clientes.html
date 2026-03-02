@@ -484,7 +484,8 @@
       <table class="mtable">
         <thead>
           <tr>
-            <th>Nome</th>
+            <th>Nome / Fantasia</th>
+            <th>Razão Social</th>
             <th>Telefone</th>
             <th>E-mail</th>
             <th>CPF</th>
@@ -551,6 +552,7 @@
         var badge = c.decorador ? '<span class="badge-dec">🎨 Decorador</span>' : '<span class="badge-cli">👤 Cliente</span>';
         return '<tr id="cli-row-' + c.pk + '">' +
           '<td data-label="Nome"><strong style="color:var(--mtext2)">' + c.nome + '</strong></td>' +
+          '<td data-label="Razão Social">' + (c.razao_social || '—') + '</td>' +
           '<td data-label="Telefone">' + (c.telefone || '—') + '</td>' +
           '<td data-label="E-mail">' + (c.email || '—') + '</td>' +
           '<td data-label="CPF"><span style="font-family:DM Mono,monospace;font-size:13px">' + (c.cpf || '—') + '</span></td>' +
@@ -565,7 +567,12 @@
     function filtrar(t) {
       if (!t || !t.trim()) { render(lista); return; }
       t = t.toLowerCase();
-      render(lista.filter(function (c) { return c.nome.toLowerCase().includes(t) || (c.telefone || '').includes(t) || (c.email || '').toLowerCase().includes(t); }));
+      render(lista.filter(function (c) {
+        return c.nome.toLowerCase().includes(t) ||
+          (c.razao_social || '').toLowerCase().includes(t) ||
+          (c.telefone || '').includes(t) ||
+          (c.email || '').toLowerCase().includes(t);
+      }));
     }
 
     function editar(pk) { var c = lista.find(function (x) { return x.pk === pk; }); if (!c) return; window._editData = c; carregarModulo('form_cliente.html', 'nav-clientes'); }

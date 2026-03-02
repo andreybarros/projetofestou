@@ -128,4 +128,165 @@ ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_categorias boolean DEFAUL
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_despesas boolean DEFAULT false;
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_financeiro boolean DEFAULT false;
 
+-- 12. Adição da coluna Razão Social na tabela de clientes
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS razao_social text;
+
+-- 13. Adição de Endereço e Telefone na tabela de filiais para o Cupom
+ALTER TABLE filiais ADD COLUMN IF NOT EXISTS endereco text;
+ALTER TABLE filiais ADD COLUMN IF NOT EXISTS telefone text;
+
+-- 14. Tabela de Vendedores (Independente de Operadores)
+CREATE TABLE IF NOT EXISTS vendedores (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  nome text NOT NULL,
+  telefone text,
+  ativo boolean DEFAULT true,
+  criado_em timestamptz DEFAULT now()
+);
+
+
+-- 15. Tabela de Funcionários
+CREATE TABLE IF NOT EXISTS funcionarios (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  nome text NOT NULL,
+  cpf text,
+  data_nascimento date,
+  matricula text,
+  nome_mae text,
+  nome_pai text,
+  salario_mensal numeric(12,2) DEFAULT 0,
+  ativo boolean DEFAULT true,
+  criado_em timestamptz DEFAULT now()
+);
+
+-- 15.1 Habilitar RLS e criar política de acesso
+ALTER TABLE funcionarios ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='funcionarios' AND policyname='func_all') THEN
+    CREATE POLICY "func_all" ON funcionarios USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+
+-- 15.2 Adicionar permissão à tabela de operadores para acesso à nova rotina
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_funcionarios boolean DEFAULT false;
+
+-- 16. Módulo de Ponto Eletrônico
+-- 16.1 Adicionar campos de horário de trabalho na tabela de funcionários
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS hora_entrada time;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS hora_saida time;
+
+-- 16.2 Tabela de Registro de Ponto
+CREATE TABLE IF NOT EXISTS registro_ponto (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  funcionario_pk bigint REFERENCES funcionarios(pk) ON DELETE CASCADE,
+  matricula text,
+  tipo text NOT NULL, -- 'entrada' ou 'saida'
+  data date DEFAULT CURRENT_DATE,
+  hora time DEFAULT CURRENT_TIME,
+  latitude numeric(10,8),
+  longitude numeric(11,8),
+  criado_em timestamptz DEFAULT now()
+);
+
+-- 16.3 Habilitar RLS e criar política de acesso
+ALTER TABLE registro_ponto ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='registro_ponto' AND policyname='ponto_all') THEN
+    CREATE POLICY "ponto_all" ON registro_ponto USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- 16.4 Adicionar permissão à tabela de operadores para acesso à nova rotina
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_ponto boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS matricula text;
+
+-- 17. Fechamento de Ponto e Banco de Horas
+-- 17.1 Tabela de Fechamento de Ponto
+CREATE TABLE IF NOT EXISTS fechamento_ponto (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  funcionario_pk bigint REFERENCES funcionarios(pk) ON DELETE CASCADE,
+  mes int NOT NULL,
+  ano int NOT NULL,
+  salario_base numeric(12,2),
+  horas_trabalhadas numeric(10,2) DEFAULT 0,
+  horas_extras numeric(10,2) DEFAULT 0,
+  valor_descontos numeric(12,2) DEFAULT 0,
+  valor_horas_extras numeric(12,2) DEFAULT 0,
+  total_liquido numeric(12,2) DEFAULT 0,
+  observacoes text,
+  saldo_anterior numeric(10,2) DEFAULT 0,
+  horas_previstas numeric(10,2) DEFAULT 0,
+  saldo_mes numeric(10,2) DEFAULT 0,
+  saldo_acumulado numeric(10,2) DEFAULT 0,
+  bloqueado boolean DEFAULT false,
+  quinzena int DEFAULT 1, -- 1: 01 a 15, 2: 16 a fim do mês
+  criado_em timestamptz DEFAULT now(),
+  UNIQUE(funcionario_pk, mes, ano, quinzena)
+);
+
+-- 17.2 Tabela de Justificativas / Abonos
+CREATE TABLE IF NOT EXISTS justificativas_ponto (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  funcionario_pk bigint REFERENCES funcionarios(pk) ON DELETE CASCADE,
+  data date NOT NULL,
+  tipo text NOT NULL, -- 'Atestado', 'Abono', 'Folga', etc.
+  observacoes text,
+  criado_em timestamptz DEFAULT now(),
+  UNIQUE(funcionario_pk, data)
+);
+
+-- 17.3 Tabela de Detalhamento de Descontos (Vinculada ao Fechamento)
+CREATE TABLE IF NOT EXISTS descontos_fechamento (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  fechamento_pk bigint REFERENCES fechamento_ponto(pk) ON DELETE CASCADE,
+  descricao text NOT NULL,
+  valor numeric(12,2) NOT NULL DEFAULT 0,
+  criado_em timestamptz DEFAULT now()
+);
+
+-- 17.4 Habilitar RLS e criar políticas
+ALTER TABLE fechamento_ponto ENABLE ROW LEVEL SECURITY;
+ALTER TABLE justificativas_ponto ENABLE ROW LEVEL SECURITY;
+ALTER TABLE descontos_fechamento ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='fechamento_ponto' AND policyname='fechamento_all') THEN
+    CREATE POLICY "fechamento_all" ON fechamento_ponto USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='justificativas_ponto' AND policyname='justificativas_all') THEN
+    CREATE POLICY "justificativas_all" ON justificativas_ponto USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='descontos_fechamento' AND policyname='descontos_all') THEN
+    CREATE POLICY "descontos_all" ON descontos_fechamento USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- 17.4 Adicionar permissão à tabela de operadores para acesso à nova rotina
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_fechamento_ponto boolean DEFAULT false;
+
+-- 17.5 Novos campos no cadastro de funcionários
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS carga_horaria_diaria numeric(4,2) DEFAULT 8.00;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS minutos_intervalo int DEFAULT 60;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS saldo_inicial_banco numeric(10,2) DEFAULT 0;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS horas_fechamento numeric(10,2) DEFAULT 120;
+
+-- 17.6 Atualizações para Fechamento (Banco de Horas e Quinzena)
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS saldo_anterior numeric(10,2) DEFAULT 0;
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS horas_previstas numeric(10,2) DEFAULT 0;
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS saldo_mes numeric(10,2) DEFAULT 0;
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS saldo_acumulado numeric(10,2) DEFAULT 0;
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS bloqueado boolean DEFAULT false;
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS quinzena int DEFAULT 1;
+
+ALTER TABLE fechamento_ponto DROP CONSTRAINT IF EXISTS fechamento_ponto_funcionario_pk_mes_ano_key;
+ALTER TABLE fechamento_ponto DROP CONSTRAINT IF EXISTS fechamento_ponto_funcionario_pk_mes_ano_quinzena_key;
+ALTER TABLE fechamento_ponto ADD CONSTRAINT fechamento_ponto_funcionario_pk_mes_ano_quinzena_key UNIQUE(funcionario_pk, mes, ano, quinzena);
+
 NOTIFY pgrst, 'reload schema';
+

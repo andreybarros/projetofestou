@@ -5,6 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Estoque</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Leaflet para Mapas -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="css/shared.css">
   <style>
     :root {
@@ -748,13 +752,22 @@
           style="display:none"><span class="nav-icon">📊</span><span class="nav-text">Dashboard</span></button>
         <button class="nav-btn" id="nav-pdv" onclick="ir('pdv.html','nav-pdv')" style="display:none"><span
             class="nav-icon">🛒</span><span class="nav-text">Ponto de Venda</span></button>
+        <button class="nav-btn" id="nav-vendedor" onclick="ir('cadastro_vendedor.html','nav-vendedor')"
+          style="display:none"><span class="nav-icon">👤</span><span class="nav-text">Vendedores</span></button>
+        <button class="nav-btn" id="nav-receitas" onclick="ir('receitas.html','nav-receitas')"
+          style="display:none"><span class="nav-icon">📒</span><span class="nav-text">Contas a Receber</span></button>
         <button class="nav-btn" id="nav-historico" onclick="ir('historico_vendas.html','nav-historico')"
           style="display:none"><span class="nav-icon">📋</span><span class="nav-text">Histórico de
             Vendas</span></button>
-        <button class="nav-btn" id="nav-receitas" onclick="ir('receitas.html','nav-receitas')"
-          style="display:none"><span class="nav-icon">📒</span><span class="nav-text">Contas a Receber</span></button>
+        <span class="sidebar-section" id="sec-rh" style="display:none">Recursos Humanos</span>
+        <button class="nav-btn" id="nav-funcionario" onclick="ir('cadastro_funcionario.html','nav-funcionario')"
+          style="display:none"><span class="nav-icon">👥</span><span class="nav-text">Funcionários</span></button>
+        <button class="nav-btn" id="nav-ponto" onclick="ir('ponto.html','nav-ponto')" style="display:none"><span
+            class="nav-icon">⏰</span><span class="nav-text">Ponto Eletrônico</span></button>
+        <button class="nav-btn" id="nav-holerites" onclick="ir('holerites.html','nav-holerites')"
+          style="display:none"><span class="nav-icon">📄</span><span class="nav-text">Meus Holerites</span></button>
 
-        <span class="sidebar-section" id="sec-separacao" style="display:none">Operação</span>
+        <span class="sidebar-section" id="sec-operacao" style="display:none">Operação</span>
         <button class="nav-btn" id="nav-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')"
           style="display:none"><span class="nav-icon">📋</span><span class="nav-text">Separação</span></button>
 
@@ -868,9 +881,9 @@
       if (!op) { erro.textContent = 'Usuário sem acesso a esta filial.'; return; }
 
       // Monta objeto da filial
-      const sel = document.getElementById('sel-filial');
-      const opt = sel.options[sel.selectedIndex];
-      window.filialLogada = { pk: parseInt(filialPk), codigo: opt.dataset.codigo, nome: opt.dataset.nome };
+      const resFil = await window.supabase.from('filiais').select('*').eq('pk', parseInt(filialPk)).single();
+      if (resFil.error) { erro.textContent = 'Erro ao carregar dados da filial.'; return; }
+      window.filialLogada = resFil.data;
       window.operadorLogado = op;
 
       // Atualiza UI
@@ -901,6 +914,9 @@
       const temPdv = mods.has('pdv') && (op.admin || op.acesso_pdv);
       const temDash = mods.has('pdv') && (op.admin || op.acesso_dashboard);
       const temHist = mods.has('historico') && (op.admin || op.acesso_pdv || op.acesso_historico);
+      const temFunc = (mods.has('funcionarios') || mods.has('pdv')) && (op.admin || op.acesso_funcionarios);
+      const temPonto = (mods.has('ponto') || mods.has('pdv')) && (op.admin || op.acesso_ponto);
+      window._acessoFechamentoPonto = (mods.has('ponto') || mods.has('pdv')) && (op.admin || op.acesso_fechamento_ponto); // Global flag for child modules
       const temReceitas = mods.has('receitas') && (op.admin || op.acesso_pdv || op.acesso_receitas);
       const temCat = mods.has('categorias') && (op.admin || op.acesso_produtos || op.acesso_categorias);
       const temSep = mods.has('separacao') && (op.admin || op.acesso_separacao || op.acesso_criar_ordem);
@@ -914,7 +930,13 @@
       show('sec-agenda', temAgenda);
       show('nav-dashboard', temDash);
       show('nav-pdv', temPdv);
+      show('nav-vendedor', temPdv);
       show('nav-historico', temHist);
+      show('nav-funcionario', temFunc);
+      show('nav-ponto', temPonto);
+      show('nav-holerites', op.matricula ? true : false); // Only employees have access to their own Holerite
+      show('sec-rh', temFunc || temPonto || op.matricula);
+
       show('nav-receitas', temReceitas);
       show('sec-pdv', temDash || temPdv || temHist || temReceitas);
       show('nav-clientes', temClientes);
@@ -957,6 +979,8 @@
           content.scrollTo(0, 0);
           content.querySelectorAll('script').forEach(old => {
             const s = document.createElement('script');
+            // Copia todos os atributos (src, type, etc)
+            Array.from(old.attributes).forEach(attr => s.setAttribute(attr.name, attr.value));
             s.textContent = old.textContent;
             document.body.appendChild(s);
             old.remove();

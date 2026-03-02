@@ -1,0 +1,124 @@
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+<style>
+    .mform-card {
+        background: var(--mc);
+        border-radius: 14px;
+        padding: 24px 26px;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        animation: mfadeUp .4s ease
+    }
+
+    .mform-group {
+        margin-bottom: 20px
+    }
+
+    .mform-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--mmuted);
+        margin-bottom: 8px
+    }
+
+    .mform-group input,
+    .mform-group select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1.5px solid var(--mborder);
+        border-radius: 10px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px;
+        background: var(--mc2);
+        color: var(--mtext2);
+        transition: all .2s;
+        outline: none
+    }
+
+    .mform-group input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
+    }
+
+    .mform-footer {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px
+    }
+</style>
+
+<div class="mod">
+    <div class="mod-header">
+        <div>
+            <h2 id="form-titulo">Novo Vendedor</h2>
+            <p id="form-subtitulo">Cadastre um vendedor para seleção no PDV</p>
+        </div>
+        <button class="mbtn mbtn-ghost" onclick="carregarModulo('cadastro_vendedor.html','nav-vendedor')">←
+            Voltar</button>
+    </div>
+
+    <div class="mform-card">
+        <div class="mform-group">
+            <label>Nome Completo</label>
+            <input type="text" id="vend-nome" placeholder="Ex: João da Silva">
+        </div>
+        <div class="mform-group">
+            <label>WhatsApp / Telefone</label>
+            <input type="text" id="vend-telefone" placeholder="(00) 00000-0000">
+        </div>
+        <div class="mform-group">
+            <label>Status</label>
+            <select id="vend-ativo">
+                <option value="true">✅ Ativo</option>
+                <option value="false">❌ Inativo</option>
+            </select>
+        </div>
+        <div class="mform-footer">
+            <button class="mbtn mbtn-primary" id="btn-salvar-vend" onclick="salvarVendedor()">Salvar Vendedor</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var d = window._editData;
+        if (d) {
+            document.getElementById('form-titulo').textContent = 'Alterar Vendedor';
+            document.getElementById('vend-nome').value = d.nome || '';
+            document.getElementById('vend-telefone').value = d.telefone || '';
+            document.getElementById('vend-ativo').value = String(d.ativo);
+            document.getElementById('btn-salvar-vend').textContent = 'Salvar Alterações';
+        }
+
+        window.salvarVendedor = async function () {
+            var nome = document.getElementById('vend-nome').value.trim();
+            var telefone = document.getElementById('vend-telefone').value.trim();
+            var ativo = document.getElementById('vend-ativo').value === 'true';
+            var fil = window.filialLogada;
+
+            if (!nome) { window.showToast('Informe o nome.', 'error'); return; }
+
+            var btn = document.getElementById('btn-salvar-vend');
+            btn.disabled = true; btn.textContent = 'Salvando...';
+
+            var payload = { nome: nome, telefone: telefone, ativo: ativo, filial_pk: fil ? fil.pk : null };
+
+            var q = window.supabase.from('vendedores');
+            var res = d ? await q.update(payload).eq('pk', d.pk) : await q.insert([payload]);
+
+            if (res.error) {
+                window.showToast('Erro: ' + res.error.message, 'error');
+                btn.disabled = false; btn.textContent = 'Salvar';
+            } else {
+                window.showToast('Vendedor salvo com sucesso!');
+                window._editData = null;
+                carregarModulo('cadastro_vendedor.html', 'nav-vendedor');
+            }
+        };
+    })();
+</script>

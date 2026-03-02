@@ -1,0 +1,422 @@
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+<style>
+    .mod* {
+        box-sizing: border-box
+    }
+
+    .mod {
+        font-family: 'DM Sans', sans-serif;
+        --mc: #fff;
+        --mc2: #fafafe;
+        --mborder: #e0e7ff;
+        --mtext2: #1e1b4b;
+        --mmuted: #6b7280
+    }
+
+    html[data-theme="dark"] .mod {
+        --mc: #1a1d27;
+        --mc2: #22263a;
+        --mborder: #2e3250;
+        --mtext2: #e8e9f3;
+        --mmuted: #7b7fa0
+    }
+
+    .mod-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        animation: mfadeUp .3s ease;
+        gap: 12px;
+        flex-wrap: wrap
+    }
+
+    .mod-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--mtext2);
+        margin-bottom: 4px
+    }
+
+    .mod-header p {
+        color: var(--mmuted);
+        font-size: 13px
+    }
+
+    .mbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all .15s;
+        white-space: nowrap
+    }
+
+    .mbtn-primary {
+        background: #4f46e5;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, .25)
+    }
+
+    .mbtn-primary:hover {
+        background: #3730a3;
+        transform: translateY(-1px)
+    }
+
+    .mform-card {
+        background: var(--mc);
+        border-radius: 14px;
+        padding: 24px 26px;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        animation: mfadeUp .35s ease .05s both;
+        margin-bottom: 20px
+    }
+
+    .mform-group {
+        margin-bottom: 16px
+    }
+
+    .mform-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .8px;
+        color: var(--mmuted);
+        margin-bottom: 6px;
+        text-transform: uppercase
+    }
+
+    .mform-group input {
+        width: 100%;
+        background: var(--mc2);
+        border: 1.5px solid var(--mborder);
+        border-radius: 8px;
+        color: var(--mtext2);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        padding: 14px;
+        outline: none;
+        transition: border-color .2s;
+        text-align: center;
+        letter-spacing: 2px
+    }
+
+    .mform-group input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, .1)
+    }
+
+    .punch-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 20px
+    }
+
+    .btn-punch {
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all .2s;
+        border: 2px solid transparent
+    }
+
+    .btn-in {
+        background: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0
+    }
+
+    .btn-in:hover {
+        background: #d1fae5
+    }
+
+    .btn-out {
+        background: #fff1f2;
+        color: #9f1239;
+        border-color: #fecdd3
+    }
+
+    .btn-out:hover {
+        background: #ffe4e6
+    }
+
+    .geo-status {
+        font-size: 12px;
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--mmuted)
+    }
+
+    .geo-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #d1d5db
+    }
+
+    .geo-dot.active {
+        background: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, .2);
+        animation: pulse 1s infinite
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1
+        }
+
+        50% {
+            transform: scale(1.2);
+            opacity: .7
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1
+        }
+    }
+
+    .history-card {
+        background: var(--mc);
+        border-radius: 14px;
+        padding: 24px 26px;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        animation: mfadeUp .4s ease .1s both
+    }
+
+    .history-card h3 {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--mtext2);
+        margin-bottom: 12px
+    }
+
+    .punch-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--mc2)
+    }
+
+    .punch-item:last-child {
+        border-bottom: none
+    }
+
+    .punch-type {
+        font-size: 13px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px
+    }
+
+    .ptype-entrada {
+        background: #d1fae5;
+        color: #065f46
+    }
+
+    .ptype-saida {
+        background: #fee2e2;
+        color: #991b1b
+    }
+
+    .punch-time {
+        font-weight: 700;
+        color: var(--mtext2)
+    }
+
+    @keyframes mfadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(8px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+</style>
+
+<div class="mod">
+    <div class="mod-header">
+        <div>
+            <h2>Ponto Eletrônico</h2>
+            <p>Registre sua entrada e saída com geolocalização</p>
+        </div>
+    </div>
+
+    <div class="mform-card">
+        <div class="mform-group">
+            <label>Matrícula do Operador</label>
+            <input type="text" id="ponto-matricula" placeholder="Ex: FUNC-001" readonly
+                style="opacity:0.8; cursor:not-allowed">
+        </div>
+
+        <div id="secure-origin-warning"
+            style="display:none;background:#fee2e2;color:#991b1b;padding:12px;border-radius:8px;font-size:12px;margin-bottom:12px;border:1px solid #fca5a5">
+            ⚠️ <strong>Erro de Segurança:</strong> Geolocation requer HTTPS ou localhost. Se estiver usando um IP, o
+            navegador bloqueia o acesso ao GPS.
+        </div>
+
+        <div class="geo-status">
+            <div class="geo-dot" id="geo-dot"></div>
+            <span id="geo-text">Aguardando geolocalização...</span>
+        </div>
+
+        <div class="punch-actions">
+            <button class="btn-punch btn-in" id="btn-ponto-in" onclick="registrarPonto('entrada')">
+                <span>🚪</span>
+                <strong>Entrada</strong>
+            </button>
+            <button class="btn-punch btn-out" id="btn-ponto-out" onclick="registrarPonto('saida')">
+                <span>🚶</span>
+                <strong>Saída</strong>
+            </button>
+        </div>
+    </div>
+
+    <div class="history-card">
+        <h3>Batidas de hoje (<span id="ponto-data">--/--/--</span>)</h3>
+        <div id="ponto-historico">
+            <p style="color:var(--mmuted);font-size:12px;text-align:center">Nenhuma batida registrada hoje.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.PontoMod = (function () {
+        var geo = { lat: null, lng: null };
+
+        function init() {
+            document.getElementById('ponto-data').textContent = new Date().toLocaleDateString('pt-BR');
+            if (window.operadorLogado && window.operadorLogado.matricula) {
+                document.getElementById('ponto-matricula').value = window.operadorLogado.matricula;
+            }
+            obterLocalizacao();
+            verificarHistorico();
+        }
+
+        function obterLocalizacao() {
+            var dot = document.getElementById('geo-dot');
+            var txt = document.getElementById('geo-text');
+
+            if (!navigator.geolocation) {
+                txt.textContent = "Geolocalização não suportada.";
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    geo.lat = pos.coords.latitude;
+                    geo.lng = pos.coords.longitude;
+                    dot.classList.add('active');
+                    txt.textContent = "Geolocalização capturada com sucesso.";
+                },
+                function (err) {
+                    txt.textContent = "Erro ao obter localização: " + err.message;
+                    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                        document.getElementById('secure-origin-warning').style.display = 'block';
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+
+        async function registrarPonto(tipo) {
+            var mat = document.getElementById('ponto-matricula').value.trim();
+            if (!mat) { window.showToast("Informe sua matrícula.", "error"); return; }
+            if (geo.lat === null) { window.showToast("Geolocalização não capturada.", "error"); return; }
+
+            // Document.getElementById('btn-ponto-' + tipo).disabled = true;
+
+            // 1. Validar matrícula
+            var { data: func, error: errF } = await window.supabase.from('funcionarios').select('pk,nome').eq('matricula', mat).eq('ativo', true).single();
+            if (errF || !func) { window.showToast("Funcionário não encontrado ou inativo.", "error"); return; }
+
+            // 2. Gravar ponto
+            var payload = {
+                filial_pk: window.filialLogada ? window.filialLogada.pk : null,
+                funcionario_pk: func.pk,
+                matricula: mat,
+                tipo: tipo,
+                data: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD local
+                hora: new Date().toLocaleTimeString('pt-BR', { hour12: false }), // HH:mm:ss local
+                latitude: geo.lat,
+                longitude: geo.lng
+            };
+
+            var { error: errP } = await window.supabase.from('registro_ponto').insert([payload]);
+            if (errP) {
+                window.showToast("Erro ao registrar ponto: " + errP.message, "error");
+            } else {
+                window.showToast("Ponto de " + tipo + " registrado: " + func.nome);
+                verificarHistorico();
+            }
+        }
+
+        async function verificarHistorico() {
+            var hist = document.getElementById('ponto-historico');
+            var hoje = new Date().toISOString().split('T')[0];
+            var mat = document.getElementById('ponto-matricula').value.trim();
+
+            if (!mat) {
+                hist.innerHTML = '<p style="color:var(--mmuted);font-size:12px;text-align:center">Informe a matrícula para ver o histórico.</p>';
+                return;
+            }
+
+            var { data, error } = await window.supabase
+                .from('registro_ponto')
+                .select('*, funcionarios(nome)')
+                .eq('data', hoje)
+                .eq('matricula', mat)
+                .order('hora', { ascending: false })
+                .limit(10);
+
+            if (error || !data || data.length === 0) {
+                hist.innerHTML = '<p style="color:var(--mmuted);font-size:12px;text-align:center">Nenhuma batida registrada hoje.</p>';
+                return;
+            }
+
+            hist.innerHTML = data.map(p => {
+                var cls = p.tipo === 'entrada' ? 'ptype-entrada' : 'ptype-saida';
+                return '<div class="punch-item">' +
+                    '<div>' +
+                    '<span class="punch-type ' + cls + '">' + p.tipo.toUpperCase() + '</span>' +
+                    '<div style="font-size:12px;margin-top:4px;color:var(--mmuted)">' + p.funcionarios.nome + '</div>' +
+                    '</div>' +
+                    '<div class="punch-time">' + p.hora.substring(0, 5) + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        init();
+        return { registrarPonto };
+    })();
+
+    // Atalho global para os botões do HTML
+    function registrarPonto(t) { window.PontoMod.registrarPonto(t); }
+</script>

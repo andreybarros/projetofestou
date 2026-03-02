@@ -1,0 +1,304 @@
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+<style>
+    .mod* {
+        box-sizing: border-box
+    }
+
+    .mod {
+        font-family: 'DM Sans', sans-serif;
+        --mc: #fff;
+        --mc2: #fafafe;
+        --mborder: #e0e7ff;
+        --mborder2: #f3f4f6;
+        --mtext: #374151;
+        --mtext2: #1e1b4b;
+        --mmuted: #6b7280
+    }
+
+    html[data-theme="dark"] .mod {
+        --mc: #1a1d27;
+        --mc2: #22263a;
+        --mborder: #2e3250;
+        --mborder2: #22263a;
+        --mtext: #c9cce0;
+        --mtext2: #e8e9f3;
+        --mmuted: #7b7fa0
+    }
+
+    .mod-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        animation: mfadeUp .3s ease;
+        gap: 12px;
+        flex-wrap: wrap
+    }
+
+    .mod-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--mtext2);
+        margin-bottom: 4px
+    }
+
+    .mod-header p {
+        color: var(--mmuted);
+        font-size: 13px
+    }
+
+    .mbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all .15s;
+        white-space: nowrap
+    }
+
+    .mbtn-primary {
+        background: #4f46e5;
+        color: #fff;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, .25)
+    }
+
+    .mbtn-primary:hover {
+        background: #3730a3;
+        transform: translateY(-1px)
+    }
+
+    .mtable-wrap {
+        background: var(--mc);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, .08);
+        border: 1px solid var(--mborder);
+        animation: mfadeUp .35s ease .05s both
+    }
+
+    html[data-theme="dark"] .mtable-wrap {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .3)
+    }
+
+    .mtable {
+        width: 100%;
+        border-collapse: collapse
+    }
+
+    .mtable thead tr {
+        background: linear-gradient(90deg, #4f46e5, #6366f1)
+    }
+
+    .mtable th {
+        padding: 12px 16px;
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, .9);
+        font-weight: 600;
+        text-align: left
+    }
+
+    .mtable td {
+        padding: 12px 16px;
+        font-size: 14px;
+        color: var(--mtext);
+        border-bottom: 1px solid var(--mborder2);
+        vertical-align: middle
+    }
+
+    .mtable tbody tr:last-child td {
+        border-bottom: none
+    }
+
+    .mtable tbody tr:hover {
+        background: var(--mc2)
+    }
+
+    .acoes-cell {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center
+    }
+
+    .mbtn-edit {
+        background: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer
+    }
+
+    .mbtn-edit:hover {
+        background: #c7d2fe
+    }
+
+    .mbtn-danger {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer
+    }
+
+    .mbtn-danger:hover {
+        background: #fecaca
+    }
+
+    .mstate td {
+        text-align: center;
+        padding: 52px;
+        color: var(--mmuted);
+        font-size: 14px
+    }
+
+    .mstate-icon {
+        font-size: 34px;
+        display: block;
+        margin-bottom: 10px
+    }
+
+    @keyframes mfadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0)
+        }
+    }
+
+    .badge-at {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600
+    }
+
+    .badge-in {
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #e5e7eb;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600
+    }
+</style>
+
+<div class="mod">
+    <div class="mod-header">
+        <div>
+            <h2>Vendedores</h2>
+            <p id="vend-filial-label">Carregando...</p>
+        </div>
+        <button class="mbtn mbtn-primary"
+            onclick="window._editData=null;carregarModulo('form_vendedor.html','nav-vendedor')">+ Novo Vendedor</button>
+    </div>
+
+    <div class="mtable-wrap">
+        <table class="mtable">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>WhatsApp</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-vendedores">
+                <tr class="mstate">
+                    <td colspan="4"><span class="mstate-icon">⏳</span>Carregando...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    window.VendMod = (function () {
+        var lista = [];
+
+        async function carregar() {
+            var fil = window.filialLogada;
+            var elLabel = document.getElementById('vend-filial-label');
+            if (elLabel) elLabel.textContent = fil ? 'Filial: ' + fil.codigo + ' – ' + fil.nome : 'Todas as Filiais';
+
+            var q = window.supabase.from('vendedores').select('*').order('nome');
+            if (fil) q = q.eq('filial_pk', fil.pk);
+
+            var { data, error } = await q;
+
+            var tbody = document.getElementById('tabela-vendedores');
+            if (!tbody) return;
+
+            if (error) {
+                tbody.innerHTML = '<tr class="mstate"><td colspan="4"><span class="mstate-icon">❌</span>Erro: ' + error.message + '</td></tr>';
+                return;
+            }
+
+            lista = data || [];
+
+            if (!lista.length) {
+                tbody.innerHTML = '<tr class="mstate"><td colspan="4"><span class="mstate-icon">👤</span>Nenhum vendedor encontrado</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = lista.map(v => {
+                var badge = v.ativo ? '<span class="badge-at">Ativo</span>' : '<span class="badge-in">Inativo</span>';
+                return '<tr>' +
+                    '<td><strong>' + v.nome + '</strong></td>' +
+                    '<td>' + (v.telefone || '—') + '</td>' +
+                    '<td>' + badge + '</td>' +
+                    '<td>' +
+                    '<div class="acoes-cell">' +
+                    '<button class="mbtn-edit" onclick="VendMod.editar(' + v.pk + ')">Alterar</button>' +
+                    '<button class="mbtn-danger" onclick="VendMod.excluir(' + v.pk + ')">Remover</button>' +
+                    '</div>' +
+                    '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function editar(pk) {
+            var v = lista.find(x => x.pk === pk);
+            if (!v) return;
+            window._editData = v;
+            carregarModulo('form_vendedor.html', 'nav-vendedor');
+        }
+
+        async function excluir(pk) {
+            var v = lista.find(x => x.pk === pk);
+            if (!v || !confirm('Remover vendedor "' + v.nome + '"?')) return;
+            var { error } = await window.supabase.from('vendedores').delete().eq('pk', pk);
+            if (error) { window.showToast('Erro: ' + error.message, 'error'); return; }
+            window.showToast('Vendedor removido!');
+            carregar();
+        }
+
+        carregar();
+        return { editar, excluir };
+    })();
+</script>
