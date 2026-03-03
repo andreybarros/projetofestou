@@ -1,0 +1,22 @@
+{
+  "name": "Sistema Festou",
+  "short_name": "Festou",
+  "description": "Sistema de Gestão para Empresas de Eventos e Festas",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#1a1d27",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/img/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

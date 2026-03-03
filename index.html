@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Estoque</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="apple-touch-icon" href="img/logo.png">
+
   <!-- Leaflet para Mapas -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -450,8 +455,12 @@
       display: none
     }
 
-    .sidebar.collapsed .btn-logout::before {
+    .sidebar.collapsed .btn-logout.btn-sair::before {
       content: '🚪'
+    }
+
+    .sidebar.collapsed .btn-logout.btn-manual::before {
+      content: '📖'
     }
 
     .user-info {
@@ -525,6 +534,7 @@
     }
 
     .btn-logout {
+      display: block;
       width: 100%;
       background: rgba(255, 255, 255, .1) !important;
       border: 1px solid rgba(255, 255, 255, .25) !important;
@@ -797,7 +807,12 @@
           <span class="theme-label" id="theme-label">☀️ Light</span>
           <button class="toggle-btn" onclick="alternarTema()"></button>
         </div>
-        <button class="btn-logout" onclick="logout()"><span>Sair do Sistema</span></button>
+        <button class="btn-logout btn-sair" onclick="logout()"><span>Sair do Sistema</span></button>
+        <button class="btn-logout btn-manual"
+          style="margin-top: 8px; border-color: rgba(255, 255, 255, 0.1) !important;"
+          onclick="window.open('manual.html', '_blank')">
+          <span style="font-size: 14px; margin-right: 6px;"></span><span>Manual</span>
+        </button>
       </div>
     </div>
 
@@ -819,6 +834,19 @@
   <script src="js/shared.js"></script>
   <script>
     window.operadorLogado = null;
+
+    // REGISTRO DE SERVICE WORKER PARA TRANSFORMAÇÃO EM APP PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(registration => {
+          console.log('SW registrado com sucesso: ', registration.scope);
+        }, err => {
+          console.log('Falha no registro do ServiceWorker: ', err);
+        });
+      });
+    }
+
+    // Inicialização da página
     window.filialLogada = null;
     window._editData = null;
     window._modulosFilial = new Set();

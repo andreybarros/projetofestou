@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual do Sistema — Festou</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+  :root {
+    --primary: #4f46e5;
+    --primary-light: #e0e7ff;
+    --primary-dark: #3730a3;
+    --text: #1e1b4b;
+    --muted: #6b7280;
+    --border: #e0e7ff;
+    --bg: #f5f5ff;
+    --card: #fff;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --code-bg: #f8f8ff;
+  }
+
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6 }
+
+  /* LAYOUT */
+  .layout { display: flex; min-height: 100vh }
+  .sidebar-toc { width: 280px; background: var(--card); border-right: 1px solid var(--border); padding: 24px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0 }
+  .main { flex: 1; padding: 48px 60px; max-width: 900px }
+
+  /* TOC */
+  .toc-logo { padding: 0 24px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px }
+  .toc-logo h1 { font-size: 18px; font-weight: 700; color: var(--primary) }
+  .toc-logo p { font-size: 11px; color: var(--muted); margin-top: 2px }
+  .toc-section { padding: 6px 24px 2px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: 10px }
+  .toc-link { display: block; padding: 6px 24px 6px 30px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all .15s; border-left: 3px solid transparent }
+  .toc-link:hover { color: var(--primary); background: var(--primary-light); border-left-color: var(--primary) }
+
+  /* CONTENT */
+  .section { margin-bottom: 60px }
+  h2 { font-size: 26px; font-weight: 700; color: var(--primary); margin-bottom: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--primary-light) }
+  h3 { font-size: 18px; font-weight: 600; color: var(--text); margin: 28px 0 10px }
+  h4 { font-size: 14px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: .8px; margin: 20px 0 8px }
+  p { margin-bottom: 12px; font-size: 15px; color: #374151 }
+  ul, ol { margin: 0 0 14px 20px }
+  li { font-size: 14px; color: #374151; margin-bottom: 5px }
+
+  /* CARDS */
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 16px }
+  .info-card.warning { border-color: #fcd34d; background: #fffbeb }
+  .info-card.success { border-color: #a7f3d0; background: #ecfdf5 }
+  .info-card.danger { border-color: #fca5a5; background: #fef2f2 }
+
+  /* TABLE */
+  .tbl-wrap { overflow-x: auto; margin-bottom: 20px; border-radius: 10px; border: 1px solid var(--border) }
+  table { width: 100%; border-collapse: collapse; font-size: 13px }
+  thead tr { background: linear-gradient(90deg, var(--primary), #6366f1) }
+  th { padding: 11px 14px; color: #fff; font-weight: 600; text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #374151 }
+  tbody tr:last-child td { border-bottom: none }
+  tbody tr:hover { background: #fafafe }
+
+  /* BADGE */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700 }
+  .badge-admin { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d }
+  .badge-op { background: var(--primary-light); color: var(--primary); border: 1px solid #c7d2fe }
+  .badge-yes { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0 }
+  .badge-no { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb }
+  .badge-warn { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d }
+
+  /* CODE */
+  code { font-family: 'DM Mono', monospace; background: var(--code-bg); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--primary) }
+
+  /* MODULE HEADER */
+  .mod-header { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px }
+  .mod-icon { font-size: 28px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--primary-light); border-radius: 10px; flex-shrink: 0 }
+  .mod-title { font-size: 17px; font-weight: 700; color: var(--text) }
+  .mod-desc { font-size: 13px; color: var(--muted) }
+
+  /* STEP */
+  .steps { counter-reset: steps; list-style: none; margin: 0 0 16px }
+  .steps li { counter-increment: steps; display: flex; gap: 14px; margin-bottom: 14px }
+  .steps li::before { content: counter(steps); min-width: 28px; height: 28px; background: var(--primary); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0 }
+
+  /* PRINT */
+  @media print { .sidebar-toc { display: none } .main { padding: 20px; max-width: 100% } }
+  @media (max-width: 900px) { .sidebar-toc { display: none } .main { padding: 24px 20px } }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SUMÁRIO LATERAL -->
+<nav class="sidebar-toc">
+  <div class="toc-logo">
+    <h1>🎉 Festou</h1>
+    <p>Manual de Uso do Sistema</p>
+  </div>
+
+  <div class="toc-section">Início</div>
+  <a class="toc-link" href="#sobre">Sobre o Sistema</a>
+  <a class="toc-link" href="#acesso">Acesso e Login</a>
+  <a class="toc-link" href="#navegacao">Navegação</a>
+  <a class="toc-link" href="#permissoes">Sistema de Permissões</a>
+
+  <div class="toc-section">Estoque</div>
+  <a class="toc-link" href="#produtos">Produtos</a>
+  <a class="toc-link" href="#armazens">Armazéns</a>
+  <a class="toc-link" href="#categorias">Categorias</a>
+
+  <div class="toc-section">Comercial</div>
+  <a class="toc-link" href="#clientes">Clientes</a>
+  <a class="toc-link" href="#fornecedores">Fornecedores</a>
+  <a class="toc-link" href="#vendedores">Vendedores</a>
+  <a class="toc-link" href="#agenda">Agenda</a>
+  <a class="toc-link" href="#separacao">Separação</a>
+
+  <div class="toc-section">PDV</div>
+  <a class="toc-link" href="#pdv">Ponto de Venda (PDV)</a>
+  <a class="toc-link" href="#historico">Histórico de Vendas</a>
+  <a class="toc-link" href="#receitas">Contas a Receber</a>
+
+  <div class="toc-section">Financeiro</div>
+  <a class="toc-link" href="#financeiro">Financeiro</a>
+  <a class="toc-link" href="#despesas">Despesas</a>
+  <a class="toc-link" href="#fechamento-caixa">Fechamento de Caixa</a>
+
+  <div class="toc-section">Recursos Humanos</div>
+  <a class="toc-link" href="#funcionarios">Funcionários</a>
+  <a class="toc-link" href="#ponto">Ponto Eletrônico</a>
+  <a class="toc-link" href="#fechamento-ponto">Fechamento de Ponto</a>
+  <a class="toc-link" href="#espelho">Espelho de Ponto</a>
+  <a class="toc-link" href="#holerites">Meus Holerites</a>
+
+  <div class="toc-section">Administração</div>
+  <a class="toc-link" href="#filiais">Filiais</a>
+  <a class="toc-link" href="#operadores">Operadores</a>
+
+  <div class="toc-section">Referência</div>
+  <a class="toc-link" href="#regras">Regras de Negócio</a>
+</nav>
+
+<!-- CONTEÚDO PRINCIPAL -->
+<main class="main">
+
+<!-- ─── SOBRE ─── -->
+<div class="section" id="sobre">
+  <h2>Sobre o Sistema</h2>
+  <p>O <strong>Festou</strong> é um sistema web de gestão para empresas de eventos e festas. Centraliza controle de estoque, vendas, locações, financeiro e recursos humanos em um único ambiente acessado pelo navegador.</p>
+
+  <div class="info-card success">
+    <strong>Tecnologia:</strong> Aplicação web (SPA) com banco de dados <strong>Supabase (PostgreSQL)</strong>. Todos os dados são salvos em tempo real na nuvem, sem necessidade de instalação local.
+  </div>
+
+  <h3>Principais recursos</h3>
+  <ul>
+    <li>Controle de produtos, saldos de estoque e armazéns</li>
+    <li>Vendas, locações e emissão de cupom fiscal</li>
+    <li>Gestão de clientes, fornecedores e vendedores</li>
+    <li>Agenda de eventos com controle de devoluções</li>
+    <li>Financeiro completo: contas bancárias, extrato, despesas e fechamento de caixa</li>
+    <li>Módulo de RH: cadastro de funcionários, ponto eletrônico, banco de horas e holerites</li>
+    <li>Sistema de permissões por rotina, por operador e por filial</li>
+  </ul>
+</div>
+
+<!-- ─── ACESSO ─── -->
+<div class="section" id="acesso">
+  <h2>Acesso e Login</h2>
+
+  <h3>Como entrar no sistema</h3>
+  <ol class="steps">
+    <li>Abra o sistema no navegador</li>
+    <li>Selecione a <strong>Filial</strong> na qual vai trabalhar</li>
+    <li>Informe seu <strong>Login</strong> e <strong>Senha</strong></li>
+    <li>Clique em <strong>Entrar</strong></li>
+  </ol>
+
+  <div class="info-card warning">
+    ⚠️ <strong>Acesso por filial:</strong> Cada operador é vinculado a uma filial específica. Superadmins (sem filial vinculada) podem acessar qualquer filial.
+  </div>
+
+  <h3>Sessão</h3>
+  <p>A sessão fica ativa enquanto o navegador estiver aberto. Ao fechar ou clicar em <strong>Sair</strong>, será necessário fazer login novamente. Os dados de sessão não persistem entre dispositivos.</p>
+</div>
+
+<!-- ─── NAVEGAÇÃO ─── -->
+<div class="section" id="navegacao">
+  <h2>Navegação</h2>
+
+  <p>O sistema usa um menu lateral (sidebar) com todas as rotinas disponíveis. As rotinas visíveis dependem das <strong>permissões do operador</strong> e dos <strong>módulos habilitados para a filial</strong>.</p>
+
+  <h3>Menu Lateral</h3>
+  <p>As rotinas são agrupadas por categoria: Estoque, Comercial, PDV, Financeiro, Recursos Humanos e Administração. Clique em qualquer item para abrir a rotina na área principal.</p>
+
+  <h3>Dashboard (Home)</h3>
+  <p>A tela inicial exibe cards de acesso rápido para todas as rotinas que o operador tem permissão de usar. Os cards espelham automaticamente a visibilidade do menu lateral — se um módulo não está habilitado, o card não aparece.</p>
+
+  <h3>Tema</h3>
+  <p>O sistema suporta modo claro e modo escuro. Alterne pelo botão de tema no topo do sidebar. A preferência é salva no navegador.</p>
+</div>
+
+<!-- ─── PERMISSÕES ─── -->
+<div class="section" id="permissoes">
+  <h2>Sistema de Permissões</h2>
+
+  <p>O acesso às rotinas é controlado por <strong>dois níveis</strong>:</p>
+
+  <h3>Nível 1 — Módulos da Filial</h3>
+  <p>Cada filial tem um conjunto de módulos habilitados (configurado em <strong>Filiais → Rotinas</strong>). Mesmo que um operador tenha permissão individual, se o módulo não estiver ativo na filial, a rotina não aparece.</p>
+
+  <h3>Nível 2 — Permissões do Operador</h3>
+  <p>Dentro dos módulos habilitados, cada operador tem flags de acesso individuais:</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Flag</th><th>Rotina liberada</th></tr></thead>
+      <tbody>
+        <tr><td><code>admin</code></td><td>Acesso total a tudo (inclui Filiais e Operadores)</td></tr>
+        <tr><td><code>acesso_produtos</code></td><td>Produtos e Estoque</td></tr>
+        <tr><td><code>acesso_armazens</code></td><td>Armazéns</td></tr>
+        <tr><td><code>acesso_agenda</code></td><td>Agenda de Eventos</td></tr>
+        <tr><td><code>acesso_pdv</code></td><td>PDV, Histórico de Vendas, Contas a Receber</td></tr>
+        <tr><td><code>acesso_clientes</code></td><td>Clientes e Fornecedores</td></tr>
+        <tr><td><code>acesso_separacao</code></td><td>Visualizar Ordens de Separação</td></tr>
+        <tr><td><code>acesso_criar_ordem</code></td><td>Criar e encerrar Ordens de Separação</td></tr>
+        <tr><td><code>acesso_excluir_ordem</code></td><td>Excluir Ordens de Separação</td></tr>
+        <tr><td><code>acesso_historico</code></td><td>Histórico de Vendas (sem acesso_pdv)</td></tr>
+        <tr><td><code>acesso_receitas</code></td><td>Contas a Receber</td></tr>
+        <tr><td><code>acesso_categorias</code></td><td>Categorias de Produtos</td></tr>
+        <tr><td><code>acesso_despesas</code></td><td>Despesas</td></tr>
+        <tr><td><code>acesso_financeiro</code></td><td>Módulo Financeiro</td></tr>
+        <tr><td><code>acesso_fechamento</code></td><td>Fechamento de Caixa</td></tr>
+        <tr><td><code>acesso_funcionarios</code></td><td>Cadastro de Funcionários</td></tr>
+        <tr><td><code>acesso_ponto</code></td><td>Ponto Eletrônico</td></tr>
+        <tr><td><code>acesso_fechamento_ponto</code></td><td>Fechamento de Ponto</td></tr>
+        <tr><td><code>acesso_espelho_ponto</code></td><td>Espelho de Ponto (funcionário)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-card warning">
+    ⚠️ <strong>Matrícula do operador:</strong> Operadores com campo <code>matricula</code> preenchido têm acesso automático a <strong>Meus Holerites</strong> (holerite vinculado ao funcionário com a mesma matrícula).
+  </div>
+
+  <h3>Perfis Comuns</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Perfil</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-admin">Admin</span></td><td>Acesso irrestrito. Vê tudo, pode excluir, reabrir fechamentos, gerenciar filiais e operadores.</td></tr>
+        <tr><td><span class="badge badge-op">Operador PDV</span></td><td>Acessa o PDV, histórico de vendas e contas a receber. Não vê área financeira nem RH.</td></tr>
+        <tr><td><span class="badge badge-op">Funcionário</span></td><td>Operador com matrícula vinculada. Acessa apenas Espelho de Ponto e Meus Holerites.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── PRODUTOS ─── -->
+<div class="section" id="produtos">
+  <h2>Produtos</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📦</div>
+    <div><div class="mod-title">Catálogo de Produtos e Estoque</div><div class="mod-desc">Gerencie itens, fotos, saldos e localizações físicas</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Listagem com busca por código, descrição ou localização</li>
+    <li>Paginação configurável: 50, 100 ou 200 itens por página</li>
+    <li>Exibição de foto, código (monospace), saldo, localização no armazém</li>
+    <li>Edição e exclusão de produtos com limpeza da foto no servidor</li>
+    <li>Exibição de preço e categoria (exclusivo Filial 02)</li>
+  </ul>
+
+  <h3>Regras</h3>
+  <ul>
+    <li><strong>Badge de estoque:</strong> saldo &lt; 5 exibe badge vermelho de alerta</li>
+    <li><strong>Localização:</strong> formato <code>F01·A03</code> vinculado ao armazém cadastrado</li>
+    <li><strong>Preço e categoria:</strong> visíveis apenas para a Filial 02</li>
+    <li><strong>Campos de preço no cadastro:</strong> <code>preco_custo</code>, <code>valor_venda</code> e <code>markup</code> disponíveis para gestão</li>
+  </ul>
+</div>
+
+<!-- ─── ARMAZÉNS ─── -->
+<div class="section" id="armazens">
+  <h2>Armazéns</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🏭</div>
+    <div><div class="mod-title">Localizações Físicas de Estoque</div><div class="mod-desc">Organize onde cada produto está fisicamente armazenado</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Cadastrar endereços físicos (filial + número de armazém + localização)</li>
+    <li>Hierarquia: <code>F[filial]·A[id]·[localização]</code></li>
+    <li>Listagem ordenada por filial → armazém → pk</li>
+    <li>Associado à filial via código da filial (não pelo pk)</li>
+  </ul>
+</div>
+
+<!-- ─── CATEGORIAS ─── -->
+<div class="section" id="categorias">
+  <h2>Categorias</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🏷️</div>
+    <div><div class="mod-title">Categorias de Produtos</div><div class="mod-desc">Exclusivo para uso no PDV da Filial 02</div></div>
+  </div>
+
+  <div class="info-card warning">
+    ⚠️ Categorias são usadas exclusivamente pelo PDV da <strong>Filial 02</strong> para organizar os produtos no caixa. Outras filiais não utilizam este módulo.
+  </div>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>Cada produto pode ter uma categoria vinculada</li>
+    <li>Categorias são exibidas como filtros de produto no PDV</li>
+    <li>Filtradas por filial no cadastro</li>
+  </ul>
+</div>
+
+<!-- ─── CLIENTES ─── -->
+<div class="section" id="clientes">
+  <h2>Clientes</h2>
+  <div class="mod-header">
+    <div class="mod-icon">👥</div>
+    <div><div class="mod-title">Cadastro de Clientes</div><div class="mod-desc">Gerencie clientes, decoradores parceiros e endereços</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Cadastro manual com nome, razão social, CPF/CNPJ, telefone, email, data de nascimento e endereço completo</li>
+    <li>Busca por nome, telefone ou e-mail</li>
+    <li>Importação em massa via planilha Excel (até 50 linhas por lote)</li>
+    <li>Marcação de cliente como <strong>Decorador</strong></li>
+  </ul>
+
+  <h3>Regras — Clientes Decoradores</h3>
+  <div class="info-card success">
+    ✅ Clientes marcados como <strong>Decorador</strong> têm direito a desconto no PDV. O campo de desconto por lote e por item no PDV só é habilitado quando um cliente decorador está selecionado.
+  </div>
+
+  <h3>Importação Excel</h3>
+  <ul>
+    <li>O sistema detecta automaticamente as colunas pelo nome (sem distinção de maiúsculas/minúsculas)</li>
+    <li>Aceita datas no formato <code>DD/MM/AAAA</code> e datas do Excel (número de série)</li>
+    <li>Telefones com dois-pontos no início são corrigidos automaticamente</li>
+    <li>Processamento em lotes de 50 linhas para evitar sobrecarga</li>
+  </ul>
+</div>
+
+<!-- ─── FORNECEDORES ─── -->
+<div class="section" id="fornecedores">
+  <h2>Fornecedores</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🤝</div>
+    <div><div class="mod-title">Cadastro de Fornecedores</div><div class="mod-desc">Empresas parceiras e prestadores de serviço</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Cadastro com nome, CNPJ/CPF, telefone e e-mail</li>
+    <li>Vinculação de fornecedor às despesas do módulo financeiro</li>
+    <li>Filtrado por filial logada</li>
+  </ul>
+</div>
+
+<!-- ─── VENDEDORES ─── -->
+<div class="section" id="vendedores">
+  <h2>Vendedores</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🧑‍💼</div>
+    <div><div class="mod-title">Cadastro de Vendedores</div><div class="mod-desc">Representantes de venda vinculados ao PDV</div></div>
+  </div>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>Vendedores são <strong>independentes de operadores</strong> — são referências para registrar quem realizou cada venda</li>
+    <li>Podem ser ativados ou desativados</li>
+    <li>A seleção de vendedor é <strong>obrigatória</strong> no PDV antes de finalizar a venda</li>
+    <li>Filtrado por filial logada</li>
+  </ul>
+</div>
+
+<!-- ─── AGENDA ─── -->
+<div class="section" id="agenda">
+  <h2>Agenda</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📅</div>
+    <div><div class="mod-title">Agenda de Eventos</div><div class="mod-desc">Calendário semanal com montagem, desmontagem e devoluções</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Visão semanal com horários (07h às 22h) e blocos de eventos por cor</li>
+    <li>Criação de eventos com data de montagem e data de desmontagem</li>
+    <li>Equipe vinculada ao evento (lista de membros em JSON)</li>
+    <li>Registro de devolução de locação com taxa de atraso</li>
+    <li>Modal de detalhes com todas as informações do evento</li>
+  </ul>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>Cada evento pode ter duas datas: <strong>data do evento</strong> (montagem) e <strong>data de desmontagem</strong></li>
+    <li>Se o evento tem uma venda de locação vinculada (<code>venda_pk</code>) com status <code>pendente</code>, o admin pode registrar a devolução diretamente pela agenda</li>
+    <li>A taxa de devolução em atraso vai para a conta bancária selecionada e cria uma movimentação financeira de entrada</li>
+    <li>Criação, edição e exclusão exigem permissão <code>acesso_agenda</code> ou admin</li>
+  </ul>
+</div>
+
+<!-- ─── SEPARAÇÃO ─── -->
+<div class="section" id="separacao">
+  <h2>Separação</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📋</div>
+    <div><div class="mod-title">Ordens de Separação</div><div class="mod-desc">Controle de picking de materiais para eventos</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Criação de ordens de separação vinculadas ou não a eventos da agenda</li>
+    <li>Status: <strong>a separar → em separação → encerrada</strong></li>
+    <li>Barra de progresso calculada automaticamente com base nos itens separados vs. solicitados</li>
+    <li>Filtros por status</li>
+  </ul>
+
+  <h3>Regras de Permissão</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Ação</th><th>Permissão necessária</th></tr></thead>
+      <tbody>
+        <tr><td>Visualizar ordens</td><td><code>acesso_separacao</code></td></tr>
+        <tr><td>Criar e encerrar ordens</td><td><code>acesso_criar_ordem</code></td></tr>
+        <tr><td>Excluir ordens</td><td><code>acesso_excluir_ordem</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── PDV ─── -->
+<div class="section" id="pdv">
+  <h2>PDV — Ponto de Venda</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🛒</div>
+    <div><div class="mod-title">Ponto de Venda</div><div class="mod-desc">Vendas, locações, crediário e emissão de cupom</div></div>
+  </div>
+
+  <div class="info-card warning">
+    ⚠️ O PDV está disponível apenas para operadores da <strong>Filial 02</strong>.
+  </div>
+
+  <h3>Tipos de Operação</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Venda</strong></td><td>Venda normal. Baixa estoque, gera cupom, registra pagamentos.</td></tr>
+        <tr><td><strong>Locação</strong></td><td>Aluguel de itens com data de saída e data de devolução prevista. O estoque é debitado na saída e estornado na devolução. Status: pendente → devolvida.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Fluxo de Venda</h3>
+  <ol class="steps">
+    <li>Adicione produtos ao carrinho (busca por código ou descrição)</li>
+    <li>Selecione o <strong>cliente</strong> (opcional — obrigatório para desconto)</li>
+    <li>Selecione o <strong>vendedor</strong> (obrigatório)</li>
+    <li>Aplique descontos se necessário</li>
+    <li>Selecione a(s) forma(s) de pagamento</li>
+    <li>Finalize e imprima o cupom</li>
+  </ol>
+
+  <h3>Regras do PDV</h3>
+  <ul>
+    <li><strong>Máximo 3 formas de pagamento</strong> por venda</li>
+    <li>Se houver um único pagamento cobrindo o total e o operador selecionar uma nova forma, o pagamento é substituído (não duplicado)</li>
+    <li><strong>Descontos por item e em lote</strong> só são habilitados para clientes do tipo <strong>Decorador</strong></li>
+    <li>A seleção de vendedor é <strong>obrigatória</strong> para finalizar</li>
+    <li>Carrinho vazio ou total ≤ 0 impede a finalização</li>
+    <li>Pagamento com valor 0 não é processado</li>
+  </ul>
+
+  <h3>Formas de Pagamento</h3>
+  <ul>
+    <li><strong>Dinheiro</strong> — com cálculo de troco automático</li>
+    <li><strong>Pix</strong></li>
+    <li><strong>Crédito</strong></li>
+    <li><strong>Débito</strong></li>
+    <li><strong>Crediário</strong> — pagamento a prazo, gera conta a receber com data de vencimento</li>
+  </ul>
+
+  <h3>Crediário</h3>
+  <p>Vendas no crediário ficam com <code>status_crediario = 'pendente'</code> até serem recebidas. O recebimento é feito na rotina <strong>Contas a Receber</strong>. A data de vencimento é definida no momento da venda.</p>
+</div>
+
+<!-- ─── HISTÓRICO ─── -->
+<div class="section" id="historico">
+  <h2>Histórico de Vendas</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📊</div>
+    <div><div class="mod-title">Histórico de Vendas</div><div class="mod-desc">Consulta, estorno e reimpressão de vendas realizadas</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Listagem com filtro de período e status (finalizadas / canceladas)</li>
+    <li>Cards de resumo: locações pendentes, crediários pendentes, total de vendas, receita, descontos, ticket médio</li>
+    <li>Modal de detalhe com itens, pagamentos e totais</li>
+    <li>Reimpressão de cupom</li>
+    <li>Estorno de venda</li>
+    <li>Registro de devolução de locação</li>
+  </ul>
+
+  <h3>Regras de Estorno</h3>
+  <ul>
+    <li>Apenas vendas com status <code>finalizada</code> podem ser estornadas</li>
+    <li>O estorno restaura o saldo do estoque de todos os itens</li>
+    <li>Cria movimentações financeiras negativas para cada forma de pagamento</li>
+    <li>Exige confirmação do admin ou usuário com <code>acesso_pdv</code></li>
+  </ul>
+
+  <h3>Devolução de Locação</h3>
+  <ul>
+    <li>Disponível para locações com status <code>pendente</code></li>
+    <li>Pode incluir uma taxa de atraso com conta bancária de destino</li>
+    <li>Atualiza o status para <code>devolvida</code></li>
+    <li>Cria evento na agenda documentando a devolução</li>
+  </ul>
+</div>
+
+<!-- ─── RECEITAS ─── -->
+<div class="section" id="receitas">
+  <h2>Contas a Receber</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📒</div>
+    <div><div class="mod-title">Crediários e Contas a Receber</div><div class="mod-desc">Gerencie e baixe pagamentos a prazo</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Listagem de vendas crediário com filtro de período e status</li>
+    <li>Badge de <strong>vencido</strong> (pulsante vermelho) para crediários em atraso</li>
+    <li>Recebimento com seleção de conta bancária de entrada</li>
+    <li>Ao receber: cria movimentação financeira + atualiza status + cria evento na agenda</li>
+  </ul>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>O filtro padrão mostra o mês atual (1º ao último dia)</li>
+    <li>Apenas crediários com status <code>pendente</code> exibem o botão "Receber"</li>
+    <li>Crediários recebidos mostram badge verde com ✓</li>
+    <li>Crediários vencidos (data de vencimento anterior à data atual e ainda pendentes) mostram badge vermelho pulsante</li>
+  </ul>
+</div>
+
+<!-- ─── FINANCEIRO ─── -->
+<div class="section" id="financeiro">
+  <h2>Financeiro</h2>
+  <div class="mod-header">
+    <div class="mod-icon">💳</div>
+    <div><div class="mod-title">Contas Bancárias e Extrato</div><div class="mod-desc">Visão geral de saldos e movimentações financeiras</div></div>
+  </div>
+
+  <h3>Abas do módulo</h3>
+
+  <h4>Contas</h4>
+  <ul>
+    <li>Grid com todas as contas ativas da filial</li>
+    <li>Saldo em tempo real (verde = positivo, vermelho = negativo)</li>
+    <li>Tipos de conta: <strong>Pix, Débito, Crédito, Dinheiro (Caixa Físico)</strong></li>
+  </ul>
+
+  <h4>Nova Conta</h4>
+  <ul>
+    <li>Crie uma conta bancária com nome, tipo e saldo inicial</li>
+    <li>O campo "nome" é obrigatório</li>
+    <li>O saldo inicial é registrado como primeira movimentação</li>
+  </ul>
+
+  <h4>Extrato</h4>
+  <ul>
+    <li>Lista de movimentações filtradas por conta</li>
+    <li>Ordenadas da mais recente para a mais antiga (últimas 100 movimentações)</li>
+    <li>Entradas (verde) e saídas (vermelho)</li>
+    <li>Vinculação com venda (<code>venda_pk</code>) quando aplicável</li>
+  </ul>
+
+  <div class="info-card">
+    <strong>Atualização automática de saldo:</strong> Um trigger no banco de dados atualiza o saldo da conta automaticamente a cada movimentação inserida. O sistema nunca precisa calcular o saldo manualmente.
+  </div>
+</div>
+
+<!-- ─── DESPESAS ─── -->
+<div class="section" id="despesas">
+  <h2>Despesas</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📉</div>
+    <div><div class="mod-title">Contas a Pagar e Despesas</div><div class="mod-desc">Controle de saídas financeiras e pagamentos a vencer</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Criar despesas com descrição, fornecedor (opcional), categoria (texto livre), valor e vencimento</li>
+    <li>Marcar como <strong>já pago</strong> no momento da criação (requer seleção de conta)</li>
+    <li>Marcar despesas pendentes como pagas (seleciona conta de débito)</li>
+    <li>Badge de vencido para despesas em atraso</li>
+    <li>Filtro padrão: mês atual</li>
+  </ul>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>Campos obrigatórios: descrição, valor e vencimento</li>
+    <li>Ao pagar, cria uma movimentação de <strong>saída</strong> na conta selecionada</li>
+    <li>Despesas pagas ficam <strong>bloqueadas para edição de status</strong> (não é possível reverter para pendente pela interface)</li>
+    <li>Despesas vencidas e ainda pendentes recebem badge vermelho</li>
+  </ul>
+</div>
+
+<!-- ─── FECHAMENTO DE CAIXA ─── -->
+<div class="section" id="fechamento-caixa">
+  <h2>Fechamento de Caixa</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🏧</div>
+    <div><div class="mod-title">Relatório Financeiro do Período</div><div class="mod-desc">Apuração de entradas, saídas e saldo líquido por período</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Filtro por intervalo de datas e por operador</li>
+    <li>Totais de: entradas de vendas, saídas de despesas pagas, saldo líquido</li>
+    <li>Resumo por forma de pagamento (dinheiro, pix, débito, crédito, crediário)</li>
+    <li>Exportação em Excel com duas abas: resumo e movimentações detalhadas</li>
+  </ul>
+
+  <h3>Cálculos</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Campo</th><th>Cálculo</th></tr></thead>
+      <tbody>
+        <tr><td>Total Entradas</td><td>Soma do total de todas as vendas finalizadas no período</td></tr>
+        <tr><td>Total Saídas Pagas</td><td>Soma das despesas com status "pago" no período</td></tr>
+        <tr><td>Saldo Líquido</td><td>Total Entradas − Total Saídas Pagas</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── FUNCIONÁRIOS ─── -->
+<div class="section" id="funcionarios">
+  <h2>Funcionários</h2>
+  <div class="mod-header">
+    <div class="mod-icon">👥</div>
+    <div><div class="mod-title">Cadastro de Funcionários</div><div class="mod-desc">Colaboradores, contratos, salários e jornada de trabalho</div></div>
+  </div>
+
+  <h3>Dados Cadastrais</h3>
+  <ul>
+    <li>Nome completo, CPF, data de nascimento, matrícula</li>
+    <li>Nome da mãe e nome do pai</li>
+    <li>Filial vinculada</li>
+    <li>Tipo de contrato: <strong>Mensalista</strong> ou <strong>Diarista</strong></li>
+  </ul>
+
+  <h3>Dados de Jornada</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Campo</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td>Hora Entrada / Saída</td><td>Horário de trabalho cadastrado (referência para o espelho)</td></tr>
+        <tr><td>Carga Horária Diária (h)</td><td>Total de horas de trabalho por dia (padrão: 8h)</td></tr>
+        <tr><td>Minutos de Intervalo</td><td>Tempo de almoço descontado do cálculo diário (padrão: 60 min)</td></tr>
+        <tr><td>Horas do Período</td><td>Total de horas previstas no período de fechamento (quinzena ou mês)</td></tr>
+        <tr><td>Saldo Inicial Banco de Horas</td><td>Saldo de horas migrado de sistema anterior (positivo ou negativo)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Tipos de Contrato</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Salário</th><th>Horas do Período</th><th>Banco de Horas</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Mensalista</strong></td><td>Salário mensal fixo</td><td>Obrigatório &gt; 0 (base de cálculo proporcional)</td><td>Sim — acumula saldo positivo/negativo</td></tr>
+        <tr><td><strong>Diarista</strong></td><td>Valor por diária</td><td>Pode ser 0 (não há obrigação fixa de horas)</td><td>Não se aplica — pagamento por dias trabalhados</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-card warning">
+    ⚠️ Para <strong>mensalistas</strong>, o campo "Horas do Período" deve ser maior que zero, pois é o divisor do cálculo do salário proporcional. Para <strong>diaristas</strong>, o valor pode ser 0.
+  </div>
+
+  <h3>Ações na Lista</h3>
+  <ul>
+    <li><strong>Ponto:</strong> Abre o histórico de batidas do funcionário</li>
+    <li><strong>Fechamento:</strong> (admin ou acesso_fechamento_ponto) Abre o módulo de fechamento do período</li>
+    <li><strong>Alterar:</strong> Edita os dados do funcionário</li>
+    <li><strong>Remover:</strong> Exclui o funcionário (permanente)</li>
+  </ul>
+</div>
+
+<!-- ─── PONTO ─── -->
+<div class="section" id="ponto">
+  <h2>Ponto Eletrônico</h2>
+  <div class="mod-header">
+    <div class="mod-icon">⏰</div>
+    <div><div class="mod-title">Registro de Ponto</div><div class="mod-desc">Batidas de entrada e saída com geolocalização</div></tr></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Funcionário digita a matrícula para registrar entrada ou saída</li>
+    <li>Geolocalização capturada automaticamente (latitude e longitude)</li>
+    <li>Exibição de histórico de batidas do dia atual</li>
+    <li>Admin pode inserir batidas manuais (tipo, data, hora, funcionário)</li>
+  </ul>
+
+  <h3>Tipos de Batida</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Exibição</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>entrada</code></td><td>ENT (verde)</td><td>Entrada normal via matrícula</td></tr>
+        <tr><td><code>saida</code></td><td>SAÍ (vermelho)</td><td>Saída normal via matrícula</td></tr>
+        <tr><td><code>entrada_manual</code></td><td>ENT + badge M amarelo</td><td>Entrada inserida manualmente pelo admin</td></tr>
+        <tr><td><code>saida_manual</code></td><td>SAÍ + badge M amarelo</td><td>Saída inserida manualmente pelo admin</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>O campo "M" amarelo identifica batidas inseridas manualmente</li>
+    <li>Apenas admins podem <strong>inserir batidas manuais</strong>, editar horários e excluir batidas</li>
+    <li>Geolocalização é opcional — o ponto é registrado mesmo sem GPS</li>
+  </ul>
+
+  <h3>Histórico de Ponto (por funcionário)</h3>
+  <p>Acessado via <strong>Funcionários → Ponto</strong>. Exibe calendário mensal com todas as batidas do funcionário. Clique em uma batida para ver detalhes, inclusive a localização GPS no mapa.</p>
+</div>
+
+<!-- ─── FECHAMENTO DE PONTO ─── -->
+<div class="section" id="fechamento-ponto">
+  <h2>Fechamento de Ponto</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🧾</div>
+    <div><div class="mod-title">Banco de Horas e Fechamento do Período</div><div class="mod-desc">Apuração do período, cálculo de salário e bloqueio para pagamento</div></div>
+  </div>
+
+  <h3>Conceito</h3>
+  <p>O fechamento é feito por <strong>quinzena</strong> (1ª: 01 a 15 / 2ª: 16 ao fim do mês). Cada fechamento calcula as horas trabalhadas, compara com as horas previstas, gera o saldo do banco de horas e calcula o valor líquido a pagar.</p>
+
+  <h3>Fluxo Completo (com Espelho)</h3>
+  <ol class="steps">
+    <li>Admin abre o fechamento do funcionário no período desejado</li>
+    <li>Confere os dias, batidas e justificativas na tabela</li>
+    <li>Lança descontos e define horas extras a pagar, se houver</li>
+    <li>Clica em <strong>"Enviar Espelho para Aprovação"</strong></li>
+    <li>O funcionário acessa <strong>Espelho de Ponto</strong> e aprova ou rejeita</li>
+    <li>Se rejeitado, o admin revisa e reenvia o espelho</li>
+    <li>Após aprovação, o botão <strong>"Salvar e Bloquear Período"</strong> é habilitado</li>
+    <li>Admin finaliza — o período fica bloqueado e o saldo do banco vai para o próximo período</li>
+  </ol>
+
+  <div class="info-card danger">
+    🔒 <strong>O período só pode ser finalizado após o funcionário aprovar o espelho de ponto.</strong> Tentar finalizar sem aprovação exibe um erro.
+  </div>
+
+  <h3>Cálculos do Período</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Campo</th><th>Cálculo</th></tr></thead>
+      <tbody>
+        <tr><td>Horas Previstas</td><td>Carga horária diária × dias úteis no período (fins de semana = 0)</td></tr>
+        <tr><td>Horas Trabalhadas</td><td>(Última batida − Primeira batida) − Intervalo configurado, por dia</td></tr>
+        <tr><td>Saldo do Período</td><td>Trabalhado − Previsto (positivo = hora extra, negativo = falta)</td></tr>
+        <tr><td>Saldo Acumulado</td><td>Saldo Anterior + Saldo do Período</td></tr>
+        <tr><td>Salário Proporcional</td><td>(Horas pagas / Horas do período) × Salário base</td></tr>
+        <tr><td>Horas Extras Pagas ($)</td><td>Horas extras × Valor/hora × 1,6 (multiplicador 60%)</td></tr>
+        <tr><td>Total Líquido</td><td>Salário Proporcional + Horas Extras Pagas − Descontos</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Dias com Justificativa</h3>
+  <ul>
+    <li>Dias com justificativa (atestado médico, abono, folga, feriado) têm o previsto zerado — não geram débito de horas</li>
+    <li>Para mensalistas, um dia justificado conta como se o funcionário tivesse trabalhado (paga a carga diária completa)</li>
+    <li>Para diaristas, um dia justificado conta como uma diária paga</li>
+  </ul>
+
+  <h3>Tipos de Justificativa</h3>
+  <ul>
+    <li>Atestado Médico</li>
+    <li>Abono</li>
+    <li>Folga</li>
+    <li>Feriado</li>
+    <li>Outros</li>
+  </ul>
+
+  <h3>Cálculo para Diaristas</h3>
+  <ul>
+    <li>Não há horas previstas — diaristas não acumulam banco de horas por falta</li>
+    <li>Pagamento = Número de dias pagos × Valor da diária</li>
+    <li>Dias pagos = dias com batidas registradas + dias justificados</li>
+  </ul>
+
+  <h3>Reabrir Período</h3>
+  <p>Admins podem reabrir um período bloqueado. O saldo acumulado do próximo período <strong>não é recalculado automaticamente</strong> — o admin deve reabrir e refazer o fechamento subsequente, se necessário.</p>
+
+  <h3>Status do Espelho (dentro do Fechamento)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Status</th><th>Cor</th><th>O que significa</th></tr></thead>
+      <tbody>
+        <tr><td>Rascunho</td><td>—</td><td>Fechamento não enviado ao funcionário ainda</td></tr>
+        <tr><td>Enviado</td><td>Amarelo</td><td>Aguardando aprovação do funcionário</td></tr>
+        <tr><td>Aprovado</td><td>Verde</td><td>Funcionário aprovou — pode finalizar</td></tr>
+        <tr><td>Rejeitado</td><td>Vermelho</td><td>Funcionário rejeitou — revise e reenvie</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── ESPELHO ─── -->
+<div class="section" id="espelho">
+  <h2>Espelho de Ponto</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🪞</div>
+    <div><div class="mod-title">Espelho de Ponto — Visão do Funcionário</div><div class="mod-desc">Revisão e aprovação do fechamento de ponto pelo próprio colaborador</div></div>
+  </div>
+
+  <h3>Acesso</h3>
+  <p>Disponível para operadores com a permissão <code>acesso_espelho_ponto</code> ativada. O sistema vincula automaticamente o operador ao funcionário pela <strong>matrícula</strong> (campo <code>matricula</code> do operador deve ser igual à matrícula do funcionário).</p>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Exibe espelhos <strong>pendentes de aprovação</strong> em destaque amarelo no topo</li>
+    <li>Exibe histórico de espelhos já aprovados ou rejeitados abaixo</li>
+    <li>O funcionário pode expandir cada espelho para ver o detalhamento diário das batidas</li>
+    <li>Botões <strong>Aprovar</strong> e <strong>Rejeitar</strong> para cada espelho pendente</li>
+  </ul>
+
+  <h3>Aprovação</h3>
+  <p>O funcionário confirma que concorda com os dados do espelho. Após aprovação, o admin recebe sinal verde e pode bloquear o período no módulo de Fechamento de Ponto.</p>
+
+  <h3>Rejeição</h3>
+  <p>O funcionário pode rejeitar informando o <strong>motivo por texto</strong>. O motivo fica visível para o admin no módulo de Fechamento de Ponto. O admin deve corrigir o ponto (batidas, justificativas) e reenviar o espelho.</p>
+
+  <div class="info-card warning">
+    ⚠️ Após a rejeição, o <strong>espelho_status</strong> volta para "rejeitado". O admin precisa clicar em "Enviar Espelho para Aprovação" novamente para que o funcionário possa ver a versão corrigida.
+  </div>
+</div>
+
+<!-- ─── HOLERITES ─── -->
+<div class="section" id="holerites">
+  <h2>Meus Holerites</h2>
+  <div class="mod-header">
+    <div class="mod-icon">📄</div>
+    <div><div class="mod-title">Contracheques do Funcionário</div><div class="mod-desc">Consulta de holerites de períodos fechados</div></div>
+  </div>
+
+  <h3>Acesso</h3>
+  <p>Disponível para qualquer operador com o campo <strong>matrícula</strong> preenchido. O sistema localiza o funcionário pela matrícula e exibe apenas os holerites vinculados a ele.</p>
+
+  <h3>Conteúdo do Holerite</h3>
+  <ul>
+    <li>Identificação: nome, matrícula, período (quinzena, mês, ano)</li>
+    <li>Proventos: salário base, horas extras pagas</li>
+    <li>Descontos detalhados (da tabela <code>descontos_fechamento</code>)</li>
+    <li>Total líquido a receber</li>
+    <li>Banco de horas: saldo anterior, saldo do período, horas extras pagas, saldo final</li>
+  </ul>
+
+  <h3>Regras</h3>
+  <ul>
+    <li>Somente fechamentos com status <code>bloqueado = true</code> aparecem como holerites</li>
+    <li>Ordenados do mais recente para o mais antigo</li>
+    <li>Apenas leitura — funcionário não pode modificar nenhum dado</li>
+    <li>Formato pronto para impressão</li>
+  </ul>
+</div>
+
+<!-- ─── FILIAIS ─── -->
+<div class="section" id="filiais">
+  <h2>Filiais</h2>
+  <div class="mod-header">
+    <div class="mod-icon">🏢</div>
+    <div><div class="mod-title">Cadastro de Filiais</div><div class="mod-desc">Unidades da empresa e módulos habilitados por filial</div></div>
+  </div>
+
+  <h3>Funcionalidades</h3>
+  <ul>
+    <li>Cadastrar filiais com código, nome, endereço e telefone (usados no cupom fiscal)</li>
+    <li>Ativar ou desativar filiais</li>
+    <li>Configurar quais <strong>módulos/rotinas</strong> estão disponíveis para cada filial</li>
+  </ul>
+
+  <h3>Módulos Configuráveis por Filial</h3>
+  <p>Na tela de edição da filial, o admin marca os módulos habilitados. Apenas os módulos ativos aparecem no menu e no dashboard dos operadores daquela filial.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Módulo (chave)</th><th>Rotina</th></tr></thead>
+      <tbody>
+        <tr><td><code>produtos</code></td><td>Produtos e Estoque</td></tr>
+        <tr><td><code>armazens</code></td><td>Armazéns</td></tr>
+        <tr><td><code>clientes</code></td><td>Clientes e Fornecedores</td></tr>
+        <tr><td><code>agenda</code></td><td>Agenda de Eventos</td></tr>
+        <tr><td><code>separacao</code></td><td>Ordens de Separação</td></tr>
+        <tr><td><code>pdv</code></td><td>PDV, Vendedores, Histórico, Contas a Receber</td></tr>
+        <tr><td><code>historico</code></td><td>Histórico de Vendas (separado do PDV)</td></tr>
+        <tr><td><code>categorias</code></td><td>Categorias de Produtos</td></tr>
+        <tr><td><code>receitas</code></td><td>Contas a Receber</td></tr>
+        <tr><td><code>despesas</code></td><td>Despesas</td></tr>
+        <tr><td><code>financeiro</code></td><td>Módulo Financeiro (contas e extrato)</td></tr>
+        <tr><td><code>fechamento</code></td><td>Fechamento de Caixa</td></tr>
+        <tr><td><code>funcionarios</code></td><td>Cadastro de Funcionários</td></tr>
+        <tr><td><code>ponto</code></td><td>Ponto Eletrônico e Fechamento de Ponto</td></tr>
+        <tr><td><code>vendedores</code></td><td>Cadastro de Vendedores</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-card">
+    <strong>Dica:</strong> O endereço e telefone da filial são usados automaticamente na impressão do cupom fiscal do PDV.
+  </div>
+</div>
+
+<!-- ─── OPERADORES ─── -->
+<div class="section" id="operadores">
+  <h2>Operadores</h2>
+  <div class="mod-header">
+    <div class="mod-icon">👤</div>
+    <div><div class="mod-title">Cadastro de Operadores</div><div class="mod-desc">Usuários, senhas e permissões de acesso ao sistema</div></div>
+  </div>
+
+  <h3>Campos do Operador</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Campo</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td>Nome</td><td>Nome completo do operador</td></tr>
+        <tr><td>Login</td><td>Usuário de acesso (único por filial)</td></tr>
+        <tr><td>Senha</td><td>Senha de acesso</td></tr>
+        <tr><td>Filial</td><td>Filial à qual o operador pertence</td></tr>
+        <tr><td>Matrícula</td><td>Vincula o operador a um funcionário (habilita Meus Holerites e Espelho de Ponto)</td></tr>
+        <tr><td>Admin</td><td>Se marcado, tem acesso total ao sistema</td></tr>
+        <tr><td>Ativo</td><td>Se desmarcado, o operador não consegue fazer login</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Configuração de Permissões</h3>
+  <p>Na tela de cadastro do operador, cada rotina pode ser habilitada individualmente. Operadores do tipo <strong>Admin</strong> têm todas as permissões automaticamente, sem necessidade de configuração individual.</p>
+</div>
+
+<!-- ─── REGRAS DE NEGÓCIO ─── -->
+<div class="section" id="regras">
+  <h2>Regras de Negócio — Resumo</h2>
+
+  <h3>Restrições por Filial</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Regra</th><th>Detalhe</th></tr></thead>
+      <tbody>
+        <tr><td>PDV e Categorias</td><td>Disponíveis apenas para a Filial código <code>02</code></td></tr>
+        <tr><td>Desconto por item e em lote</td><td>Apenas para clientes com flag <code>decorador = true</code></td></tr>
+        <tr><td>Vendedor obrigatório</td><td>Toda venda no PDV exige seleção de vendedor</td></tr>
+        <tr><td>Máx. formas de pagamento</td><td>3 formas por venda</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Regras Financeiras</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Regra</th><th>Detalhe</th></tr></thead>
+      <tbody>
+        <tr><td>Saldo de contas</td><td>Atualizado automaticamente via trigger no banco a cada movimentação</td></tr>
+        <tr><td>Estorno de venda</td><td>Restaura estoque + cria movimentações negativas</td></tr>
+        <tr><td>Crediário</td><td>Fica pendente até ser recebido manualmente em Contas a Receber</td></tr>
+        <tr><td>Despesa já paga</td><td>Não pode ter status alterado pela interface</td></tr>
+        <tr><td>Devolução de locação</td><td>Taxa de atraso vai para conta bancária selecionada</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Regras do Módulo RH</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Regra</th><th>Detalhe</th></tr></thead>
+      <tbody>
+        <tr><td>Fechamento obrigatório por quinzena</td><td>Um fechamento por quinzena por funcionário (constraint UNIQUE)</td></tr>
+        <tr><td>Aprovação do espelho obrigatória</td><td>Admin não pode bloquear o período sem aprovação do funcionário</td></tr>
+        <tr><td>Saldo de banco de horas</td><td>Carregado automaticamente do fechamento anterior para o próximo</td></tr>
+        <tr><td>Mensalista — Horas do período &gt; 0</td><td>Obrigatório para evitar divisão por zero no cálculo proporcional</td></tr>
+        <tr><td>Diarista — Horas do período = 0</td><td>Permitido — diaristas não têm jornada obrigatória</td></tr>
+        <tr><td>Multiplicador de hora extra</td><td>Valor da hora extra = (Salário ÷ Horas do período) × 1,6</td></tr>
+        <tr><td>Intervalo de almoço</td><td>Descontado automaticamente do cálculo diário (configurado por funcionário)</td></tr>
+        <tr><td>Fim de semana</td><td>Sábado e domingo não contam como horas previstas</td></tr>
+        <tr><td>Justificativa</td><td>Zera o previsto do dia — não gera débito de horas</td></tr>
+        <tr><td>Holerite visível</td><td>Apenas fechamentos bloqueados aparecem como holerites</td></tr>
+        <tr><td>Vínculo operador/funcionário</td><td>Feito pela matrícula (campo <code>matricula</code> do operador = <code>matricula</code> do funcionário)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Notificações do Sistema</h3>
+  <p>Todas as ações de sucesso ou erro são exibidas por um <strong>toast</strong> (mensagem temporária) no canto da tela — sem abrir janelas externas do navegador. Confirmações de ações importantes (bloquear período, rejeitar espelho, reabrir período) aparecem em <strong>modais internos ao sistema</strong>.</p>
+
+  <div class="info-card success">
+    ✅ <strong>Sem pop-ups do browser:</strong> O sistema usa exclusivamente modais internos para confirmações, sem usar as caixas de diálogo nativas do Google Chrome ou outros navegadores.
+  </div>
+</div>
+
+<!-- RODAPÉ -->
+<div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); text-align: center">
+  Manual do Sistema Festou — Gerado em <strong id="data-manual"></strong>
+</div>
+
+</main>
+</div>
+
+<script>
+  document.getElementById('data-manual').textContent = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+</script>
+</body>
+</html>
