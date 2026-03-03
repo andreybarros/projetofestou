@@ -690,7 +690,8 @@
   <div id="login-screen">
     <div class="login-box">
       <div class="login-logo">
-        <img src="img/logo.png" alt="Logo" style="max-width: 180px; margin-bottom: 12px;">
+        <img id="login-logo-padrao" src="img/logo.png" alt="Logo" style="max-width: 180px; margin-bottom: 12px;">
+        <img id="login-festou-logo" src="logo_festou.png" alt="Festou" style="max-width:200px;margin:0 auto 10px;display:none;object-fit:contain">
         <h2 style="display:none">Controle de Estoque</h2>
         <p>Faça login para acessar o sistema</p>
       </div>
@@ -699,7 +700,8 @@
       <div class="filial-select-wrap" id="filial-wrap">
         <div class="filial-loading" id="filial-loading">⏳ Carregando filiais...</div>
         <select id="sel-filial" style="display:none"
-          onkeydown="if(event.key==='Enter') document.getElementById('inp-login').focus()">
+          onkeydown="if(event.key==='Enter') document.getElementById('inp-login').focus()"
+          onchange="toggleLoginLogo()">
           <option value="">Selecione a filial...</option>
         </select>
       </div>
@@ -732,7 +734,7 @@
 
       <div class="sidebar-scroller">
         <div class="sidebar-logo" onclick="ir('home.html')" style="cursor:pointer">
-          <img src="img/logo.png" alt="Logo">
+          <img id="sidebar-logo-img" src="img/logo.png" alt="Logo">
         </div>
 
         <button class="nav-btn" id="nav-home" onclick="ir('home.html','nav-home')">
@@ -881,12 +883,25 @@
       });
 
       // Se só houver uma filial, seleciona automaticamente
-      if (data.length === 1) sel.value = data[0].pk;
+      if (data.length === 1) {
+        sel.value = data[0].pk;
+        toggleLoginLogo();
+      }
 
       loading.style.display = 'none';
       sel.style.display = '';
       btn.disabled = false;
     })();
+
+    function toggleLoginLogo() {
+      var sel = document.getElementById('sel-filial');
+      var opt = sel ? sel.options[sel.selectedIndex] : null;
+      var is02 = opt && opt.dataset.codigo === '02';
+      var lp = document.getElementById('login-logo-padrao');
+      var lf = document.getElementById('login-festou-logo');
+      if (lp) lp.style.display = is02 ? 'none' : 'block';
+      if (lf) lf.style.display = is02 ? 'block' : 'none';
+    }
 
     // ── Login ──────────────────────────────────────────────────
     async function fazerLogin() {
@@ -922,6 +937,8 @@
       document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
 
       await aplicarPermissoes(op);
+      const sidebarLogo = document.getElementById('sidebar-logo-img');
+      if (sidebarLogo) sidebarLogo.src = window.filialLogada.codigo === '02' ? 'logo_festou.png' : 'img/logo.png';
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').classList.add('visible');
       document.getElementById('sidebar').classList.add('visible');
@@ -987,6 +1004,8 @@
       window.operadorLogado = null;
       window.filialLogada = null;
       window._editData = null;
+      const sidebarLogoOut = document.getElementById('sidebar-logo-img');
+      if (sidebarLogoOut) sidebarLogoOut.src = 'img/logo.png';
       document.getElementById('app').classList.remove('visible');
       document.getElementById('sidebar').classList.remove('visible');
       document.getElementById('login-screen').style.display = 'flex';

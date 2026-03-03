@@ -1624,6 +1624,11 @@
             <button class="btn-finalizar" id="btn-finalizar" onclick="PDV.finalizar()" disabled>✓ Finalizar
               Venda</button>
           </div>
+          <button id="btn-imprimir-contrato" onclick="PDV.imprimirContrato()"
+            style="width:100%;margin-top:8px;padding:11px;background:#1e3a5f;color:#fff;border:none;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;display:none;align-items:center;justify-content:center;gap:6px"
+            onmouseover="this.style.background='#1e40af'" onmouseout="this.style.background='#1e3a5f'">
+            📄 Imprimir Contrato
+          </button>
           <button class="btn-cancelar" onclick="PDV.cancelar()">✕ Cancelar Venda</button>
         </div>
       </div>
@@ -2216,6 +2221,7 @@
       }).join('');
       renderTroco();
       atualizarTotais();
+      atualizarBtnContrato();
     }
 
     function getTotalLiq() {
@@ -2466,6 +2472,18 @@
       var sel = document.querySelector('input[name="pdv_tipo_venda"]:checked').value;
       var el = document.getElementById('pdv-locacao-datas');
       if (el) el.classList.toggle('show', sel === 'locacao');
+      var btn = document.getElementById('btn-imprimir-contrato');
+      if (btn) btn.style.display = sel === 'locacao' ? 'flex' : 'none';
+      atualizarBtnContrato();
+    }
+
+    function atualizarBtnContrato() {
+      var btn = document.getElementById('btn-imprimir-contrato');
+      if (!btn) return;
+      var habilitado = !!clienteLogado && pagamentos.length > 0;
+      btn.disabled = !habilitado;
+      btn.style.opacity = habilitado ? '1' : '0.45';
+      btn.style.cursor = habilitado ? 'pointer' : 'not-allowed';
     }
 
     function toggleCrediario() {
@@ -2547,7 +2565,7 @@
       inp.value = '';
       document.getElementById('loading-cli').style.display = 'block';
 
-      var q = window.supabase.from('clientes').select('pk,nome,razao_social,telefone,decorador').order('nome').limit(200);
+      var q = window.supabase.from('clientes').select('pk,nome,razao_social,telefone,decorador,cpf,data_nascimento,logradouro,numero,complemento,bairro,cidade,uf').order('nome').limit(200);
       var fil = window.filialLogada;
       if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
 
@@ -2604,6 +2622,7 @@
       document.getElementById('pdv-cliente-nome').value = cli.nome + (cli.decorador ? ' (Decorador)' : '');
       document.getElementById('btn-cliente-rm').style.display = 'flex';
       fecharBuscaCliente();
+      atualizarBtnContrato();
     }
 
     function removerCliente() {
@@ -2612,6 +2631,7 @@
       if (el) el.value = '';
       var rm = document.getElementById('btn-cliente-rm');
       if (rm) rm.style.display = 'none';
+      atualizarBtnContrato();
       limparDescontos(); // Ao remover cliente, removemos descontos p/ segurança
     }
 
@@ -2786,12 +2806,172 @@
       }
     }
 
+    // ── Imprimir Contrato ────────────────────────────────────────
+    async function imprimirContrato() {
+      if (!carrinho.length) { window.showToast('Adicione itens ao carrinho antes de imprimir o contrato.', 'error'); return; }
+
+      var logoSrc = '';
+      try {
+        var base = window.location.href.replace(/\/[^/]*$/, '');
+        var resp = await fetch(base + '/logo_festou.png');
+        var blob = await resp.blob();
+        logoSrc = await new Promise(function (resolve) {
+          var r = new FileReader(); r.onloadend = function () { resolve(r.result); }; r.readAsDataURL(blob);
+        });
+      } catch (e) { logoSrc = ''; }
+
+      var cli = clienteLogado;
+      var tipoOp = document.querySelector('input[name="pdv_tipo_venda"]:checked')?.value || 'venda';
+
+      function fmtDate(iso) {
+        if (!iso) return '';
+        var d = String(iso).slice(0, 10).split('-');
+        return d.length === 3 ? d[2] + '/' + d[1] + '/' + d[0] : iso;
+      }
+      function fmtDT(val) {
+        if (!val) return '';
+        var p = val.split('T');
+        return fmtDate(p[0]) + (p[1] ? ' às ' + p[1].slice(0, 5) : '');
+      }
+      function blank(n) { return '<span style="display:inline-block;min-width:' + (n || 200) + 'px;border-bottom:1px solid #000;vertical-align:bottom">&nbsp;</span>'; }
+      function filled(v, n) { return v ? '<span style="display:inline-block;min-width:' + (n || 200) + 'px;border-bottom:1px solid #000;vertical-align:bottom;font-weight:700">' + v + '</span>' : blank(n); }
+
+      var endereco = '';
+      if (cli) {
+        endereco = [cli.logradouro, cli.numero ? 'Nº ' + cli.numero : '', cli.complemento, cli.bairro, cli.cidade && cli.uf ? cli.cidade + '/' + cli.uf : (cli.cidade || cli.uf || '')].filter(Boolean).join(', ');
+      }
+
+      var sub = 0, desc = 0;
+      carrinho.forEach(function (it) { var c = calcItem(it); sub += c.bruto; desc += c.desc; });
+      var totalGeral = sub - desc;
+
+      var dtRetirada = tipoOp === 'locacao' ? fmtDT(document.getElementById('loc-retirada')?.value) : '';
+      var dtDevolucao = tipoOp === 'locacao' ? fmtDT(document.getElementById('loc-devolucao')?.value) : '';
+
+      var formas = pagamentos.map(function (p) { return p.forma; });
+      function chk(f) { return formas.includes(f) ? '<span style="font-weight:900">&#10003;</span>' : '&nbsp;&nbsp;'; }
+
+      var pagRow1 = pagamentos[0] ? { label: FORMA_LABEL[pagamentos[0].forma] || pagamentos[0].forma, valor: fmt(pagamentos[0].valor) } : null;
+      var pagRow2 = pagamentos[1] ? { label: FORMA_LABEL[pagamentos[1].forma] || pagamentos[1].forma, valor: fmt(pagamentos[1].valor) } : null;
+
+      var hoje = new Date();
+      var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      var dataManaus = hoje.getDate() + ' de ' + meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+
+      var itensLinha = carrinho.map(function (it) {
+        return it.qtd + 'x ' + it.descricao + (it.preco_unit > 0 ? ' (' + fmt(it.preco_unit) + ' un.)' : '');
+      }).join(' · ');
+
+      var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
+        '<title>Contrato de Locação</title>' +
+        '<style>' +
+        'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;margin:0;padding:0}' +
+        '.page{width:210mm;min-height:297mm;margin:0 auto;padding:14mm 16mm;box-sizing:border-box}' +
+        'h1{text-align:center;font-size:14px;margin:0 0 2px;text-transform:uppercase;letter-spacing:1px}' +
+        'h2{text-align:center;font-size:12px;margin:0 0 14px;font-weight:400;font-style:italic}' +
+        '.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;background:#000;color:#fff;padding:3px 7px;margin:12px 0 6px}' +
+        '.field-row{margin:5px 0;line-height:2}' +
+        '.label{font-weight:700;font-size:10px}' +
+        '.pag-row{display:flex;gap:16px;margin:5px 0;line-height:2}' +
+        '.pag-chk{display:flex;align-items:center;gap:4px;font-size:11px}' +
+        '.chk-box{display:inline-block;width:13px;height:13px;border:1.5px solid #000;text-align:center;line-height:13px;font-size:11px;vertical-align:middle;margin-right:3px}' +
+        '.valor-row{display:flex;gap:24px;margin:5px 0;line-height:2}' +
+        '.total-destaque{text-align:right;font-size:13px;font-weight:700;margin:6px 0 4px;border-top:1.5px solid #000;padding-top:4px}' +
+        '.assinaturas{display:flex;justify-content:space-between;margin-top:20px}' +
+        '.ass-block{text-align:center;width:44%}' +
+        '.ass-line{border-top:1px solid #000;padding-top:5px;font-size:10px}' +
+        '.clausulas{margin-top:12px;font-size:9.5px;line-height:1.55;column-count:2;column-gap:14px}' +
+        '.clausula{margin-bottom:5px;text-align:justify}' +
+        '@media print{.page{padding:10mm 12mm}@page{size:A4;margin:0}}' +
+        '</style></head><body><div class="page">' +
+        (logoSrc ? '<div style="text-align:center;margin-bottom:14px"><img src="' + logoSrc + '" style="max-height:140px;max-width:380px;object-fit:contain" alt="Logo Festou"></div>' : '') +
+        '<h1>Contrato de Prestação de Serviço</h1>' +
+        '<h2>Locação de Móveis de Decoração</h2>' +
+
+        '<div class="section-title">Dados do Contratante</div>' +
+        '<div class="field-row"><span class="label">NOME: </span>' + filled(cli ? cli.nome : '', 360) + '</div>' +
+        '<div style="display:flex;gap:16px">' +
+        '<div class="field-row" style="flex:1"><span class="label">CPF: </span>' + filled(cli ? cli.cpf : '', 160) + '</div>' +
+        '<div class="field-row" style="flex:1"><span class="label">RG: </span>' + blank(160) + '</div>' +
+        '</div>' +
+        '<div class="field-row"><span class="label">ENDEREÇO: </span>' + filled(endereco, 380) + '</div>' +
+        '<div style="display:flex;gap:16px">' +
+        '<div class="field-row" style="flex:1"><span class="label">TELEFONE: </span>' + filled(cli ? cli.telefone : '', 150) + '</div>' +
+        '<div class="field-row" style="flex:1"><span class="label">DATA DE NASCIMENTO: </span>' + filled(cli ? fmtDate(cli.data_nascimento) : '', 110) + '</div>' +
+        '</div>' +
+
+        '<div class="section-title">Dados da Contratada</div>' +
+        '<div class="field-row"><span class="label">NOME: </span> ANDREY RONALD BARROS DA CONCEIÇÃO</div>' +
+        '<div class="field-row"><span class="label">ENDEREÇO COMERCIAL: </span> ALAMEDA COSME FERREIRA 6893 — ZUMBI DOS PALMARES</div>' +
+        '<div style="display:flex;gap:16px">' +
+        '<div class="field-row" style="flex:1"><span class="label">CPF/CNPJ: </span> 56.918.133/0001-04</div>' +
+        '<div class="field-row" style="flex:1"><span class="label">TELEFONE: </span> (92) 98612-5736</div>' +
+        '</div>' +
+        '<div class="field-row"><span class="label">E-MAIL: </span> festou.am@gmail.com</div>' +
+
+        '<div class="section-title">Pagamento</div>' +
+        '<div class="pag-row">' +
+        '<div class="pag-chk"><span class="chk-box">' + chk('dinheiro') + '</span> DINHEIRO</div>' +
+        '<div class="pag-chk"><span class="chk-box">' + chk('pix') + '</span> PIX</div>' +
+        '<div class="pag-chk"><span class="chk-box">' + chk('debito') + '</span> DÉBITO</div>' +
+        '<div class="pag-chk"><span class="chk-box">' + chk('credito') + '</span> CRÉDITO</div>' +
+        '</div>' +
+        '<div class="valor-row">' +
+        '<div><span class="label">VALOR: </span>' + filled(pagRow1 ? pagRow1.valor : '', 90) + '</div>' +
+        '<div><span class="label">DATA: </span>' + filled(dataManaus ? fmtDate(hoje.toISOString().slice(0,10)) : '', 90) + '</div>' +
+        (pagRow2 ? '<div><span class="label">VALOR: </span>' + filled(pagRow2.valor, 90) + '</div><div><span class="label">DATA: </span>' + filled('', 90) + '</div>' : '') +
+        '</div>' +
+        '<div class="total-destaque">TOTAL: ' + fmt(totalGeral) + '</div>' +
+
+        '<div class="section-title">Datas da Locação</div>' +
+        '<div style="display:flex;gap:16px">' +
+        '<div class="field-row" style="flex:1"><span class="label">DATA DE RETIRADA: </span>' + filled(dtRetirada, 170) + '</div>' +
+        '<div class="field-row" style="flex:1"><span class="label">DATA DE DEVOLUÇÃO: </span>' + filled(dtDevolucao, 170) + '</div>' +
+        '</div>' +
+
+        '<div class="section-title">Acessórios Locados</div>' +
+        '<div style="min-height:44px;border:1px solid #ccc;padding:5px 8px;font-size:10px;line-height:1.7">' + (itensLinha || blank(600)) + '</div>' +
+
+        '<div style="text-align:right;margin-top:6px;font-size:10px">Manaus, ' + dataManaus + '</div>' +
+
+        '<div class="assinaturas">' +
+        '<div class="ass-block"><div class="ass-line">LOCADOR: ANDREY RONALD BARROS DA CONCEIÇÃO</div></div>' +
+        '<div class="ass-block"><div class="ass-line">LOCATÁRIO: ' + (cli ? cli.nome : blank(200)) + '</div></div>' +
+        '</div>' +
+
+        '<div style="page-break-before:always"></div>' +
+        '<div class="section-title" style="margin-top:0">Cláusulas Contratuais</div>' +
+        '<div class="clausulas">' +
+        '<div class="clausula"><strong>1.</strong> A locação terá a duração de 1 (um) dia útil, contados a partir da retirada e conforme negociação para devolução. A entrega deverá ser feita no dia informado no contrato, caso contrário será cobrado o mesmo valor da locação.</div>' +
+        '<div class="clausula"><strong>2.</strong> O pagamento total deverá ser efetuado no ato da locação.</div>' +
+        '<div class="clausula"><strong>3.</strong> Optando pelo frete, este será cobrado de acordo com a localização da entrega e recolhimento (conforme tabela afixada no estabelecimento).</div>' +
+        '<div class="clausula"><strong>4.</strong> Em caso de extravio, danos ou quebra de material, o contratante deverá repor a(s) peça(s) por: substituição por nova peça de mesma especificação, inclusive cor e modelo; ou pagamento em dinheiro/cartão do valor correspondente à peça nova (incluindo frete).</div>' +
+        '<div class="clausula"><strong>5.</strong> No caso em que a peça faça parte de um conjunto, na indisponibilidade da reposição da unidade, fica obrigado o contratante a repor todo o conjunto.</div>' +
+        '<div class="clausula"><strong>6.</strong> O pagamento referente à reposição de peça extraviada, danificada ou quebrada deverá ser realizado no momento da devolução, sob pena de multa correspondente a duas vezes o valor da peça.</div>' +
+        '<div class="clausula"><strong>7.</strong> Caso o contratante opte por repor a peça, deverá deixar como caução o valor correspondente à peça nova. Este valor será devolvido assim que a peça for reposta na loja.</div>' +
+        '<div class="clausula"><strong>8.</strong> A não devolução das peças locadas configurará apropriação indébita, sendo devida a aplicação das penalidades previstas em lei.</div>' +
+        '<div class="clausula"><strong>9.</strong> O contratante declara estar ciente do valor de reposição de todas as peças constantes neste contrato, não cabendo contestação posterior.</div>' +
+        '<div class="clausula"><strong>10.</strong> Em caso de devolução em estado de conservação diferente do entregue (sujas, arranhadas ou com pequenas avarias), a loja poderá cobrar até 20% do valor de reposição a título de manutenção.</div>' +
+        '<div class="clausula"><strong>11.</strong> A loja é obrigada a entregar as peças em perfeito estado de uso e conservação.</div>' +
+        '<div class="clausula"><strong>12.</strong> Em caso de quebra ou perda de peça reservada pela loja, impossibilitando a locação, a loja deverá oferecer peça substitutiva de igual valor ou reembolso correspondente.</div>' +
+        '<div class="clausula"><strong>13.</strong> É proibido ao contratante vender, transferir, ceder, sublocar ou emprestar os bens ora locados.</div>' +
+        '<div class="clausula"><strong>14.</strong> Caso o contratante queira cancelar a reserva, terá direito, sem bônus, em até 7 dias antes da retirada. Após esse prazo, deverá pagar 50% do valor total a título de multa.</div>' +
+        '<div class="clausula"><strong>15.</strong> Caso o contratante desista da locação em até 24 horas da data de retirada, deverá pagar o valor integral do contrato. Se já pago, o valor não será devolvido.</div>' +
+        '<div class="clausula"><strong>16.</strong> Todo o material de transporte (sacolas, caixas, proteções, plásticos bolha, caixotes etc.) deverá ser devolvido nas mesmas condições, sob pena de multa conforme tabela afixada no estabelecimento.</div>' +
+        '<div class="clausula"><strong>17.</strong> Fica eleito o foro da cidade de Manaus/AM como único competente para dirimir questões oriundas deste contrato.</div>' +
+        '</div>' +
+        '</div></body></html>';
+
+      var w = window.open('', '_blank', 'width=900,height=700');
+      if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 600); }
+    }
+
     return {
       filtrar, add, removeItem, setQtd, setDesc, toggleDesc, aplicarDescontoBalao, limparDescontos,
       addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro, finalizar, cancelar,
       avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
       abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente,
-      toggleFormNovoCli, salvarNovoCli,
+      toggleFormNovoCli, salvarNovoCli, imprimirContrato,
       _mascaraCpfCli, _mascaraCepCli, _buscarCepCli, _toggleDecCli, _atualizaBadgeCli
     };
   })();
