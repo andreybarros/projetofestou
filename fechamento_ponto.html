@@ -255,6 +255,8 @@
             onclick="ClosingMod.desbloquear()">🔑 Reabrir Período</button>
     </div>
 
+    <div id="espelho-alert" style="display:none; align-items:flex-start; gap:12px; padding:12px 16px; border-radius:10px; margin-bottom:15px; font-size:13px"></div>
+
     <div class="close-container">
         <div class="left-col">
             <div class="summary-card">
@@ -364,7 +366,9 @@
                     <strong id="total-final">R$ 0,00</strong>
                 </div>
 
-                <button class="mbtn mbtn-primary" id="btn-salvar" style="width:100%; margin-top:20px; height:45px"
+                <button class="mbtn" id="btn-enviar-espelho" style="width:100%; margin-top:20px; height:40px; background:#f59e0b; color:#fff; border:none"
+                    onclick="ClosingMod.enviarEspelho()">📤 Enviar Espelho para Aprovação</button>
+                <button class="mbtn mbtn-primary" id="btn-salvar" style="width:100%; margin-top:8px; height:45px"
                     onclick="ClosingMod.salvar()">Salvar e Bloquear Período</button>
             </div>
         </div>
@@ -421,6 +425,9 @@
         var currentJustDate = null;
         var isBlocked = false;
         var discounts = []; // { descricao: '', valor: 0 }
+        var espelhoStatus = 'rascunho';
+        var espelhoObs = '';
+        var currentFechamentoPk = null;
 
         async function init() {
             if (!func) { carregarModulo('cadastro_funcionario.html', 'nav-funcionario'); return; }
@@ -428,15 +435,21 @@
             document.getElementById('close-emp-name').textContent = "Fechamento: " + func.nome;
             document.getElementById('close-emp-subtitle').textContent = `Matrícula: ${func.matricula || '--'}`;
 
-            summaries.baseSalary = func.salario_mensal || 0;
-            summaries.horasFechamento = func.horas_fechamento || 120; // fallback to 120
-
-            document.getElementById('side-salario').textContent = formatCurrency(summaries.baseSalary);
-            document.getElementById('side-horas-label').textContent = `Salário Proporcional (${summaries.horasFechamento}h)`;
-
-            // Valor hora sugerido: base / horas do periodo * 1.6 (60%)
-            var valorH = summaries.baseSalary / summaries.horasFechamento;
-            document.getElementById('close-valor-ot').value = (valorH * 1.6).toFixed(2);
+            if (func.diarista) {
+                summaries.baseSalary = func.valor_diaria || 0;
+                summaries.horasFechamento = func.horas_fechamento ?? 0;
+                document.getElementById('side-base-label').textContent = 'Valor da Diária';
+                document.getElementById('side-salario').textContent = formatCurrency(summaries.baseSalary);
+                document.getElementById('side-horas-label').textContent = 'Total por Diárias';
+                document.getElementById('close-valor-ot').value = 0;
+            } else {
+                summaries.baseSalary = func.salario_mensal || 0;
+                summaries.horasFechamento = func.horas_fechamento > 0 ? func.horas_fechamento : 120;
+                document.getElementById('side-salario').textContent = formatCurrency(summaries.baseSalary);
+                document.getElementById('side-horas-label').textContent = `Salário Proporcional (${summaries.horasFechamento}h)`;
+                var valorH = summaries.baseSalary / summaries.horasFechamento;
+                document.getElementById('close-valor-ot').value = (valorH * 1.6).toFixed(2);
+            }
 
             preencherSelects();
             carregar();
@@ -464,11 +477,16 @@
                 ? `${ano}-${String(mes).padStart(2, '0')}-15`
                 : new Date(ano, mes, 0).toISOString().split('T')[0];
 
-            // 1. Verificar se já existe fechamento (bloqueio)
+            // 1. Verificar se já existe fechamento (bloqueio e espelho)
             var { data: fch } = await window.supabase.from('fechamento_ponto').select('*').eq('funcionario_pk', func.pk).eq('mes', mes).eq('ano', ano).eq('quinzena', quinzena).maybeSingle();
             isBlocked = fch ? fch.bloqueado : false;
+            espelhoStatus = (fch && fch.espelho_status) ? fch.espelho_status : 'rascunho';
+            espelhoObs = (fch && fch.espelho_observacao) ? fch.espelho_observacao : '';
+            currentFechamentoPk = fch ? fch.pk : null;
             document.getElementById('blocked-alert').style.display = isBlocked ? 'flex' : 'none';
-            document.getElementById('btn-salvar').disabled = isBlocked;
+            document.getElementById('btn-salvar').disabled = isBlocked || espelhoStatus !== 'aprovado';
+            document.getElementById('btn-enviar-espelho').disabled = isBlocked;
+            atualizarAlertaEspelho();
             if (isBlocked) {
                 var valorH = fch.salario_base / summaries.horasFechamento;
                 document.getElementById('close-pagar-horas').value = (fch.valor_horas_extras / (valorH * 1.6) || 0).toFixed(1);
@@ -519,6 +537,7 @@
             summaries.trabalhado = 0;
             summaries.paidSec = 0;
             summaries.extraSec = 0;
+            summaries.diasPagos = 0;
 
             var html = '';
             var cargaDiariaSec = (func.carga_horaria_diaria || 8) * 3600;
@@ -532,7 +551,8 @@
                 var jst = justs.find(j => j.data === dtStr);
                 var bats = (diasMap[dtStr] || {}).batidas || [];
 
-                var p_previsto = isWeekend ? 0 : cargaDiariaSec;
+                // Diaristas não têm jornada obrigatória: sem débito de horas
+                var p_previsto = (func.diarista || isWeekend) ? 0 : cargaDiariaSec;
                 var p_trabalhado = 0;
 
                 if (bats.length >= 2) {
@@ -548,12 +568,14 @@
                 summaries.previsto += p_previsto;
                 summaries.trabalhado += p_trabalhado;
 
-                // Se justificado, paga a diária completa. 
+                // Se justificado, paga a diária completa.
                 // Se não, paga o que trabalhou (até o limite da carga horária).
                 if (jst) {
                     summaries.paidSec += cargaDiariaSec;
-                } else {
+                    if (func.diarista) summaries.diasPagos++;
+                } else if (bats.length >= 2) {
                     summaries.paidSec += Math.min(p_trabalhado, cargaDiariaSec);
+                    if (func.diarista) summaries.diasPagos++;
                 }
 
                 summaries.extraSec += (diff > 0 ? diff : 0);
@@ -635,20 +657,28 @@
             var pagarHoras = parseFloat(document.getElementById('close-pagar-horas').value) || 0;
             var valorOT = parseFloat(document.getElementById('close-valor-ot').value) || 0;
             var descontos = parseFloat(document.getElementById('close-descontos').value) || 0;
-
-            // Salário proporcional: Horas Pagas (Trabalhado + Justificado) * Valor Hora
-            var hourVal = summaries.baseSalary / summaries.horasFechamento;
-            var salProp = (summaries.paidSec / 3600) * hourVal;
-
             var totalOT = pagarHoras * valorOT;
-            var total = salProp + totalOT - descontos;
 
-            document.getElementById('side-prop').textContent = formatCurrency(salProp);
-            document.getElementById('total-final').textContent = formatCurrency(total);
+            if (func.diarista) {
+                var totalDiarias = summaries.diasPagos * (func.valor_diaria || 0);
+                var total = totalDiarias + totalOT - descontos;
+                document.getElementById('side-prop').textContent = summaries.diasPagos + ' dia(s) × ' + formatCurrency(func.valor_diaria || 0);
+                document.getElementById('total-final').textContent = formatCurrency(total);
+            } else {
+                var hourVal = summaries.baseSalary / summaries.horasFechamento;
+                var salProp = (summaries.paidSec / 3600) * hourVal;
+                var total = salProp + totalOT - descontos;
+                document.getElementById('side-prop').textContent = formatCurrency(salProp);
+                document.getElementById('total-final').textContent = formatCurrency(total);
+            }
         }
 
         async function salvar() {
-            if (!confirm("Ao salvar, este período será bloqueado. O saldo final do banco será levado para o próximo período. Confirma?")) return;
+            if (espelhoStatus !== 'aprovado') {
+                window.showToast("O funcionário ainda não aprovou o espelho de ponto. Envie o espelho e aguarde a aprovação antes de finalizar.", "error");
+                return;
+            }
+            if (!await window.showConfirm("Este período será bloqueado e o saldo final do banco de horas será carregado para o próximo período.", "Finalizar e Bloquear Período?")) return;
 
             var quinzena = parseInt(document.getElementById('close-quinzena').value);
             var mes = parseInt(document.getElementById('close-mes').value);
@@ -660,6 +690,10 @@
 
             // Ao pagar horas, elas saem do saldo acumulado do banco
             var saldoFinalBanco = summaries.saldoAcum - pagarHoras;
+
+            var totalLiquido = func.diarista
+                ? (summaries.diasPagos * (func.valor_diaria || 0)) + (pagarHoras * valorOT) - descontos
+                : (summaries.paidSec / 3600 * summaries.baseSalary / summaries.horasFechamento) + (pagarHoras * valorOT) - descontos;
 
             var payload = {
                 filial_pk: window.filialLogada.pk,
@@ -673,7 +707,7 @@
                 saldo_acumulado: saldoFinalBanco,
                 valor_horas_extras: pagarHoras * valorOT,
                 valor_descontos: descontos,
-                total_liquido: (summaries.paidSec / 3600 * summaries.baseSalary / summaries.horasFechamento) + (pagarHoras * valorOT) - descontos,
+                total_liquido: totalLiquido,
                 bloqueado: true,
                 observacoes: obs
             };
@@ -701,9 +735,73 @@
             }
         }
 
+        // Espelho de Ponto
+        function atualizarAlertaEspelho() {
+            var el = document.getElementById('espelho-alert');
+            var styles = {
+                rascunho: '',
+                enviado: 'background:#fffbeb; border:1px solid #fcd34d; color:#92400e; display:flex',
+                aprovado: 'background:#ecfdf5; border:1px solid #10b981; color:#065f46; display:flex',
+                rejeitado: 'background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; display:flex'
+            };
+            var icons = { rascunho: '', enviado: '⏳', aprovado: '✅', rejeitado: '❌' };
+            var msgs = {
+                rascunho: '',
+                enviado: '<strong>Espelho enviado.</strong> Aguardando aprovação do funcionário.',
+                aprovado: '<strong>Espelho aprovado pelo funcionário.</strong> Você pode finalizar o fechamento.',
+                rejeitado: '<strong>Espelho rejeitado pelo funcionário.</strong> Motivo: <em>' + (espelhoObs || '—') + '</em>. Revise o ponto e reenvie.'
+            };
+            el.style.cssText = styles[espelhoStatus] || '';
+            el.innerHTML = espelhoStatus !== 'rascunho' ? icons[espelhoStatus] + ' <span style="margin-left:6px">' + msgs[espelhoStatus] + '</span>' : '';
+        }
+
+        async function enviarEspelho() {
+            if (isBlocked) return;
+            if (!await window.showConfirm("Os dados atuais do período serão salvos e enviados ao funcionário para revisão e aprovação.", "Enviar Espelho para Aprovação?")) return;
+
+            var quinzena = parseInt(document.getElementById('close-quinzena').value);
+            var mes = parseInt(document.getElementById('close-mes').value);
+            var ano = parseInt(document.getElementById('close-ano').value);
+            var pagarHoras = parseFloat(document.getElementById('close-pagar-horas').value) || 0;
+            var valorOT = parseFloat(document.getElementById('close-valor-ot').value) || 0;
+            var descontos = parseFloat(document.getElementById('close-descontos').value) || 0;
+
+            var saldoFinalBanco = summaries.saldoAcum - pagarHoras;
+            var totalLiquido = func.diarista
+                ? (summaries.diasPagos * (func.valor_diaria || 0)) + (pagarHoras * valorOT) - descontos
+                : (summaries.paidSec / 3600 * summaries.baseSalary / summaries.horasFechamento) + (pagarHoras * valorOT) - descontos;
+
+            var payload = {
+                filial_pk: window.filialLogada.pk,
+                funcionario_pk: func.pk,
+                mes, ano, quinzena,
+                salario_base: summaries.baseSalary,
+                horas_previstas: summaries.previsto / 3600,
+                horas_trabalhadas: summaries.trabalhado / 3600,
+                saldo_anterior: summaries.saldoAnt,
+                saldo_mes: summaries.saldoMes,
+                saldo_acumulado: saldoFinalBanco,
+                valor_horas_extras: pagarHoras * valorOT,
+                valor_descontos: descontos,
+                total_liquido: totalLiquido,
+                bloqueado: false,
+                espelho_status: 'enviado',
+                espelho_observacao: null,
+                espelho_aprovado_em: null
+            };
+
+            var { error } = await window.supabase.from('fechamento_ponto').upsert(payload, { onConflict: 'funcionario_pk, mes, ano, quinzena' });
+            if (error) {
+                window.showToast("Erro ao enviar espelho: " + error.message, "error");
+            } else {
+                window.showToast("Espelho enviado para aprovação do funcionário!");
+                carregar();
+            }
+        }
+
         // Justificativas
         async function desbloquear() {
-            if (!confirm("Aviso: Reabrir este período permitirá novas alterações. Tem certeza?")) return;
+            if (!await window.showConfirm("Reabrir este período permitirá novas alterações no fechamento. Esta ação pode impactar saldos futuros.", "Reabrir Período?")) return;
 
             var quinzena = parseInt(document.getElementById('close-quinzena').value);
             var mes = parseInt(document.getElementById('close-mes').value);
@@ -761,6 +859,6 @@
         function getDayName(d) { return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d]; }
 
         init();
-        return { carregar, recalcular, salvar, abrirJustificativa, salvarJustificativa, addDesconto, removeDesconto, desbloquear };
+        return { carregar, recalcular, salvar, abrirJustificativa, salvarJustificativa, addDesconto, removeDesconto, desbloquear, enviarEspelho };
     })();
 </script>

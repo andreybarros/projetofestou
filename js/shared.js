@@ -47,6 +47,38 @@ window.showToast = function (msg, tipo = 'success') {
   setTimeout(() => t.className = '', 3500);
 };
 
+// Modal de Confirmação (substitui confirm() nativo do browser)
+window.showConfirm = function (mensagem, titulo) {
+  return new Promise(function (resolve) {
+    var modal = document.getElementById('confirm-modal-global');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'confirm-modal-global';
+      modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;padding:20px;font-family:DM Sans,sans-serif';
+      modal.innerHTML = '<div style="background:var(--mc,#fff);border-radius:14px;padding:28px 26px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,0.2)">' +
+        '<h3 id="confirm-modal-title" style="font-size:16px;font-weight:700;color:#1e1b4b;margin-bottom:10px"></h3>' +
+        '<p id="confirm-modal-msg" style="font-size:14px;color:#6b7280;line-height:1.5;margin-bottom:22px"></p>' +
+        '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+        '<button id="confirm-modal-cancel" style="padding:9px 18px;border-radius:8px;border:1px solid #c7d2fe;background:#fff;color:#4f46e5;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>' +
+        '<button id="confirm-modal-ok" style="padding:9px 18px;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Confirmar</button>' +
+        '</div></div>';
+      document.body.appendChild(modal);
+    }
+    document.getElementById('confirm-modal-title').textContent = titulo || 'Confirmar';
+    document.getElementById('confirm-modal-msg').textContent = mensagem;
+    modal.style.display = 'flex';
+
+    function fechar(res) {
+      modal.style.display = 'none';
+      document.getElementById('confirm-modal-ok').onclick = null;
+      document.getElementById('confirm-modal-cancel').onclick = null;
+      resolve(res);
+    }
+    document.getElementById('confirm-modal-ok').onclick = function () { fechar(true); };
+    document.getElementById('confirm-modal-cancel').onclick = function () { fechar(false); };
+  });
+};
+
 // Carregador de Módulos (Fragments)
 window.carregarModulo = window.ir = function (arquivo, navId) {
   const sidebar = document.getElementById('sidebar');

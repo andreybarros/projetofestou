@@ -275,6 +275,8 @@ ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS carga_horaria_diaria numeric(4
 ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS minutos_intervalo int DEFAULT 60;
 ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS saldo_inicial_banco numeric(10,2) DEFAULT 0;
 ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS horas_fechamento numeric(10,2) DEFAULT 120;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS diarista boolean DEFAULT false;
+ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS valor_diaria numeric(12,2) DEFAULT 0;
 
 -- 17.6 Atualizações para Fechamento (Banco de Horas e Quinzena)
 ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS saldo_anterior numeric(10,2) DEFAULT 0;
@@ -287,6 +289,14 @@ ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS quinzena int DEFAULT 1;
 ALTER TABLE fechamento_ponto DROP CONSTRAINT IF EXISTS fechamento_ponto_funcionario_pk_mes_ano_key;
 ALTER TABLE fechamento_ponto DROP CONSTRAINT IF EXISTS fechamento_ponto_funcionario_pk_mes_ano_quinzena_key;
 ALTER TABLE fechamento_ponto ADD CONSTRAINT fechamento_ponto_funcionario_pk_mes_ano_quinzena_key UNIQUE(funcionario_pk, mes, ano, quinzena);
+
+-- 18. Espelho de Ponto — aprovação pelo funcionário
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS espelho_status text DEFAULT 'rascunho'; -- 'rascunho', 'enviado', 'aprovado', 'rejeitado'
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS espelho_observacao text;
+ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS espelho_aprovado_em timestamptz;
+
+-- 18.1 Permissão de acesso ao Espelho de Ponto no cadastro de operadores
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_espelho_ponto boolean DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
 

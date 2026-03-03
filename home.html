@@ -240,36 +240,73 @@
                 <p>Controle de contas bancárias e extratos.</p>
             </div>
         </div>
+
+        <!-- Vendedores -->
+        <div class="dash-card" id="dash-vendedor" onclick="ir('cadastro_vendedor.html','nav-vendedor')"
+            style="display:none">
+            <div class="dash-icon">🧑‍💼</div>
+            <div class="dash-info">
+                <h3>Vendedores</h3>
+                <p>Cadastre e gerencie os vendedores vinculados ao PDV.</p>
+            </div>
+        </div>
+
+        <!-- Fechamento de Caixa -->
+        <div class="dash-card" id="dash-fechamento" onclick="ir('fechamento_caixa.html','nav-fechamento')"
+            style="display:none">
+            <div class="dash-icon">🏧</div>
+            <div class="dash-info">
+                <h3>Fechamento de Caixa</h3>
+                <p>Realize o fechamento diário e controle o caixa.</p>
+            </div>
+        </div>
+
+        <!-- Funcionários -->
+        <div class="dash-card" id="dash-funcionario" onclick="ir('cadastro_funcionario.html','nav-funcionario')"
+            style="display:none">
+            <div class="dash-icon">👥</div>
+            <div class="dash-info">
+                <h3>Funcionários</h3>
+                <p>Cadastre colaboradores, salários e dados de contrato.</p>
+            </div>
+        </div>
+
+        <!-- Ponto Eletrônico -->
+        <div class="dash-card" id="dash-ponto" onclick="ir('ponto.html','nav-ponto')" style="display:none">
+            <div class="dash-icon">⏰</div>
+            <div class="dash-info">
+                <h3>Ponto Eletrônico</h3>
+                <p>Registre e consulte as batidas de ponto dos funcionários.</p>
+            </div>
+        </div>
+
+        <!-- Meus Holerites -->
+        <div class="dash-card" id="dash-holerites" onclick="ir('holerites.html','nav-holerites')" style="display:none">
+            <div class="dash-icon">📄</div>
+            <div class="dash-info">
+                <h3>Meus Holerites</h3>
+                <p>Consulte seus contracheques e comprovantes de pagamento.</p>
+            </div>
+        </div>
+
+        <!-- Espelho de Ponto -->
+        <div class="dash-card" id="dash-espelho" onclick="ir('espelho_ponto.html','nav-espelho')" style="display:none">
+            <div class="dash-icon">🪞</div>
+            <div class="dash-info">
+                <h3>Espelho de Ponto</h3>
+                <p>Visualize e aprove o espelho de ponto enviado pelo administrador.</p>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
     (function () {
-        const op = window.operadorLogado;
-        if (!op) return;
-        const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'flex' : 'none'; };
-        const mods = window._modulosFilial || new Set();
-
-        const temClientes = mods.has('clientes') && (op.admin || op.acesso_clientes);
-        const temDespesas = mods.has('despesas') && (op.admin || op.acesso_despesas);
-        const temFinanceiro = mods.has('financeiro') && (op.admin || op.acesso_financeiro);
-        const temReceitas = mods.has('receitas') && (op.admin || op.acesso_pdv || op.acesso_receitas);
-        const temHist = mods.has('historico') && (op.admin || op.acesso_pdv || op.acesso_historico);
-        const temCat = mods.has('categorias') && (op.admin || op.acesso_produtos || op.acesso_categorias);
-
-        show('dash-produtos', mods.has('produtos') && (op.admin || op.acesso_produtos));
-        show('dash-armazem', mods.has('armazens') && (op.admin || op.acesso_armazens));
-        show('dash-agenda', mods.has('agenda') && (op.admin || op.acesso_agenda));
-        show('dash-separacao', mods.has('separacao') && (op.admin || op.acesso_separacao || op.acesso_criar_ordem));
-        show('dash-clientes', temClientes);
-        show('dash-fornecedores', temClientes);
-        show('dash-categoria', temCat);
-        show('dash-filiais', op.admin);
-        show('dash-operador', op.admin);
-        show('dash-pdv', mods.has('pdv') && (op.admin || op.acesso_pdv));
-        show('dash-historico', temHist);
-        show('dash-receitas', temReceitas);
-        show('dash-despesas', temDespesas);
-        show('dash-financeiro', temFinanceiro);
+        // Espelha automaticamente: se nav-X está visível no sidebar, dash-X aparece no home.
+        // Para nova rotina: basta adicionar o card com id="dash-{nome}" — visibilidade é automática.
+        document.querySelectorAll('[id^="nav-"]').forEach(function (btn) {
+            var card = document.getElementById('dash-' + btn.id.replace('nav-', ''));
+            if (card) card.style.display = btn.style.display !== 'none' ? 'flex' : 'none';
+        });
     })();
 </script>

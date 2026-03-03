@@ -256,6 +256,7 @@
     .mbtn-manual:hover { background:#d1fae5 }
     .manual-badge { display:inline-block; background:#fef9c3; color:#713f12; border-radius:4px; padding:1px 5px; font-size:9px; font-weight:700; margin-left:4px; vertical-align:middle }
     .man-inp { font-size:14px !important; font-weight:500 !important; padding:10px !important; text-align:left !important; letter-spacing:0 !important }
+    .btn-punch:disabled { opacity:0.35; cursor:not-allowed; transform:none !important; filter:grayscale(.4) }
 
     @keyframes mfadeUp {
         from {
@@ -356,6 +357,7 @@
                 document.getElementById('ponto-matricula').value = window.operadorLogado.matricula;
             }
             obterLocalizacao();
+            atualizarBotoes([]);
             verificarHistorico();
             if (window.operadorLogado && window.operadorLogado.admin) {
                 var btnM = document.getElementById('btn-manual');
@@ -441,9 +443,11 @@
 
             if (error || !data || data.length === 0) {
                 hist.innerHTML = '<p style="color:var(--mmuted);font-size:12px;text-align:center">Nenhuma batida registrada hoje.</p>';
+                atualizarBotoes([]);
                 return;
             }
 
+            atualizarBotoes(data);
             hist.innerHTML = data.map(p => {
                 var tipoBase = p.tipo.replace('_manual', '');
                 var cls = tipoBase === 'entrada' ? 'ptype-entrada' : 'ptype-saida';
@@ -458,12 +462,37 @@
             }).join('');
         }
 
+        function atualizarBotoes(punches) {
+            var btnIn = document.getElementById('btn-ponto-in');
+            var btnOut = document.getElementById('btn-ponto-out');
+            if (!btnIn || !btnOut) return;
+            if (!punches || punches.length === 0) {
+                // Sem batidas hoje: só pode entrar
+                btnIn.disabled = false;
+                btnOut.disabled = true;
+                return;
+            }
+            var ultimoTipo = punches[0].tipo.replace('_manual', '');
+            if (ultimoTipo === 'entrada') {
+                // Última foi entrada: só pode sair
+                btnIn.disabled = true;
+                btnOut.disabled = false;
+            } else {
+                // Última foi saída: só pode entrar
+                btnIn.disabled = false;
+                btnOut.disabled = true;
+            }
+        }
+
         async function carregarFuncionarios() {
             var sel = document.getElementById('man-func');
             if (!sel) return;
             var { data, error } = await window.supabase.from('funcionarios').select('pk,nome,matricula').eq('ativo', true).order('nome');
             if (error || !data) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; return; }
-            sel.innerHTML = data.map(function (f) {
+            var ownMat = (window.operadorLogado && window.operadorLogado.matricula) ? window.operadorLogado.matricula : null;
+            var lista = ownMat ? data.filter(function (f) { return f.matricula !== ownMat; }) : data;
+            if (!lista.length) { sel.innerHTML = '<option value="">Nenhum funcionário disponível</option>'; return; }
+            sel.innerHTML = '<option value="">Selecione...</option>' + lista.map(function (f) {
                 return '<option value="' + f.pk + '" data-mat="' + (f.matricula || '') + '">' + f.nome + (f.matricula ? ' (' + f.matricula + ')' : '') + '</option>';
             }).join('');
         }
@@ -489,6 +518,8 @@
             var hora = document.getElementById('man-hora').value;
             if (!funcPk) { window.showToast('Selecione o funcionário.', 'error'); return; }
             if (!data || !hora) { window.showToast('Informe data e hora.', 'error'); return; }
+            var ownMat = (window.operadorLogado && window.operadorLogado.matricula) ? window.operadorLogado.matricula : null;
+            if (ownMat && mat === ownMat) { window.showToast('Você não pode inserir uma batida manual para si mesmo.', 'error'); return; }
             var payload = {
                 filial_pk: window.filialLogada ? window.filialLogada.pk : null,
                 funcionario_pk: funcPk,

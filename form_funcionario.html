@@ -202,8 +202,29 @@
                 <input type="text" id="func-matricula" placeholder="Ex: FUNC-001">
             </div>
             <div class="mform-group">
+                <label>Tipo de Contrato</label>
+                <div style="display:flex;gap:0;border:1.5px solid var(--mborder);border-radius:8px;overflow:hidden;margin-top:2px">
+                    <button type="button" id="btn-mensalista" onclick="setTipoContrato(false)"
+                        style="flex:1;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;border:none;cursor:pointer;transition:all .15s;background:#4f46e5;color:#fff">
+                        Mensalista
+                    </button>
+                    <button type="button" id="btn-diarista" onclick="setTipoContrato(true)"
+                        style="flex:1;padding:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;border:none;cursor:pointer;transition:all .15s;background:var(--mc2);color:var(--mmuted)">
+                        Diarista
+                    </button>
+                </div>
+                <input type="hidden" id="func-diarista" value="false">
+            </div>
+        </div>
+
+        <div class="mform-row">
+            <div class="mform-group" id="grp-salario">
                 <label>Salário Mensal (R$)</label>
                 <input type="number" step="0.01" id="func-salario" placeholder="0.00">
+            </div>
+            <div class="mform-group" id="grp-diaria" style="display:none">
+                <label>Valor da Diária (R$)</label>
+                <input type="number" step="0.01" id="func-valor-diaria" placeholder="0.00">
             </div>
         </div>
 
@@ -225,7 +246,7 @@
             </div>
         </div>
 
-        <div class="mform-row">
+        <div class="mform-row" style="grid-template-columns: 1fr 1fr 1fr">
             <div class="mform-group">
                 <label>Carga Horária Diária (h)</label>
                 <input type="number" step="0.5" id="func-carga" value="8.0" placeholder="Ex: 8.0">
@@ -266,6 +287,23 @@
 </div>
 
 <script>
+    function setTipoContrato(isDiarista) {
+        document.getElementById('func-diarista').value = isDiarista ? 'true' : 'false';
+        var btnM = document.getElementById('btn-mensalista');
+        var btnD = document.getElementById('btn-diarista');
+        if (isDiarista) {
+            btnM.style.background = 'var(--mc2)'; btnM.style.color = 'var(--mmuted)';
+            btnD.style.background = '#4f46e5'; btnD.style.color = '#fff';
+            document.getElementById('grp-salario').style.display = 'none';
+            document.getElementById('grp-diaria').style.display = '';
+        } else {
+            btnM.style.background = '#4f46e5'; btnM.style.color = '#fff';
+            btnD.style.background = 'var(--mc2)'; btnD.style.color = 'var(--mmuted)';
+            document.getElementById('grp-salario').style.display = '';
+            document.getElementById('grp-diaria').style.display = 'none';
+        }
+    }
+
     (async function initFormFunc() {
         // Carrega filiais
         const { data } = await window.supabase.from('filiais').select('pk,codigo,nome').eq('ativo', true).order('codigo');
@@ -289,15 +327,17 @@
             document.getElementById('func-nascimento').value = d.data_nascimento || '';
             document.getElementById('func-matricula').value = d.matricula || '';
             document.getElementById('func-salario').value = d.salario_mensal || 0;
+            document.getElementById('func-valor-diaria').value = d.valor_diaria || 0;
             document.getElementById('func-filial').value = d.filial_pk || '';
             document.getElementById('func-entrada').value = d.hora_entrada ? d.hora_entrada.substring(0, 5) : '';
             document.getElementById('func-saida').value = d.hora_saida ? d.hora_saida.substring(0, 5) : '';
             document.getElementById('func-carga').value = d.carga_horaria_diaria || 8.0;
             document.getElementById('func-intervalo').value = d.minutos_intervalo || 60;
-            document.getElementById('func-horas-fechamento').value = d.horas_fechamento || 120;
+            document.getElementById('func-horas-fechamento').value = (d.horas_fechamento != null && d.horas_fechamento !== '') ? d.horas_fechamento : 120;
             document.getElementById('func-saldo-inicial').value = d.saldo_inicial_banco || 0;
             document.getElementById('func-mae').value = d.nome_mae || '';
             document.getElementById('func-pai').value = d.nome_pai || '';
+            setTipoContrato(d.diarista === true);
         } else {
             window._editFuncPk = null;
             if (window.filialLogada) document.getElementById('func-filial').value = window.filialLogada.pk;
@@ -305,18 +345,22 @@
     })();
 
     async function salvarFuncionario() {
+        const isDiarista = document.getElementById('func-diarista').value === 'true';
+        const horasFechamento = parseFloat(document.getElementById('func-horas-fechamento').value);
         const payload = {
             nome: document.getElementById('func-nome').value.trim(),
             cpf: document.getElementById('func-cpf').value.trim(),
             data_nascimento: document.getElementById('func-nascimento').value || null,
             matricula: document.getElementById('func-matricula').value.trim(),
-            salario_mensal: parseFloat(document.getElementById('func-salario').value) || 0,
+            salario_mensal: isDiarista ? 0 : (parseFloat(document.getElementById('func-salario').value) || 0),
+            diarista: isDiarista,
+            valor_diaria: isDiarista ? (parseFloat(document.getElementById('func-valor-diaria').value) || 0) : 0,
             filial_pk: parseInt(document.getElementById('func-filial').value) || null,
             hora_entrada: document.getElementById('func-entrada').value || null,
             hora_saida: document.getElementById('func-saida').value || null,
             carga_horaria_diaria: parseFloat(document.getElementById('func-carga').value) || 0,
             minutos_intervalo: parseInt(document.getElementById('func-intervalo').value) || 0,
-            horas_fechamento: parseFloat(document.getElementById('func-horas-fechamento').value) || 120,
+            horas_fechamento: isNaN(horasFechamento) ? 120 : horasFechamento,
             saldo_inicial_banco: parseFloat(document.getElementById('func-saldo-inicial').value) || 0,
             nome_mae: document.getElementById('func-mae').value.trim(),
             nome_pai: document.getElementById('func-pai').value.trim(),
@@ -324,6 +368,7 @@
 
         if (!payload.nome) { window.showToast('O nome é obrigatório.', 'error'); return; }
         if (!payload.filial_pk) { window.showToast('Selecione uma filial.', 'error'); return; }
+        if (!isDiarista && payload.horas_fechamento <= 0) { window.showToast('Horas do período deve ser maior que zero para mensalistas.', 'error'); return; }
 
         const btn = document.getElementById('btn-salvar-func');
         btn.disabled = true;
@@ -337,7 +382,8 @@
 
         btn.disabled = false;
         if (res.error) {
-            window.showToast('Erro: ' + res.error.message, 'error');
+            window.showToast('Erro ao salvar: ' + res.error.message, 'error');
+            console.error('Supabase error:', res.error);
         } else {
             window.showToast(window._editFuncPk ? 'Funcionário atualizado!' : 'Funcionário cadastrado!');
             carregarModulo('cadastro_funcionario.html', 'nav-funcionario');

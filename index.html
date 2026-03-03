@@ -766,6 +766,8 @@
             class="nav-icon">⏰</span><span class="nav-text">Ponto Eletrônico</span></button>
         <button class="nav-btn" id="nav-holerites" onclick="ir('holerites.html','nav-holerites')"
           style="display:none"><span class="nav-icon">📄</span><span class="nav-text">Meus Holerites</span></button>
+        <button class="nav-btn" id="nav-espelho" onclick="ir('espelho_ponto.html','nav-espelho')"
+          style="display:none"><span class="nav-icon">🪞</span><span class="nav-text">Espelho de Ponto</span></button>
 
         <span class="sidebar-section" id="sec-operacao" style="display:none">Operação</span>
         <button class="nav-btn" id="nav-separacao" onclick="ir('cadastro_separacao.html','nav-separacao')"
@@ -935,7 +937,8 @@
       show('nav-funcionario', temFunc);
       show('nav-ponto', temPonto);
       show('nav-holerites', op.matricula ? true : false); // Only employees have access to their own Holerite
-      show('sec-rh', temFunc || temPonto || op.matricula);
+      show('nav-espelho', op.acesso_espelho_ponto || false);
+      show('sec-rh', temFunc || temPonto || op.matricula || op.acesso_espelho_ponto);
 
       show('nav-receitas', temReceitas);
       show('sec-pdv', temDash || temPdv || temHist || temReceitas);
@@ -949,7 +952,7 @@
       show('nav-despesas', temDespesas);
       show('nav-filiais', op.admin);
       show('nav-operador', op.admin);
-      show('nav-fechamento', op.admin || op.acesso_fechamento);
+      show('nav-fechamento', mods.has('fechamento') && (op.admin || op.acesso_fechamento));
     }
 
     function logout() {

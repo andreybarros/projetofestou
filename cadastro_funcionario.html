@@ -206,6 +206,16 @@
         font-size: 11px;
         font-weight: 600
     }
+
+    .badge-diarista {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600
+    }
 </style>
 
 <div class="mod">
@@ -270,12 +280,16 @@
 
             tbody.innerHTML = lista.map(v => {
                 var badge = v.ativo ? '<span class="badge-at">Ativo</span>' : '<span class="badge-in">Inativo</span>';
+                var badgeDiarista = v.diarista ? ' <span class="badge-diarista">Diarista</span>' : '';
+                var salarioTxt = v.diarista
+                    ? 'R$ ' + (v.valor_diaria || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '/dia'
+                    : 'R$ ' + (v.salario_mensal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
                 var btnFechamento = window._acessoFechamentoPonto ? `<button class="mbtn-edit" style="background:#fff7ed;color:#9a3412;border-color:#ffedd5" onclick="FuncMod.fecharMes(${v.pk})">Fechamento</button>` : '';
 
                 return '<tr>' +
-                    '<td><strong>' + v.nome + '</strong><br><small style="color:var(--mmuted)">' + (v.matricula || 'Sem matrícula') + '</small></td>' +
+                    '<td><strong>' + v.nome + '</strong>' + badgeDiarista + '<br><small style="color:var(--mmuted)">' + (v.matricula || 'Sem matrícula') + '</small></td>' +
                     '<td>' + (v.cpf || '—') + '</td>' +
-                    '<td>R$ ' + (v.salario_mensal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</td>' +
+                    '<td>' + salarioTxt + '</td>' +
                     '<td>' + badge + '</td>' +
                     '<td>' +
                     '<div class="acoes-cell">' +
