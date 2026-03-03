@@ -217,6 +217,13 @@
         color: var(--mtext2);
     }
 
+    .mbtn-success { background:#ecfdf5; color:#065f46; border:1.5px solid #a7f3d0 }
+    .mbtn-success:hover { background:#d1fae5 }
+    .manual-badge { display:inline-block; background:#fef9c3; color:#713f12; border-radius:3px; padding:1px 4px; font-size:9px; font-weight:700; margin-left:3px; vertical-align:middle }
+    .msel-sm { width:100%; background:var(--mc2); border:1px solid var(--mborder); border-radius:6px; color:var(--mtext2); font-family:'DM Sans',sans-serif; font-size:13px; padding:7px 10px; outline:none; appearance:none }
+    .msel-sm:focus { border-color:#4f46e5 }
+    .nb-inp { padding:7px 10px; background:var(--mc2); border:1px solid var(--mborder); border-radius:6px; color:var(--mtext2); font-family:'DM Sans',sans-serif; font-size:13px; width:100% }
+
     @keyframes mfadeUp {
         from {
             opacity: 0;
@@ -236,8 +243,10 @@
             <h2 id="hist-emp-name">Histórico de Ponto</h2>
             <p id="hist-emp-subtitle">Selecine um mês para visualizar o histórico</p>
         </div>
-        <button class="mbtn mbtn-ghost" onclick="carregarModulo('cadastro_funcionario.html','nav-funcionario')">←
-            Voltar</button>
+        <div style="display:flex;gap:8px;align-items:center">
+            <button class="mbtn mbtn-success" id="btn-add-batida" onclick="HistPonto.adicionarBatida()" style="display:none">+ Batida Manual</button>
+            <button class="mbtn mbtn-ghost" onclick="carregarModulo('cadastro_funcionario.html','nav-funcionario')">← Voltar</button>
+        </div>
     </div>
 
     <div class="calendar-container">
@@ -292,8 +301,11 @@
 
             preencherSelects();
             initMap();
-            // Pequeno delay para garantir que os selects tenham valores lidos corretamente
             setTimeout(() => carregar(), 100);
+            if (window.operadorLogado && window.operadorLogado.admin) {
+                var btnAdd = document.getElementById('btn-add-batida');
+                if (btnAdd) btnAdd.style.display = '';
+            }
         }
 
         function preencherSelects() {
@@ -370,8 +382,9 @@
 
                 batidasDia.forEach(p => {
                     var pdiv = document.createElement('div');
-                    pdiv.className = `punch-card punch-${p.tipo}`;
-                    pdiv.innerHTML = `<span>${p.tipo === 'entrada' ? 'ENT' : 'SAÍ'}</span> <strong>${p.hora.substring(0, 5)}</strong>`;
+                    var tipoBase = p.tipo.replace('_manual', '');
+                    pdiv.className = `punch-card punch-${tipoBase}`;
+                    pdiv.innerHTML = `<span>${tipoBase === 'entrada' ? 'ENT' : 'SAÍ'}</span> <strong>${p.hora.substring(0, 5)}</strong>${p.tipo.includes('_manual') ? '<span class="manual-badge">M</span>' : ''}`;
                     pdiv.onclick = (e) => { e.stopPropagation(); verDetalhes(p); };
                     div.appendChild(pdiv);
                 });
@@ -388,10 +401,11 @@
             view.innerHTML = `
                 <h3>Detalhes da Batida</h3>
                 <div style="font-size: 13px; line-height: 1.6;">
-                    <p><strong>Tipo:</strong> ${p.tipo.toUpperCase()}</p>
+                    <p><strong>Tipo:</strong> ${p.tipo.replace('_manual', '').toUpperCase()}</p>
                     <p><strong>Data:</strong> ${new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
                     <p><strong>Hora:</strong> ${p.hora.substring(0, 5)}</p>
                     <p><strong>GPS:</strong> ${p.latitude ? p.latitude.toFixed(6) + ', ' + p.longitude.toFixed(6) : 'Indisponível'}</p>
+                    ${p.tipo.includes('_manual') ? `<p style="background:#fef9c3;color:#713f12;border-radius:5px;padding:5px 8px;font-size:12px;margin-top:6px">⚠️ Batida inserida manualmente</p>` : ''}
                 </div>
                 ${isAdmin ? `
                 <div class="mdivider" style="margin: 15px 0; border-top:1px solid var(--mborder)"></div>
@@ -437,7 +451,62 @@
             }
         }
 
+        function adicionarBatida() {
+            var view = document.getElementById('details-view');
+            var hoje = new Date().toLocaleDateString('en-CA');
+            var horaAtual = new Date().toLocaleTimeString('pt-BR', { hour12: false }).substring(0, 5);
+            view.innerHTML = `
+                <h3>Adicionar Batida Manual</h3>
+                <p style="font-size:12px;color:var(--mmuted);margin-bottom:12px">Funcionário: <strong>${func.nome}</strong></p>
+                <div class="edit-form-group">
+                    <label>Tipo</label>
+                    <select id="nb-tipo" class="msel-sm">
+                        <option value="entrada">Entrada</option>
+                        <option value="saida">Saída</option>
+                    </select>
+                </div>
+                <div class="edit-form-group">
+                    <label>Data</label>
+                    <input type="date" id="nb-data" value="${hoje}" class="nb-inp">
+                </div>
+                <div class="edit-form-group">
+                    <label>Hora</label>
+                    <input type="time" id="nb-hora" value="${horaAtual}" class="nb-inp">
+                </div>
+                <button class="mbtn mbtn-primary" style="width:100%;margin-top:10px" onclick="HistPonto.salvarNovaBatida()">✓ Inserir Batida</button>
+                <button class="mbtn mbtn-ghost" style="width:100%;margin-top:8px" onclick="HistPonto.cancelarNovaBatida()">Cancelar</button>
+            `;
+        }
+
+        async function salvarNovaBatida() {
+            var tipo = document.getElementById('nb-tipo').value;
+            var data = document.getElementById('nb-data').value;
+            var hora = document.getElementById('nb-hora').value;
+            if (!data || !hora) { window.showToast('Informe data e hora.', 'error'); return; }
+            var payload = {
+                filial_pk: window.filialLogada ? window.filialLogada.pk : null,
+                funcionario_pk: func.pk,
+                matricula: func.matricula || '',
+                tipo: tipo + '_manual',
+                data: data,
+                hora: hora + ':00',
+                latitude: null,
+                longitude: null
+            };
+            var { error } = await window.supabase.from('registro_ponto').insert([payload]);
+            if (error) { window.showToast('Erro ao inserir: ' + error.message, 'error'); }
+            else {
+                window.showToast('Batida inserida com sucesso!');
+                document.getElementById('details-view').innerHTML = '<h3>Detalhes da Batida</h3><p style="text-align:center;margin-top:40px;font-size:13px;color:var(--mmuted)">Selecione uma batida.</p>';
+                carregar();
+            }
+        }
+
+        function cancelarNovaBatida() {
+            document.getElementById('details-view').innerHTML = '<h3>Detalhes da Batida</h3><p style="text-align:center;margin-top:40px;font-size:13px;color:var(--mmuted)">Selecione uma batida no calendário para ver os detalhes.</p>';
+        }
+
         init();
-        return { carregar, salvarEdicao, excluirBatida };
+        return { carregar, salvarEdicao, excluirBatida, adicionarBatida, salvarNovaBatida, cancelarNovaBatida };
     })();
 </script>

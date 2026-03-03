@@ -248,6 +248,15 @@
         color: var(--mtext2)
     }
 
+    .manual-card { max-width:500px; margin-top:0 }
+    .msel { width:100%; background:var(--mc2); border:1.5px solid var(--mborder); border-radius:8px; color:var(--mtext2); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; padding:10px 12px; outline:none; transition:border-color .2s; cursor:pointer; appearance:none }
+    .msel:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.1) }
+    .mform-row { display:grid; grid-template-columns:1fr 1fr; gap:12px }
+    .mbtn-manual { background:#ecfdf5; color:#065f46; border:1.5px solid #a7f3d0 }
+    .mbtn-manual:hover { background:#d1fae5 }
+    .manual-badge { display:inline-block; background:#fef9c3; color:#713f12; border-radius:4px; padding:1px 5px; font-size:9px; font-weight:700; margin-left:4px; vertical-align:middle }
+    .man-inp { font-size:14px !important; font-weight:500 !important; padding:10px !important; text-align:left !important; letter-spacing:0 !important }
+
     @keyframes mfadeUp {
         from {
             opacity: 0;
@@ -267,6 +276,7 @@
             <h2>Ponto Eletrônico</h2>
             <p>Registre sua entrada e saída com geolocalização</p>
         </div>
+        <button class="mbtn mbtn-manual" id="btn-manual" onclick="PontoMod.toggleManual()" style="display:none">+ Inserir Manual</button>
     </div>
 
     <div class="mform-card">
@@ -307,6 +317,35 @@
     </div>
 </div>
 
+<div class="mform-card manual-card" id="manual-card" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:14px;font-weight:700;color:var(--mtext2)">Inserir Batida Manual</span>
+        <button class="mbtn" style="padding:4px 10px;font-size:13px;background:var(--mc2);border:1px solid var(--mborder);color:var(--mtext2)" onclick="PontoMod.toggleManual()">× Fechar</button>
+    </div>
+    <div class="mform-group">
+        <label>Funcionário</label>
+        <select id="man-func" class="msel"><option value="">Selecione...</option></select>
+    </div>
+    <div class="mform-row">
+        <div class="mform-group">
+            <label>Tipo</label>
+            <select id="man-tipo" class="msel">
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+            </select>
+        </div>
+        <div class="mform-group">
+            <label>Data</label>
+            <input type="date" id="man-data" class="man-inp">
+        </div>
+    </div>
+    <div class="mform-group">
+        <label>Hora</label>
+        <input type="time" id="man-hora" class="man-inp">
+    </div>
+    <button class="mbtn mbtn-primary" style="width:100%;margin-top:4px" onclick="PontoMod.inserirManual()">✓ Inserir Batida</button>
+</div>
+
 <script>
     window.PontoMod = (function () {
         var geo = { lat: null, lng: null };
@@ -318,6 +357,10 @@
             }
             obterLocalizacao();
             verificarHistorico();
+            if (window.operadorLogado && window.operadorLogado.admin) {
+                var btnM = document.getElementById('btn-manual');
+                if (btnM) btnM.style.display = '';
+            }
         }
 
         function obterLocalizacao() {
@@ -402,19 +445,71 @@
             }
 
             hist.innerHTML = data.map(p => {
-                var cls = p.tipo === 'entrada' ? 'ptype-entrada' : 'ptype-saida';
+                var tipoBase = p.tipo.replace('_manual', '');
+                var cls = tipoBase === 'entrada' ? 'ptype-entrada' : 'ptype-saida';
+                var badge = p.tipo.includes('_manual') ? '<span class="manual-badge">MANUAL</span>' : '';
                 return '<div class="punch-item">' +
                     '<div>' +
-                    '<span class="punch-type ' + cls + '">' + p.tipo.toUpperCase() + '</span>' +
+                    '<span class="punch-type ' + cls + '">' + tipoBase.toUpperCase() + '</span>' +
                     '<div style="font-size:12px;margin-top:4px;color:var(--mmuted)">' + p.funcionarios.nome + '</div>' +
                     '</div>' +
-                    '<div class="punch-time">' + p.hora.substring(0, 5) + '</div>' +
+                    '<div class="punch-time">' + p.hora.substring(0, 5) + badge + '</div>' +
                     '</div>';
             }).join('');
         }
 
+        async function carregarFuncionarios() {
+            var sel = document.getElementById('man-func');
+            if (!sel) return;
+            var { data, error } = await window.supabase.from('funcionarios').select('pk,nome,matricula').eq('ativo', true).order('nome');
+            if (error || !data) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; return; }
+            sel.innerHTML = data.map(function (f) {
+                return '<option value="' + f.pk + '" data-mat="' + (f.matricula || '') + '">' + f.nome + (f.matricula ? ' (' + f.matricula + ')' : '') + '</option>';
+            }).join('');
+        }
+
+        function toggleManual() {
+            var card = document.getElementById('manual-card');
+            var isHidden = card.style.display === 'none';
+            card.style.display = isHidden ? 'block' : 'none';
+            if (isHidden) {
+                carregarFuncionarios();
+                var now = new Date();
+                document.getElementById('man-data').value = now.toLocaleDateString('en-CA');
+                document.getElementById('man-hora').value = now.toLocaleTimeString('pt-BR', { hour12: false }).substring(0, 5);
+            }
+        }
+
+        async function inserirManual() {
+            var funcSel = document.getElementById('man-func');
+            var funcPk = funcSel ? funcSel.value : '';
+            var mat = (funcSel && funcSel.options[funcSel.selectedIndex]) ? (funcSel.options[funcSel.selectedIndex].dataset.mat || '') : '';
+            var tipo = document.getElementById('man-tipo').value;
+            var data = document.getElementById('man-data').value;
+            var hora = document.getElementById('man-hora').value;
+            if (!funcPk) { window.showToast('Selecione o funcionário.', 'error'); return; }
+            if (!data || !hora) { window.showToast('Informe data e hora.', 'error'); return; }
+            var payload = {
+                filial_pk: window.filialLogada ? window.filialLogada.pk : null,
+                funcionario_pk: funcPk,
+                matricula: mat,
+                tipo: tipo + '_manual',
+                data: data,
+                hora: hora + ':00',
+                latitude: null,
+                longitude: null
+            };
+            var { error } = await window.supabase.from('registro_ponto').insert([payload]);
+            if (error) { window.showToast('Erro ao inserir: ' + error.message, 'error'); }
+            else {
+                window.showToast('Batida inserida com sucesso!');
+                document.getElementById('manual-card').style.display = 'none';
+                verificarHistorico();
+            }
+        }
+
         init();
-        return { registrarPonto };
+        return { registrarPonto, toggleManual, inserirManual };
     })();
 
     // Atalho global para os botões do HTML
