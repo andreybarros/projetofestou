@@ -1505,7 +1505,7 @@
             <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
           </svg>
           <input class="pdv-search-inp" id="pdv-busca" type="text"
-            placeholder="Buscar produto... (ex: 4*balão = 4 unidades)" oninput="PDV.filtrar(this.value)">
+            placeholder="Buscar por código, código de barras ou descrição..." oninput="PDV.filtrar(this.value)">
         </div>
       </div>
       <div class="pdv-produtos-grid" id="pdv-grid">
@@ -1771,21 +1771,26 @@
     }
 
     function filtrar(t) {
-      t = (t || '');
+      t = (t || '').trim();
 
       // Detecta prefixo de quantidade: ex. "4*balão" ou "4*" → pendingQtd = 4
       var qtdMatch = t.match(/^\s*(\d+)\s*\*/);
       if (qtdMatch) {
         pendingQtd = parseInt(qtdMatch[1]) || 1;
-        t = t.slice(qtdMatch[0].length);
+        t = t.slice(qtdMatch[0].length).trim();
       } else {
         pendingQtd = 1;
       }
 
-      t = t.toLowerCase();
+      var removeAcentos = function (str) {
+        if (!str) return '';
+        return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      };
+
+      var tNorm = removeAcentos(t);
 
       // Se digitou mais rapido (scanner) e encontrou exato codigo barras, adiciona e limpa
-      var exatoStr = t.trim();
+      var exatoStr = t.toLowerCase();
       if (exatoStr.length > 2) {
         var exato = todos.find(function (p) { return (p.codigo_barras || '').toLowerCase() === exatoStr; });
         if (exato) {
@@ -1797,11 +1802,14 @@
         }
       }
 
-      filtrado = t ? todos.filter(function (p) {
-        return (p.codigo || '').toLowerCase().includes(t) ||
-          (p.codigo_barras || '').toLowerCase().includes(t) ||
-          (p.descricao || '').toLowerCase().includes(t);
+      filtrado = tNorm ? todos.filter(function (p) {
+        var c = removeAcentos(p.codigo || '');
+        var cb = removeAcentos(p.codigo_barras || '');
+        var d = removeAcentos(p.descricao || '');
+
+        return c.includes(tNorm) || cb.includes(tNorm) || d.includes(tNorm);
       }) : todos.slice();
+
       renderGrid(filtrado);
     }
 
