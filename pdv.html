@@ -1674,12 +1674,177 @@
       <button class="btn-mclose" onclick="PDV.fecharBuscaCliente()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="pesquisa-cliente-wrap">
+      <div class="pesquisa-cliente-wrap" style="display:flex;gap:8px;align-items:center">
         <input type="text" id="inp-busca-cli" placeholder="Digite o nome ou telefone..."
-          oninput="PDV.filtrarClientes(this.value)">
+          oninput="PDV.filtrarClientes(this.value)" style="flex:1">
+        <button onclick="PDV.toggleFormNovoCli()" id="btn-toggle-novo-cli"
+          style="flex-shrink:0;padding:8px 14px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">
+          + Novo Cliente
+        </button>
       </div>
+
+      <!-- Formulário completo de cadastro -->
+      <div id="form-novo-cli"
+        style="display:none;margin-top:12px;padding:16px;background:var(--mc2);border-radius:10px;border:1.5px solid #a5b4fc;overflow-y:auto;max-height:60vh">
+        <div
+          style="font-size:12px;font-weight:700;color:#4f46e5;margin-bottom:14px;text-transform:uppercase;letter-spacing:.6px">
+          ✨ Cadastro de Novo Cliente
+        </div>
+
+        <!-- Nome -->
+        <div style="margin-bottom:12px">
+          <label
+            style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">NOME
+            / NOME FANTASIA *</label>
+          <input type="text" id="novo-cli-nome" placeholder="Ex: Maria Oliveira ou Festou Eventos"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+        </div>
+
+        <!-- Razão Social -->
+        <div style="margin-bottom:12px">
+          <label
+            style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">RAZÃO
+            SOCIAL</label>
+          <input type="text" id="novo-cli-razao" placeholder="Ex: Maria Oliveira LTDA"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+        </div>
+
+        <!-- Telefone + CPF -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">TELEFONE
+              / WHATSAPP</label>
+            <input type="tel" id="novo-cli-tel" placeholder="(92) 9 9999-9999"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">CPF</label>
+            <input type="text" id="novo-cli-cpf" placeholder="000.000.000-00" maxlength="14"
+              oninput="PDV._mascaraCpfCli(this)"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+        </div>
+
+        <!-- Nascimento + Email -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">DATA
+              DE NASCIMENTO</label>
+            <input type="date" id="novo-cli-nasc"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">E-MAIL</label>
+            <input type="email" id="novo-cli-email" placeholder="cliente@email.com"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+        </div>
+
+        <!-- Observação -->
+        <div style="margin-bottom:12px">
+          <label
+            style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">OBSERVAÇÃO</label>
+          <textarea id="novo-cli-obs" placeholder="Observações sobre o cliente..." rows="2"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box;resize:vertical"></textarea>
+        </div>
+
+        <!-- Decorador Toggle -->
+        <div
+          style="margin-bottom:14px;padding:12px;background:var(--mc);border:1.5px solid var(--mborder);border-radius:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer"
+          onclick="PDV._toggleDecCli()">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--mtext2)">🎨 Decorador</div>
+            <div style="font-size:11px;color:var(--mmuted)">Marque se este cliente é um decorador parceiro</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0"
+            onclick="event.stopPropagation()">
+            <input type="checkbox" id="novo-cli-dec" onchange="PDV._atualizaBadgeCli()"
+              style="opacity:0;width:0;height:0">
+            <span id="novo-cli-dec-slider"
+              style="position:absolute;inset:0;background:#d1d5db;border-radius:26px;cursor:pointer;transition:.2s"></span>
+          </label>
+        </div>
+        <div id="novo-cli-dec-badge"
+          style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:14px">
+          👤 Cliente comum</div>
+
+        <!-- Endereço -->
+        <div style="height:1px;background:var(--mborder);margin:4px 0 14px"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--mtext2);margin-bottom:10px">📍 Endereço</div>
+
+        <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">CEP</label>
+            <input type="text" id="novo-cli-cep" placeholder="00000-000" maxlength="9"
+              oninput="PDV._mascaraCepCli(this)" onblur="PDV._buscarCepCli()"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">LOGRADOURO</label>
+            <input type="text" id="novo-cli-logr" placeholder="Rua, Av., Travessa..."
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">NÚMERO</label>
+            <input type="text" id="novo-cli-num" placeholder="123"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">COMPLEMENTO</label>
+            <input type="text" id="novo-cli-comp" placeholder="Apto, Bloco..."
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label
+            style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">BAIRRO</label>
+          <input type="text" id="novo-cli-bairro" placeholder="Bairro"
+            style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 70px;gap:10px;margin-bottom:16px">
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">CIDADE</label>
+            <input type="text" id="novo-cli-cidade" placeholder="Cidade"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label
+              style="font-size:11px;font-weight:600;color:var(--mmuted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.6px">UF</label>
+            <input type="text" id="novo-cli-uf" placeholder="AM" maxlength="2"
+              oninput="this.value=this.value.toUpperCase()"
+              style="width:100%;padding:10px 12px;border:1.5px solid var(--mborder);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;background:var(--mc);color:var(--mtext2);outline:none;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button onclick="PDV.salvarNovoCli()"
+            style="flex:1;padding:11px;background:#059669;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer"
+            id="btn-salvar-novo-cli">
+            ✓ Salvar e Selecionar
+          </button>
+          <button onclick="PDV.toggleFormNovoCli()"
+            style="padding:11px 16px;background:var(--mc);color:var(--mtext2);border:1.5px solid var(--mborder);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">
+            Cancelar
+          </button>
+        </div>
+      </div>
+
       <div id="loading-cli" style="text-align:center;padding:20px;display:none;color:var(--mmuted)">⏳ Buscando...</div>
-      <div class="clientes-list" id="lista-cli"></div>
+      <div class="clientes-list" id="lista-cli" style="margin-top:10px"></div>
     </div>
   </div>
 </div>
@@ -1806,8 +1971,11 @@
         var c = removeAcentos(p.codigo || '');
         var cb = removeAcentos(p.codigo_barras || '');
         var d = removeAcentos(p.descricao || '');
+        var texto = c + ' ' + cb + ' ' + d;
 
-        return c.includes(tNorm) || cb.includes(tNorm) || d.includes(tNorm);
+        // Busca por cada palavra individualmente — "locacao acessorios" acha "ACESSÓRIOS LOCAÇÃO"
+        var palavras = tNorm.split(/\s+/).filter(Boolean);
+        return palavras.every(function (p) { return texto.includes(p); });
       }) : todos.slice();
 
       renderGrid(filtrado);
@@ -2498,11 +2666,133 @@
       if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 500); }
     }
 
+    function toggleFormNovoCli() {
+      var form = document.getElementById('form-novo-cli');
+      if (!form) return;
+      var aberto = form.style.display !== 'none';
+      form.style.display = aberto ? 'none' : 'block';
+      if (!aberto) {
+        // Limpa todos os campos ao abrir
+        ['novo-cli-nome', 'novo-cli-razao', 'novo-cli-tel', 'novo-cli-cpf', 'novo-cli-email',
+          'novo-cli-nasc', 'novo-cli-obs', 'novo-cli-cep', 'novo-cli-logr', 'novo-cli-num',
+          'novo-cli-comp', 'novo-cli-bairro', 'novo-cli-cidade', 'novo-cli-uf'].forEach(function (id) {
+            var el = document.getElementById(id); if (el) el.value = '';
+          });
+        var dec = document.getElementById('novo-cli-dec'); if (dec) dec.checked = false;
+        _atualizaBadgeCli();
+        setTimeout(function () {
+          var n = document.getElementById('novo-cli-nome'); if (n) n.focus();
+        }, 50);
+      }
+    }
+
+    async function salvarNovoCli() {
+      var nome = (document.getElementById('novo-cli-nome')?.value || '').trim();
+      if (!nome) {
+        window.showToast('O nome do cliente é obrigatório.', 'error');
+        document.getElementById('novo-cli-nome')?.focus();
+        return;
+      }
+
+      var btn = document.getElementById('btn-salvar-novo-cli');
+      if (btn) { btn.textContent = '⏳ Salvando...'; btn.disabled = true; }
+
+      try {
+        var fil = window.filialLogada;
+        var payload = {
+          nome: nome,
+          razao_social: (document.getElementById('novo-cli-razao')?.value || '').trim() || null,
+          telefone: (document.getElementById('novo-cli-tel')?.value || '').trim() || null,
+          cpf: (document.getElementById('novo-cli-cpf')?.value || '').trim() || null,
+          email: (document.getElementById('novo-cli-email')?.value || '').trim() || null,
+          data_nascimento: document.getElementById('novo-cli-nasc')?.value || null,
+          observacao: (document.getElementById('novo-cli-obs')?.value || '').trim() || null,
+          decorador: !!(document.getElementById('novo-cli-dec')?.checked),
+          cep: (document.getElementById('novo-cli-cep')?.value || '').trim() || null,
+          logradouro: (document.getElementById('novo-cli-logr')?.value || '').trim() || null,
+          numero: (document.getElementById('novo-cli-num')?.value || '').trim() || null,
+          complemento: (document.getElementById('novo-cli-comp')?.value || '').trim() || null,
+          bairro: (document.getElementById('novo-cli-bairro')?.value || '').trim() || null,
+          cidade: (document.getElementById('novo-cli-cidade')?.value || '').trim() || null,
+          uf: (document.getElementById('novo-cli-uf')?.value || '').trim() || null,
+          filial_pk: fil?.pk || null
+        };
+
+        var res = await window.supabase.from('clientes').insert([payload])
+          .select('pk,nome,telefone,decorador').single();
+        if (res.error) throw res.error;
+
+        var novoCli = res.data;
+        clienteLogado = novoCli;
+        var elNome = document.getElementById('pdv-cliente-nome');
+        if (elNome) elNome.value = novoCli.nome + (novoCli.decorador ? ' (Decorador)' : '');
+        var rm = document.getElementById('btn-cliente-rm');
+        if (rm) rm.style.display = 'flex';
+
+        window.showToast('Cliente "' + novoCli.nome + '" cadastrado e selecionado!');
+        listaClientesFull.push(novoCli);
+        fecharBuscaCliente();
+      } catch (e) {
+        window.showToast('Erro ao salvar cliente: ' + (e.message || e), 'error');
+        if (btn) { btn.textContent = '✓ Salvar e Selecionar'; btn.disabled = false; }
+      }
+    }
+
+    function _mascaraCpfCli(el) {
+      var v = el.value.replace(/\D/g, '');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      el.value = v;
+    }
+
+    function _mascaraCepCli(el) {
+      var v = el.value.replace(/\D/g, '');
+      if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5, 8);
+      el.value = v;
+    }
+
+    async function _buscarCepCli() {
+      var cep = (document.getElementById('novo-cli-cep')?.value || '').replace(/\D/g, '');
+      if (cep.length !== 8) return;
+      try {
+        var r = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+        var d = await r.json();
+        if (!d.erro) {
+          var set = function (id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; };
+          set('novo-cli-logr', d.logradouro);
+          set('novo-cli-bairro', d.bairro);
+          set('novo-cli-cidade', d.localidade);
+          set('novo-cli-uf', d.uf);
+        } else { window.showToast('CEP não encontrado.', 'error'); }
+      } catch (e) { window.showToast('Falha ao consultar CEP.', 'error'); }
+    }
+
+    function _toggleDecCli() {
+      var cb = document.getElementById('novo-cli-dec');
+      if (cb) { cb.checked = !cb.checked; _atualizaBadgeCli(); }
+    }
+
+    function _atualizaBadgeCli() {
+      var isD = !!(document.getElementById('novo-cli-dec')?.checked);
+      var slide = document.getElementById('novo-cli-dec-slider');
+      var badge = document.getElementById('novo-cli-dec-badge');
+      if (slide) slide.style.background = isD ? '#f59e0b' : '#d1d5db';
+      if (badge) {
+        badge.textContent = isD ? '🎨 Decorador' : '👤 Cliente comum';
+        badge.style.background = isD ? '#fef3c7' : '#f3f4f6';
+        badge.style.color = isD ? '#92400e' : '#6b7280';
+        badge.style.borderColor = isD ? '#fcd34d' : '#e5e7eb';
+      }
+    }
+
     return {
       filtrar, add, removeItem, setQtd, setDesc, toggleDesc, aplicarDescontoBalao, limparDescontos,
       addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro, finalizar, cancelar,
       avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
-      abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente
+      abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente,
+      toggleFormNovoCli, salvarNovoCli,
+      _mascaraCpfCli, _mascaraCepCli, _buscarCepCli, _toggleDecCli, _atualizaBadgeCli
     };
   })();
 </script>
