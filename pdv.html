@@ -1566,6 +1566,17 @@
               🎊 Locação
             </label>
           </div>
+          <div class="pdv-tipo-operacao-title" style="margin-top:10px">CANAL DE VENDA</div>
+          <div class="pdv-tipo-operacao-radios">
+            <label class="pdv-tipo-radio">
+              <input type="radio" name="pdv_canal_venda" value="presencial" checked>
+              🏪 Presencial
+            </label>
+            <label class="pdv-tipo-radio">
+              <input type="radio" name="pdv_canal_venda" value="whatsapp">
+              💬 WhatsApp
+            </label>
+          </div>
           <div id="pdv-locacao-datas" class="pdv-locacao-datas">
             <div class="pdv-locacao-row">
               <div class="pdv-locacao-field">
@@ -1609,7 +1620,7 @@
 
         <div class="pagamentos-section pdv-pagamentos-full">
           <div class="pag-title">Pagamento</div>
-          <div class="pag-formas">
+          <div class="pag-formas" id="pag-formas">
             <button class="pag-btn" onclick="PDV.addPag('dinheiro')">💵 Dinheiro</button>
             <button class="pag-btn" onclick="PDV.addPag('pix')">📱 Pix</button>
             <button class="pag-btn" onclick="PDV.addPag('credito')">💳 Crédito</button>
@@ -1918,6 +1929,31 @@
       var rs_conta = await q_conta;
       if (rs_conta.data) contasBancarias = rs_conta.data;
 
+      // Carregar Formas de Pagamento ativas (configuradas no Financeiro)
+      var formasAtivas = [];
+      if (f && f.pk) {
+        var rs_formas = await window.supabase.from('formas_pagamento').select('*').eq('filial_pk', f.pk).eq('ativo', true).order('ordem');
+        if (rs_formas.data && rs_formas.data.length) formasAtivas = rs_formas.data;
+      }
+      // Fallback: formas padrão se não configuradas
+      if (!formasAtivas.length) {
+        formasAtivas = [
+          { forma: 'dinheiro', label: 'Dinheiro', icone: '💵' },
+          { forma: 'pix',      label: 'Pix',      icone: '📱' },
+          { forma: 'credito',  label: 'Crédito',  icone: '💳' },
+          { forma: 'debito',   label: 'Débito',   icone: '💳' },
+          { forma: 'crediario',label: 'Crediário',icone: '📒' }
+        ];
+      }
+      // Renderiza os botões de pagamento dinamicamente
+      var pagFormasDiv = document.getElementById('pag-formas');
+      if (pagFormasDiv) {
+        pagFormasDiv.innerHTML = formasAtivas.map(function(fp) {
+          var style = fp.forma === 'crediario' ? ' style="background:#7c3aed;color:#fff"' : '';
+          return '<button class="pag-btn" onclick="PDV.addPag(\'' + fp.forma + '\')"' + style + '>' + fp.icone + ' ' + fp.label + '</button>';
+        }).join('');
+      }
+
       // Historico abaixo removido para ficar em módulo próprio da sidebar
     })();
 
@@ -2030,18 +2066,14 @@
       renderCarrinho();
     }
     function setDesc(idx, v) {
-      if (!podeAplicarDesconto()) {
-        window.showToast('Só é possível aplicar descontos para clientes cadastrados como Decoradores.', 'error');
-
-        var inp = document.getElementById('dinp-' + idx);
-        if (inp) inp.value = '';
-
-        carrinho[idx].desconto_pct = 0;
-        renderCarrinho();
-        return;
-      }
       carrinho[idx].desconto_pct = Math.min(100, Math.max(0, parseFloat(v) || 0));
-      renderCarrinho();
+      var span = document.getElementById('itot-' + idx);
+      if (span) {
+        var c = calcItem(carrinho[idx]);
+        span.textContent = fmt(c.liq);
+        span.className = 'pdv-item-total' + (carrinho[idx].desconto_pct > 0 ? ' com-desc' : '');
+      }
+      atualizarTotais();
     }
 
     function calcItem(it) {
@@ -2068,7 +2100,7 @@
         return '<div class="pdv-item">' +
           '<div class="pdv-item-row1">' +
           '<span class="pdv-item-nome">' + it.descricao + '</span>' +
-          '<span class="pdv-item-total' + (temDesc ? ' com-desc' : '') + '">' + fmt(calc.liq) + '</span>' +
+          '<span class="pdv-item-total' + (temDesc ? ' com-desc' : '') + '" id="itot-' + idx + '">' + fmt(calc.liq) + '</span>' +
           '</div>' +
           (saldoHtml ? '<div class="pdv-item-meta">' + saldoHtml + '</div>' : '') +
           '<div class="pdv-item-row2">' +
@@ -2092,12 +2124,6 @@
     }
 
     function toggleDesc(idx, on) {
-      if (on && !podeAplicarDesconto()) {
-        window.showToast('Descontos permitidos apenas para clientes Decoradores.', 'error');
-        var chk = document.getElementById('dchk-' + idx);
-        if (chk) chk.checked = false;
-        return;
-      }
       if (!on) carrinho[idx].desconto_pct = 0;
       renderCarrinho();
       if (on) setTimeout(function () { var inp = document.getElementById('dinp-' + idx); if (inp) { inp.style.display = 'block'; inp.focus(); inp.select(); } }, 30);
@@ -2137,17 +2163,8 @@
       if (side) side.classList.toggle('open', open);
     }
 
-    function podeAplicarDesconto() {
-      // Regra de negócio: O clienteLogado deve existir e ser decorador = true
-      return clienteLogado && clienteLogado.decorador === true;
-    }
-
     // ── Desconto Balão ──────────────────────────────────────────
     function aplicarDescontoBalao() {
-      if (!podeAplicarDesconto()) {
-        window.showToast('Descontos permitidos apenas para clientes Decoradores selecionados na venda.', 'error');
-        return;
-      }
       var pct = parseFloat(document.getElementById('desc-lote-pct')?.value) || 0;
       if (!pct) { window.showToast('Iforme o % de desconto.', 'error'); return; }
       var count = 0;
@@ -2323,10 +2340,13 @@
 
         // Locação payload
         var tipoOperacao = document.querySelector('input[name="pdv_tipo_venda"]:checked').value;
+        var canalEl = document.querySelector('input[name="pdv_canal_venda"]:checked');
+        var canalVenda = canalEl ? canalEl.value : 'presencial';
         var payloadVenda = {
           filial_pk: fil?.pk || null, numero, cliente: nomeCliParaVenda,
           subtotal: sub, desconto_total: desc, total,
-          operador: vendedor, status: 'finalizada', tipo_venda: tipoOperacao
+          operador: vendedor, status: 'finalizada', tipo_venda: tipoOperacao,
+          canal_venda: canalVenda
         };
 
         var dtRet = null, dtDev = null;
@@ -2448,10 +2468,12 @@
       var selVend = document.getElementById('pdv-vendedor');
       if (selVend) selVend.value = '';
 
-      // Reseta tipo_venda
+      // Reseta tipo_venda e canal_venda
       var radoNs = document.querySelectorAll('input[name="pdv_tipo_venda"]');
       if (radoNs.length > 0) radoNs[0].checked = true;
       toggleTipoVenda();
+      var canalNs = document.querySelectorAll('input[name="pdv_canal_venda"]');
+      if (canalNs.length > 0) canalNs[0].checked = true;
       document.getElementById('loc-retirada').value = '';
       document.getElementById('loc-devolucao').value = '';
       // Reseta crediário

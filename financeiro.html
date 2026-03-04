@@ -385,6 +385,7 @@
         <button class="tab-btn active" onclick="Fin.mudarTab('tab-contas', this)">🏦 Minhas Contas</button>
         <button class="tab-btn" onclick="Fin.mudarTab('tab-nova-conta', this)">➕ Nova Conta</button>
         <button class="tab-btn" onclick="Fin.mudarTab('tab-extrato', this)">🧾 Extrato Geral</button>
+        <button class="tab-btn" onclick="Fin.mudarTab('tab-formas', this)">💳 Formas de Pagamento</button>
     </div>
 
     <!-- TAB CONTAS -->
@@ -420,6 +421,40 @@
             </div>
             <div style="margin-top:24px;display:flex;justify-content:flex-end">
                 <button class="btn btn-primary" id="btn-salvar-conta" onclick="Fin.salvarConta()">Salvar Conta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB FORMAS DE PAGAMENTO -->
+    <div id="tab-formas" class="tab-panel">
+        <div class="card" style="max-width:560px;padding:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h3 style="font-size:16px;font-weight:600;color:var(--mtext2)">Formas de Pagamento no PDV</h3>
+                <button class="btn btn-outline" onclick="Fin.abrirNovaForma()" style="font-size:12px">+ Nova Forma</button>
+            </div>
+            <p style="font-size:12px;color:var(--mmuted);margin-bottom:16px">Ative ou desative quais formas aparecem no PDV. Novas formas personalizadas também podem ser adicionadas.</p>
+            <div id="formas-lista" style="display:flex;flex-direction:column;gap:10px">
+                <div style="text-align:center;padding:20px;color:var(--mmuted)">⏳ Carregando...</div>
+            </div>
+            <!-- Form nova forma (oculto) -->
+            <div id="nova-forma-form" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid var(--mborder)">
+                <h4 style="font-size:14px;font-weight:600;color:var(--mtext2);margin-bottom:12px">Adicionar Nova Forma</h4>
+                <div class="form-group">
+                    <label>Identificador interno (sem espaços, ex: vale)</label>
+                    <input type="text" id="nf-forma" class="form-input" placeholder="vale">
+                </div>
+                <div class="form-group">
+                    <label>Nome exibido</label>
+                    <input type="text" id="nf-label" class="form-input" placeholder="Vale">
+                </div>
+                <div class="form-group">
+                    <label>Ícone (emoji)</label>
+                    <input type="text" id="nf-icone" class="form-input" placeholder="🎟️" style="width:80px">
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button class="btn btn-outline" onclick="Fin.fecharNovaForma()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="Fin.salvarNovaForma()">Salvar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -483,6 +518,7 @@
             btn.classList.add('active');
 
             if (id === 'tab-contas') carregarContas();
+            if (id === 'tab-formas') carregarFormas();
             if (id === 'tab-extrato') {
                 preencherComboContas();
                 carregarExtrato();
@@ -529,6 +565,7 @@
                     '<div class="conta-tipo">' + (c.tipo) + '</div>' +
                     '</div>' +
                     '</div>' +
+                    '<button onclick="Fin.excluirConta(' + c.pk + ',\'' + c.nome.replace(/'/g, '') + '\')" title="Excluir conta" style="background:none;border:none;cursor:pointer;font-size:16px;opacity:.5;padding:4px" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button>' +
                     '</div>' +
                     '<div class="conta-saldo-label">Saldo Atual</div>' +
                     '<div class="conta-saldo ' + corVal + '">' + fmtVal(valV) + '</div>' +
@@ -628,9 +665,108 @@
             }).join('');
         }
 
+        // ── Excluir Conta ────────────────────────────────────────
+        async function excluirConta(pk, nome) {
+            if (!confirm('Excluir a conta "' + nome + '"?\n\nIsso não apaga as movimentações já registradas.')) return;
+            var res = await window.supabase.from('contas_bancarias').delete().eq('pk', pk);
+            if (res.error) return fmtMsg('Erro ao excluir: ' + res.error.message, true);
+            fmtMsg('Conta "' + nome + '" excluída.');
+            carregarContas();
+        }
+
+        // ── Formas de Pagamento ──────────────────────────────────
+        var FORMAS_PADRAO = [
+            { forma: 'dinheiro', label: 'Dinheiro', icone: '💵', ordem: 0 },
+            { forma: 'pix',      label: 'Pix',      icone: '📱', ordem: 1 },
+            { forma: 'credito',  label: 'Crédito',  icone: '💳', ordem: 2 },
+            { forma: 'debito',   label: 'Débito',   icone: '💳', ordem: 3 },
+            { forma: 'crediario',label: 'Crediário',icone: '📒', ordem: 4 }
+        ];
+        var formasCache = [];
+
+        async function carregarFormas() {
+            var lista = document.getElementById('formas-lista');
+            lista.innerHTML = '<div style="text-align:center;padding:20px;color:var(--mmuted)">⏳ Carregando...</div>';
+            var f = window.filialLogada;
+            if (!f) return;
+
+            var res = await window.supabase.from('formas_pagamento').select('*').eq('filial_pk', f.pk).order('ordem');
+            if (res.error) { lista.innerHTML = '<p style="color:red">' + res.error.message + '</p>'; return; }
+
+            // Se não tem nenhuma, seed com os padrões
+            if (!res.data || !res.data.length) {
+                var seeds = FORMAS_PADRAO.map(function(fp) { return Object.assign({}, fp, { filial_pk: f.pk, ativo: true }); });
+                await window.supabase.from('formas_pagamento').insert(seeds);
+                var res2 = await window.supabase.from('formas_pagamento').select('*').eq('filial_pk', f.pk).order('ordem');
+                formasCache = res2.data || [];
+            } else {
+                formasCache = res.data;
+            }
+            renderFormas();
+        }
+
+        function renderFormas() {
+            var lista = document.getElementById('formas-lista');
+            if (!formasCache.length) { lista.innerHTML = '<p style="color:var(--mmuted)">Nenhuma forma cadastrada.</p>'; return; }
+            lista.innerHTML = formasCache.map(function(fp) {
+                var cor = fp.ativo ? '#059669' : '#6b7280';
+                var bg  = fp.ativo ? '#d1fae5' : 'var(--mc2)';
+                return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--mborder);border-radius:10px;background:var(--mc)">' +
+                    '<span style="font-size:20px">' + fp.icone + '</span>' +
+                    '<div style="flex:1">' +
+                    '<div style="font-size:14px;font-weight:600;color:var(--mtext2)">' + fp.label + '</div>' +
+                    '<div style="font-size:11px;color:var(--mmuted)">' + fp.forma + '</div>' +
+                    '</div>' +
+                    '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:' + bg + ';color:' + cor + '">' + (fp.ativo ? 'Ativo' : 'Inativo') + '</span>' +
+                    '<button onclick="Fin.toggleForma(' + fp.pk + ',' + fp.ativo + ')" style="background:none;border:1.5px solid var(--mborder);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600;color:var(--mtext2)">' + (fp.ativo ? 'Desativar' : 'Ativar') + '</button>' +
+                    '<button onclick="Fin.excluirForma(' + fp.pk + ',\'' + fp.label + '\')" style="background:none;border:none;cursor:pointer;font-size:15px;opacity:.5;padding:4px" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">🗑️</button>' +
+                    '</div>';
+            }).join('');
+        }
+
+        async function toggleForma(pk, ativoAtual) {
+            var res = await window.supabase.from('formas_pagamento').update({ ativo: !ativoAtual }).eq('pk', pk);
+            if (res.error) return fmtMsg(res.error.message, true);
+            var idx = formasCache.findIndex(function(f) { return f.pk === pk; });
+            if (idx >= 0) formasCache[idx].ativo = !ativoAtual;
+            renderFormas();
+        }
+
+        async function excluirForma(pk, label) {
+            if (!confirm('Excluir a forma "' + label + '"?')) return;
+            var res = await window.supabase.from('formas_pagamento').delete().eq('pk', pk);
+            if (res.error) return fmtMsg(res.error.message, true);
+            fmtMsg('"' + label + '" removida.');
+            carregarFormas();
+        }
+
+        function abrirNovaForma() { document.getElementById('nova-forma-form').style.display = ''; }
+        function fecharNovaForma() {
+            document.getElementById('nova-forma-form').style.display = 'none';
+            document.getElementById('nf-forma').value = '';
+            document.getElementById('nf-label').value = '';
+            document.getElementById('nf-icone').value = '';
+        }
+
+        async function salvarNovaForma() {
+            var forma  = document.getElementById('nf-forma').value.trim().toLowerCase().replace(/\s+/g,'_');
+            var label  = document.getElementById('nf-label').value.trim();
+            var icone  = document.getElementById('nf-icone').value.trim() || '💳';
+            if (!forma || !label) return fmtMsg('Preencha o identificador e o nome.', true);
+            var f = window.filialLogada;
+            var res = await window.supabase.from('formas_pagamento').insert([{
+                filial_pk: f ? f.pk : null, forma, label, icone, ativo: true, ordem: formasCache.length
+            }]);
+            if (res.error) return fmtMsg(res.error.message, true);
+            fmtMsg('Forma "' + label + '" adicionada!');
+            fecharNovaForma();
+            carregarFormas();
+        }
+
         // init
         setTimeout(carregarContas, 100);
 
-        return { mudarTab, carregarContas, salvarConta, carregarExtrato };
+        return { mudarTab, carregarContas, salvarConta, carregarExtrato, excluirConta,
+                 carregarFormas, toggleForma, excluirForma, abrirNovaForma, fecharNovaForma, salvarNovaForma };
     })();
 </script>

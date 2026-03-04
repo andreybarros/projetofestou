@@ -234,7 +234,7 @@
         </div>
 
         <div class="mcard">
-            <h3 style="font-size:15px; margin-bottom:15px">Detalalhamento de Movimentações</h3>
+            <h3 style="font-size:15px; margin-bottom:15px">Detalhamento de Movimentações</h3>
             <table class="ftable">
                 <thead>
                     <tr>
@@ -242,7 +242,8 @@
                         <th>Tipo</th>
                         <th>Descrição / Cliente</th>
                         <th>Operador</th>
-                        <th>Forma / Conta</th>
+                        <th>Forma de Pagamento</th>
+                        <th>Canal</th>
                         <th style="text-align:right">Valor</th>
                     </tr>
                 </thead>
@@ -279,7 +280,7 @@
             resDiv.innerHTML = '<div style="padding:40px; text-align:center">⏳ Processando dados...</div>';
 
             // 1. Vendas e Pagamentos
-            let qv = window.supabase.from('vendas').select('pk, numero, criado_em, cliente, operador, total, status')
+            let qv = window.supabase.from('vendas').select('pk, numero, criado_em, cliente, operador, total, status, canal_venda')
                 .eq('filial_pk', fil.pk).eq('status', 'finalizada')
                 .gte('criado_em', ini + 'T00:00:00')
                 .lte('criado_em', fim + 'T23:59:59');
@@ -327,10 +328,10 @@
         </table>
       </div>
       <div class="mcard">
-        <h3 style="font-size:15px; margin-bottom:15px">Detalalhamento de Movimentações</h3>
+        <h3 style="font-size:15px; margin-bottom:15px">Detalhamento de Movimentações</h3>
         <div style="overflow-x:auto">
             <table class="ftable">
-            <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Descrição / Cliente</th><th>Operador</th><th>Forma / Conta</th><th style="text-align:right">Valor</th></tr></thead>
+            <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Descrição / Cliente</th><th>Operador</th><th>Forma de Pagamento</th><th>Canal</th><th style="text-align:right">Valor</th></tr></thead>
             <tbody id="fc-tbody-detalhe"></tbody>
             </table>
         </div>
@@ -352,9 +353,10 @@
                         if (p.forma === 'dinheiro') return l;
                         return `${l} (${p.contas_bancarias ? p.contas_bancarias.nome : '—'})`;
                     }).join('<br>');
-                    return { dt: v.criado_em, tipo: '✅ ENTRADA', desc: `Venda #${v.numero} - ${v.cliente || '—'}`, op: v.operador, info: descPags, val: v.total, cls: 'verde' };
+                    const canalLabel = v.canal_venda === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial';
+                    return { dt: v.criado_em, tipo: '✅ ENTRADA', desc: `Venda #${v.numero} - ${v.cliente || '—'}`, op: v.operador, info: descPags, canal: canalLabel, val: v.total, cls: 'verde' };
                 }),
-                ...despesas.map(e => ({ dt: e.vencimento, tipo: e.status === 'pago' ? '❌ SAÍDA' : '⏳ A PAGAR', desc: `${e.descricao} (${e.categoria || '—'})`, op: e.operador, info: e.contas_bancarias ? `🏦 ${e.contas_bancarias.nome}` : (e.status === 'pago' ? '—' : '⏳ Pendente'), val: -e.valor, cls: e.status === 'pago' ? 'vermelho' : 'mmuted' }))
+                ...despesas.map(e => ({ dt: e.vencimento, tipo: e.status === 'pago' ? '❌ SAÍDA' : '⏳ A PAGAR', desc: `${e.descricao} (${e.categoria || '—'})`, op: e.operador, info: e.contas_bancarias ? `🏦 ${e.contas_bancarias.nome}` : (e.status === 'pago' ? '—' : '⏳ Pendente'), canal: '—', val: -e.valor, cls: e.status === 'pago' ? 'vermelho' : 'mmuted' }))
             ].sort((a, b) => new Date(b.dt) - new Date(a.dt));
 
             document.getElementById('fc-tbody-detalhe').innerHTML = detalhe.map(d => `
@@ -364,9 +366,10 @@
         <td>${d.desc}</td>
         <td>${d.op || '—'}</td>
         <td style="font-size:11px; color:var(--mmuted)">${d.info}</td>
+        <td style="font-size:12px">${d.canal}</td>
         <td style="text-align:right" class="money ${d.cls}">${fmt(d.val)}</td>
       </tr>
-    `).join('') || '<tr><td colspan="6" style="text-align:center">Nenhuma movimentação no período</td></tr>';
+    `).join('') || '<tr><td colspan="7" style="text-align:center">Nenhuma movimentação no período</td></tr>';
 
             document.getElementById('btn-export-fc').style.display = 'inline-flex';
         }
@@ -392,14 +395,15 @@
 
             // Aba 2: Detalhamento
             const detData = [
-                ['Data/Hora', 'Tipo', 'Descrição', 'Operador', 'Forma / Conta', 'Valor'],
+                ['Data/Hora', 'Tipo', 'Descrição', 'Operador', 'Forma de Pagamento', 'Canal', 'Valor'],
                 ...[
                     ...vendas.map(v => {
                         const pags = pagamentos.filter(p => p.venda_pk === v.pk);
                         const descPags = pags.map(p => `${p.forma} (${p.contas_bancarias ? p.contas_bancarias.nome : '—'})`).join(', ');
-                        return [new Date(v.criado_em).toLocaleString(), 'ENTRADA', `Venda #${v.numero} - ${v.cliente || ''}`, v.operador, descPags, v.total];
+                        const canal = v.canal_venda === 'whatsapp' ? 'WhatsApp' : 'Presencial';
+                        return [new Date(v.criado_em).toLocaleString(), 'ENTRADA', `Venda #${v.numero} - ${v.cliente || ''}`, v.operador, descPags, canal, v.total];
                     }),
-                    ...despesas.map(e => [new Date(e.vencimento).toLocaleString(), 'SAÍDA', e.descricao, e.operador, e.contas_bancarias ? e.contas_bancarias.nome : '', -e.valor])
+                    ...despesas.map(e => [new Date(e.vencimento).toLocaleString(), 'SAÍDA', e.descricao, e.operador, e.contas_bancarias ? e.contas_bancarias.nome : '', '—', -e.valor])
                 ].sort((a, b) => new Date(b[0]) - new Date(a[0]))
             ];
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detData), "Movimentações");

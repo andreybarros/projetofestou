@@ -298,5 +298,35 @@ ALTER TABLE fechamento_ponto ADD COLUMN IF NOT EXISTS espelho_aprovado_em timest
 -- 18.1 Permissão de acesso ao Espelho de Ponto no cadastro de operadores
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_espelho_ponto boolean DEFAULT false;
 
+-- 19. Canal de Venda (presencial / whatsapp)
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS canal_venda TEXT DEFAULT 'presencial';
+
+-- 20. Habilitar RLS na tabela vendedores
+ALTER TABLE vendedores ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'vendedores' AND policyname = 'vendedores_all') THEN
+    CREATE POLICY "vendedores_all" ON vendedores USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- 21. Formas de Pagamento configuráveis por filial
+CREATE TABLE IF NOT EXISTS formas_pagamento (
+  pk bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  forma text NOT NULL,
+  label text NOT NULL,
+  icone text NOT NULL DEFAULT '💳',
+  ativo boolean DEFAULT true,
+  ordem int DEFAULT 0
+);
+ALTER TABLE formas_pagamento ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'formas_pagamento' AND policyname = 'formas_all') THEN
+    CREATE POLICY "formas_all" ON formas_pagamento USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
 NOTIFY pgrst, 'reload schema';
 

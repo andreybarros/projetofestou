@@ -556,7 +556,8 @@
           <th>Subtotal</th>
           <th>Desconto</th>
           <th>Total</th>
-          <th>Conta</th>
+          <th>Forma de Pagamento</th>
+          <th>Canal</th>
           <th>Operador</th>
           <th>Status</th>
           <th></th>
@@ -564,7 +565,7 @@
       </thead>
       <tbody id="hist-tbody">
         <tr>
-          <td colspan="9" class="mstate">⏳ Carregando...</td>
+          <td colspan="10" class="mstate">⏳ Carregando...</td>
         </tr>
       </tbody>
     </table>
@@ -629,7 +630,7 @@
     function setTbody(h) { var el = document.getElementById('hist-tbody'); if (el) el.innerHTML = h; }
 
     async function carregar() {
-      setTbody('<tr><td colspan="9" class="mstate">⏳ Carregando...</td></tr>');
+      setTbody('<tr><td colspan="10" class="mstate">⏳ Carregando...</td></tr>');
       document.getElementById('resumo-cards').style.display = 'none';
 
       var ini = document.getElementById('f-data-ini').value;
@@ -644,11 +645,11 @@
       if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
 
       var res = await q;
-      if (res.error) { setTbody('<tr><td colspan="9" class="mstate">❌ ' + res.error.message + '</td></tr>'); return; }
+      if (res.error) { setTbody('<tr><td colspan="10" class="mstate">❌ ' + res.error.message + '</td></tr>'); return; }
       var vendas = res.data || [];
 
       if (!vendas.length) {
-        setTbody('<tr><td colspan="9" class="mstate">📭 Nenhuma venda encontrada no período</td></tr>');
+        setTbody('<tr><td colspan="10" class="mstate">📭 Nenhuma venda encontrada no período</td></tr>');
         return;
       }
 
@@ -688,16 +689,14 @@
         }
         var tipoHtml = v.tipo_venda === 'locacao' ? '<span style="font-size:10px;background:#e2e8f0;padding:2px 6px;border-radius:4px;margin-right:6px">LOC</span>' : '';
         if (v.status_crediario) tipoHtml += '<span style="font-size:10px;background:#ede9fe;color:#7c3aed;padding:2px 6px;border-radius:4px;margin-right:4px">CRED</span>';
-        var contaNomes = [];
+        var formasTxt = [];
         if (v.pagamentos_venda && v.pagamentos_venda.length > 0) {
           v.pagamentos_venda.forEach(function (pv) {
-            if (pv.contas_bancarias && pv.contas_bancarias.nome) {
-              var label = FORMA_LABEL[pv.forma] || pv.forma;
-              contaNomes.push(label + ' - ' + pv.contas_bancarias.nome);
-            }
+            formasTxt.push(FORMA_LABEL[pv.forma] || pv.forma);
           });
         }
-        var cNmTxt = contaNomes.length > 0 ? contaNomes.join('<br>') : '—';
+        var cNmTxt = formasTxt.length > 0 ? formasTxt.join('<br>') : '—';
+        var canalTxt = v.canal_venda === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial';
 
         var credHtml = '';
         if (v.data_vencimento_crediario) {
@@ -713,6 +712,7 @@
           '<td class="disc-cell">' + (Number(v.desconto_total) > 0 ? '- ' + fmt(v.desconto_total) : '—') + '</td>' +
           '<td class="money-cell">' + fmt(v.total) + '</td>' +
           '<td style="font-size:11px;color:var(--mmuted)">' + cNmTxt + '</td>' +
+          '<td style="font-size:12px">' + canalTxt + '</td>' +
           '<td style="font-size:12px">' + (v.operador || '—') + '</td>' +
           '<td>' + badge + '</td>' +
           '<td><button class="mbtn-sm mbtn-ver" onclick="HistVendas.abrirModal(' + v.pk + ')">Ver</button></td>' +
@@ -774,6 +774,7 @@
         '<span class="meta-chip">📅 ' + dt + '</span>' +
         (v.cliente ? '<span class="meta-chip">👤 ' + v.cliente + '</span>' : '') +
         (v.operador ? '<span class="meta-chip">🔑 ' + v.operador + '</span>' : '') +
+        '<span class="meta-chip">' + (v.canal_venda === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial') + '</span>' +
         (v.tipo_venda === 'locacao' ? '<span class="meta-chip" style="background:#e2e8f0">📋 Locação (' + v.status_locacao + ')</span>' : '') +
         '<span class="meta-chip ' + (v.status === 'finalizada' ? 'badge-finalizada' : 'badge-cancelada') + '">' +
         (v.status === 'finalizada' ? '✓ Finalizada' : '✕ Cancelada') + '</span>' +
