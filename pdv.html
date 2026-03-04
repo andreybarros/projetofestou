@@ -1614,8 +1614,7 @@
             <button class="pag-btn" onclick="PDV.addPag('pix')">📱 Pix</button>
             <button class="pag-btn" onclick="PDV.addPag('credito')">💳 Crédito</button>
             <button class="pag-btn" onclick="PDV.addPag('debito')">💳 Débito</button>
-            <button class="pag-btn" onclick="PDV.addPag('crediario')" style="background:#7c3aed;color:#fff">📒
-              Crediário</button>
+            <button class="pag-btn" onclick="PDV.addPag('crediario')" style="background:#7c3aed;color:#fff">📒 Crediário</button>
           </div>
           <div class="pag-lista" id="pag-lista"></div>
           <div id="troco-wrap" style="display:none"></div>
@@ -1667,6 +1666,25 @@
     <div class="modal-footer">
       <button class="mbtn mbtn-ghost" onclick="PDV.fecharModalDinheiro()">Cancelar</button>
       <button class="mbtn mbtn-ok" onclick="PDV.confirmarDinheiro()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal valor pagamento (pix, crédito, débito, crediário, etc.) -->
+<div class="modal-overlay" id="modal-valor" style="display:none">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modal-valor-titulo">Pagamento</h3>
+      <button class="btn-mclose" onclick="PDV.fecharModalValor()">✕</button>
+    </div>
+    <div class="modal-body">
+      <span class="modal-label">Valor</span>
+      <input class="modal-inp" id="val-recebido" type="number" min="0" step="0.01" placeholder="0,00"
+        onkeydown="if(event.key==='Enter')PDV.confirmarModalValor();if(event.key==='Escape')PDV.fecharModalValor()">
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-ghost" onclick="PDV.fecharModalValor()">Cancelar</button>
+      <button class="mbtn mbtn-ok" onclick="PDV.confirmarModalValor()">Confirmar</button>
     </div>
   </div>
 </div>
@@ -1862,6 +1880,7 @@
     var carrinho = [];   // [{produto_pk,codigo,descricao,preco_unit,qtd,desconto_pct,foto_url}]
     var pagamentos = []; // [{forma,valor,conta_pk}]
     var pagDinheiroValor = 0;
+    var _pagModalForma = '';
     var clienteLogado = null; // Guardar id, nome e isDecorador
     var listaClientesFull = [];
     var contasBancarias = []; // Lista de contas cadastradas No Financeiro
@@ -2146,39 +2165,42 @@
     }
 
     // ── Pagamentos ──────────────────────────────────────────────
-    var FORMA_LABEL = { 'dinheiro': '💵 Dinheiro', 'pix': '📱 Pix', 'credito': '💳 Crédito', 'debito': '💳 Débito' };
+    var FORMA_LABEL = { 'dinheiro': '💵 Dinheiro', 'pix': '📱 Pix', 'credito': '💳 Crédito', 'debito': '💳 Débito', 'crediario': '📒 Crediário', 'transferencia': '🏦 Transferência', 'cheque': '📝 Cheque', 'vale': '🎟️ Vale' };
 
     function addPag(forma) {
       if (forma === 'dinheiro') { abrirModalDinheiro(); return; }
+      abrirModalValor(forma);
+    }
 
+    function abrirModalValor(forma) {
+      _pagModalForma = forma;
       var total = getTotalLiq();
       var pago = pagamentos.reduce(function (s, p) { return s + p.valor; }, 0);
       var falta = Math.max(0, total - pago);
+      var titulo = document.getElementById('modal-valor-titulo');
+      if (titulo) titulo.textContent = FORMA_LABEL[forma] || forma;
+      var inp = document.getElementById('val-recebido');
+      if (inp) { inp.value = falta > 0 ? falta.toFixed(2) : ''; }
+      document.getElementById('modal-valor').style.display = 'flex';
+      setTimeout(function () { if (inp) { inp.focus(); inp.select(); } }, 60);
+    }
 
-      // Se total já coberto: substitui se há 1 pagamento, bloqueia se há mais
-      if (falta <= 0) {
-        if (pagamentos.length === 1) {
-          // Troca a forma do único pagamento existente
-          var valorAnterior = pagamentos[0].valor;
-          pagamentos = [];
-          falta = valorAnterior;
-        } else {
-          window.showToast('Venda já coberta pelos pagamentos.'); return;
-        }
-      }
+    function fecharModalValor() {
+      document.getElementById('modal-valor').style.display = 'none';
+      _pagModalForma = '';
+    }
 
-      // Máximo de 3 formas de pagamento por venda
-      if (pagamentos.length >= 3) {
-        window.showToast('Máximo de 3 formas de pagamento por venda.', 'error'); return;
-      }
-
-      // Auto-selecionar conta ideal pela forma
+    function confirmarModalValor() {
+      if (!_pagModalForma) return;
+      var forma = _pagModalForma;
+      var val = parseFmt(document.getElementById('val-recebido')?.value);
+      if (!val || val <= 0) { window.showToast('Informe um valor válido.', 'error'); return; }
       var contaPadraoId = '';
       var ccPref = contasBancarias.find(function (cb) { return cb.tipo === forma; });
       if (ccPref) contaPadraoId = ccPref.pk;
       else if (contasBancarias.length > 0) contaPadraoId = contasBancarias[0].pk;
-
-      pagamentos.push({ forma: forma, valor: falta, conta_pk: forma === 'crediario' ? '' : contaPadraoId });
+      pagamentos.push({ forma: forma, valor: val, conta_pk: forma === 'crediario' ? '' : contaPadraoId });
+      fecharModalValor();
       renderPagamentos();
       toggleCrediario();
     }
@@ -2193,30 +2215,10 @@
       var el = document.getElementById('pag-lista');
       if (!el) return;
       el.innerHTML = pagamentos.map(function (p, i) {
-        var optionsHtml = '<option value="">Sem conta configurada</option>';
-        if (contasBancarias.length > 0) {
-          optionsHtml = contasBancarias.map(function (cb) {
-            var isSel = (cb.pk === p.conta_pk) ? 'selected' : '';
-            return '<option value="' + cb.pk + '" ' + isSel + '>' + cb.nome + '</option>';
-          }).join('');
-        }
-
-        var contaHtml = p.conta_pk || contasBancarias.length ?
-          '<div style="width:100%;font-size:11px;color:var(--mmuted);margin-top:4px;display:flex;align-items:center;gap:6px">' +
-          '<span>▸ Destino:</span>' +
-          '<select onchange="PDV.setPagConta(' + i + ', this.value)" style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--mborder);background:var(--mc2);color:var(--mtext2);font-family:\'DM Sans\',sans-serif;font-size:11px;outline:none;cursor:pointer">' +
-          optionsHtml +
-          '</select>' +
-          '</div>' :
-          '<div style="font-size:10px;color:red;margin-top:2px;width:100%">▸ Nenhuma conta ' + (p.forma) + ' cadastrada</div>';
-
-        return '<div class="pag-item" style="flex-wrap:wrap">' +
-          '<div style="display:flex;width:100%;align-items:center;gap:8px">' +
+        return '<div class="pag-item">' +
           '<span class="pag-item-forma">' + (FORMA_LABEL[p.forma] || p.forma) + '</span>' +
           '<span class="pag-item-val">' + fmt(p.valor) + '</span>' +
           '<button class="pag-item-rm" onclick="PDV.remPag(' + i + ')" title="Remover">✕</button>' +
-          '</div>' +
-          contaHtml +
           '</div>';
       }).join('');
       renderTroco();
@@ -2848,15 +2850,27 @@
       var dtRetirada = tipoOp === 'locacao' ? fmtDT(document.getElementById('loc-retirada')?.value) : '';
       var dtDevolucao = tipoOp === 'locacao' ? fmtDT(document.getElementById('loc-devolucao')?.value) : '';
 
+      // Vendedor selecionado no PDV
+      var selVend = document.getElementById('pdv-vendedor');
+      var nomeVendedor = selVend && selVend.selectedIndex > 0 ? selVend.options[selVend.selectedIndex].textContent.trim() : 'ANDREY RONALD BARROS DA CONCEIÇÃO';
+
+      var FORMA_CONTRATO = { 'dinheiro': 'DINHEIRO', 'pix': 'PIX', 'credito': 'CRÉDITO', 'debito': 'DÉBITO', 'crediario': 'CREDIÁRIO', 'transferencia': 'TRANSFERÊNCIA', 'cheque': 'CHEQUE', 'vale': 'VALE' };
       var formas = pagamentos.map(function (p) { return p.forma; });
       function chk(f) { return formas.includes(f) ? '<span style="font-weight:900">&#10003;</span>' : '&nbsp;&nbsp;'; }
 
-      var pagRow1 = pagamentos[0] ? { label: FORMA_LABEL[pagamentos[0].forma] || pagamentos[0].forma, valor: fmt(pagamentos[0].valor) } : null;
-      var pagRow2 = pagamentos[1] ? { label: FORMA_LABEL[pagamentos[1].forma] || pagamentos[1].forma, valor: fmt(pagamentos[1].valor) } : null;
-
       var hoje = new Date();
+      var dataHoje = fmtDate(hoje.toISOString().slice(0, 10));
       var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
       var dataManaus = hoje.getDate() + ' de ' + meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
+
+      // Linhas de pagamento dinâmicas (até 3)
+      var pagLinhas = pagamentos.map(function (p) {
+        return '<div style="display:flex;gap:16px;margin:4px 0;line-height:2">' +
+          '<div><span class="label">FORMA: </span>' + filled(FORMA_CONTRATO[p.forma] || p.forma.toUpperCase(), 100) + '</div>' +
+          '<div><span class="label">VALOR: </span>' + filled(fmt(p.valor), 90) + '</div>' +
+          '<div><span class="label">DATA: </span>' + filled(dataHoje, 90) + '</div>' +
+          '</div>';
+      }).join('');
 
       var itensLinha = carrinho.map(function (it) {
         return it.qtd + 'x ' + it.descricao + (it.preco_unit > 0 ? ' (' + fmt(it.preco_unit) + ' un.)' : '');
@@ -2910,17 +2924,14 @@
         '<div class="field-row"><span class="label">E-MAIL: </span> festou.am@gmail.com</div>' +
 
         '<div class="section-title">Pagamento</div>' +
-        '<div class="pag-row">' +
+        '<div class="pag-row" style="flex-wrap:wrap;gap:8px 16px">' +
         '<div class="pag-chk"><span class="chk-box">' + chk('dinheiro') + '</span> DINHEIRO</div>' +
         '<div class="pag-chk"><span class="chk-box">' + chk('pix') + '</span> PIX</div>' +
         '<div class="pag-chk"><span class="chk-box">' + chk('debito') + '</span> DÉBITO</div>' +
         '<div class="pag-chk"><span class="chk-box">' + chk('credito') + '</span> CRÉDITO</div>' +
+        '<div class="pag-chk"><span class="chk-box">' + chk('crediario') + '</span> CREDIÁRIO</div>' +
         '</div>' +
-        '<div class="valor-row">' +
-        '<div><span class="label">VALOR: </span>' + filled(pagRow1 ? pagRow1.valor : '', 90) + '</div>' +
-        '<div><span class="label">DATA: </span>' + filled(dataManaus ? fmtDate(hoje.toISOString().slice(0,10)) : '', 90) + '</div>' +
-        (pagRow2 ? '<div><span class="label">VALOR: </span>' + filled(pagRow2.valor, 90) + '</div><div><span class="label">DATA: </span>' + filled('', 90) + '</div>' : '') +
-        '</div>' +
+        pagLinhas +
         '<div class="total-destaque">TOTAL: ' + fmt(totalGeral) + '</div>' +
 
         '<div class="section-title">Datas da Locação</div>' +
@@ -2968,7 +2979,9 @@
 
     return {
       filtrar, add, removeItem, setQtd, setDesc, toggleDesc, aplicarDescontoBalao, limparDescontos,
-      addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro, finalizar, cancelar,
+      addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro,
+      abrirModalValor, fecharModalValor, confirmarModalValor,
+      finalizar, cancelar,
       avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
       abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente,
       toggleFormNovoCli, salvarNovoCli, imprimirContrato,
