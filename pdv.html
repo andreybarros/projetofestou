@@ -483,19 +483,24 @@
   .desc-wrap {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-left: auto
+    gap: 5px;
+    margin-left: auto;
+    background: var(--mc2);
+    border: 1.5px solid var(--mborder);
+    border-radius: 7px;
+    padding: 4px 8px;
   }
 
   .desc-chk {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
     accent-color: #4f46e5;
     cursor: pointer
   }
 
   .desc-label {
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--mmuted);
     cursor: pointer;
     user-select: none;
@@ -503,14 +508,14 @@
   }
 
   .desc-pct-inp {
-    width: 50px;
-    padding: 3px 6px;
-    border: 1.5px solid var(--mborder);
+    width: 72px;
+    padding: 4px 7px;
+    border: 1.5px solid #4f46e5;
     border-radius: 5px;
     font-family: 'DM Mono', monospace;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    background: var(--mc2);
+    background: var(--mc);
     color: #4f46e5;
     text-align: center;
     outline: none
@@ -518,6 +523,34 @@
 
   .desc-pct-inp:focus {
     border-color: #4f46e5
+  }
+
+  .desc-tipo-btn {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border: 1.5px solid #4f46e5;
+    border-radius: 4px;
+    background: none;
+    color: #4f46e5;
+    cursor: pointer;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .desc-tipo-btn:hover {
+    background: #4f46e5;
+    color: #fff;
+  }
+
+  html[data-theme="dark"] .desc-tipo-btn {
+    border-color: #818cf8;
+    color: #818cf8;
+  }
+
+  html[data-theme="dark"] .desc-tipo-btn:hover {
+    background: #818cf8;
+    color: #1e1b4b;
   }
 
   .btn-rm-item {
@@ -1960,11 +1993,23 @@
     function fmt(v) { return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
     function parseFmt(v) { return parseFloat(String(v || 0).replace(',', '.')) || 0; }
 
+    // ── Carrega categorias (para regras de desconto) ──────────────
+    var _categoriasMap = {}; // pk -> categoria
+    (async function () {
+      var fil = window.filialLogada;
+      var q = window.supabase.from('categorias').select('pk,nome,desconto_somente_decorador');
+      if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
+      var res = await q;
+      if (!res.error && res.data) {
+        res.data.forEach(function (c) { _categoriasMap[c.pk] = c; });
+      }
+    })();
+
     // ── Carrega produtos ─────────────────────────────────────────
     (async function () {
       try {
         var fil = window.filialLogada;
-        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo').order('descricao');
+        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo,categoria_pk').order('descricao');
         if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
         var res = await q;
         if (res.error) throw res.error;
@@ -2053,10 +2098,17 @@
       var ex = carrinho.find(function (i) { return i.produto_pk === pk; });
       if (ex) { ex.qtd += qty; }
       else {
-        carrinho.push({ produto_pk: p.pk, codigo: p.codigo || '', descricao: p.descricao, preco_unit: p.preco || 0, qtd: qty, desconto_pct: 0, foto_url: p.foto_url || '', saldo: p.saldo != null ? p.saldo : null });
+        carrinho.push({ produto_pk: p.pk, codigo: p.codigo || '', descricao: p.descricao, preco_unit: p.preco || 0, qtd: qty, desconto_pct: 0, desconto_val: 0, desconto_tipo: 'pct', desconto_ativo: false, foto_url: p.foto_url || '', saldo: p.saldo != null ? p.saldo : null, categoria_pk: p.categoria_pk || null });
       }
       renderCarrinho();
       window.showToast('Item: ' + p.descricao + ' adicionado!');
+    }
+
+    function _descBloqueado(it) {
+      if (!it.categoria_pk) return false;
+      var cat = _categoriasMap[it.categoria_pk];
+      if (!cat || !cat.desconto_somente_decorador) return false;
+      return !(clienteLogado && clienteLogado.decorador);
     }
 
     function removeItem(idx) { carrinho.splice(idx, 1); renderCarrinho(); }
@@ -2066,19 +2118,42 @@
       renderCarrinho();
     }
     function setDesc(idx, v) {
-      carrinho[idx].desconto_pct = Math.min(100, Math.max(0, parseFloat(v) || 0));
+      var it = carrinho[idx];
+      var val = Math.max(0, parseFloat(v) || 0);
+      if (it.desconto_tipo === 'val') {
+        var bruto = it.preco_unit * it.qtd;
+        it.desconto_val = Math.min(bruto, val);
+        it.desconto_pct = bruto > 0 ? (it.desconto_val / bruto) * 100 : 0;
+      } else {
+        it.desconto_pct = Math.min(100, val);
+        it.desconto_val = (it.preco_unit * it.qtd) * (it.desconto_pct / 100);
+      }
       var span = document.getElementById('itot-' + idx);
       if (span) {
-        var c = calcItem(carrinho[idx]);
+        var c = calcItem(it);
         span.textContent = fmt(c.liq);
-        span.className = 'pdv-item-total' + (carrinho[idx].desconto_pct > 0 ? ' com-desc' : '');
+        span.className = 'pdv-item-total' + (c.desc > 0 ? ' com-desc' : '');
       }
       atualizarTotais();
     }
 
+    function setDescTipo(idx, tipo) {
+      carrinho[idx].desconto_tipo = tipo;
+      carrinho[idx].desconto_pct = 0;
+      carrinho[idx].desconto_val = 0;
+      carrinho[idx].desconto_ativo = true;
+      renderCarrinho();
+      setTimeout(function () { var inp = document.getElementById('dinp-' + idx); if (inp) { inp.focus(); inp.select(); } }, 30);
+    }
+
     function calcItem(it) {
       var bruto = it.preco_unit * it.qtd;
-      var desc = bruto * (it.desconto_pct / 100);
+      var desc;
+      if (it.desconto_tipo === 'val') {
+        desc = Math.min(bruto, it.desconto_val || 0);
+      } else {
+        desc = bruto * ((it.desconto_pct || 0) / 100);
+      }
       return { bruto: bruto, desc: desc, liq: bruto - desc };
     }
 
@@ -2091,12 +2166,26 @@
       }
       el.innerHTML = carrinho.map(function (it, idx) {
         var calc = calcItem(it);
-        var temDesc = it.desconto_pct > 0;
+        var temDesc = !!it.desconto_ativo;
+        var bloqueado = _descBloqueado(it);
+        var tipo = it.desconto_tipo || 'pct';
+        var isPct = tipo === 'pct';
+        var inputVal = isPct ? (it.desconto_pct || '') : (it.desconto_val || '');
+        var inputMax = isPct ? ' max="100"' : '';
+        var inputPlaceholder = isPct ? '%' : 'R$';
         var saldoHtml = '';
         if (it.saldo != null) {
           var saldoCls = it.saldo <= 0 ? ' zerado' : (it.qtd > it.saldo ? ' baixo' : '');
           saldoHtml = '<span class="pdv-item-saldo' + saldoCls + '">📦 ' + it.saldo + ' em estoque</span>';
         }
+        var descHtml = bloqueado
+          ? '<span title="Desconto exclusivo para Decoradores" style="font-size:11px;color:#f59e0b;display:flex;align-items:center;gap:3px;white-space:nowrap">🔒 Só Decorador</span>'
+          : '<input type="checkbox" class="desc-chk" id="dchk-' + idx + '" ' + (temDesc ? 'checked' : '') + ' onchange="PDV.toggleDesc(' + idx + ',this.checked)">' +
+            '<label class="desc-label" for="dchk-' + idx + '">Desc.</label>' +
+            (temDesc
+              ? '<button class="desc-tipo-btn" onclick="PDV.setDescTipo(' + idx + ',\'' + (isPct ? 'val' : 'pct') + '\')" title="Alternar tipo de desconto">' + (isPct ? '%' : 'R$') + '</button>' +
+                '<input class="desc-pct-inp" type="number" min="0"' + inputMax + ' step="0.01" value="' + inputVal + '" placeholder="' + inputPlaceholder + '" id="dinp-' + idx + '" oninput="PDV.setDesc(' + idx + ',this.value)">'
+              : '');
         return '<div class="pdv-item">' +
           '<div class="pdv-item-row1">' +
           '<span class="pdv-item-nome">' + it.descricao + '</span>' +
@@ -2110,12 +2199,7 @@
           '<button class="qtd-btn" onclick="PDV.setQtd(' + idx + ',' + (it.qtd + 1) + ')">+</button>' +
           '</div>' +
           '<span class="preco-unit">' + fmt(it.preco_unit) + ' un.</span>' +
-          '<div class="desc-wrap">' +
-          '<input type="checkbox" class="desc-chk" id="dchk-' + idx + '" ' + (temDesc ? 'checked' : '') + ' onchange="PDV.toggleDesc(' + idx + ',this.checked)">' +
-          '<label class="desc-label" for="dchk-' + idx + '">Desc.</label>' +
-          '<input class="desc-pct-inp" type="number" min="0" max="100" value="' + (it.desconto_pct || '') + '" placeholder="%" style="display:' + (temDesc ? 'block' : 'none') + '" id="dinp-' + idx + '" oninput="PDV.setDesc(' + idx + ',this.value)">' +
-          '<span style="font-size:11px;color:#4f46e5;display:' + (temDesc ? 'inline' : 'none') + '" id="dpct-' + idx + '">%</span>' +
-          '</div>' +
+          '<div class="desc-wrap">' + descHtml + '</div>' +
           '<button class="btn-rm-item" onclick="PDV.removeItem(' + idx + ')" title="Remover">🗑</button>' +
           '</div>' +
           '</div>';
@@ -2124,9 +2208,17 @@
     }
 
     function toggleDesc(idx, on) {
-      if (!on) carrinho[idx].desconto_pct = 0;
+      if (on && _descBloqueado(carrinho[idx])) {
+        var cat = _categoriasMap[carrinho[idx].categoria_pk];
+        var nomeCat = cat ? cat.nome : 'esta categoria';
+        window.showToast('Desconto em "' + nomeCat + '" é exclusivo para clientes Decoradores.', 'error');
+        setTimeout(function () { var chk = document.getElementById('dchk-' + idx); if (chk) chk.checked = false; }, 0);
+        return;
+      }
+      carrinho[idx].desconto_ativo = on;
+      if (!on) { carrinho[idx].desconto_pct = 0; carrinho[idx].desconto_val = 0; }
       renderCarrinho();
-      if (on) setTimeout(function () { var inp = document.getElementById('dinp-' + idx); if (inp) { inp.style.display = 'block'; inp.focus(); inp.select(); } }, 30);
+      if (on) setTimeout(function () { var inp = document.getElementById('dinp-' + idx); if (inp) { inp.focus(); inp.select(); } }, 30);
     }
 
     function atualizarTotais() {
@@ -2169,14 +2261,14 @@
       if (!pct) { window.showToast('Iforme o % de desconto.', 'error'); return; }
       var count = 0;
       carrinho.forEach(function (it) {
-        if ((it.descricao || '').toLowerCase().includes('bal')) { it.desconto_pct = pct; count++; }
+        if ((it.descricao || '').toLowerCase().includes('bal')) { it.desconto_pct = pct; it.desconto_ativo = true; count++; }
       });
       renderCarrinho();
       window.showToast(count ? count + ' item(s) com desconto de ' + pct + '% aplicado!' : 'Nenhum item com "balão" no carrinho.');
     }
 
     function limparDescontos() {
-      carrinho.forEach(function (it) { it.desconto_pct = 0; });
+      carrinho.forEach(function (it) { it.desconto_pct = 0; it.desconto_val = 0; it.desconto_tipo = 'pct'; it.desconto_ativo = false; });
       renderCarrinho();
       window.showToast('Descontos removidos.');
     }
@@ -2647,6 +2739,7 @@
       document.getElementById('btn-cliente-rm').style.display = 'flex';
       fecharBuscaCliente();
       atualizarBtnContrato();
+      renderCarrinho();
     }
 
     function removerCliente() {
@@ -2655,6 +2748,7 @@
       if (el) el.value = '';
       var rm = document.getElementById('btn-cliente-rm');
       if (rm) rm.style.display = 'none';
+      renderCarrinho();
       atualizarBtnContrato();
       limparDescontos(); // Ao remover cliente, removemos descontos p/ segurança
     }
@@ -2772,6 +2866,7 @@
         if (elNome) elNome.value = novoCli.nome + (novoCli.decorador ? ' (Decorador)' : '');
         var rm = document.getElementById('btn-cliente-rm');
         if (rm) rm.style.display = 'flex';
+        renderCarrinho();
 
         window.showToast('Cliente "' + novoCli.nome + '" cadastrado e selecionado!');
         listaClientesFull.push(novoCli);
@@ -3000,7 +3095,7 @@
     }
 
     return {
-      filtrar, add, removeItem, setQtd, setDesc, toggleDesc, aplicarDescontoBalao, limparDescontos,
+      filtrar, add, removeItem, setQtd, setDesc, setDescTipo, toggleDesc, aplicarDescontoBalao, limparDescontos,
       addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro,
       abrirModalValor, fecharModalValor, confirmarModalValor,
       finalizar, cancelar,

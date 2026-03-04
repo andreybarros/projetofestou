@@ -19,6 +19,17 @@ html[data-theme="dark"] .mform-card{box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .mform-group input:focus,.mform-group textarea:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
 .mform-group input::placeholder,.mform-group textarea::placeholder{color:#c4c9d9}
 .mform-group textarea{resize:vertical;min-height:80px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--mc2);border:1.5px solid var(--mborder);border-radius:10px;cursor:pointer;transition:border-color .2s}
+.toggle-row:hover{border-color:#4f46e5}
+.toggle-row-info{}
+.toggle-row-label{font-size:13px;font-weight:600;color:var(--mtext2)}
+.toggle-row-sub{font-size:11px;color:var(--mmuted);margin-top:2px}
+.toggle{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#d1d5db;border-radius:22px;transition:.3s}
+.toggle-slider::before{content:"";position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.toggle-slider{background:#4f46e5}
+.toggle input:checked+.toggle-slider::before{transform:translateX(18px)}
 .filial-badge{display:inline-flex;align-items:center;gap:6px;background:#e0e7ff;color:#3730a3;border-radius:8px;padding:8px 14px;font-family:'DM Mono',monospace;font-size:15px;font-weight:700;border:1px solid #c7d2fe}
 html[data-theme="dark"] .filial-badge{background:#2e3250;color:#a78bfa;border-color:#3d4270}
 .mdivider{height:1px;background:var(--mborder);margin:16px 0}
@@ -35,6 +46,19 @@ html[data-theme="dark"] .filial-badge{background:#2e3250;color:#a78bfa;border-co
     <div class="mform-group"><label>Filial</label><div class="filial-badge" id="cat-filial-badge">🏢 —</div></div>
     <div class="mform-group"><label>Nome da Categoria *</label><input type="text" id="cat-nome" placeholder="Ex: Balões, Tiaras, Fantasias..."></div>
     <div class="mform-group"><label>Descrição</label><textarea id="cat-desc" placeholder="Descrição opcional..."></textarea></div>
+    <div class="mform-group">
+      <label>Restrições de Desconto</label>
+      <div class="toggle-row" onclick="document.getElementById('cat-dec-only').click();event.stopPropagation()">
+        <div class="toggle-row-info">
+          <div class="toggle-row-label">🎨 Desconto apenas para Decoradores</div>
+          <div class="toggle-row-sub">Produtos desta categoria só aceitam desconto no PDV se o cliente for decorador</div>
+        </div>
+        <label class="toggle" onclick="event.stopPropagation()">
+          <input type="checkbox" id="cat-dec-only">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
     <div class="mdivider"></div>
     <div class="mform-footer">
       <button class="mbtn mbtn-primary" id="btn-salvar-cat" onclick="salvarCategoria()">Salvar Categoria</button>
@@ -56,13 +80,14 @@ document.getElementById('cat-filial-badge').textContent='🏢 '+(_filCat?_filCat
   document.getElementById('btn-salvar-cat').textContent='Salvar Alterações';
   document.getElementById('cat-nome').value=d.nome||'';
   document.getElementById('cat-desc').value=d.descricao||'';
+  document.getElementById('cat-dec-only').checked=d.desconto_somente_decorador||false;
 })();
 
 async function salvarCategoria(){
   var nome=(document.getElementById('cat-nome')?.value||'').trim();
   if(!nome){window.showToast('Informe o nome.','error');return;}
   var btn=document.getElementById('btn-salvar-cat');btn.disabled=true;
-  var payload={nome,descricao:document.getElementById('cat-desc')?.value.trim()||null,filial_pk:_filCat?.pk||null};
+  var payload={nome,descricao:document.getElementById('cat-desc')?.value.trim()||null,filial_pk:_filCat?.pk||null,desconto_somente_decorador:document.getElementById('cat-dec-only')?.checked||false};
   if(_catPk){
     var{error}=await window.supabase.from('categorias').update(payload).eq('pk',_catPk);
     btn.disabled=false;if(error){window.showToast('Erro: '+error.message,'error');return;}
@@ -73,5 +98,5 @@ async function salvarCategoria(){
     window.showToast('Categoria cadastrada!');limparCat();
   }
 }
-function limparCat(){_catPk=null;['cat-nome','cat-desc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('btn-salvar-cat').textContent='Salvar Categoria';document.getElementById('edit-banner').style.display='none';}
+function limparCat(){_catPk=null;['cat-nome','cat-desc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});var dc=document.getElementById('cat-dec-only');if(dc)dc.checked=false;document.getElementById('btn-salvar-cat').textContent='Salvar Categoria';document.getElementById('edit-banner').style.display='none';}
 </script>

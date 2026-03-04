@@ -328,5 +328,8 @@ BEGIN
   END IF;
 END $$;
 
+-- 22. Flag de desconto restrito a decoradores por categoria
+ALTER TABLE categorias ADD COLUMN IF NOT EXISTS desconto_somente_decorador boolean DEFAULT false;
+
 NOTIFY pgrst, 'reload schema';
 

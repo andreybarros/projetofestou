@@ -41,7 +41,7 @@ html[data-theme="dark"] .mtable-wrap{box-shadow:0 4px 20px rgba(0,0,0,.3)}
   </div>
   <div class="mtable-wrap">
     <table class="mtable">
-      <thead><tr><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Descrição</th><th>Desconto</th><th>Ações</th></tr></thead>
       <tbody id="tabela-cats"><tr class="mstate"><td colspan="3"><span class="mstate-icon">⏳</span>Carregando...</td></tr></tbody>
     </table>
   </div>
@@ -52,11 +52,15 @@ window.CatMod = (function(){
   (function(){var el=document.getElementById('chip-fil-cat'),f=window.filialLogada;if(el)el.textContent=f?f.codigo+' – '+f.nome:'Todas';})();
   function setTbody(h){var el=document.getElementById('tabela-cats');if(el)el.innerHTML=h;}
   function render(data){
-    if(!data||!data.length){setTbody('<tr class="mstate"><td colspan="3"><span class="mstate-icon">🏷️</span>Nenhuma categoria cadastrada</td></tr>');return;}
+    if(!data||!data.length){setTbody('<tr class="mstate"><td colspan="4"><span class="mstate-icon">🏷️</span>Nenhuma categoria cadastrada</td></tr>');return;}
     setTbody(data.map(function(c){
+      var badgeDesc=c.desconto_somente_decorador
+        ?'<span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:600;padding:2px 9px">🎨 Só Decorador</span>'
+        :'<span style="color:var(--mmuted);font-size:12px">Livre</span>';
       return '<tr id="cat-row-'+c.pk+'">'+
         '<td data-label="Nome"><strong style="color:var(--mtext2)">'+c.nome+'</strong></td>'+
         '<td data-label="Descrição">'+(c.descricao||'<span style="color:var(--mmuted);font-style:italic">—</span>')+'</td>'+
+        '<td data-label="Desconto">'+badgeDesc+'</td>'+
         '<td data-label="Ações"><div class="acoes-cell">'+
           '<button class="mbtn-edit" onclick="CatMod.editar('+c.pk+')">Alterar</button>'+
           '<button class="mbtn-danger" onclick="CatMod.excluir('+c.pk+')">Excluir</button>'+
@@ -75,12 +79,12 @@ window.CatMod = (function(){
     if(!lista.length)render([]);
   }
   async function carregar(){
-    setTbody('<tr class="mstate"><td colspan="3"><span class="mstate-icon">⏳</span>Carregando...</td></tr>');
+    setTbody('<tr class="mstate"><td colspan="4"><span class="mstate-icon">⏳</span>Carregando...</td></tr>');
     var f=window.filialLogada;
     var q=window.supabase.from('categorias').select('*').order('nome');
     if(f&&f.pk) q=q.eq('filial_pk',f.pk);
     var res=await q;
-    if(res.error){setTbody('<tr class="mstate"><td colspan="3"><span class="mstate-icon">❌</span>Erro: '+res.error.message+'</td></tr>');return;}
+    if(res.error){setTbody('<tr class="mstate"><td colspan="4"><span class="mstate-icon">❌</span>Erro: '+res.error.message+'</td></tr>');return;}
     lista=res.data||[];render(lista);
   }
   carregar();
