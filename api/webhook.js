@@ -32,8 +32,11 @@ module.exports = async function handler(req, res) {
   // ── Recebe mensagem do cliente ──
   if (req.method === 'POST') {
     try {
+      console.log('[Festou] body:', JSON.stringify(req.body));
       const value    = req.body?.entry?.[0]?.changes?.[0]?.value;
       const messages = value?.messages;
+      console.log('[Festou] value:', JSON.stringify(value));
+      console.log('[Festou] messages:', JSON.stringify(messages));
 
       // Ignora notificações que não são mensagens de texto
       if (!messages?.length) return res.status(200).end();
