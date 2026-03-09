@@ -466,22 +466,8 @@
             var btnIn = document.getElementById('btn-ponto-in');
             var btnOut = document.getElementById('btn-ponto-out');
             if (!btnIn || !btnOut) return;
-            if (!punches || punches.length === 0) {
-                // Sem batidas hoje: só pode entrar
-                btnIn.disabled = false;
-                btnOut.disabled = true;
-                return;
-            }
-            var ultimoTipo = punches[0].tipo.replace('_manual', '');
-            if (ultimoTipo === 'entrada') {
-                // Última foi entrada: só pode sair
-                btnIn.disabled = true;
-                btnOut.disabled = false;
-            } else {
-                // Última foi saída: só pode entrar
-                btnIn.disabled = false;
-                btnOut.disabled = true;
-            }
+            btnIn.disabled = false;
+            btnOut.disabled = false;
         }
 
         async function carregarFuncionarios() {

@@ -156,6 +156,75 @@
         font-weight: 700;
     }
 
+    .row-domingo td:first-child {
+        color: #ea580c;
+        font-weight: 700;
+    }
+
+    .badge-dom {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: #fff7ed;
+        color: #ea580c;
+        border: 1px solid #fdba74;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 7px;
+        margin-left: 4px;
+    }
+
+    html[data-theme="dark"] .badge-dom {
+        background: #431407;
+        color: #fb923c;
+        border-color: #9a3412;
+    }
+
+    .extra-banco-card {
+        background: #fff7ed;
+        border: 1.5px solid #fed7aa;
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 14px;
+    }
+
+    html[data-theme="dark"] .extra-banco-card {
+        background: #1c0f00;
+        border-color: #9a3412;
+    }
+
+    .extra-banco-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .8px;
+        text-transform: uppercase;
+        color: #ea580c;
+        margin-bottom: 8px;
+    }
+
+    .extra-linha {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--mtext2);
+        padding: 3px 0;
+    }
+
+    .extra-linha.total {
+        border-top: 1px solid #fed7aa;
+        margin-top: 6px;
+        padding-top: 8px;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    html[data-theme="dark"] .extra-linha.total {
+        border-color: #9a3412;
+    }
+    }
+
     .form-closing-card {
         background: var(--mc);
         border-radius: 14px;
@@ -327,12 +396,31 @@
 
                 <div class="mdivider" style="margin:20px 0; border-top:1px solid var(--mborder)"></div>
 
+                <!-- Card banco de horas extras -->
+                <div class="extra-banco-card" id="extra-banco-card" style="display:none">
+                    <div class="extra-banco-title">🕐 Banco de Horas Extras</div>
+                    <div class="extra-linha">
+                        <span>Extras normais (Seg–Sáb)</span>
+                        <strong id="stat-extra-normal">0.00h</strong>
+                    </div>
+                    <div class="extra-linha">
+                        <span>Extras Domingo <span style="font-size:10px;opacity:.8">(×2 = 100%)</span></span>
+                        <strong id="stat-extra-domingo">0.00h → 0.00h</strong>
+                    </div>
+                    <div class="extra-linha total">
+                        <span>Total disponível</span>
+                        <strong id="stat-extra-total" style="color:#ea580c">0.00h</strong>
+                    </div>
+                </div>
+
                 <div class="mform-group">
                     <label>Pagar do Banco (Horas Extras)</label>
                     <div style="display:flex; gap:10px; align-items:center">
                         <input type="number" id="close-pagar-horas" value="0.0" step="0.5"
                             oninput="ClosingMod.recalcular()" style="width:100px">
                         <span style="font-size:12px; color:var(--mmuted)">Horas</span>
+                        <button class="mbtn mbtn-ghost" style="padding:4px 10px; font-size:11px" onclick="ClosingMod.pagarTudoExtra()" title="Preencher com total do banco">Tudo</button>
+                        <button class="mbtn mbtn-ghost" style="padding:4px 10px; font-size:11px; color:#ea580c; border-color:#fdba74" onclick="ClosingMod.pagarSoDomingo()" title="Preencher só com extras de domingo (×2)">Dom</button>
                     </div>
                     <small style="color:var(--mmuted); font-size:11px">Retira do saldo acumulado para pagar em $</small>
                 </div>
@@ -537,16 +625,22 @@
             summaries.trabalhado = 0;
             summaries.paidSec = 0;
             summaries.extraSec = 0;
+            summaries.extraSecNormal = 0; // extras Seg-Sáb
+            summaries.extraSecDomingo = 0; // horas brutas trabalhadas no domingo
             summaries.diasPagos = 0;
 
             var html = '';
             var cargaDiariaSec = (func.carga_horaria_diaria || 8) * 3600;
             var intervaloSec = (func.minutos_intervalo || 60) * 60;
+            var diasUteisTotal = 0;
+            var diasUteisPrevistos = 0;
 
             for (var dt = new Date(dIni); dt <= dFim; dt.setDate(dt.getDate() + 1)) {
                 var dia = dt.getDate();
                 var dtStr = dt.toISOString().split('T')[0];
-                var isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+                var isDomingo = dt.getDay() === 0;
+                var isSabado = dt.getDay() === 6;
+                var isWeekend = isDomingo || isSabado;
 
                 var jst = justs.find(j => j.data === dtStr);
                 var bats = (diasMap[dtStr] || {}).batidas || [];
@@ -554,6 +648,8 @@
                 // Diaristas não têm jornada obrigatória: sem débito de horas
                 var p_previsto = (func.diarista || isWeekend) ? 0 : cargaDiariaSec;
                 var p_trabalhado = 0;
+
+                if (!func.diarista && !isWeekend) diasUteisTotal++;
 
                 if (bats.length >= 2) {
                     var ent = timeToSec(bats[0]);
@@ -563,14 +659,23 @@
 
                 // Se houver justificativa, o previsto zera para não gerar débito
                 if (jst) p_previsto = 0;
+                else if (!func.diarista && !isWeekend) diasUteisPrevistos++;
 
                 var diff = p_trabalhado - p_previsto;
-                summaries.previsto += p_previsto;
                 summaries.trabalhado += p_trabalhado;
 
-                // Se justificado, paga a diária completa.
+                // Classificação de horas extras
+                if (isDomingo && p_trabalhado > 0) {
+                    // Domingo: 100% extra — cada hora vale 2x no banco
+                    summaries.extraSecDomingo += p_trabalhado;
+                } else if (diff > 0) {
+                    // Excedente em dia útil ou sábado
+                    summaries.extraSecNormal += diff;
+                }
+
+                // Se justificado, paga a diária completa (apenas dias úteis).
                 // Se não, paga o que trabalhou (até o limite da carga horária).
-                if (jst) {
+                if (jst && !isWeekend) {
                     summaries.paidSec += cargaDiariaSec;
                     if (func.diarista) summaries.diasPagos++;
                 } else if (bats.length >= 2) {
@@ -578,13 +683,15 @@
                     if (func.diarista) summaries.diasPagos++;
                 }
 
-                summaries.extraSec += (diff > 0 ? diff : 0);
+                // Total extra com multiplier: domingo = ×2
+                summaries.extraSec = summaries.extraSecNormal + (summaries.extraSecDomingo * 2);
 
                 var cls = diff > 0 ? 'diff-pos' : (diff < 0 ? 'diff-neg' : '');
                 var fmtDiff = diff === 0 ? '--' : (diff > 0 ? '+' : '-') + formatSec(Math.abs(diff));
+                var domBadge = isDomingo && p_trabalhado > 0 ? '<span class="badge-dom">Dom ×2</span>' : '';
 
-                html += `<tr>
-                    <td>${dia}/${mes} (${getDayName(dt.getDay())})</td>
+                html += `<tr${isDomingo && p_trabalhado > 0 ? ' class="row-domingo"' : ''}>
+                    <td>${dia}/${mes} (${getDayName(dt.getDay())})${domBadge}</td>
                     <td>${jst ? '<b>[' + jst.tipo + ']</b>' : (p_previsto > 0 ? formatSec(p_previsto) : '--')}</td>
                     <td>${bats.join(' | ') || '--'}</td>
                     <td>${p_trabalhado > 0 ? formatSec(p_trabalhado) : '--'}</td>
@@ -594,6 +701,11 @@
             }
 
             tbody.innerHTML = html;
+
+            // Previsto do período baseado em horas_fechamento (mensal) ÷ 2 (quinzena),
+            // proporcional aos dias úteis não justificados
+            var horasPeriodo = (func.horas_fechamento || 0) / 2;
+            summaries.previsto = horasPeriodo * 3600 * (diasUteisTotal > 0 ? diasUteisPrevistos / diasUteisTotal : 1);
 
             // Totais
             summaries.saldoMes = (summaries.trabalhado - summaries.previsto) / 3600;
@@ -605,6 +717,17 @@
             document.getElementById('stat-saldo-mes').textContent = (summaries.saldoMes >= 0 ? '+' : '') + summaries.saldoMes.toFixed(2) + 'h';
             document.getElementById('stat-saldo-mes').style.color = summaries.saldoMes < 0 ? 'var(--mdanger)' : 'var(--msuccess)';
             document.getElementById('stat-saldo-total').textContent = summaries.saldoAcum.toFixed(2) + 'h';
+
+            // Domingo: sempre conta como extra (100%)
+            // Normais (Seg–Sáb): só conta se o saldo do período for positivo
+            var extraNormalH = summaries.saldoMes >= 0 ? summaries.extraSecNormal / 3600 : 0;
+            var extraDomRawH = summaries.extraSecDomingo / 3600;
+            var extraDomValH = extraDomRawH * 2;
+            var extraTotalH = extraNormalH + extraDomValH;
+            document.getElementById('stat-extra-normal').textContent = extraNormalH.toFixed(2) + 'h';
+            document.getElementById('stat-extra-domingo').textContent = extraDomRawH.toFixed(2) + 'h → ' + extraDomValH.toFixed(2) + 'h';
+            document.getElementById('stat-extra-total').textContent = extraTotalH.toFixed(2) + 'h';
+            document.getElementById('extra-banco-card').style.display = extraTotalH > 0 ? 'block' : 'none';
 
             renderDescontos();
             recalcular();
@@ -858,7 +981,23 @@
         function formatCurrency(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
         function getDayName(d) { return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d]; }
 
+        function pagarTudoExtra() {
+            var normalH = summaries.saldoMes >= 0 ? summaries.extraSecNormal / 3600 : 0;
+            var domH = (summaries.extraSecDomingo * 2) / 3600;
+            var total = normalH + domH;
+            if (total <= 0) { window.showToast('Nenhuma hora extra disponível para pagar.', 'error'); return; }
+            document.getElementById('close-pagar-horas').value = total.toFixed(2);
+            recalcular();
+        }
+
+        function pagarSoDomingo() {
+            var domH = (summaries.extraSecDomingo * 2) / 3600;
+            if (domH <= 0) { window.showToast('Nenhuma hora extra de domingo neste período.', 'error'); return; }
+            document.getElementById('close-pagar-horas').value = domH.toFixed(2);
+            recalcular();
+        }
+
         init();
-        return { carregar, recalcular, salvar, abrirJustificativa, salvarJustificativa, addDesconto, removeDesconto, desbloquear, enviarEspelho };
+        return { carregar, recalcular, salvar, pagarTudoExtra, pagarSoDomingo, abrirJustificativa, salvarJustificativa, addDesconto, removeDesconto, desbloquear, enviarEspelho };
     })();
 </script>
