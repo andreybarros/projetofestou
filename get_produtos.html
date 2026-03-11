@@ -659,8 +659,11 @@
 
         var termo = (filtro !== undefined ? filtro : document.getElementById('busca-produto')?.value || '').trim().toLowerCase();
         if (termo) {
-          var filtros = [`descricao.ilike.%${termo}%`, `localizacao.ilike.%${termo}%` || ''];
-          if (/^\d+$/.test(termo)) filtros.push(`codigo.eq.${termo}`);
+          var filtros = [
+            `codigo.ilike.%${termo}%`,
+            `descricao.ilike.%${termo}%`,
+            `localizacao.ilike.%${termo}%`
+          ];
           q = q.or(filtros.join(','));
         }
 
