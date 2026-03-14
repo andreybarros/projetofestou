@@ -377,9 +377,13 @@
             // Salário Proporcional da Quinzena
             // O valor normal do salário proporcional estava calculado dentro de total_liquido.
             // Vamos extrair:
+            // Dados salvos no fechamento
             var valExtra = f.valor_horas_extras || 0;
             var valDescTotal = f.valor_descontos || 0;
-            var valSalario = (f.total_liquido + valDescTotal) - valExtra;
+            var valLiq = f.total_liquido || 0;
+            
+            // O Salário Proporcional é o que sobra: Líquido - Extras + Descontos
+            var valSalario = (valLiq + valDescTotal) - valExtra;
 
             totProv += valSalario;
             totProv += valExtra;
@@ -394,9 +398,11 @@
         `;
 
             if (valExtra > 0) {
+                var qtdH = f.qtd_horas_pagas || 0;
+                var vH = f.valor_hora_extra_pago || 0;
                 linhas += `
                 <tr>
-                    <td>Pagamento de Horas Extras (Banco)</td>
+                    <td>Pagamento de Horas Extras (${qtdH.toFixed(2)}h @ ${fmtCur(vH)})</td>
                     <td class="val-col text-pos">${fmtCur(valExtra)}</td>
                     <td class="val-col"></td>
                 </tr>
@@ -427,15 +433,12 @@
 
             document.getElementById('tot-venc').textContent = fmtCur(totProv);
             document.getElementById('tot-desc').textContent = fmtCur(totDesc);
-            document.getElementById('tot-liq').textContent = fmtCur(f.total_liquido);
+            document.getElementById('tot-liq').textContent = fmtCur(valLiq);
 
             // Extrato banco
             document.getElementById('b-ant').textContent = (f.saldo_anterior || 0).toFixed(2) + 'h';
             document.getElementById('b-mov').textContent = ((f.saldo_mes >= 0 ? '+' : '') + (f.saldo_mes || 0).toFixed(2)) + 'h';
-            // horas pagas? nós sabemos que valExtra = horas_pagas * valorDaHora.
-            var horaVal = f.salario_base / funcionario.horasFechamento * 1.6;
-            var pagas = horaVal > 0 ? (valExtra / horaVal) : 0;
-            document.getElementById('b-pagas').textContent = pagas.toFixed(2) + 'h';
+            document.getElementById('b-pagas').textContent = (f.qtd_horas_pagas || 0).toFixed(2) + 'h';
             document.getElementById('b-fim').textContent = (f.saldo_acumulado || 0).toFixed(2) + 'h';
         }
 

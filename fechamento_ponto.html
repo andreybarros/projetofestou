@@ -574,10 +574,19 @@
             document.getElementById('btn-salvar').disabled = isBlocked || espelhoStatus !== 'aprovado';
             document.getElementById('btn-enviar-espelho').disabled = isBlocked;
             atualizarAlertaEspelho();
-            if (isBlocked) {
-                var valorH = fch.salario_base / summaries.horasFechamento;
-                document.getElementById('close-pagar-horas').value = (fch.valor_horas_extras / (valorH * 1.6) || 0).toFixed(1);
-                document.getElementById('close-descontos').value = fch.valor_descontos || 0;
+            if (fch) {
+                var valorH = (fch.salario_base || summaries.baseSalary) / (summaries.horasFechamento || 120);
+                document.getElementById('close-pagar-horas').value = (fch.qtd_horas_pagas || 0).toFixed(1);
+                
+                // Se o valor salvo for 0 ou nulo (ex: registros antigos), sugere o cálculo de 60%
+                var valorSugerido = (valorH * 1.6).toFixed(2);
+                document.getElementById('close-valor-ot').value = (fch.valor_hora_extra_pago > 0) ? fch.valor_hora_extra_pago.toFixed(2) : valorSugerido;
+                
+                document.getElementById('close-descontos').value = (fch.valor_descontos || 0).toFixed(2);
+            } else if (!func.diarista) {
+                // Cálculo padrão se não houver dados salvos
+                var valorH = summaries.baseSalary / (summaries.horasFechamento || 120);
+                document.getElementById('close-valor-ot').value = (valorH * 1.6).toFixed(2);
             }
 
             // 2. Buscar Saldo Anterior (Fechamento da quinzena anterior)
@@ -783,28 +792,35 @@
             document.getElementById('close-descontos').value = total.toFixed(2);
         }
 
-        function recalcular() {
+        function calculateTotals() {
             var pagarHoras = parseFloat(document.getElementById('close-pagar-horas').value) || 0;
             var valorOT = parseFloat(document.getElementById('close-valor-ot').value) || 0;
             var descontos = parseFloat(document.getElementById('close-descontos').value) || 0;
             var totalOT = pagarHoras * valorOT;
 
+            var salProp = 0;
+            var labelProp = '';
+
             if (func.diarista) {
-                var totalDiarias = summaries.diasPagos * (func.valor_diaria || 0);
-                var total = totalDiarias + totalOT - descontos;
-                document.getElementById('side-prop').textContent = summaries.diasPagos + ' dia(s) × ' + formatCurrency(func.valor_diaria || 0);
-                document.getElementById('total-final').textContent = formatCurrency(total);
+                salProp = summaries.diasPagos * (func.valor_diaria || 0);
+                labelProp = summaries.diasPagos + ' dia(s) × ' + formatCurrency(func.valor_diaria || 0);
             } else {
                 var hourVal = summaries.baseSalary / summaries.horasFechamento;
                 var salBase = summaries.baseSalary / 2; // Salário da quinzena
-                var horasFaltas = summaries.missingSec / 3600;
+                var horasFaltas = (summaries.missingSec || 0) / 3600;
                 var valorFaltas = horasFaltas * hourVal;
-                var salProp = Math.max(0, salBase - valorFaltas);
-                
-                var total = salProp + totalOT - descontos;
-                document.getElementById('side-prop').textContent = formatCurrency(salProp) + (horasFaltas > 0 ? ` (Desconto de ${horasFaltas.toFixed(1)}h faltas)` : '');
-                document.getElementById('total-final').textContent = formatCurrency(total);
+                salProp = Math.max(0, salBase - valorFaltas);
+                labelProp = formatCurrency(salProp) + (horasFaltas > 0 ? ` (Desconto de ${horasFaltas.toFixed(1)}h faltas)` : '');
             }
+
+            var total = salProp + totalOT - descontos;
+            return { total, salProp, labelProp, pagarHoras, valorOT, descontos, totalOT };
+        }
+
+        function recalcular() {
+            var res = calculateTotals();
+            document.getElementById('side-prop').textContent = res.labelProp;
+            document.getElementById('total-final').textContent = formatCurrency(res.total);
         }
 
         async function salvar() {
@@ -814,20 +830,14 @@
             }
             if (!await window.showConfirm("Este período será bloqueado e o saldo final do banco de horas será carregado para o próximo período.", "Finalizar e Bloquear Período?")) return;
 
+            var calc = calculateTotals();
             var quinzena = parseInt(document.getElementById('close-quinzena').value);
             var mes = parseInt(document.getElementById('close-mes').value);
             var ano = parseInt(document.getElementById('close-ano').value);
-            var pagarHoras = parseFloat(document.getElementById('close-pagar-horas').value) || 0;
-            var valorOT = parseFloat(document.getElementById('close-valor-ot').value) || 0;
-            var descontos = parseFloat(document.getElementById('close-descontos').value) || 0;
             var obs = document.getElementById('close-obs')?.value || '';
 
             // Ao pagar horas, elas saem do saldo acumulado do banco
-            var saldoFinalBanco = summaries.saldoAcum - pagarHoras;
-
-            var totalLiquido = func.diarista
-                ? (summaries.diasPagos * (func.valor_diaria || 0)) + (pagarHoras * valorOT) - descontos
-                : (summaries.paidSec / 3600 * summaries.baseSalary / summaries.horasFechamento) + (pagarHoras * valorOT) - descontos;
+            var saldoFinalBanco = summaries.saldoAcum - calc.pagarHoras;
 
             var payload = {
                 filial_pk: window.filialLogada.pk,
@@ -839,9 +849,11 @@
                 saldo_anterior: summaries.saldoAnt,
                 saldo_mes: summaries.saldoMes,
                 saldo_acumulado: saldoFinalBanco,
-                valor_horas_extras: pagarHoras * valorOT,
-                valor_descontos: descontos,
-                total_liquido: totalLiquido,
+                valor_horas_extras: calc.totalOT,
+                qtd_horas_pagas: calc.pagarHoras,
+                valor_hora_extra_pago: calc.valorOT,
+                valor_descontos: calc.descontos,
+                total_liquido: calc.total,
                 bloqueado: true,
                 observacoes: obs
             };
@@ -893,17 +905,12 @@
             if (isBlocked) return;
             if (!await window.showConfirm("Os dados atuais do período serão salvos e enviados ao funcionário para revisão e aprovação.", "Enviar Espelho para Aprovação?")) return;
 
+            var calc = calculateTotals();
             var quinzena = parseInt(document.getElementById('close-quinzena').value);
             var mes = parseInt(document.getElementById('close-mes').value);
             var ano = parseInt(document.getElementById('close-ano').value);
-            var pagarHoras = parseFloat(document.getElementById('close-pagar-horas').value) || 0;
-            var valorOT = parseFloat(document.getElementById('close-valor-ot').value) || 0;
-            var descontos = parseFloat(document.getElementById('close-descontos').value) || 0;
 
-            var saldoFinalBanco = summaries.saldoAcum - pagarHoras;
-            var totalLiquido = func.diarista
-                ? (summaries.diasPagos * (func.valor_diaria || 0)) + (pagarHoras * valorOT) - descontos
-                : (summaries.paidSec / 3600 * summaries.baseSalary / summaries.horasFechamento) + (pagarHoras * valorOT) - descontos;
+            var saldoFinalBanco = summaries.saldoAcum - calc.pagarHoras;
 
             var payload = {
                 filial_pk: window.filialLogada.pk,
@@ -915,9 +922,11 @@
                 saldo_anterior: summaries.saldoAnt,
                 saldo_mes: summaries.saldoMes,
                 saldo_acumulado: saldoFinalBanco,
-                valor_horas_extras: pagarHoras * valorOT,
-                valor_descontos: descontos,
-                total_liquido: totalLiquido,
+                valor_horas_extras: calc.totalOT,
+                qtd_horas_pagas: calc.pagarHoras,
+                valor_hora_extra_pago: calc.valorOT,
+                valor_descontos: calc.descontos,
+                total_liquido: calc.total,
                 bloqueado: false,
                 espelho_status: 'enviado',
                 espelho_observacao: null,

@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Estoque</title>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" href="img/favicon.png">
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4f46e5">
@@ -691,7 +691,7 @@
     <div class="login-box">
       <div class="login-logo">
         <img id="login-logo-padrao" src="img/logo.png" alt="Logo" style="max-width: 180px; margin-bottom: 12px;">
-        <img id="login-festou-logo" src="logo_festou.png" alt="Festou" style="max-width:200px;margin:0 auto 10px;display:none;object-fit:contain">
+        <img id="login-festou-logo" src="logo_festou.png" alt="Festou" style="max-height:150px; max-width:300px; margin:0 auto 10px; display:none; object-fit:contain">
         <h2 style="display:none">Controle de Estoque</h2>
         <p>Faça login para acessar o sistema</p>
       </div>
@@ -733,10 +733,6 @@
       </div>
 
       <div class="sidebar-scroller">
-        <div class="sidebar-logo" onclick="ir('home.html')" style="cursor:pointer">
-          <img id="sidebar-logo-img" src="img/logo.png" alt="Logo">
-        </div>
-
         <button class="nav-btn" id="nav-home" onclick="ir('home.html','nav-home')">
           <span class="nav-icon">🏠</span><span class="nav-text">Início</span>
         </button>
@@ -901,6 +897,11 @@
       var lf = document.getElementById('login-festou-logo');
       if (lp) lp.style.display = is02 ? 'none' : 'block';
       if (lf) lf.style.display = is02 ? 'block' : 'none';
+      
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (favicon) favicon.href = 'img/favicon.png';
+      const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleIcon) appleIcon.href = 'img/favicon.png';
     }
 
     // ── Login ──────────────────────────────────────────────────
@@ -934,11 +935,20 @@
       // Atualiza UI
       document.getElementById('user-display').textContent = op.nome;
       document.getElementById('user-filial-badge').textContent = `${window.filialLogada.codigo} · ${window.filialLogada.nome}`;
-      document.getElementById('sidebar-filial-label').textContent = `Filial ${window.filialLogada.codigo} — ${window.filialLogada.nome}`;
-
+      
+      const sidebarTitle = document.querySelector('.sidebar-title');
+      const sidebarFilialLabel = document.getElementById('sidebar-filial-label');
+      
+      // Aplica a logo no topo da barra lateral para qualquer filial
+      sidebarTitle.innerHTML = '<img src="img/logo_fundo_transp.png" style="max-height: 120px; max-width: 100%; width: auto; display: block; margin: 0 auto;" alt="Festou">';
+      if (sidebarFilialLabel) sidebarFilialLabel.style.display = 'none';
       await aplicarPermissoes(op);
-      const sidebarLogo = document.getElementById('sidebar-logo-img');
-      if (sidebarLogo) sidebarLogo.src = window.filialLogada.codigo === '02' ? 'logo_festou.png' : 'img/logo.png';
+      
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (favicon) favicon.href = 'img/favicon.png';
+      const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleIcon) appleIcon.href = 'img/favicon.png';
+      
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').classList.add('visible');
       document.getElementById('sidebar').classList.add('visible');
@@ -1004,8 +1014,20 @@
       window.operadorLogado = null;
       window.filialLogada = null;
       window._editData = null;
-      const sidebarLogoOut = document.getElementById('sidebar-logo-img');
-      if (sidebarLogoOut) sidebarLogoOut.src = 'img/logo.png';
+      
+      const sidebarTitle = document.querySelector('.sidebar-title');
+      if (sidebarTitle) sidebarTitle.innerHTML = '📦 Controle de Estoque';
+      const sidebarFilialLabel = document.getElementById('sidebar-filial-label');
+      if (sidebarFilialLabel) {
+         sidebarFilialLabel.style.display = 'block';
+         sidebarFilialLabel.textContent = '—';
+      }
+      
+      const faviconOut = document.querySelector('link[rel="icon"]');
+      if (faviconOut) faviconOut.href = 'img/favicon.png';
+      const appleIconOut = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleIconOut) appleIconOut.href = 'img/favicon.png';
+      
       document.getElementById('app').classList.remove('visible');
       document.getElementById('sidebar').classList.remove('visible');
       document.getElementById('login-screen').style.display = 'flex';

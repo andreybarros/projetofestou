@@ -791,11 +791,11 @@
       var f = window.filialLogada;
       var el = document.getElementById('f-filial-nome');
       if (el) el.textContent = f ? f.codigo + ' – ' + f.nome : '—';
-      isFilial2 = !!(f && f.codigo === '02');
+      isFilial2 = !!(f && (f.codigo === '02' || f.codigo === '01'));
       var f2 = document.getElementById('f2-fields');
       if (f2) f2.style.display = isFilial2 ? '' : 'none';
       var tabs = document.getElementById('prod-tabs');
-      // Só mostra tabs se filial 2 e modo criação (sem editPk ainda)
+      // Só mostra tabs se filial 2 (ou 1) e modo criação (sem editPk ainda)
       if (tabs && isFilial2) tabs.style.display = '';
       if (isFilial2) carregarCategorias();
     })();

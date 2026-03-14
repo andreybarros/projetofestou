@@ -888,7 +888,7 @@
         return it.qtd + 'x ' + it.descricao + d + '\n   ' + 'R$ ' + Number(it.preco_unit).toFixed(2) + ' x ' + it.qtd + ' = R$ ' + Number(it.total_item).toFixed(2);
       }).join('\n');
       var pagTxt = pags.map(function (p) { return '  ' + (FORMA_LABEL[p.forma] || p.forma) + ': R$ ' + Number(p.valor).toFixed(2); }).join('\n');
-      var html = '<html><head><title>Cupom #' + v.numero + '</title><style>body{font-family:monospace;font-size:12px;width:300px;margin:0 auto;padding:10px}h2{text-align:center;font-size:14px}p{margin:2px 0}.l{border-top:1px dashed #000;margin:6px 0}</style></head><body>' +
+      var html = '<html><head><title>Cupom #' + v.numero + '</title><style>body{font-family:monospace;font-weight:bold;font-size:12px;width:300px;margin:0 auto;padding:10px}h2{text-align:center;font-size:14px}p{margin:2px 0}.l{border-top:1px dashed #000;margin:6px 0}</style></head><body>' +
         '<h2>' + (f ? f.nome : '') + '</h2>' +
         '<p style="text-align:center">Cupom #' + String(v.numero).padStart(4, '0') + '</p>' +
         '<p style="text-align:center">' + dt + '</p>' +
@@ -901,8 +901,27 @@
         '<div class="l"></div><p>Pagamentos:</p><pre>' + pagTxt + '</pre>' +
         '<div class="l"></div><p style="text-align:center">Obrigado pela preferência!</p>' +
         '</body></html>';
-      var w = window.open('', '_blank', 'width=340,height=600');
-      if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 400); }
+        
+      var iframe = document.getElementById('print-iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+      }
+      
+      var doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      
+      setTimeout(function () {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      }, 500);
     }
 
     carregar();

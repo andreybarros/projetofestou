@@ -1534,6 +1534,10 @@
         <span style="font-size:11px;color:var(--mmuted)" id="pdv-filial-top"></span>
       </div>
       <div class="pdv-search-bar">
+        <select id="pdv-filial-filtro" onchange="PDV.carregarProdutosPorFilial(this.value)"
+          style="width:140px;padding:10px;border-radius:8px;border:1.5px solid var(--mborder);background:var(--mc);color:var(--mtext2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer">
+          <option value="">🏢 Filial...</option>
+        </select>
         <div class="pdv-search-wrap">
           <svg viewBox="0 0 24 24" stroke-width="2">
             <circle cx="11" cy="11" r="7" />
@@ -1993,6 +1997,23 @@
         }).join('');
       }
 
+      // Carregar filiais para o filtro de catálogo
+      var q_fil = window.supabase.from('filiais').select('pk,codigo,nome').eq('ativo', true).order('codigo');
+      var res_fil = await q_fil;
+      var selFil = document.getElementById('pdv-filial-filtro');
+      if (selFil && !res_fil.error) {
+        var fils = res_fil.data || [];
+        selFil.innerHTML = fils.map(f => `<option value="${f.pk}">${f.codigo} - ${f.nome}</option>`).join('');
+        // Adiciona opção "Todas" se for admin ou se houver mais de uma
+        if (fils.length > 1) {
+            var oAll = document.createElement('option');
+            oAll.value = "todas"; oAll.textContent = "🌍 Todas as Filiais";
+            selFil.insertBefore(oAll, selFil.firstChild);
+        }
+        // Por padrão, seleciona a filial logada
+        if (f && f.pk) selFil.value = f.pk;
+      }
+
       // Historico abaixo removido para ficar em módulo próprio da sidebar
     })();
 
@@ -2011,12 +2032,11 @@
       }
     })();
 
-    // ── Carrega produtos ─────────────────────────────────────────
-    (async function () {
+    async function carregarProdutosPorFilial(filialPk) {
+      document.getElementById('pdv-grid').innerHTML = '<div class="pdv-empty"><span class="pdv-empty-icon">⏳</span>Carregando produtos...</div>';
       try {
-        var fil = window.filialLogada;
-        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo,categoria_pk').order('descricao');
-        if (fil && fil.pk) q = q.eq('filial_pk', fil.pk);
+        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo,categoria_pk,filial_pk').order('descricao');
+        if (filialPk && filialPk !== 'todas') q = q.eq('filial_pk', parseInt(filialPk));
         var res = await q;
         if (res.error) throw res.error;
         todos = (res.data || []);
@@ -2025,6 +2045,11 @@
       } catch (err) {
         document.getElementById('pdv-grid').innerHTML = '<div class="pdv-empty" style="color:#ef4444"><span class="pdv-empty-icon">❌</span>Erro ao carregar produtos:<br>' + err.message + '</div>';
       }
+    }
+    // Inicializa carregamento
+    (function() { 
+      var f = window.filialLogada;
+      carregarProdutosPorFilial(f ? f.pk : ''); 
     })();
 
     function renderGrid(lista) {
@@ -2104,7 +2129,21 @@
       var ex = carrinho.find(function (i) { return i.produto_pk === pk; });
       if (ex) { ex.qtd += qty; }
       else {
-        carrinho.push({ produto_pk: p.pk, codigo: p.codigo || '', descricao: p.descricao, preco_unit: p.preco || 0, qtd: qty, desconto_pct: 0, desconto_val: 0, desconto_tipo: 'pct', desconto_ativo: false, foto_url: p.foto_url || '', saldo: p.saldo != null ? p.saldo : null, categoria_pk: p.categoria_pk || null });
+        carrinho.push({ 
+          produto_pk: p.pk, 
+          codigo: p.codigo || '', 
+          descricao: p.descricao, 
+          preco_unit: p.preco || 0, 
+          qtd: qty, 
+          desconto_pct: 0, 
+          desconto_val: 0, 
+          desconto_tipo: 'pct', 
+          desconto_ativo: false, 
+          foto_url: p.foto_url || '', 
+          saldo: p.saldo != null ? p.saldo : null, 
+          categoria_pk: p.categoria_pk || null,
+          filial_pk: p.filial_pk || null // Guarda a filial de origem do produto
+        });
       }
       renderCarrinho();
       window.showToast('Item: ' + p.descricao + ' adicionado!');
@@ -2513,7 +2552,8 @@
           return {
             venda_pk: vendaPk, produto_pk: it.produto_pk || null, codigo: it.codigo,
             descricao: it.descricao, preco_unit: it.preco_unit, qtd: it.qtd,
-            desconto_pct: it.desconto_pct, desconto_val: c.desc, total_item: c.liq
+            desconto_pct: it.desconto_pct, desconto_val: c.desc, total_item: c.liq,
+            filial_pk: it.filial_pk || fil?.pk || null // Salva a filial de origem no item
           };
         }));
         if (ri.error) throw ri.error;
@@ -2776,7 +2816,7 @@
       var totalQtd = carrinho.reduce(function (acc, item) { return acc + item.qtd; }, 0);
 
       var html = '<html><head><title>Cupom #' + num + '</title><style>' +
-        'body{font-family:"Courier New",Courier,monospace;font-size:12px;width:300px;margin:0 auto;padding:10px;color:#000}' +
+        'body{font-family:"Courier New",Courier,monospace;font-weight:bold;font-size:12px;width:300px;margin:0 auto;padding:10px;color:#000}' +
         'h2{text-align:center;font-size:16px;margin:5px 0 2px 0}p{margin:2px 0;text-align:center;font-size:11px}.l{border-top:1px dashed #000;margin:8px 0}' +
         '.item-list{font-size:11px;line-height:1.4}.total-row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0}' +
         '</style></head><body>' +
@@ -2806,8 +2846,27 @@
         '<p style="text-align:center;font-size:12px;font-weight:bold;margin-top:10px">OBRIGADO PELA PREFERÊNCIA!</p>' +
         '<p style="text-align:center;font-size:8px;margin-top:10px;color:#666">Impresso em: ' + agora + '</p>' +
         '</body></html>';
-      var w = window.open('', '_blank', 'width=340,height=600');
-      if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 500); }
+        
+      var iframe = document.getElementById('print-iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+      }
+      
+      var doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      
+      setTimeout(function () {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      }, 500);
     }
 
     function toggleFormNovoCli() {
@@ -3108,7 +3167,8 @@
       avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
       abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente,
       toggleFormNovoCli, salvarNovoCli, imprimirContrato,
-      _mascaraCpfCli, _mascaraCepCli, _buscarCepCli, _toggleDecCli, _atualizaBadgeCli
+      _mascaraCpfCli, _mascaraCepCli, _buscarCepCli, _toggleDecCli, _atualizaBadgeCli,
+      carregarProdutosPorFilial
     };
   })();
 </script>
