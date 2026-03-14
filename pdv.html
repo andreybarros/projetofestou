@@ -1521,8 +1521,6 @@
       transform: translateY(0)
     }
   }
-
-
 </style>
 
 <div class="mod" style="height:100%;display:flex;flex-direction:column;gap:0;overflow:hidden">
@@ -1664,12 +1662,13 @@
             <button class="pag-btn" onclick="PDV.addPag('pix')">📱 Pix</button>
             <button class="pag-btn" onclick="PDV.addPag('credito')">💳 Crédito</button>
             <button class="pag-btn" onclick="PDV.addPag('debito')">💳 Débito</button>
-            <button class="pag-btn" onclick="PDV.addPag('crediario')" style="background:#7c3aed;color:#fff">📒 Crediário</button>
+            <button class="pag-btn" onclick="PDV.addPag('crediario')" style="background:#7c3aed;color:#fff">📒
+              Crediário</button>
           </div>
           <div class="pag-lista" id="pag-lista"></div>
           <div id="troco-wrap" style="display:none"></div>
           <div class="btn-finalizar-wrap">
-            <button class="btn-orcamento" onclick="PDV.gerarOrcamento()">📋 Orçamento</button>
+            <button class="btn-orcamento" id="btn-gerar-orcamento" onclick="PDV.gerarOrcamento()">📋 Orçamento</button>
             <button class="btn-finalizar" id="btn-finalizar" onclick="PDV.finalizar()" disabled>✓ Finalizar
               Venda</button>
           </div>
@@ -1982,16 +1981,16 @@
       if (!formasAtivas.length) {
         formasAtivas = [
           { forma: 'dinheiro', label: 'Dinheiro', icone: '💵' },
-          { forma: 'pix',      label: 'Pix',      icone: '📱' },
-          { forma: 'credito',  label: 'Crédito',  icone: '💳' },
-          { forma: 'debito',   label: 'Débito',   icone: '💳' },
-          { forma: 'crediario',label: 'Crediário',icone: '📒' }
+          { forma: 'pix', label: 'Pix', icone: '📱' },
+          { forma: 'credito', label: 'Crédito', icone: '💳' },
+          { forma: 'debito', label: 'Débito', icone: '💳' },
+          { forma: 'crediario', label: 'Crediário', icone: '📒' }
         ];
       }
       // Renderiza os botões de pagamento dinamicamente
       var pagFormasDiv = document.getElementById('pag-formas');
       if (pagFormasDiv) {
-        pagFormasDiv.innerHTML = formasAtivas.map(function(fp) {
+        pagFormasDiv.innerHTML = formasAtivas.map(function (fp) {
           var style = fp.forma === 'crediario' ? ' style="background:#7c3aed;color:#fff"' : '';
           return '<button class="pag-btn" onclick="PDV.addPag(\'' + fp.forma + '\')"' + style + '>' + fp.icone + ' ' + fp.label + '</button>';
         }).join('');
@@ -2006,9 +2005,9 @@
         selFil.innerHTML = fils.map(f => `<option value="${f.pk}">${f.codigo} - ${f.nome}</option>`).join('');
         // Adiciona opção "Todas" se for admin ou se houver mais de uma
         if (fils.length > 1) {
-            var oAll = document.createElement('option');
-            oAll.value = "todas"; oAll.textContent = "🌍 Todas as Filiais";
-            selFil.insertBefore(oAll, selFil.firstChild);
+          var oAll = document.createElement('option');
+          oAll.value = "todas"; oAll.textContent = "🌍 Todas as Filiais";
+          selFil.insertBefore(oAll, selFil.firstChild);
         }
         // Por padrão, seleciona a filial logada
         if (f && f.pk) selFil.value = f.pk;
@@ -2047,9 +2046,9 @@
       }
     }
     // Inicializa carregamento
-    (function() { 
+    (function () {
       var f = window.filialLogada;
-      carregarProdutosPorFilial(f ? f.pk : ''); 
+      carregarProdutosPorFilial(f ? f.pk : '');
     })();
 
     function renderGrid(lista) {
@@ -2071,8 +2070,83 @@
       }).join('');
     }
 
+    async function carregarOrcamento(cod) {
+      cod = cod.toUpperCase().trim();
+      window.showToast('Buscando orçamento ' + cod + '...');
+
+      try {
+        var { data: orc, error: orcErr } = await window.supabase.from('orcamentos').select('*, itens_orcamento(*)').eq('codigo', cod).single();
+        if (orcErr || !orc) throw new Error('Orçamento não encontrado.');
+
+        if (orc.status === 'convertido') {
+          if (!await window.showConfirm("Este orçamento já foi convertido em venda. Deseja carregar mesmo assim?", "Orçamento já utilizado")) return;
+        }
+
+        // Limpar venda atual
+        carrinho = [];
+        pagamentos = [];
+
+        // Carregar cliente
+        if (orc.cliente_pk) {
+          var cli = listaClientesFull.find(function (c) { return c.pk === orc.cliente_pk; });
+          if (cli) {
+            clienteLogado = cli;
+            document.getElementById('pdv-cliente-nome').value = cli.nome + (cli.decorador ? ' (Decorador)' : '');
+            document.getElementById('btn-cliente-rm').style.display = 'flex';
+          } else {
+            // Se não estiver na lista cacheada, busca do banco
+            var { data: cData } = await window.supabase.from('clientes').select('*').eq('pk', orc.cliente_pk).single();
+            if (cData) {
+              clienteLogado = cData;
+              document.getElementById('pdv-cliente-nome').value = cData.nome + (cData.decorador ? ' (Decorador)' : '');
+              document.getElementById('btn-cliente-rm').style.display = 'flex';
+            }
+          }
+        } else {
+          removerCliente();
+        }
+
+        // Carregar itens
+        orc.itens_orcamento.forEach(function (it) {
+          // Busca o produto no catálogo local para ter as infos completas (foto, saldo, etc)
+          var p = todos.find(function (x) { return x.pk === it.produto_pk; });
+          carrinho.push({
+            produto_pk: it.produto_pk,
+            codigo: it.codigo,
+            descricao: it.descricao,
+            preco_unit: it.preco_unit,
+            qtd: it.qtd,
+            desconto_pct: it.desconto_pct,
+            desconto_val: 0,
+            desconto_tipo: 'pct',
+            desconto_ativo: it.desconto_pct > 0,
+            foto_url: p ? p.foto_url : '',
+            saldo: p ? p.saldo : null,
+            categoria_pk: p ? p.categoria_pk : null,
+            filial_pk: it.filial_pk
+          });
+        });
+
+        renderCarrinho();
+        window.showToast('Orçamento ' + cod + ' carregado com sucesso!');
+
+        // Limpar busca
+        var inp = document.getElementById('pdv-busca');
+        if (inp) { inp.value = ''; renderGrid(todos); }
+
+      } catch (e) {
+        window.showToast(e.message, 'error');
+      }
+    }
+
     function filtrar(t) {
       t = (t || '').trim();
+
+      // Detecta Código de Orçamento: ex. "ORC-1001"
+      if (/^ORC-\d+$/i.test(t)) {
+        carregarOrcamento(t);
+        return;
+      }
 
       // Detecta prefixo de quantidade: ex. "4*balão" ou "4*" → pendingQtd = 4
       var qtdMatch = t.match(/^\s*(\d+)\s*\*/);
@@ -2129,18 +2203,18 @@
       var ex = carrinho.find(function (i) { return i.produto_pk === pk; });
       if (ex) { ex.qtd += qty; }
       else {
-        carrinho.push({ 
-          produto_pk: p.pk, 
-          codigo: p.codigo || '', 
-          descricao: p.descricao, 
-          preco_unit: p.preco || 0, 
-          qtd: qty, 
-          desconto_pct: 0, 
-          desconto_val: 0, 
-          desconto_tipo: 'pct', 
-          desconto_ativo: false, 
-          foto_url: p.foto_url || '', 
-          saldo: p.saldo != null ? p.saldo : null, 
+        carrinho.push({
+          produto_pk: p.pk,
+          codigo: p.codigo || '',
+          descricao: p.descricao,
+          preco_unit: p.preco || 0,
+          qtd: qty,
+          desconto_pct: 0,
+          desconto_val: 0,
+          desconto_tipo: 'pct',
+          desconto_ativo: false,
+          foto_url: p.foto_url || '',
+          saldo: p.saldo != null ? p.saldo : null,
           categoria_pk: p.categoria_pk || null,
           filial_pk: p.filial_pk || null // Guarda a filial de origem do produto
         });
@@ -2226,11 +2300,11 @@
         var descHtml = bloqueado
           ? '<span title="Desconto exclusivo para Decoradores" style="font-size:11px;color:#f59e0b;display:flex;align-items:center;gap:3px;white-space:nowrap">🔒 Só Decorador</span>'
           : '<input type="checkbox" class="desc-chk" id="dchk-' + idx + '" ' + (temDesc ? 'checked' : '') + ' onchange="PDV.toggleDesc(' + idx + ',this.checked)">' +
-            '<label class="desc-label" for="dchk-' + idx + '">Desc.</label>' +
-            (temDesc
-              ? '<button class="desc-tipo-btn" onclick="PDV.setDescTipo(' + idx + ',\'' + (isPct ? 'val' : 'pct') + '\')" title="Alternar tipo de desconto">' + (isPct ? '%' : 'R$') + '</button>' +
-                '<input class="desc-pct-inp" type="number" min="0"' + inputMax + ' step="0.01" value="' + inputVal + '" placeholder="' + inputPlaceholder + '" id="dinp-' + idx + '" oninput="PDV.setDesc(' + idx + ',this.value)">'
-              : '');
+          '<label class="desc-label" for="dchk-' + idx + '">Desc.</label>' +
+          (temDesc
+            ? '<button class="desc-tipo-btn" onclick="PDV.setDescTipo(' + idx + ',\'' + (isPct ? 'val' : 'pct') + '\')" title="Alternar tipo de desconto">' + (isPct ? '%' : 'R$') + '</button>' +
+            '<input class="desc-pct-inp" type="number" min="0"' + inputMax + ' step="0.01" value="' + inputVal + '" placeholder="' + inputPlaceholder + '" id="dinp-' + idx + '" oninput="PDV.setDesc(' + idx + ',this.value)">'
+            : '');
         return '<div class="pdv-item">' +
           '<div class="pdv-item-row1">' +
           '<span class="pdv-item-nome">' + it.descricao + '</span>' +
@@ -2677,38 +2751,90 @@
     }
 
     // ── Orçamento What───────────────────────────────────
-    function gerarOrcamento() {
+    async function gerarOrcamento() {
       if (!carrinho.length) { window.showToast('Carrinho vazio.', 'error'); return; }
-      var f = window.filialLogada;
-      var linhas = [];
-      linhas.push('🎉 *Orçamento' + (f ? ' — ' + f.nome : '') + '*');
-      linhas.push('━━━━━━━━━━━━━━━━━━━━━');
-      if (clienteLogado) linhas.push('👤 *Cliente:* ' + clienteLogado.nome);
-      linhas.push('');
-      carrinho.forEach(function (it) {
-        var c = calcItem(it);
-        var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
-        linhas.push('📦 *' + it.descricao + '*' + descTxt);
-        linhas.push('   ' + it.qtd + 'x ' + fmt(it.preco_unit) + ' → *' + fmt(c.liq) + '*');
-      });
-      var sub = 0, desc = 0;
-      carrinho.forEach(function (it) { var c = calcItem(it); sub += c.bruto; desc += c.desc; });
-      var total = sub - desc;
-      linhas.push('');
-      linhas.push('━━━━━━━━━━━━━━━━━━━━━');
-      if (desc > 0) {
-        linhas.push('Subtotal: ' + fmt(sub));
-        linhas.push('Desconto: − ' + fmt(desc));
-      }
-      linhas.push('*💰 Total: ' + fmt(total) + '*');
-      linhas.push('━━━━━━━━━━━━━━━━━━━━━');
-      var texto = linhas.join('\n');
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(texto).then(function () {
-          window.showToast('Orçamento copiado! Cole no WhatsApp. 📋');
-        }).catch(function () { _abrirWhatsApp(texto); });
-      } else {
-        _abrirWhatsApp(texto);
+
+      var btn = document.getElementById('btn-gerar-orcamento');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+
+      try {
+        var f = window.filialLogada;
+        var op = window.operadorLogado;
+
+        // 1. Criar cabeçalho do orçamento
+        var total = carrinho.reduce(function (s, it) { return s + calcItem(it).liq; }, 0);
+        var sub = carrinho.reduce(function (s, it) { return s + calcItem(it).bruto; }, 0);
+        var desc = sub - total;
+
+        var { data: orcData, error: orcErr } = await window.supabase.from('orcamentos').insert({
+          codigo: 'TEMP', // Providório
+          filial_pk: f?.pk || null,
+          funcionario_pk: op?.funcionario_pk || null,
+          cliente_pk: clienteLogado?.pk || null,
+          cliente_nome: clienteLogado?.nome || null,
+          total: total,
+          status: 'aberto'
+        }).select('pk').single();
+
+        if (orcErr) throw orcErr;
+
+        var orcPk = orcData.pk;
+        var orcCod = 'ORC-' + String(orcPk).padStart(4, '0');
+
+        // 2. Atualizar código real
+        await window.supabase.from('orcamentos').update({ codigo: orcCod }).eq('pk', orcPk);
+
+        // 3. Salvar itens
+        var itensOrc = carrinho.map(function (it) {
+          var c = calcItem(it);
+          return {
+            orcamento_pk: orcPk,
+            produto_pk: it.produto_pk,
+            codigo: it.codigo,
+            descricao: it.descricao,
+            preco_unit: it.preco_unit,
+            qtd: it.qtd,
+            desconto_pct: it.desconto_pct,
+            total_item: c.liq,
+            filial_pk: it.filial_pk
+          };
+        });
+        var { error: itErr } = await window.supabase.from('itens_orcamento').insert(itensOrc);
+        if (itErr) throw itErr;
+
+        // 4. Montar texto para WhatsApp
+        var linhas = [];
+        linhas.push('🎉 *Orçamento' + (f ? ' — ' + f.nome : '') + '*');
+        linhas.push('🆔 *CÓDIGO:* `' + orcCod + '`');
+        linhas.push('━━━━━━━━━━━━━━━━━━━━━');
+        if (clienteLogado) linhas.push('👤 *Cliente:* ' + clienteLogado.nome);
+        linhas.push('');
+        carrinho.forEach(function (it) {
+          var c = calcItem(it);
+          var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
+          linhas.push('📦 *' + it.descricao + '*' + descTxt);
+          linhas.push('   ' + it.qtd + 'x ' + fmt(it.preco_unit) + ' → *' + fmt(c.liq) + '*');
+        });
+        linhas.push('');
+        linhas.push('━━━━━━━━━━━━━━━━━━━━━');
+        if (desc > 0) {
+          linhas.push('Subtotal: ' + fmt(sub));
+          linhas.push('Desconto: − ' + fmt(desc));
+        }
+        linhas.push('*💰 Total: ' + fmt(total) + '*');
+        linhas.push('━━━━━━━━━━━━━━━━━━━━━');
+        var texto = linhas.join('\n');
+
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(texto);
+          window.showToast('Orçamento ' + orcCod + ' copiado! Cole no WhatsApp. 📋');
+        } else {
+          _abrirWhatsApp(texto);
+        }
+      } catch (e) {
+        window.showToast('Erro ao gerar orçamento: ' + e.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📋 Gerar Orçamento'; }
       }
     }
 
@@ -2846,7 +2972,7 @@
         '<p style="text-align:center;font-size:12px;font-weight:bold;margin-top:10px">OBRIGADO PELA PREFERÊNCIA!</p>' +
         '<p style="text-align:center;font-size:8px;margin-top:10px;color:#666">Impresso em: ' + agora + '</p>' +
         '</body></html>';
-        
+
       var iframe = document.getElementById('print-iframe');
       if (!iframe) {
         iframe = document.createElement('iframe');
@@ -2857,12 +2983,12 @@
         iframe.style.border = 'none';
         document.body.appendChild(iframe);
       }
-      
+
       var doc = iframe.contentWindow.document;
       doc.open();
       doc.write(html);
       doc.close();
-      
+
       setTimeout(function () {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
@@ -3042,7 +3168,7 @@
 
       var hoje = new Date();
       var dataHoje = fmtDate(hoje.toISOString().slice(0, 10));
-      var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      var meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
       var dataManaus = hoje.getDate() + ' de ' + meses[hoje.getMonth()] + ' de ' + hoje.getFullYear();
 
       // Linhas de pagamento dinâmicas (até 3)
