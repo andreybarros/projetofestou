@@ -416,12 +416,13 @@
 
             for (var dt = new Date(dIni); dt <= dFim; dt.setDate(dt.getDate() + 1)) {
                 var dtStr = dt.toISOString().split('T')[0];
-                var isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+                var isDomingo = dt.getDay() === 0;
+                var isWeekend = isDomingo;
                 var jst = justs.find(j => j.data === dtStr);
                 var bats = diasMap[dtStr] || [];
 
                 var previsto = (func.diarista || isWeekend) ? 0 : cargaSec;
-                if (jst) previsto = 0;
+                if (jst || isDomingo) previsto = 0;
 
                 var trabalhado = 0;
                 if (bats.length >= 2) {
