@@ -1255,7 +1255,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, .75);
-    z-index: 400;
+    z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1570,7 +1570,7 @@
       </div>
       <div class="pdv-cliente">
         <input type="text" id="pdv-cliente-nome" placeholder="👤 Buscar ou selecionar cliente..." readonly
-          onclick="PDV.abrirBuscaCliente()">
+          onclick="PDV.abrirBuscaCliente()" onfocus="this.blur()">
         <button class="btn-cliente-search" onclick="PDV.abrirBuscaCliente()" title="Buscar Cliente">🔍</button>
         <button class="btn-cliente-rm" id="btn-cliente-rm" onclick="PDV.removerCliente()"
           title="Remover Cliente">✕</button>
@@ -2825,9 +2825,12 @@
         linhas.push('━━━━━━━━━━━━━━━━━━━━━');
         var texto = linhas.join('\n');
 
+        // Mostra o número do orçamento antes de qualquer coisa (útil no celular se o clipboard falhar)
+        window.showToast('Orçamento ' + orcCod + ' gerado com sucesso!');
+
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(texto);
-          window.showToast('Orçamento ' + orcCod + ' copiado! Cole no WhatsApp. 📋');
+          window.showToast('Copiado para o WhatsApp! 📋');
         } else {
           _abrirWhatsApp(texto);
         }
