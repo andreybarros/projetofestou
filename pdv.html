@@ -2034,7 +2034,7 @@
     async function carregarProdutosPorFilial(filialPk) {
       document.getElementById('pdv-grid').innerHTML = '<div class="pdv-empty"><span class="pdv-empty-icon">⏳</span>Carregando produtos...</div>';
       try {
-        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo,categoria_pk,filial_pk').order('descricao');
+        var q = window.supabase.from('produtos').select('pk,codigo,codigo_barras,descricao,preco,foto_url,saldo,categoria_pk,filial_pk').order('descricao').range(0, 4999);
         if (filialPk && filialPk !== 'todas') q = q.eq('filial_pk', filialPk);
         var res = await q;
         if (res.error) throw res.error;
