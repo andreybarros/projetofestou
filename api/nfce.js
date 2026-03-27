@@ -768,6 +768,7 @@ module.exports = async function handler(req, res) {
         numero,
         serie,
         erro:        autorizada ? null : `SEFAZ: [${cStat}] ${xMotivo}`,
+        rawResp:     respSOAP.slice(0, 1000)
       });
     }
 
