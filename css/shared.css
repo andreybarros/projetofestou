@@ -327,3 +327,47 @@ body {
   color: var(--mmuted);
   line-height: 1.4;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVIDADE DESKTOP (≥ 1024px)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Tabelas: overflow horizontal em telas estreitas */
+.mtable-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Em telas muito largas (≥ 1600px), limita largura dos módulos
+   e centraliza para não ficar esticado demais */
+@media (min-width: 1600px) {
+  .mod {
+    max-width: 1520px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Dashboard cards: mais colunas no desktop */
+@media (min-width: 1024px) {
+  .dash-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+  }
+
+  .dash-card {
+    padding: 32px 28px;
+  }
+}
+
+/* Botões de ação em tabelas: não quebrar texto no desktop */
+@media (min-width: 1024px) {
+  .mtable td, .mtable th {
+    white-space: nowrap;
+  }
+
+  /* Exceção: colunas de texto longo podem quebrar */
+  .mtable td.wrap-text {
+    white-space: normal;
+  }
+}

@@ -662,6 +662,12 @@
                 if (bats.length >= 2) {
                     var ent = timeToSec(bats[0]);
                     var saii = timeToSec(bats[bats.length - 1]);
+                    // Carência de entrada: se o funcionário bateu antes do horário previsto,
+                    // usa-se o horário de entrada cadastrado para não gerar hora extra antecipada.
+                    if (func.hora_entrada) {
+                        var entPrevSec = timeToSec(func.hora_entrada);
+                        if (ent < entPrevSec) ent = entPrevSec;
+                    }
                     p_trabalhado = Math.max(0, saii - ent - intervaloSec);
                 }
 

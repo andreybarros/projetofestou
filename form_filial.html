@@ -345,6 +345,117 @@
         </select>
       </div>
     </div>
+
+    <!-- Endereço fiscal -->
+    <div class="mdivider"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--mtext2);margin-bottom:10px">📍 Endereço Fiscal (NF-e)</div>
+    <div style="display:grid;grid-template-columns:1fr 90px;gap:10px">
+      <div class="mform-group">
+        <label>Logradouro</label>
+        <input type="text" id="fil-logr" placeholder="Alameda Cosme Ferreira">
+      </div>
+      <div class="mform-group">
+        <label>Número</label>
+        <input type="text" id="fil-nend" placeholder="6893">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="mform-group">
+        <label>Bairro</label>
+        <input type="text" id="fil-bairro" placeholder="Zumbi dos Palmares">
+      </div>
+      <div class="mform-group">
+        <label>CEP</label>
+        <input type="text" id="fil-cep" placeholder="69037-220" maxlength="9"
+          oninput="var v=this.value.replace(/\D/g,'');if(v.length>5)v=v.slice(0,5)+'-'+v.slice(5,8);this.value=v">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 60px;gap:10px">
+      <div class="mform-group">
+        <label>Cidade</label>
+        <input type="text" id="fil-cidade" placeholder="Manaus">
+      </div>
+      <div class="mform-group">
+        <label>UF</label>
+        <input type="text" id="fil-uf" placeholder="AM" maxlength="2"
+          oninput="this.value=this.value.toUpperCase()">
+      </div>
+    </div>
+
+    <!-- Dados Fiscais NFC-e -->
+    <div class="mdivider"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--mtext2);margin-bottom:10px">🧾 Dados Fiscais / NFC-e</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="mform-group">
+        <label>Inscrição Estadual (IE)</label>
+        <input type="text" id="fil-ie" placeholder="Ex: 123456789"
+          oninput="this.value=this.value.replace(/[^0-9A-Za-z]/g,'')">
+        <div class="field-hint">Obrigatória para emissão de NFC-e</div>
+      </div>
+      <div class="mform-group">
+        <label>Série NFC-e</label>
+        <input type="number" id="fil-nfce-serie" placeholder="1" min="1" max="999" value="1">
+      </div>
+    </div>
+
+    <div class="mform-group">
+      <label>Ambiente NFC-e</label>
+      <select id="fil-nfce-amb">
+        <option value="2">🟡 Homologação (Testes)</option>
+        <option value="1">🟢 Produção (Fiscal)</option>
+      </select>
+      <div class="field-hint">Comece sempre em Homologação para testes</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
+      <div class="mform-group">
+        <label>CSC — Código de Segurança do Contribuinte</label>
+        <input type="text" id="fil-csc" placeholder="Obtido na SEFAZ-AM" maxlength="36">
+        <div class="field-hint">Necessário para gerar o QR Code da NFC-e</div>
+      </div>
+      <div class="mform-group">
+        <label>CSC-ID</label>
+        <input type="text" id="fil-csc-id" placeholder="000001" maxlength="6" value="000001">
+      </div>
+    </div>
+
+    <!-- Upload Certificado A1 -->
+    <div class="mform-group">
+      <label>Certificado Digital A1 (.pfx / .p12)</label>
+      <div id="cert-upload-area"
+        style="border:2px dashed var(--mborder);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .15s"
+        onclick="document.getElementById('fil-cert-file').click()"
+        ondragover="event.preventDefault();this.style.borderColor='#4f46e5'"
+        ondragleave="this.style.borderColor=''"
+        ondrop="event.preventDefault();this.style.borderColor='';_handleCertDrop(event.dataTransfer.files[0])">
+        <input type="file" id="fil-cert-file" accept=".pfx,.p12" style="display:none"
+          onchange="_handleCertFile(this.files[0])">
+        <div id="cert-upload-text">
+          <div style="font-size:28px;margin-bottom:6px">🔐</div>
+          <div style="font-size:13px;color:var(--mtext2);font-weight:600">Clique ou arraste o arquivo .pfx/.p12</div>
+          <div style="font-size:11px;color:var(--mmuted);margin-top:4px">Certificado A1 da empresa</div>
+        </div>
+        <div id="cert-info" style="display:none">
+          <div id="cert-info-text" style="font-size:13px;color:#059669;font-weight:600"></div>
+          <button type="button" onclick="event.stopPropagation();_limparCert()"
+            style="margin-top:6px;padding:4px 12px;background:transparent;border:1px solid #ef4444;color:#ef4444;border-radius:6px;font-size:11px;cursor:pointer">
+            ✕ Remover
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mform-group">
+      <label>Senha do Certificado</label>
+      <input type="password" id="fil-cert-senha" placeholder="Senha do arquivo .pfx">
+      <div class="field-hint">A senha não é exibida após salvar por segurança</div>
+    </div>
+
+    <div id="cert-validade-banner" style="display:none;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#065f46">
+      ✅ <span id="cert-validade-txt"></span>
+    </div>
+
     <div class="mdivider"></div>
     <div class="mform-footer">
       <button class="mbtn mbtn-primary" id="btn-salvar-fil" onclick="salvarFilial()">Salvar Filial</button>
@@ -411,8 +522,32 @@
   }
 
   window._editFilPk = null;
+  var _certB64 = null;   // base64 do certificado carregado
 
-  // Inicialização
+  // ── Handlers do certificado ────────────────────────────────
+  function _handleCertFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var b64 = btoa(String.fromCharCode.apply(null, new Uint8Array(e.target.result)));
+      _certB64 = b64;
+      document.getElementById('cert-upload-text').style.display = 'none';
+      document.getElementById('cert-info').style.display = 'block';
+      document.getElementById('cert-info-text').textContent = '🔐 ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function _handleCertDrop(file) { _handleCertFile(file); }
+  function _limparCert() {
+    _certB64 = null;
+    document.getElementById('fil-cert-file').value = '';
+    document.getElementById('cert-upload-text').style.display = 'block';
+    document.getElementById('cert-info').style.display = 'none';
+  }
+
+  // ── Inicialização ──────────────────────────────────────────
+  window._editFilPk = null;
+
   (async function () {
     var d = window._editData; window._editData = null;
     var ativosSet = new Set();
@@ -423,13 +558,41 @@
       document.getElementById('form-subtitulo').textContent = 'Edite os dados e salve';
       document.getElementById('edit-banner').style.display = 'flex';
       document.getElementById('btn-salvar-fil').textContent = 'Salvar Alterações';
-      document.getElementById('fil-codigo').value = d.codigo || '';
-      document.getElementById('fil-nome').value = d.nome || '';
-      document.getElementById('fil-razao').value = d.razao_social || '';
-      document.getElementById('fil-cnpj').value = d.cnpj || '';
+      document.getElementById('fil-codigo').value   = d.codigo || '';
+      document.getElementById('fil-nome').value     = d.nome || '';
+      document.getElementById('fil-razao').value    = d.razao_social || '';
+      document.getElementById('fil-cnpj').value     = d.cnpj || '';
       document.getElementById('fil-endereco').value = d.endereco || '';
       document.getElementById('fil-telefone').value = d.telefone || '';
-      document.getElementById('fil-ativo').value = String(d.ativo);
+      document.getElementById('fil-ativo').value    = String(d.ativo);
+      // Endereço fiscal
+      document.getElementById('fil-logr').value    = d.logradouro || '';
+      document.getElementById('fil-nend').value    = d.numero_end || '';
+      document.getElementById('fil-bairro').value  = d.bairro || '';
+      document.getElementById('fil-cep').value     = d.cep || '';
+      document.getElementById('fil-cidade').value  = d.cidade || 'Manaus';
+      document.getElementById('fil-uf').value      = d.uf || 'AM';
+      // Fiscal / NFC-e
+      document.getElementById('fil-ie').value         = d.ie || '';
+      document.getElementById('fil-nfce-serie').value = d.nfce_serie || 1;
+      document.getElementById('fil-nfce-amb').value   = d.nfce_ambiente || '2';
+      document.getElementById('fil-csc').value        = d.nfce_csc || '';
+      document.getElementById('fil-csc-id').value     = d.nfce_csc_id || '000001';
+      // Certificado — exibe info se já existir
+      if (d.nfce_cert_titular) {
+        _certB64 = d.nfce_cert_b64 || null;
+        var venc = d.nfce_cert_venc ? new Date(d.nfce_cert_venc).toLocaleDateString('pt-BR') : '?';
+        document.getElementById('cert-upload-text').style.display = 'none';
+        document.getElementById('cert-info').style.display = 'block';
+        document.getElementById('cert-info-text').textContent = '🔐 ' + d.nfce_cert_titular + ' (vence: ' + venc + ')';
+        var banner = document.getElementById('cert-validade-banner');
+        var isValid = d.nfce_cert_venc && new Date(d.nfce_cert_venc) > new Date();
+        if (isValid) {
+          banner.style.display = 'block';
+          document.getElementById('cert-validade-txt').textContent =
+            'Certificado válido até ' + venc + ' — ' + d.nfce_cert_titular;
+        }
+      }
 
       // Carrega módulos já ativos desta filial
       var rs = await window.supabase.from('modulos_filiais')
@@ -441,29 +604,65 @@
   })();
 
   async function salvarFilial() {
-    var codigo = document.getElementById('fil-codigo').value.trim().toUpperCase();
-    var nome = document.getElementById('fil-nome').value.trim();
+    var codigo      = document.getElementById('fil-codigo').value.trim().toUpperCase();
+    var nome        = document.getElementById('fil-nome').value.trim();
     var razao_social = document.getElementById('fil-razao').value.trim();
-    var cnpj = document.getElementById('fil-cnpj').value.trim();
-    var endereco = document.getElementById('fil-endereco').value.trim();
-    var telefone = document.getElementById('fil-telefone').value.trim();
-    var ativo = document.getElementById('fil-ativo').value === 'true';
+    var cnpj        = document.getElementById('fil-cnpj').value.trim();
+    var endereco    = document.getElementById('fil-endereco').value.trim();
+    var telefone    = document.getElementById('fil-telefone').value.trim();
+    var ativo       = document.getElementById('fil-ativo').value === 'true';
+    // Endereço fiscal
+    var logradouro  = document.getElementById('fil-logr').value.trim();
+    var numero_end  = document.getElementById('fil-nend').value.trim();
+    var bairro      = document.getElementById('fil-bairro').value.trim();
+    var cep         = document.getElementById('fil-cep').value.trim();
+    var cidade      = document.getElementById('fil-cidade').value.trim() || 'Manaus';
+    var uf          = document.getElementById('fil-uf').value.trim().toUpperCase() || 'AM';
+    // Fiscal
+    var ie          = document.getElementById('fil-ie').value.trim();
+    var nfce_serie  = parseInt(document.getElementById('fil-nfce-serie').value) || 1;
+    var nfce_amb    = document.getElementById('fil-nfce-amb').value;
+    var csc         = document.getElementById('fil-csc').value.trim();
+    var csc_id      = document.getElementById('fil-csc-id').value.trim() || '000001';
+    var certSenha   = document.getElementById('fil-cert-senha').value;
 
     if (!codigo) { window.showToast('Informe o código.', 'error'); return; }
-    if (!nome) { window.showToast('Informe o nome fantasia.', 'error'); return; }
+    if (!nome)   { window.showToast('Informe o nome fantasia.', 'error'); return; }
 
     var btn = document.getElementById('btn-salvar-fil');
     btn.disabled = true;
     btn.textContent = 'Salvando...';
+
     var payload = {
-      codigo: codigo,
-      nome: nome,
+      codigo, nome,
       razao_social: razao_social || null,
       cnpj: cnpj || null,
       endereco: endereco || null,
       telefone: telefone || null,
-      ativo: ativo
+      ativo,
+      // Endereço fiscal
+      logradouro: logradouro || null,
+      numero_end: numero_end || null,
+      bairro: bairro || null,
+      cep: cep || null,
+      cidade,
+      uf,
+      // Fiscal / NFC-e
+      ie: ie || null,
+      nfce_serie,
+      nfce_ambiente: nfce_amb,
+      nfce_csc: csc || null,
+      nfce_csc_id: csc_id,
     };
+
+    // Certificado — só atualiza se um novo foi carregado
+    if (_certB64) {
+      payload.nfce_cert_b64   = _certB64;
+      if (certSenha) payload.nfce_cert_senha = certSenha;
+    }
+    if (certSenha && !_certB64) {
+      payload.nfce_cert_senha = certSenha;
+    }
 
     try {
       var filialPk;
@@ -478,7 +677,7 @@
         filialPk = rs.data.pk;
       }
 
-      // Salva rotinas: remove todas e re-insere as marcadas
+      // Salva rotinas
       await window.supabase.from('modulos_filiais').delete().eq('filial_pk', filialPk);
       var rotinas = getRotinasChecked();
       if (rotinas.length > 0) {
@@ -500,15 +699,22 @@
 
   function limparFormFil() {
     window._editFilPk = null;
-    document.getElementById('fil-codigo').value = '';
-    document.getElementById('fil-nome').value = '';
-    document.getElementById('fil-razao').value = '';
-    document.getElementById('fil-cnpj').value = '';
-    document.getElementById('fil-endereco').value = '';
-    document.getElementById('fil-telefone').value = '';
-    document.getElementById('fil-ativo').value = 'true';
+    _certB64 = null;
+    ['fil-codigo','fil-nome','fil-razao','fil-cnpj','fil-endereco','fil-telefone',
+     'fil-logr','fil-nend','fil-bairro','fil-cep','fil-ie','fil-csc','fil-cert-senha'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('fil-cidade').value      = 'Manaus';
+    document.getElementById('fil-uf').value          = 'AM';
+    document.getElementById('fil-ativo').value       = 'true';
+    document.getElementById('fil-nfce-serie').value  = '1';
+    document.getElementById('fil-nfce-amb').value    = '2';
+    document.getElementById('fil-csc-id').value      = '000001';
     document.getElementById('btn-salvar-fil').textContent = 'Salvar Filial';
     document.getElementById('edit-banner').style.display = 'none';
+    document.getElementById('cert-validade-banner').style.display = 'none';
+    document.getElementById('cert-upload-text').style.display = 'block';
+    document.getElementById('cert-info').style.display = 'none';
     renderRotinas(new Set());
   }
 </script>

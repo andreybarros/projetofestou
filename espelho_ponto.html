@@ -426,7 +426,14 @@
 
                 var trabalhado = 0;
                 if (bats.length >= 2) {
-                    trabalhado = Math.max(0, timeToSec(bats[bats.length - 1]) - timeToSec(bats[0]) - intervaloSec);
+                    var entSec = timeToSec(bats[0]);
+                    // Carência de entrada: se o funcionário bateu antes do horário previsto,
+                    // usa-se o horário de entrada cadastrado para não gerar hora extra antecipada.
+                    if (func.hora_entrada) {
+                        var entPrevSec = timeToSec(func.hora_entrada);
+                        if (entSec < entPrevSec) entSec = entPrevSec;
+                    }
+                    trabalhado = Math.max(0, timeToSec(bats[bats.length - 1]) - entSec - intervaloSec);
                 }
 
                 var diff = trabalhado - previsto;

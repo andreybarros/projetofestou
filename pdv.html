@@ -68,18 +68,23 @@
   }
 
   @media(max-width:900px) {
+    .mod {
+      height: auto !important;
+      overflow: visible !important;
+    }
+
     .pdv-layout {
       flex-direction: column;
-      height: auto;
-      overflow: visible;
+      height: auto !important;
+      overflow: visible !important;
+      min-height: 0 !important;
     }
 
     .pdv-left {
       padding-right: 0 !important;
-      padding-bottom: 90px;
-      /* Espaço barra mobile */
-      height: auto;
-      overflow: visible;
+      padding-bottom: 100px; /* Espaço barra mobile */
+      height: auto !important;
+      overflow: visible !important;
     }
 
     .pdv-right {
@@ -1528,6 +1533,9 @@
     <!-- ESQUERDA: catálogo -->
     <div class="pdv-left">
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:4px">
+        <button onclick="window.sairDoPDV && window.sairDoPDV()" title="Voltar ao sistema"
+          style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--mmuted);padding:4px 6px;border-radius:6px;transition:color .15s"
+          onmouseover="this.style.color='var(--mtext2)'" onmouseout="this.style.color='var(--mmuted)'">←</button>
         <h2 style="font-size:17px;font-weight:700;color:var(--mtext2)">🛒 PDV — Catálogo</h2>
         <span style="font-size:11px;color:var(--mmuted)" id="pdv-filial-top"></span>
       </div>
@@ -1923,6 +1931,62 @@
   </div>
 </div>
 
+<!-- ── Modal NFC-e ─────────────────────────────────────────────── -->
+<div id="modal-nfce" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:16px">
+  <div class="mod" style="background:var(--mc);border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--mtext2)">🧾 Emitir NFC-e</div>
+        <div style="font-size:12px;color:var(--mmuted)">Nota Fiscal de Consumidor Eletrônica</div>
+      </div>
+      <button onclick="PDV.fecharModalNFCe()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--mmuted);line-height:1">✕</button>
+    </div>
+
+    <!-- Resumo da venda -->
+    <div style="background:var(--mc2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--mmuted)">Venda Nº</span>
+        <strong id="nfce-venda-num" style="color:var(--mtext2)">—</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:var(--mmuted)">Cliente</span>
+        <strong id="nfce-venda-cli" style="color:var(--mtext2)">—</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:var(--mmuted)">Total</span>
+        <strong id="nfce-venda-total" style="color:#059669;font-size:15px">—</strong>
+      </div>
+    </div>
+
+    <!-- CPF do consumidor (opcional) -->
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--mmuted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px">CPF do Consumidor (opcional)</label>
+      <input type="text" id="nfce-cpf" placeholder="000.000.000-00" maxlength="14"
+        oninput="var v=this.value.replace(/\D/g,'');v=v.replace(/(\d{3})(\d)/,'$1.$2');v=v.replace(/(\d{3})(\d)/,'$1.$2');v=v.replace(/(\d{3})(\d{1,2})$/,'$1-$2');this.value=v"
+        style="width:100%;padding:11px 14px;border:1.5px solid var(--mborder);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;background:var(--mc2);color:var(--mtext2);outline:none;box-sizing:border-box">
+      <div style="font-size:11px;color:var(--mmuted);margin-top:4px">Informe o CPF para constar na nota. Se não informado, a nota é emitida para Consumidor Final.</div>
+    </div>
+
+    <!-- Resultado -->
+    <div id="nfce-resultado" style="display:none;margin-bottom:14px"></div>
+    <div id="nfce-danfe" style="display:none;margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button id="nfce-btn-emitir" onclick="PDV.emitirNFCe()"
+        style="flex:1;padding:13px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s">
+        🧾 Emitir NFC-e
+      </button>
+      <button onclick="PDV.fecharModalNFCe()"
+        style="padding:13px 18px;background:var(--mc);color:var(--mtext2);border:1.5px solid var(--mborder);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer">
+        Pular
+      </button>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--mmuted)">
+      A nota será vinculada à venda e pode ser consultada no histórico.
+    </div>
+  </div>
+</div>
+
 
 <script>
 
@@ -1939,6 +2003,12 @@
     var contasBancarias = []; // Lista de contas cadastradas No Financeiro
     var pendingQtd = 1;      // Quantidade pré-definida via prefixo N* na busca (ex: "4*balão")
     var passo = 1;           // 1 = adicionar itens, 2 = pagamento
+
+    // Esconde o bottom nav do shell no mobile — PDV tem seu próprio footer
+    (function () {
+      var bn = document.getElementById('bottom-nav');
+      if (bn && window.innerWidth < 1024) bn.style.display = 'none';
+    })();
 
     // Info header e Vendedores
     (async function () {
@@ -2654,8 +2724,14 @@
 
         window.showToast('Venda #' + numero + ' finalizada!');
 
-        // Imprime cupom automaticamente
-        imprimirCupom(vendaPk, numero, nomeCliParaVenda, sub, desc, total, pagamentos);
+        // Armazena dados do recibo para imprimir após decisão da NFC-e
+        _pendingReceipt = {
+          vendaPk: vendaPk, numero: numero, cliente: nomeCliParaVenda,
+          sub: sub, desc: desc, total: total, pagamentos: pagamentos.slice()
+        };
+
+        // Abre modal para emissão de NFC-e (após salvar a venda)
+        abrirModalNFCe(vendaPk, numero, nomeCliParaVenda, total);
 
         // Limpa a venda e volta para o catálogo (fluxo rápido)
         limparVenda();
@@ -3288,6 +3364,181 @@
       if (w) { w.document.write(html); w.document.close(); setTimeout(function () { w.print(); }, 600); }
     }
 
+    // ── NFC-e ──────────────────────────────────────────────────────
+    var _nfceVendaPk = null;
+    var _pendingReceipt = null;  // Armazena dados do cupom para imprimir após decisão NFC-e
+
+    function abrirModalNFCe(vendaPk, numero, nomeCliente, total) {
+      _nfceVendaPk = vendaPk;
+      var el = document.getElementById('modal-nfce');
+      if (!el) return;
+      document.getElementById('nfce-venda-num').textContent  = String(numero).padStart(4, '0');
+      document.getElementById('nfce-venda-cli').textContent  = nomeCliente || 'Consumidor Final';
+      document.getElementById('nfce-venda-total').textContent = 'R$ ' + Number(total).toFixed(2).replace('.', ',');
+      document.getElementById('nfce-cpf').value = clienteLogado?.cpf || '';
+      document.getElementById('nfce-resultado').style.display = 'none';
+      document.getElementById('nfce-danfe').style.display = 'none';
+      document.getElementById('nfce-btn-emitir').disabled = false;
+      document.getElementById('nfce-btn-emitir').textContent = '🧾 Emitir NFC-e';
+      el.style.display = 'flex';
+    }
+
+    function fecharModalNFCe() {
+      var el = document.getElementById('modal-nfce');
+      if (el) el.style.display = 'none';
+      _nfceVendaPk = null;
+      // Se usuário pulou a NFC-e, imprime o cupom simples (não fiscal)
+      if (_pendingReceipt) {
+        var r = _pendingReceipt;
+        _pendingReceipt = null;
+        imprimirCupom(r.vendaPk, r.numero, r.cliente, r.sub, r.desc, r.total, r.pagamentos);
+      }
+    }
+
+    async function emitirNFCe() {
+      if (!_nfceVendaPk) return;
+      var cpf = document.getElementById('nfce-cpf').value.replace(/\D/g, '');
+      var btn = document.getElementById('nfce-btn-emitir');
+      btn.disabled = true; btn.textContent = '⏳ Comunicando com SEFAZ...';
+      var res_el = document.getElementById('nfce-resultado');
+      res_el.style.display = 'none';
+
+      try {
+        var r = await fetch('/api/nfce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'emitir',
+            venda_pk: _nfceVendaPk,
+            cpf_consumidor: cpf || null,
+          })
+        });
+        var data = await r.json();
+
+        res_el.style.display = 'block';
+        if (data.ok) {
+          res_el.innerHTML =
+            '<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:14px;color:#065f46">' +
+            '<div style="font-weight:700;font-size:15px;margin-bottom:6px">✅ NFC-e AUTORIZADA</div>' +
+            '<div style="font-size:12px;line-height:1.8">' +
+            '<div>🔑 Chave: <span style="font-family:monospace;font-size:10px">' + data.chave + '</span></div>' +
+            '<div>📋 Protocolo: <strong>' + data.nProt + '</strong></div>' +
+            '<div>📅 ' + (data.dhRecbto ? new Date(data.dhRecbto).toLocaleString('pt-BR') : '') + ' · Série ' + data.serie + ' Nº ' + data.numero + '</div>' +
+            (data.tpAmb === '2' ? '<div style="color:#b45309;background:#fef3c7;padding:4px 8px;border-radius:4px;margin-top:4px">⚠️ Ambiente de HOMOLOGAÇÃO — sem validade fiscal</div>' : '') +
+            '</div></div>';
+          // Mostrar DANFE com QR Code
+          if (data.qrCode) {
+            var danfe = document.getElementById('nfce-danfe');
+            danfe.style.display = 'block';
+            danfe.innerHTML =
+              '<div style="text-align:center;margin-top:12px">' +
+              '<div style="font-size:11px;color:var(--mmuted);margin-bottom:8px">QR Code da NFC-e — aponte o celular para consultar</div>' +
+              '<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(data.qrCode) + '" ' +
+              'style="border:1px solid var(--mborder);border-radius:6px;padding:4px" alt="QR Code NFC-e">' +
+              '<div style="margin-top:6px">' +
+              '<a href="' + data.qrCode + '" target="_blank" style="font-size:11px;color:#4f46e5;text-decoration:none">🔗 Consultar nota na SEFAZ</a>' +
+              '</div></div>';
+          }
+          window.showToast('NFC-e autorizada! Protocolo: ' + data.nProt, 'success');
+          // Após NFC-e autorizada, imprime o DANFE e limpa o recibo pendente
+          if (_pendingReceipt) {
+            var rr = _pendingReceipt;
+            _pendingReceipt = null;
+            imprimirDANFE(rr, data);
+          }
+        } else {
+          res_el.innerHTML =
+            '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#991b1b">' +
+            '<div style="font-weight:700;font-size:14px;margin-bottom:6px">❌ Erro na emissão</div>' +
+            '<div style="font-size:12px">' + (data.erro || 'Erro desconhecido') + '</div>' +
+            (data.cStat ? '<div style="font-size:11px;margin-top:4px;color:#b91c1c">Código SEFAZ: ' + data.cStat + '</div>' : '') +
+            '</div>';
+          btn.disabled = false; btn.textContent = '🔄 Tentar Novamente';
+          window.showToast('Erro NFC-e: ' + (data.erro || ''), 'error');
+        }
+      } catch (e) {
+        res_el.style.display = 'block';
+        res_el.innerHTML = '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#991b1b"><div style="font-weight:700">❌ Erro de conexão</div><div style="font-size:12px">' + e.message + '</div></div>';
+        btn.disabled = false; btn.textContent = '🔄 Tentar Novamente';
+        window.showToast('Erro ao emitir NFC-e', 'error');
+      }
+    }
+
+    // ── DANFE NFC-e — Impressão fiscal ──────────────────────────────
+    function imprimirDANFE(receipt, nfceData) {
+      var f = window.filialLogada, op = window.operadorLogado;
+      var agora = new Date().toLocaleString('pt-BR');
+      var itensTxt = carrinho.map(function(it) {
+        var c = calcItem(it);
+        var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
+        return it.qtd + 'x ' + it.descricao + descTxt + '<br>' +
+          '<span style="font-size:10px;color:#666">   ' + fmt(it.preco_unit) + ' x ' + it.qtd + ' = ' + fmt(c.liq) + '</span>';
+      }).join('<br>');
+      var pagTxt = receipt.pagamentos.map(function(p) {
+        return '<div style="display:flex;justify-content:space-between"><span>' + (FORMA_LABEL[p.forma] || p.forma) + ':</span> <span>' + fmt(p.valor) + '</span></div>';
+      }).join('');
+
+      var totalQtd = carrinho.reduce(function(acc,item) { return acc + item.qtd; }, 0);
+      var ambTxt = nfceData.tpAmb === '2' ? '<p style="text-align:center;font-size:10px;color:#b45309;background:#fef3c7;padding:4px;border-radius:4px;margin:6px 0">⚠️ EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL</p>' : '';
+
+      var html = '<html><head><title>DANFE NFC-e #' + receipt.numero + '</title><style>' +
+        'body{font-family:"Courier New",Courier,monospace;font-weight:bold;font-size:12px;width:300px;margin:0 auto;padding:10px;color:#000}' +
+        'h2{text-align:center;font-size:16px;margin:5px 0 2px}p{margin:2px 0;text-align:center;font-size:11px}.l{border-top:1px dashed #000;margin:8px 0}' +
+        '.item-list{font-size:11px;line-height:1.4}.total-row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0}' +
+        '</style></head><body>' +
+        '<h2>' + (f ? f.nome : 'EMPRESA') + '</h2>' +
+        (f && f.razao_social ? '<p>' + f.razao_social + '</p>' : '') +
+        (f && f.cnpj ? '<p>CNPJ: ' + f.cnpj + '</p>' : '') +
+        (f && f.endereco ? '<p>' + f.endereco + '</p>' : '') +
+        (f && f.telefone ? '<p>Tel: ' + f.telefone + '</p>' : '') +
+        '<div class="l"></div>' +
+        '<p style="font-size:13px"><strong>DANFE NFC-e — DOCUMENTO AUXILIAR</strong></p>' +
+        '<p style="font-size:9px">DA NOTA FISCAL DE CONSUMIDOR ELETRÔNICA</p>' +
+        ambTxt +
+        '<div class="l"></div>' +
+        '<p>NFC-e Nº ' + String(nfceData.numero).padStart(9,'0') + ' · Série ' + nfceData.serie + '</p>' +
+        '<p>Emissão: ' + (nfceData.dhRecbto ? new Date(nfceData.dhRecbto).toLocaleString('pt-BR') : agora) + '</p>' +
+        '<div class="l"></div>' +
+        (receipt.cliente ? '<div style="font-size:11px">Cliente: <strong>' + receipt.cliente + '</strong></div>' : '') +
+        (op ? '<div style="font-size:11px">Vendedor: ' + op.nome + '</div>' : '') +
+        '<div class="l"></div>' +
+        '<div class="item-list">' + itensTxt + '</div>' +
+        '<div class="l"></div>' +
+        '<div class="total-row"><span>Qtd. Total:</span> <span>' + totalQtd + '</span></div>' +
+        '<div class="total-row"><span>Subtotal:</span> <span>' + fmt(receipt.sub) + '</span></div>' +
+        '<div class="total-row"><span>Desconto:</span> <span>- ' + fmt(receipt.desc) + '</span></div>' +
+        '<div class="total-row" style="font-size:15px;font-weight:bold;margin-top:5px"><span>TOTAL:</span> <span>' + fmt(receipt.total) + '</span></div>' +
+        '<div class="l"></div>' +
+        '<div style="font-size:11px;margin-bottom:5px">FORMA(S) DE PAGAMENTO:</div>' +
+        '<div style="font-size:11px">' + pagTxt + '</div>' +
+        '<div class="l"></div>' +
+        '<div style="text-align:center;margin:8px 0">' +
+        '<div style="font-size:10px;margin-bottom:4px">Consulta via QR Code</div>' +
+        (nfceData.qrCode ? '<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(nfceData.qrCode) + '" style="width:140px;height:140px">' : '') +
+        '</div>' +
+        '<div class="l"></div>' +
+        '<p style="font-size:9px">Chave de Acesso:</p>' +
+        '<p style="font-size:8px;word-break:break-all">' + (nfceData.chave || '') + '</p>' +
+        '<p style="font-size:9px">Protocolo: ' + (nfceData.nProt || '') + '</p>' +
+        '<div class="l"></div>' +
+        '<p style="text-align:center;font-size:12px;font-weight:bold;margin-top:10px">OBRIGADO PELA PREFERÊNCIA!</p>' +
+        '</body></html>';
+
+      var iframe = document.getElementById('print-iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-iframe';
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+      }
+      var doc = iframe.contentWindow.document;
+      doc.open(); doc.write(html); doc.close();
+      setTimeout(function() { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
+    }
+
     return {
       filtrar, add, removeItem, setQtd, setDesc, setDescTipo, toggleDesc, aplicarDescontoBalao, limparDescontos,
       addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro,
@@ -3295,9 +3546,10 @@
       finalizar, cancelar,
       avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
       abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente,
-      toggleFormNovoCli, salvarNovoCli, imprimirContrato,
+      toggleFormNovoCli, salvarNovoCli, imprimirContrato, imprimirDANFE,
       _mascaraCpfCli, _mascaraCepCli, _buscarCepCli, _toggleDecCli, _atualizaBadgeCli,
-      carregarProdutosPorFilial
+      carregarProdutosPorFilial,
+      fecharModalNFCe, emitirNFCe
     };
   })();
 </script>

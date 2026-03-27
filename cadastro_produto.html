@@ -711,6 +711,57 @@
           </div>
         </div>
       </div>
+      <!-- Dados Fiscais NFC-e -->
+      <div class="mdivider"></div>
+      <div style="font-size:12px;font-weight:700;color:var(--mtext2);margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:6px"
+        onclick="var s=document.getElementById('fiscal-section');var ic=document.getElementById('fiscal-ic');var open=s.style.display!=='none';s.style.display=open?'none':'block';ic.textContent=open?'▶':'▼'">
+        🧾 Dados Fiscais (NFC-e) &nbsp;<span id="fiscal-ic" style="font-size:10px;color:var(--mmuted)">▶</span>
+      </div>
+      <div id="fiscal-section" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="mform-group">
+            <label>NCM (8 dígitos)</label>
+            <input type="text" id="f-ncm" placeholder="95030099" maxlength="8"
+              oninput="this.value=this.value.replace(/\D/g,'')">
+            <div class="field-hint"><a href="https://www.ibpt.org.br/tabela-ncm" target="_blank" style="color:#4f46e5">🔍 Consultar NCM</a></div>
+          </div>
+          <div class="mform-group">
+            <label>CFOP</label>
+            <select id="f-cfop">
+              <option value="5102">5102 — Venda interna (AM)</option>
+              <option value="6102">6102 — Venda interestadual</option>
+              <option value="5405">5405 — Venda subst. tributária</option>
+              <option value="5949">5949 — Outra saída</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="mform-group">
+            <label>CSOSN (Simples)</label>
+            <select id="f-csosn">
+              <option value="400">400 — Tributada SN s/ crédito</option>
+              <option value="102">102 — Tributada SN</option>
+              <option value="500">500 — ICMS cobrado ant.</option>
+              <option value="900">900 — Outros</option>
+            </select>
+          </div>
+          <div class="mform-group">
+            <label>Unidade Comercial</label>
+            <input type="text" id="f-unidade" placeholder="UN" maxlength="6"
+              oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="mform-group">
+            <label>Origem</label>
+            <select id="f-origem">
+              <option value="0">0 — Nacional</option>
+              <option value="1">1 — Estrangeira import.</option>
+              <option value="2">2 — Estrangeira merc. int.</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="mdivider"></div>
+
       <div class="mform-group">
         <label>Localização</label>
         <div class="loc-wrap" id="loc-wrap">
@@ -838,6 +889,18 @@
         }, 600);
       }
       if (d.foto_url) mostrarPreviewUrl(d.foto_url);
+      // Fiscal — abre a seção se houver NCM cadastrado
+      if (d.ncm || d.cfop || d.csosn) {
+        var fs = document.getElementById('fiscal-section');
+        var fi = document.getElementById('fiscal-ic');
+        if (fs) fs.style.display = 'block';
+        if (fi) fi.textContent = '▼';
+        if (d.ncm)    document.getElementById('f-ncm').value    = d.ncm;
+        if (d.cfop)   document.getElementById('f-cfop').value   = d.cfop;
+        if (d.csosn)  document.getElementById('f-csosn').value  = d.csosn;
+        if (d.unidade_comercial) document.getElementById('f-unidade').value = d.unidade_comercial;
+        if (d.origem !== undefined) document.getElementById('f-origem').value = String(d.origem || '0');
+      }
     })();
 
     // Fecha dropdown clicando fora
@@ -916,10 +979,17 @@
           payload.preco_custo = parseFloat(document.getElementById('f-custo')?.value) || 0;
           payload.markup = parseFloat(document.getElementById('f-markup')?.value) || 0;
           payload.valor_venda = parseFloat(document.getElementById('f-venda')?.value) || 0;
-          payload.preco = payload.valor_venda; // mantém compatibilidade de leitura do valor original
+          payload.preco = payload.valor_venda;
           payload.categoria_pk = parseInt(document.getElementById('f-categoria')?.value) || null;
           payload.codigo_barras = (document.getElementById('f-codigo-barras')?.value || '').trim() || null;
         }
+        // Fiscal (sempre salvar se preenchido)
+        var ncm = (document.getElementById('f-ncm')?.value || '').trim();
+        if (ncm) payload.ncm = ncm;
+        payload.cfop             = document.getElementById('f-cfop')?.value || '5102';
+        payload.csosn            = document.getElementById('f-csosn')?.value || '400';
+        payload.unidade_comercial = (document.getElementById('f-unidade')?.value || 'UN').trim().toUpperCase();
+        payload.origem           = document.getElementById('f-origem')?.value || '0';
         var res;
         if (editPk) { res = await window.supabase.from('produtos').update(payload).eq('pk', editPk); }
         else { res = await window.supabase.from('produtos').insert([payload]); }
