@@ -163,12 +163,12 @@ function gerarXMLNFCe(dados) {
     detXML += `<CFOP>${cfop}</CFOP>`;
     detXML += `<uCom>${xStr(uCom, 6)}</uCom>`;
     detXML += `<qCom>${fmt4(qtd)}</qCom>`;
-    detXML += `<vUnCom>${fmt10(vUnit)}</vUnCom>`;
+    detXML += `<vUnCom>${fmt4(vUnit)}</vUnCom>`;
     detXML += `<vProd>${fmt2(vProd + vDesc)}</vProd>`;
     detXML += `<cEANTrib>SEM GTIN</cEANTrib>`;
     detXML += `<uTrib>${xStr(uCom, 6)}</uTrib>`;
     detXML += `<qTrib>${fmt4(qtd)}</qTrib>`;
-    detXML += `<vUnTrib>${fmt10(vUnit)}</vUnTrib>`;
+    detXML += `<vUnTrib>${fmt4(vUnit)}</vUnTrib>`;
     if (vDesc > 0) detXML += `<vDesc>${fmt2(vDesc)}</vDesc>`;
     detXML += `<indTot>1</indTot>`;
     detXML += `</prod>`;
@@ -211,6 +211,11 @@ function gerarXMLNFCe(dados) {
   // Endereço emitente
   const end   = filial;
   const cep   = stripNonNum(end.cep || '').padStart(8, '0');
+
+  // IE formatada: preserva "ISENTO" ou extrai só números
+  const ieFormatted = (ie && ie.toString().toUpperCase().trim() === 'ISENTO')
+    ? 'ISENTO'
+    : stripNonNum(ie || '');
 
   // QR Code
   const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
@@ -256,7 +261,7 @@ function gerarXMLNFCe(dados) {
     + `<xPais>Brasil</xPais>`
     + (end.telefone ? `<fone>${stripNonNum(end.telefone).slice(0, 14)}</fone>` : '')
     + `</enderEmit>`
-    + `<IE>${stripNonNum(ie)}</IE>`
+    + (ieFormatted ? `<IE>${ieFormatted}</IE>` : '')
     + `<CRT>1</CRT>`
     + `</emit>`
     + destXML
@@ -300,11 +305,14 @@ function gerarXMLNFCe(dados) {
 // ── QR Code NFC-e ────────────────────────────────────────────────
 function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest, csc, cscId) {
 
-  // Data no formato AAMMDDHHMM
-  const dhStr = dhEmi.replace(/[-:T]/g, '').slice(0, 12).slice(2); // AAMMDDHHMM
+  // dhEmi ex: "2026-03-27T14:10:04-04:00"
+  // Extrair DDMMHHMM (sem separadores, data/hora local AM)
+  const m = dhEmi.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  // m = [_, YYYY, MM, DD, HH, NN]
+  const dhStr = m ? (m[3] + m[2] + m[4] + m[5]) : '01010000'; // DDMMHHNN
   const vNFStr = fmt2(vNF).replace('.', '').replace(',', '');
 
-  let url = `${urlConsulta}?p=${chave}|2|${tpAmb}|${cpfDest ? stripNonNum(cpfDest) : ''}|${dhStr.slice(0, 4)}|${vNFStr}|0.00`;
+  let url = `${urlConsulta}?p=${chave}|2|${tpAmb}|${cpfDest ? stripNonNum(cpfDest) : ''}|${dhStr}|${vNFStr}|0.00`;
 
   const hash = crypto.createHash('sha1')
     .update(url + csc, 'utf8')
@@ -733,9 +741,12 @@ module.exports = async function handler(req, res) {
       const respSOAP = await enviarSEFAZ(soap, urlAuth, certB64, certPwd);
 
       // Parsear resposta
-      let cStat   = getTag(respSOAP, 'cStat');
-      let xMotivo = getTag(respSOAP, 'xMotivo') || getTag(respSOAP, 'faultstring') || getTag(respSOAP, 'Text') || 'Resposta irreconhecível da SEFAZ';
-      const nProt   = getTag(respSOAP, 'nProt');
+      let cStat    = getTag(respSOAP, 'cStat');
+      let xMotivo  = getTag(respSOAP, 'xMotivo')
+        || getTag(respSOAP, 'faultstring')
+        || getTag(respSOAP, 'Text')
+        || 'Resposta irreconhecível da SEFAZ';
+      const nProt    = getTag(respSOAP, 'nProt');
       const dhRecbto = getTag(respSOAP, 'dhRecbto');
 
       if (!cStat) cStat = getTag(respSOAP, 'faultcode') || 'FAULT';
@@ -744,44 +755,50 @@ module.exports = async function handler(req, res) {
 
       // Salvar resultado na venda
       const nfceUpdate = {
-        nfce_chave:    chave,
-        nfce_serie:    serie,
-        nfce_numero:   numero,
-        nfce_status:   cStat,
-        nfce_motivo:   xMotivo,
+        nfce_chave:     chave,
+        nfce_serie:     serie,
+        nfce_numero:    numero,
+        nfce_status:    cStat,
+        nfce_motivo:    xMotivo,
         nfce_protocolo: nProt || null,
         nfce_ambiente:  tpAmb,
-        nfce_xml:      nfeAssinada,
-        nfce_qrcode:   gerarQRCode(chave, tpAmb, dhEmi, venda.total, tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM, cpf_consumidor, csc, cscId),
         nfce_dh_emissao: dhEmi,
+        nfce_cpf_dest:   cpf_consumidor || null,
       };
+
+      if (autorizada) {
+        nfceUpdate.nfce_qrcode = gerarQRCode(
+          chave, tpAmb, dhEmi, vNF,
+          tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM,
+          cpf_consumidor, csc, cscId
+        );
+      }
+
       await atualizarVendaNFCe(venda_pk, nfceUpdate);
 
+      const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
+
       return res.status(200).json({
-        ok:          autorizada,
+        ok:           autorizada,
         cStat,
         xMotivo,
-        nProt,
+        nProt:        nProt || null,
         chave,
-        dhRecbto:    dhRecbto || dhEmi,
-        qrCode:      nfceUpdate.nfce_qrcode,
-        urlConsulta: tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM,
+        dhRecbto,
+        qrCode:       nfceUpdate.nfce_qrcode || null,
+        urlConsulta,
         tpAmb,
         numero,
         serie,
-        erro:        autorizada ? null : `SEFAZ: [${cStat}] ${xMotivo}`,
-        rawResp:     respSOAP.slice(0, 1000)
+        erro:         autorizada ? null : `SEFAZ: [${cStat}] ${xMotivo}`,
+        rawResp:      respSOAP.replace(/<[^>]+>/g, '').replace(/\s+/g, '').slice(0, 200),
       });
     }
 
-    return res.status(400).json({ erro: 'action inválida' });
+    return res.status(400).json({ erro: 'Ação inválida' });
 
   } catch (err) {
-    console.error('[NFC-e]', err);
-    return res.status(500).json({ 
-      erro: err.message,
-      stack: err.stack,
-      cause: err.cause ? err.cause.message : null
-    });
+    console.error('[NFC-e] Erro:', err);
+    return res.status(500).json({ erro: err.message || 'Erro interno ao processar NFC-e' });
   }
 };
