@@ -223,7 +223,7 @@ function gerarXMLNFCe(dados) {
     + `<cNF>${cNF}</cNF>`
     + `<natOp>${natOp}</natOp>`
     + `<mod>65</mod>`
-    + `<serie>${pad(serie, 3)}</serie>`
+    + `<serie>${Number(serie)}</serie>`
     + `<nNF>${numero}</nNF>`
     + `<dhEmi>${dhEmi}</dhEmi>`
     + `<tpNF>1</tpNF>`
@@ -255,8 +255,8 @@ function gerarXMLNFCe(dados) {
     + `<cPais>1058</cPais>`
     + `<xPais>Brasil</xPais>`
     + (end.telefone ? `<fone>${stripNonNum(end.telefone).slice(0, 14)}</fone>` : '')
-    + `</enderEmit>`
-    + `<IE>${xStr(ie, 14)}</IE>`
+    + `<enderEmit>`
+    + `<IE>${stripNonNum(ie)}</IE>`
     + `<CRT>1</CRT>`
     + `</emit>`
     + destXML
@@ -287,13 +287,14 @@ function gerarXMLNFCe(dados) {
     + `<transp><modFrete>9</modFrete></transp>`
     + `<pag>${pagXML}</pag>`
     + `<infAdic><infCpl>Simples Nacional</infCpl></infAdic>`
-    + `<infNFeSupl>`
-    + `<qrCode>${xStr(qrCode)}</qrCode>`
-    + `<urlChave>${urlConsulta}</urlChave>`
-    + `</infNFeSupl>`
     + `</infNFe>`;
 
-  return infNFe;
+  const infNFeSupl = `<infNFeSupl>`
+    + `<qrCode><![CDATA[${qrCode}]]></qrCode>`
+    + `<urlChave>${urlConsulta}</urlChave>`
+    + `</infNFeSupl>`;
+
+  return { infNFe, infNFeSupl };
 }
 
 // ── QR Code NFC-e ────────────────────────────────────────────────
@@ -358,7 +359,7 @@ function extrairPem(certPfxB64, certPassword) {
 
 // ── Assinatura XML ───────────────────────────────────────────────
 // Implementação de XMLDSig para NF-e conforme NT 2016.002 v1.30
-function assinarXML(infNFe, certPfxB64, certPassword) {
+function assinarXML(infNFe, infNFeSupl, certPfxB64, certPassword) {
   const { privateKey, certPem } = extrairPem(certPfxB64, certPassword);
 
   // Extrair apenas o corpo base64 do certificado (sem header/footer PEM)
@@ -408,10 +409,11 @@ function assinarXML(infNFe, certPfxB64, certPassword) {
     + `</KeyInfo>`
     + `</Signature>`;
 
-  // 6. Montar NFe completa: <NFe> + infNFe + Signature + </NFe>
+  // 6. Montar NFe completa: <NFe> + infNFe + infNFeSupl + Signature + </NFe>
   const nfe =
     `<NFe xmlns="${NS_NFE}">`
     + infNFe
+    + infNFeSupl
     + signature
     + `</NFe>`;
 
@@ -710,7 +712,7 @@ module.exports = async function handler(req, res) {
         : (venda.cliente ? { nome: venda.cliente } : null);
 
       // Gerar XML
-      const infNFe = gerarXMLNFCe({
+      const { infNFe, infNFeSupl } = gerarXMLNFCe({
         chave, filial, serie, numero,
         itens:       itensComFiscal,
         pagamentos:  pagamentosVenda,
@@ -720,7 +722,7 @@ module.exports = async function handler(req, res) {
       });
 
       // Assinar
-      const nfeAssinada = assinarXML(infNFe, certB64, certPwd);
+      const nfeAssinada = assinarXML(infNFe, infNFeSupl, certB64, certPwd);
 
       // Montar lote SOAP
       const lote    = Date.now();
