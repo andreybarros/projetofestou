@@ -130,7 +130,7 @@ function xStr(s, max) {
 function gerarXMLNFCe(dados) {
   const {
     chave, filial, itens, pagamentos, cliente,
-    numero, serie, total, dhEmi, tpAmb
+    numero, serie, total, dhEmi, tpAmb, csc, cscId
   } = dados;
 
   const cnpj   = stripNonNum(filial.cnpj);
@@ -210,7 +210,7 @@ function gerarXMLNFCe(dados) {
 
   // QR Code
   const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
-  const qrCode      = gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cliente?.cpf);
+  const qrCode      = gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cliente?.cpf, csc, cscId);
 
   // infNFe (sem assinatura ainda)
   const infNFe = `<infNFe versao="4.00" Id="NFe${chave}" xmlns="${NS_NFE}">`
@@ -293,9 +293,7 @@ function gerarXMLNFCe(dados) {
 }
 
 // ── QR Code NFC-e ────────────────────────────────────────────────
-function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest) {
-  const csc   = process.env.NFCE_CSC   || '';
-  const cscId = process.env.NFCE_CSC_ID || '000001';
+function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest, csc, cscId) {
 
   // Data no formato AAMMDDHHMM
   const dhStr = dhEmi.replace(/[-:T]/g, '').slice(0, 12).slice(2); // AAMMDDHHMM
@@ -650,11 +648,12 @@ module.exports = async function handler(req, res) {
       }
       if (!certPwd) return res.status(500).json({ erro: 'Senha do certificado não configurada.' });
 
-      const csc   = process.env.NFCE_CSC   || '';
-      const ie    = process.env.NFCE_IE    || '';
-      const tpAmb = process.env.NFCE_AMBIENTE || '2';
+      const csc   = filial.nfce_csc || process.env.NFCE_CSC || '';
+      const cscId = filial.nfce_csc_id || process.env.NFCE_CSC_ID || '000001';
+      const ie    = filial.ie || process.env.NFCE_IE || '';
+      const tpAmb = (filial.nfce_ambiente || '').toString() || process.env.NFCE_AMBIENTE || '2';
 
-      if (!csc) return res.status(500).json({ erro: 'CSC não configurado. Acesse Configurações > NFC-e.' });
+      if (!csc) return res.status(500).json({ erro: 'CSC não configurado. Acesse Cadastro de Filiais > Dados Fiscais.' });
 
       // Mesclar dados fiscais dos produtos
       const prodPks = itensVenda.map(i => i.produto_pk).filter(Boolean);
@@ -692,7 +691,7 @@ module.exports = async function handler(req, res) {
         pagamentos:  pagamentosVenda,
         cliente:     clienteData,
         total:       venda.total,
-        dhEmi, tpAmb,
+        dhEmi, tpAmb, csc, cscId
       });
 
       // Assinar
@@ -724,7 +723,7 @@ module.exports = async function handler(req, res) {
         nfce_protocolo: nProt || null,
         nfce_ambiente:  tpAmb,
         nfce_xml:      nfeAssinada,
-        nfce_qrcode:   gerarQRCode(chave, tpAmb, dhEmi, venda.total, tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM, cpf_consumidor),
+        nfce_qrcode:   gerarQRCode(chave, tpAmb, dhEmi, venda.total, tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM, cpf_consumidor, csc, cscId),
         nfce_dh_emissao: dhEmi,
       };
       await atualizarVendaNFCe(venda_pk, nfceUpdate);
