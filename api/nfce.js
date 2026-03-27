@@ -312,20 +312,17 @@ function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest, csc, cscId)
 
 // ── Assinatura XML ───────────────────────────────────────────────
 // Implementação de XMLDSig para NF-e conforme NT 2016.002 v1.30
-function assinarXML(infNFe, certPfxB64, certPassword) {
-  // 1. Carregar certificado
+function extrairPem(certPfxB64, certPassword) {
   const pfxDer  = forge.util.decode64(certPfxB64);
   const pfxAsn1 = forge.asn1.fromDer(pfxDer);
   const p12     = forge.pkcs12.pkcs12FromAsn1(pfxAsn1, false, certPassword);
 
-  // Extrair chave privada e certificado
   let privateKey = null;
   let certPem    = null;
 
   for (const safeContent of p12.safeContents) {
     for (const safeBag of safeContent.safeBags) {
-      if (safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag ||
-          safeBag.type === forge.pki.oids.keyBag) {
+      if (safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag || safeBag.type === forge.pki.oids.keyBag) {
         privateKey = safeBag.key;
       }
       if (safeBag.type === forge.pki.oids.certBag) {
@@ -334,8 +331,16 @@ function assinarXML(infNFe, certPfxB64, certPassword) {
     }
   }
 
-  if (!privateKey) throw new Error('Chave privada não encontrada no certificado');
-  if (!certPem)    throw new Error('Certificado X.509 não encontrado no .pfx');
+  if (!privateKey) throw new Error('Chave privada não encontrada no certificado .pfx');
+  if (!certPem)    throw new Error('Certificado não encontrado no .pfx');
+
+  return { privateKey, certPem, keyPem: forge.pki.privateKeyToPem(privateKey) };
+}
+
+// ── Assinatura XML ───────────────────────────────────────────────
+// Implementação de XMLDSig para NF-e conforme NT 2016.002 v1.30
+function assinarXML(infNFe, certPfxB64, certPassword) {
+  const { privateKey, certPem } = extrairPem(certPfxB64, certPassword);
 
   // Extrair apenas o corpo base64 do certificado (sem header/footer PEM)
   const certB64 = certPem
@@ -417,8 +422,8 @@ function montarSOAP(nfeXML, tpAmb, lote) {
 
 // ── Enviar para SEFAZ via HTTPS com certificado mútuo ───────────
 async function enviarSEFAZ(soapBody, urlStr, certPfxB64, certPassword) {
-  const pfxDer = Buffer.from(certPfxB64, 'base64');
-  const url    = new URL(urlStr);
+  const url = new URL(urlStr);
+  const { keyPem, certPem } = extrairPem(certPfxB64, certPassword);
 
   return new Promise((resolve, reject) => {
     const options = {
@@ -430,8 +435,8 @@ async function enviarSEFAZ(soapBody, urlStr, certPfxB64, certPassword) {
         'Content-Type': 'application/soap+xml; charset=utf-8',
         'Content-Length': Buffer.byteLength(soapBody, 'utf8'),
       },
-      pfx:      pfxDer,
-      passphrase: certPassword,
+      key:      keyPem,
+      cert:     certPem,
       rejectUnauthorized: false,  // SEFAZ AM usa certificados ICP-Brasil (pode ter chain issues)
     };
 
