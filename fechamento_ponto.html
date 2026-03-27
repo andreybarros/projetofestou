@@ -662,11 +662,22 @@
                 if (bats.length >= 2) {
                     var ent = timeToSec(bats[0]);
                     var saii = timeToSec(bats[bats.length - 1]);
-                    // Carência de entrada: se o funcionário bateu antes do horário previsto,
-                    // usa-se o horário de entrada cadastrado para não gerar hora extra antecipada.
+                    // ── Tolerância de 15 minutos (CLT Art. 58 §1º) ──────────
+                    // Entrada: se bateu até 15 min antes do horário, ajusta para o horário previsto
                     if (func.hora_entrada) {
                         var entPrevSec = timeToSec(func.hora_entrada);
-                        if (ent < entPrevSec) ent = entPrevSec;
+                        var tolerancia = 15 * 60; // 15 minutos em segundos
+                        if (ent < entPrevSec && (entPrevSec - ent) <= tolerancia) {
+                            ent = entPrevSec;
+                        }
+                    }
+                    // Saída: se bateu até 15 min depois do horário, ajusta para o horário previsto
+                    if (func.hora_saida) {
+                        var saiPrevSec = timeToSec(func.hora_saida);
+                        var toleranciaSai = 15 * 60;
+                        if (saii > saiPrevSec && (saii - saiPrevSec) <= toleranciaSai) {
+                            saii = saiPrevSec;
+                        }
                     }
                     p_trabalhado = Math.max(0, saii - ent - intervaloSec);
                 }
