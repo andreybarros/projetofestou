@@ -649,11 +649,29 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // Buscar dados da filial
+      // Buscar dados da filial (usando o filial_pk da venda completa)
       const filial = await buscarFilial(venda.filial_pk);
-      if (!filial || !filial.cnpj) {
+      if (!filial) return res.status(404).json({ erro: 'Filial não encontrada' });
+      if (!filial.cnpj) {
         return res.status(500).json({ erro: 'Filial sem CNPJ configurado.' });
       }
+
+      // Configurações do certificado
+      const certB64 = filial.nfce_cert_b64 || process.env.NFCE_CERT_B64;
+      const certPwd = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+
+      if (!certB64) {
+        return res.status(500).json({
+          erro: 'Certificado digital não configurado. Acesse Cadastro de Filiais > Dados Fiscais e faça o upload do arquivo .pfx'
+        });
+      }
+      if (!certPwd) return res.status(500).json({ erro: 'Senha do certificado não configurada.' });
+
+      const csc   = process.env.NFCE_CSC   || '';
+      const ie    = process.env.NFCE_IE    || '';
+      const tpAmb = process.env.NFCE_AMBIENTE || '2';
+
+      if (!csc) return res.status(500).json({ erro: 'CSC não configurado. Acesse Configurações > NFC-e.' });
 
       // Mesclar dados fiscais dos produtos
       const prodPks = itensVenda.map(i => i.produto_pk).filter(Boolean);
