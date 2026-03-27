@@ -21,6 +21,9 @@
 
 'use strict';
 
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://lflpzskcpcsfzagackuy.supabase.co";
+process.env.SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_5jo3h0in7z4PPCsw4K5RjA_g-TVT_NP";
+
 const forge  = require('node-forge');
 const crypto = require('crypto');
 const https  = require('https');
