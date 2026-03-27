@@ -749,6 +749,10 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('[NFC-e]', err);
-    return res.status(500).json({ erro: err.message || 'Erro interno' });
+    return res.status(500).json({ 
+      erro: err.message,
+      stack: err.stack,
+      cause: err.cause ? err.cause.message : null
+    });
   }
 };

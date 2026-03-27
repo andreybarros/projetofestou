@@ -3413,6 +3413,9 @@
           })
         });
         var data = await r.json();
+        if (!r.ok || data.erro) {
+           throw new Error((data.erro || 'HTTP ' + r.status) + ' | DETALHES: ' + JSON.stringify(data));
+        }
 
         res_el.style.display = 'block';
         if (data.ok) {
