@@ -318,7 +318,7 @@ function extrairPem(certPfxB64, certPassword) {
   const p12     = forge.pkcs12.pkcs12FromAsn1(pfxAsn1, false, certPassword);
 
   let privateKey = null;
-  let certPem    = null;
+  let certBags = [];
 
   for (const safeContent of p12.safeContents) {
     for (const safeBag of safeContent.safeBags) {
@@ -326,15 +326,30 @@ function extrairPem(certPfxB64, certPassword) {
         privateKey = safeBag.key;
       }
       if (safeBag.type === forge.pki.oids.certBag) {
-        certPem = forge.pki.certificateToPem(safeBag.cert);
+        certBags.push(safeBag);
       }
     }
   }
 
   if (!privateKey) throw new Error('Chave privada não encontrada no certificado .pfx');
-  if (!certPem)    throw new Error('Certificado não encontrado no .pfx');
+  if (certBags.length === 0) throw new Error('Nenhum certificado encontrado no .pfx');
 
-  return { privateKey, certPem, keyPem: forge.pki.privateKeyToPem(privateKey) };
+  // Relaciona a chave privada ao certificado exato usando o Módulo RSA (n)
+  const expectedModulus = privateKey.n.toString(16);
+  let targetCert = certBags.find(b => b.cert.publicKey.n && b.cert.publicKey.n.toString(16) === expectedModulus)?.cert;
+  
+  if (!targetCert) targetCert = certBags[0].cert; // Fallback extremo
+
+  const certPem = forge.pki.certificateToPem(targetCert);
+  // Pega restante da cadeia para o TLS (opcional, fortalece a handshake TLS da Sefaz)
+  const caPems = certBags.filter(b => b.cert !== targetCert).map(b => forge.pki.certificateToPem(b.cert));
+
+  return { 
+    privateKey, 
+    certPem, 
+    keyPem: forge.pki.privateKeyToPem(privateKey),
+    caPems
+  };
 }
 
 // ── Assinatura XML ───────────────────────────────────────────────
@@ -423,7 +438,7 @@ function montarSOAP(nfeXML, tpAmb, lote) {
 // ── Enviar para SEFAZ via HTTPS com certificado mútuo ───────────
 async function enviarSEFAZ(soapBody, urlStr, certPfxB64, certPassword) {
   const url = new URL(urlStr);
-  const { keyPem, certPem } = extrairPem(certPfxB64, certPassword);
+  const { keyPem, certPem, caPems } = extrairPem(certPfxB64, certPassword);
 
   return new Promise((resolve, reject) => {
     const options = {
@@ -437,6 +452,7 @@ async function enviarSEFAZ(soapBody, urlStr, certPfxB64, certPassword) {
       },
       key:      keyPem,
       cert:     certPem,
+      ca:       caPems,
       rejectUnauthorized: false,  // SEFAZ AM usa certificados ICP-Brasil (pode ter chain issues)
     };
 
