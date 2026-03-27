@@ -38,9 +38,9 @@ const NCM_DEF   = '95030099'; // Brinquedos / artigos de festa (fallback)
 
 // ── URLs padrão AM ──────────────────────────────────────────────
 const URL_AUTH_HOM  = process.env.NFCE_URL_AUTH_HOM
-  || 'https://homnfce.sefaz.am.gov.br/nfce-service/services/NfeAutorizacao4';
+  || 'https://homnfce.sefaz.am.gov.br/nfce-services/services/NfeAutorizacao4';
 const URL_AUTH_PROD = process.env.NFCE_URL_AUTH_PROD
-  || 'https://nfce.sefaz.am.gov.br/nfce-service/services/NfeAutorizacao4';
+  || 'https://nfce.sefaz.am.gov.br/nfce-services/services/NfeAutorizacao4';
 const URL_QR_HOM    = process.env.NFCE_URL_QR_HOM
   || 'https://homologacao.sefaz.am.gov.br/nfce/consultanfce.aspx';
 const URL_QR_PROD   = process.env.NFCE_URL_QR_PROD
