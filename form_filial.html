@@ -579,18 +579,20 @@
       document.getElementById('fil-csc').value        = d.nfce_csc || '';
       document.getElementById('fil-csc-id').value     = d.nfce_csc_id || '000001';
       // Certificado — exibe info se já existir
-      if (d.nfce_cert_titular) {
-        _certB64 = d.nfce_cert_b64 || null;
-        var venc = d.nfce_cert_venc ? new Date(d.nfce_cert_venc).toLocaleDateString('pt-BR') : '?';
+      if (d.nfce_cert_b64) {
+        _certB64 = d.nfce_cert_b64;
         document.getElementById('cert-upload-text').style.display = 'none';
         document.getElementById('cert-info').style.display = 'block';
-        document.getElementById('cert-info-text').textContent = '🔐 ' + d.nfce_cert_titular + ' (vence: ' + venc + ')';
+        
+        var venc = d.nfce_cert_venc ? new Date(d.nfce_cert_venc).toLocaleDateString('pt-BR') : 'não informada';
+        var titular = d.nfce_cert_titular || 'Certificado Carregado';
+        
+        document.getElementById('cert-info-text').textContent = '🔐 ' + titular + (d.nfce_cert_venc ? ' (vence: ' + venc + ')' : '');
+        
         var banner = document.getElementById('cert-validade-banner');
-        var isValid = d.nfce_cert_venc && new Date(d.nfce_cert_venc) > new Date();
-        if (isValid) {
+        if (d.nfce_cert_venc && new Date(d.nfce_cert_venc) > new Date()) {
           banner.style.display = 'block';
-          document.getElementById('cert-validade-txt').textContent =
-            'Certificado válido até ' + venc + ' — ' + d.nfce_cert_titular;
+          document.getElementById('cert-validade-txt').textContent = 'Certificado válido até ' + venc + ' — ' + titular;
         }
       }
 

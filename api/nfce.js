@@ -611,13 +611,21 @@ module.exports = async function handler(req, res) {
 
     // ── Emitir NFC-e ────────────────────────────────────────────
     if (action === 'emitir') {
-      const { venda_pk, cpf_consumidor } = body;
-      if (!venda_pk) return res.status(400).json({ erro: 'venda_pk é obrigatório' });
+      const { venda, cpf_consumidor } = body;
+      if (!venda) return res.status(400).json({ erro: 'Venda não informada' });
 
-      // Verificar configuração mínima
-      const certB64 = process.env.NFCE_CERT_B64;
-      const certPwd = process.env.NFCE_CERT_PASSWORD;
-      if (!certB64) return res.status(500).json({ erro: 'Certificado digital não configurado. Acesse Configurações > NFC-e.' });
+      // 1. Busca dados da filial (incluindo certificado no DB)
+      const filial = await buscarFilial(venda.filial_pk);
+      if (!filial) return res.status(404).json({ erro: 'Filial nao encontrada' });
+
+      const certB64 = filial.nfce_cert_b64 || process.env.NFCE_CERT_B64;
+      const certPwd = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+
+      if (!certB64) {
+        return res.status(500).json({
+          erro: 'Certificado digital não configurado. Acesse Cadastro de Filiais > Dados Fiscais e faça o upload do arquivo .pfx'
+        });
+      }
       if (!certPwd) return res.status(500).json({ erro: 'Senha do certificado não configurada.' });
 
       const csc   = process.env.NFCE_CSC   || '';
