@@ -486,20 +486,14 @@ async function buscarItens(vendaPk) {
 
 async function buscarFilial(filialPk) {
   const url = `${process.env.SUPABASE_URL}/rest/v1/filiais?pk=eq.${filialPk}&select=*`;
-  const r   = await fetch(url, {
-    headers: {
-      'apikey':        process.env.SUPABASE_URL,
-      'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
-    }
-  });
-  // fallback para headers corretos
-  const r2 = await fetch(`${process.env.SUPABASE_URL}/rest/v1/filiais?pk=eq.${filialPk}&select=*`, {
+  const r = await fetch(url, {
     headers: {
       'apikey':        process.env.SUPABASE_KEY,
       'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
     }
   });
-  const data = await r2.json();
+  if (!r.ok) return null;
+  const data = await r.json();
   return data[0] || null;
 }
 
