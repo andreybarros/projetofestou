@@ -3458,100 +3458,147 @@
           btn.disabled = false; btn.textContent = '🔄 Tentar Novamente';
           window.showToast('Erro NFC-e: ' + (data.erro || ''), 'error');
         }
-      } catch (e) {
+      } catch (err) {
         res_el.style.display = 'block';
-        res_el.innerHTML = '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#991b1b"><div style="font-weight:700">❌ Erro de conexão</div><div style="font-size:12px">' + e.message + '</div></div>';
+        res_el.innerHTML =
+          '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#991b1b">' +
+          '<div style="font-weight:700;font-size:14px;margin-bottom:6px">❌ Erro de conexão</div>' +
+          '<div style="font-size:12px">' + err.message + '</div></div>';
         btn.disabled = false; btn.textContent = '🔄 Tentar Novamente';
-        window.showToast('Erro ao emitir NFC-e', 'error');
+        window.showToast('Erro: ' + err.message, 'error');
       }
     }
 
-    // ── DANFE NFC-e — Impressão fiscal ──────────────────────────────
-    function imprimirDANFE(receipt, nfceData) {
-      var f = window.filialLogada, op = window.operadorLogado;
-      var agora = new Date().toLocaleString('pt-BR');
-      var itensTxt = carrinho.map(function(it) {
-        var c = calcItem(it);
-        var descTxt = it.desconto_pct > 0 ? ' (' + it.desconto_pct + '% desc.)' : '';
-        return it.qtd + 'x ' + it.descricao + descTxt + '<br>' +
-          '<span style="font-size:10px;color:#666">   ' + fmt(it.preco_unit) + ' x ' + it.qtd + ' = ' + fmt(c.liq) + '</span>';
-      }).join('<br>');
-      var pagTxt = receipt.pagamentos.map(function(p) {
-        return '<div style="display:flex;justify-content:space-between"><span>' + (FORMA_LABEL[p.forma] || p.forma) + ':</span> <span>' + fmt(p.valor) + '</span></div>';
-      }).join('');
-
-      var totalQtd = carrinho.reduce(function(acc,item) { return acc + item.qtd; }, 0);
-      var ambTxt = nfceData.tpAmb === '2' ? '<p style="text-align:center;font-size:10px;color:#b45309;background:#fef3c7;padding:4px;border-radius:4px;margin:6px 0">⚠️ EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL</p>' : '';
-
-      var html = '<html><head><title>DANFE NFC-e #' + receipt.numero + '</title><style>' +
-        'body{font-family:"Courier New",Courier,monospace;font-weight:bold;font-size:12px;width:300px;margin:0 auto;padding:10px;color:#000}' +
-        'h2{text-align:center;font-size:16px;margin:5px 0 2px}p{margin:2px 0;text-align:center;font-size:11px}.l{border-top:1px dashed #000;margin:8px 0}' +
-        '.item-list{font-size:11px;line-height:1.4}.total-row{display:flex;justify-content:space-between;font-size:13px;margin:2px 0}' +
+    // ── DANFE-NFC-e (impressão fiscal após autorização) ────────────
+    function imprimirDANFE(recibo, nfce) {
+      var html =
+        '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+        '<title>DANFE NFC-e Nº ' + nfce.numero + '</title>' +
+        '<style>' +
+        'body{font-family:monospace;font-size:11px;max-width:300px;margin:0 auto;padding:8px}' +
+        'h1{font-size:13px;text-align:center;margin:0 0 4px}' +
+        '.center{text-align:center}.sep{border-top:1px dashed #000;margin:6px 0}' +
+        '.row{display:flex;justify-content:space-between}' +
+        '.bold{font-weight:bold}.small{font-size:9px}' +
+        '.alert{background:#fef3c7;padding:4px;text-align:center;font-size:10px;border:1px solid #f59e0b}' +
         '</style></head><body>' +
-        '<h2>' + (f ? f.nome : 'EMPRESA') + '</h2>' +
-        (f && f.razao_social ? '<p>' + f.razao_social + '</p>' : '') +
-        (f && f.cnpj ? '<p>CNPJ: ' + f.cnpj + '</p>' : '') +
-        (f && f.endereco ? '<p>' + f.endereco + '</p>' : '') +
-        (f && f.telefone ? '<p>Tel: ' + f.telefone + '</p>' : '') +
-        '<div class="l"></div>' +
-        '<p style="font-size:13px"><strong>DANFE NFC-e — DOCUMENTO AUXILIAR</strong></p>' +
-        '<p style="font-size:9px">DA NOTA FISCAL DE CONSUMIDOR ELETRÔNICA</p>' +
-        ambTxt +
-        '<div class="l"></div>' +
-        '<p>NFC-e Nº ' + String(nfceData.numero).padStart(9,'0') + ' · Série ' + nfceData.serie + '</p>' +
-        '<p>Emissão: ' + (nfceData.dhRecbto ? new Date(nfceData.dhRecbto).toLocaleString('pt-BR') : agora) + '</p>' +
-        '<div class="l"></div>' +
-        (receipt.cliente ? '<div style="font-size:11px">Cliente: <strong>' + receipt.cliente + '</strong></div>' : '') +
-        (op ? '<div style="font-size:11px">Vendedor: ' + op.nome + '</div>' : '') +
-        '<div class="l"></div>' +
-        '<div class="item-list">' + itensTxt + '</div>' +
-        '<div class="l"></div>' +
-        '<div class="total-row"><span>Qtd. Total:</span> <span>' + totalQtd + '</span></div>' +
-        '<div class="total-row"><span>Subtotal:</span> <span>' + fmt(receipt.sub) + '</span></div>' +
-        '<div class="total-row"><span>Desconto:</span> <span>- ' + fmt(receipt.desc) + '</span></div>' +
-        '<div class="total-row" style="font-size:15px;font-weight:bold;margin-top:5px"><span>TOTAL:</span> <span>' + fmt(receipt.total) + '</span></div>' +
-        '<div class="l"></div>' +
-        '<div style="font-size:11px;margin-bottom:5px">FORMA(S) DE PAGAMENTO:</div>' +
-        '<div style="font-size:11px">' + pagTxt + '</div>' +
-        '<div class="l"></div>' +
-        '<div style="text-align:center;margin:8px 0">' +
-        '<div style="font-size:10px;margin-bottom:4px">Consulta via QR Code</div>' +
-        (nfceData.qrCode ? '<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=' + encodeURIComponent(nfceData.qrCode) + '" style="width:140px;height:140px">' : '') +
-        '</div>' +
-        '<div class="l"></div>' +
-        '<p style="font-size:9px">Chave de Acesso:</p>' +
-        '<p style="font-size:8px;word-break:break-all">' + (nfceData.chave || '') + '</p>' +
-        '<p style="font-size:9px">Protocolo: ' + (nfceData.nProt || '') + '</p>' +
-        '<div class="l"></div>' +
-        '<p style="text-align:center;font-size:12px;font-weight:bold;margin-top:10px">OBRIGADO PELA PREFERÊNCIA!</p>' +
+        '<h1>' + (recibo.nomeFilial || 'ESTABELECIMENTO') + '</h1>' +
+        '<div class="center small">' + (recibo.cnpjFilial ? 'CNPJ: ' + recibo.cnpjFilial : '') + '</div>' +
+        '<div class="center small">Série ' + nfce.serie + ' · Nº ' + String(nfce.numero).padStart(9,'0') + '</div>' +
+        (nfce.tpAmb === '2' ? '<div class="alert">⚠️ HOMOLOGAÇÃO — SEM VALOR FISCAL</div>' : '') +
+        '<div class="sep"></div>' +
+        '<div class="bold center">DANFE NFC-e — Modelo 65</div>' +
+        '<div class="center small">Documento Auxiliar da NF de Consumidor Eletrônica</div>' +
+        '<div class="sep"></div>';
+
+      // Itens
+      if (recibo.itens && recibo.itens.length) {
+        recibo.itens.forEach(function(it) {
+          html += '<div>' + it.descricao + '</div>';
+          html += '<div class="row"><span>' + it.qtd + ' x R$ ' + Number(it.preco_unit||0).toFixed(2) + '</span>' +
+                  '<span>R$ ' + Number(it.total_item||0).toFixed(2) + '</span></div>';
+        });
+      }
+
+      html +=
+        '<div class="sep"></div>' +
+        '<div class="row bold"><span>TOTAL</span><span>R$ ' + Number(recibo.total||0).toFixed(2) + '</span></div>' +
+        '<div class="sep"></div>';
+
+      // Pagamentos
+      if (recibo.pagamentos && recibo.pagamentos.length) {
+        recibo.pagamentos.forEach(function(p) {
+          html += '<div class="row"><span>' + (p.forma||'').toUpperCase() + '</span><span>R$ ' + Number(p.valor||0).toFixed(2) + '</span></div>';
+        });
+      }
+
+      html +=
+        '<div class="sep"></div>' +
+        '<div class="bold center small">CHAVE DE ACESSO</div>' +
+        '<div class="center small" style="word-break:break-all;font-size:8px">' + nfce.chave + '</div>' +
+        '<div class="sep"></div>' +
+        (nfce.nProt ? '<div class="center small">Protocolo: ' + nfce.nProt + '</div>' : '') +
+        (nfce.dhRecbto ? '<div class="center small">Autorização: ' + new Date(nfce.dhRecbto).toLocaleString("pt-BR") + '</div>' : '') +
+        '<div class="sep"></div>';
+
+      // QR Code
+      if (nfce.qrCode) {
+        html +=
+          '<div class="center">' +
+          '<div class="small" style="margin-bottom:4px">Consulte pela chave ou QR Code:</div>' +
+          '<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(nfce.qrCode) + '" ' +
+          'style="width:150px;height:150px" alt="QR Code">' +
+          '</div>';
+      }
+
+      html +=
+        '<div class="sep"></div>' +
+        '<div class="center small">Obrigado pela preferência!</div>' +
         '</body></html>';
 
-      var iframe = document.getElementById('print-iframe');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'print-iframe';
-        iframe.style.position = 'absolute';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
-      }
-      var doc = iframe.contentWindow.document;
-      doc.open(); doc.write(html); doc.close();
-      setTimeout(function() { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
+      var w = window.open('', '_blank', 'width=400,height=700');
+      if (w) { w.document.write(html); w.document.close(); setTimeout(function(){ w.print(); }, 800); }
     }
 
+    // ── Exportar funções públicas do módulo ─────────────────────────
     return {
-      filtrar, add, removeItem, setQtd, setDesc, setDescTipo, toggleDesc, aplicarDescontoBalao, limparDescontos,
-      addPag, remPag, setPagConta, calcTroco, confirmarDinheiro, fecharModalDinheiro,
-      abrirModalValor, fecharModalValor, confirmarModalValor,
-      finalizar, cancelar,
-      avancar, voltarPasso1, gerarOrcamento, toggleTipoVenda, toggleCarrinho,
-      abrirBuscaCliente, fecharBuscaCliente, filtrarClientes, escolherCliente, removerCliente,
-      toggleFormNovoCli, salvarNovoCli, imprimirContrato, imprimirDANFE,
-      _mascaraCpfCli, _mascaraCepCli, _buscarCepCli, _toggleDecCli, _atualizaBadgeCli,
-      carregarProdutosPorFilial,
-      fecharModalNFCe, emitirNFCe
+      // ciclo de vida
+      init:                    init,
+      // catálogo e carrinho
+      carregarProdutosPorFilial: carregarProdutosPorFilial,
+      filtrar:                 filtrar,
+      add:                     add,
+      removeItem:              removeItem,
+      setQtd:                  setQtd,
+      toggleCarrinho:          toggleCarrinho,
+      // descontos
+      aplicarDescontoBalao:    aplicarDescontoBalao,
+      limparDescontos:         limparDescontos,
+      toggleDesc:              toggleDesc,
+      setDescTipo:             setDescTipo,
+      setDesc:                 setDesc,
+      // tipo venda / orçamento
+      toggleTipoVenda:         toggleTipoVenda,
+      gerarOrcamento:          gerarOrcamento,
+      carregarOrcamento:       carregarOrcamento,
+      // fluxo de pagamento
+      avancar:                 avancar,
+      voltarPasso1:            voltarPasso1,
+      addPag:                  addPag,
+      remPag:                  remPag,
+      setPagConta:             setPagConta,
+      toggleCrediario:         toggleCrediario,
+      finalizar:               finalizar,
+      cancelar:                cancelar,
+      // modal dinheiro / troco
+      abrirModalDinheiro:      abrirModalDinheiro,
+      fecharModalDinheiro:     fecharModalDinheiro,
+      calcTroco:               calcTroco,
+      confirmarDinheiro:       confirmarDinheiro,
+      // modal valor genérico
+      abrirModalValor:         abrirModalValor,
+      fecharModalValor:        fecharModalValor,
+      confirmarModalValor:     confirmarModalValor,
+      // cliente
+      abrirBuscaCliente:       abrirBuscaCliente,
+      fecharBuscaCliente:      fecharBuscaCliente,
+      filtrarClientes:         filtrarClientes,
+      escolherCliente:         escolherCliente,
+      removerCliente:          removerCliente,
+      toggleFormNovoCli:       toggleFormNovoCli,
+      salvarNovoCli:           salvarNovoCli,
+      abrirModalCliente:       abrirModalCliente,
+      fecharModalCliente:      fecharModalCliente,
+      selecionarCliente:       selecionarCliente,
+      // impressão
+      imprimirContrato:        imprimirContrato,
+      // NFC-e
+      abrirModalNFCe:          abrirModalNFCe,
+      fecharModalNFCe:         fecharModalNFCe,
+      emitirNFCe:              emitirNFCe,
     };
-  })();
-</script>
+
+  })(); // fim window.PDV
+  </script>
+</body>
+</html>
