@@ -255,7 +255,7 @@ function gerarXMLNFCe(dados) {
     + `<cPais>1058</cPais>`
     + `<xPais>Brasil</xPais>`
     + (end.telefone ? `<fone>${stripNonNum(end.telefone).slice(0, 14)}</fone>` : '')
-    + `<enderEmit>`
+    + `</enderEmit>`
     + `<IE>${stripNonNum(ie)}</IE>`
     + `<CRT>1</CRT>`
     + `</emit>`
