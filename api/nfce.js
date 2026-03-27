@@ -68,12 +68,16 @@ function gerarChave(cnpj, aamm, serie, nNF, cNF) {
 }
 
 function calculaDV(chave43) {
-  const pesos = [2,3,4,5,6,7,8,9,2,3,4,5,6,7,8,9,2,3,4,5,6,7,8,9,
-                 2,3,4,5,6,7,8,9,2,3,4,5,6,7,8,9,2,3];
   let soma = 0;
-  for (let i = 0; i < 43; i++) soma += parseInt(chave43[i]) * pesos[i];
+  let peso = 2;
+  for (let i = 42; i >= 0; i--) {
+    soma += parseInt(chave43[i], 10) * peso;
+    peso++;
+    if (peso > 9) peso = 2;
+  }
   const resto = soma % 11;
-  return String(resto < 2 ? 0 : 11 - resto);
+  const dv = 11 - resto;
+  return String(dv > 9 ? 0 : dv);
 }
 
 // ── Número aleatório para cNF ────────────────────────────────────
@@ -727,10 +731,12 @@ module.exports = async function handler(req, res) {
       const respSOAP = await enviarSEFAZ(soap, urlAuth, certB64, certPwd);
 
       // Parsear resposta
-      const cStat   = getTag(respSOAP, 'cStat');
-      const xMotivo = getTag(respSOAP, 'xMotivo');
+      let cStat   = getTag(respSOAP, 'cStat');
+      let xMotivo = getTag(respSOAP, 'xMotivo') || getTag(respSOAP, 'faultstring') || getTag(respSOAP, 'Text') || 'Resposta irreconhecível da SEFAZ';
       const nProt   = getTag(respSOAP, 'nProt');
       const dhRecbto = getTag(respSOAP, 'dhRecbto');
+
+      if (!cStat) cStat = getTag(respSOAP, 'faultcode') || 'FAULT';
 
       const autorizada = cStat === '100';
 
