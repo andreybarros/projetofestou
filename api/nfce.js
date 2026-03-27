@@ -118,15 +118,30 @@ function tPag(forma) {
   return map[String(forma).toLowerCase()] || '99';
 }
 
-// ── Limpar string para XML ───────────────────────────────────────
-function xStr(s, max) {
-  let v = String(s || '').trim()
+// ── Limpar string para XML (NF-e TString) ────────────────────────
+// NF-e TString = [!-ÿ]{1,}(\s?[!-ÿ]{1,})*
+// Regras: sem whitespace no início/fim, sem espaços duplos,
+//         sem caracteres de controle, apenas & e < precisam encoding
+function xStr(s, fallback, max) {
+  // Suporta chamada antiga: xStr(s, max) onde max é número
+  if (typeof fallback === 'number') { max = fallback; fallback = undefined; }
+
+  let v = String(s != null ? s : (fallback || '')).trim()
+    // Remover caracteres de controle (U+0000–U+001F e C1 U+0080–U+009F)
+    .replace(/[\u0000-\u001F\u0080-\u009F]/g, ' ')
+    // Substituir NBSP e outros whitespace estranhos por espaço
+    .replace(/[\u00A0\u2000-\u200F\u2028\u2029]/g, ' ')
+    // Normalizar múltiplos espaços para um único
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    // Encoding XML: apenas & e < são obrigatórios; > , " , ' não precisam
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-    .replace(/[^\u0020-\u007E\u00A0-\u00FF]/g, '');
+    // Remover caracteres inválidos para TString NF-e (manter U+0020–U+00FF exceto controles)
+    .replace(/[^\u0020-\u007E\u00C0-\u00FF]/g, '');
+
+  // Usar fallback se resultado vazio
+  if (!v && fallback) v = String(fallback).trim();
   return max ? v.slice(0, max) : v;
 }
 
@@ -156,9 +171,9 @@ function gerarXMLNFCe(dados) {
 
     detXML += `<det nItem="${idx + 1}">`;
     detXML += `<prod>`;
-    detXML += `<cProd>${xStr(item.codigo || String(idx + 1), 60)}</cProd>`;
+    detXML += `<cProd>${xStr(item.codigo || String(idx + 1), 'PROD' + (idx + 1), 60)}</cProd>`;
     detXML += `<cEAN>SEM GTIN</cEAN>`;
-    detXML += `<xProd>${xStr(item.descricao, 120)}</xProd>`;
+    detXML += `<xProd>${xStr(item.descricao, 'PRODUTO ' + (idx + 1), 120)}</xProd>`;
     detXML += `<NCM>${ncm}</NCM>`;
     detXML += `<CFOP>${cfop}</CFOP>`;
     detXML += `<uCom>${xStr(uCom, 6)}</uCom>`;
@@ -246,13 +261,13 @@ function gerarXMLNFCe(dados) {
     + `</ide>`
     + `<emit>`
     + `<CNPJ>${cnpj}</CNPJ>`
-    + `<xNome>${xStr(end.razao_social || end.nome, 60)}</xNome>`
-    + (end.nome_fantasia ? `<xFant>${xStr(end.nome_fantasia || end.nome, 60)}</xFant>` : '')
+    + `<xNome>${xStr(end.razao_social || end.nome, 'EMPRESA', 60)}</xNome>`
+    + (end.nome_fantasia ? `<xFant>${xStr(end.nome_fantasia, end.nome || 'FANTASIA', 60)}</xFant>` : '')
     + `<enderEmit>`
-    + `<xLgr>${xStr(end.logradouro || 'ALAMEDA COSME FERREIRA', 60)}</xLgr>`
-    + `<nro>${xStr(end.numero_end || 'SN', 60)}</nro>`
-    + (end.complemento ? `<xCpl>${xStr(end.complemento, 60)}</xCpl>` : '')
-    + `<xBairro>${xStr(end.bairro || 'CENTRO', 60)}</xBairro>`
+    + `<xLgr>${xStr(end.logradouro, 'ALAMEDA COSME FERREIRA', 60)}</xLgr>`
+    + `<nro>${xStr(end.numero_end, 'SN', 60)}</nro>`
+    + (end.complemento ? `<xCpl>${xStr(end.complemento, '', 60)}</xCpl>` : '')
+    + `<xBairro>${xStr(end.bairro, 'CENTRO', 60)}</xBairro>`
     + `<cMun>${CMUN_MAN}</cMun>`
     + `<xMun>Manaus</xMun>`
     + `<UF>AM</UF>`
@@ -732,6 +747,9 @@ module.exports = async function handler(req, res) {
       // Assinar
       const nfeAssinada = assinarXML(infNFe, infNFeSupl, certB64, certPwd);
 
+      // Log primeiros 3000 chars para diagnóstico no Vercel
+      console.log('[NFC-e XML gerado]', infNFe.slice(0, 3000));
+
       // Montar lote SOAP
       const lote    = Date.now();
       const soap    = montarSOAP(nfeAssinada, tpAmb, lote);
@@ -792,6 +810,8 @@ module.exports = async function handler(req, res) {
         serie,
         erro:         autorizada ? null : `SEFAZ: [${cStat}] ${xMotivo}`,
         rawResp:      respSOAP.replace(/<[^>]+>/g, '').replace(/\s+/g, '').slice(0, 200),
+        // Debug: primeiros 2000 chars do infNFe para diagnóstico (remover em produção)
+        _debugXml:    !autorizada ? infNFe.slice(0, 2000) : undefined,
       });
     }
 
