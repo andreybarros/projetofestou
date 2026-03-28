@@ -42,9 +42,9 @@ const URL_AUTH_HOM  = process.env.NFCE_URL_AUTH_HOM
 const URL_AUTH_PROD = process.env.NFCE_URL_AUTH_PROD
   || 'https://nfce.sefaz.am.gov.br/nfce-services/services/NfeAutorizacao4';
 const URL_QR_HOM    = process.env.NFCE_URL_QR_HOM
-  || 'https://homologacao.sefaz.am.gov.br/nfce/consultanfce.aspx';
+  || 'https://sistemas.sefaz.am.gov.br/nfceweb-hom/consultarNFCe.jsp';
 const URL_QR_PROD   = process.env.NFCE_URL_QR_PROD
-  || 'https://www.sefaz.am.gov.br/nfce/consultanfce.aspx';
+  || 'https://sistemas.sefaz.am.gov.br/nfceweb/consultarNFCe.jsp';
 
 // ── Helpers gerais ──────────────────────────────────────────────
 function pad(v, n) { return String(v).padStart(n, '0'); }
