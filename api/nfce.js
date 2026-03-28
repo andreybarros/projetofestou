@@ -173,7 +173,11 @@ function gerarXMLNFCe(dados) {
     detXML += `<prod>`;
     detXML += `<cProd>${xStr(item.codigo || String(idx + 1), 'PROD' + (idx + 1), 60)}</cProd>`;
     detXML += `<cEAN>SEM GTIN</cEAN>`;
-    detXML += `<xProd>${xStr(item.descricao, 'PRODUTO ' + (idx + 1), 120)}</xProd>`;
+    // Em homologação (tpAmb=2), SEFAZ exige que o 1º item tenha descrição específica (rejeição 373)
+    const xProdVal = (tpAmb === '2' && idx === 0)
+      ? 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL'
+      : xStr(item.descricao, 'PRODUTO ' + (idx + 1), 120);
+    detXML += `<xProd>${xProdVal}</xProd>`;
     detXML += `<NCM>${ncm}</NCM>`;
     detXML += `<CFOP>${cfop}</CFOP>`;
     detXML += `<uCom>${xStr(uCom, 6)}</uCom>`;
