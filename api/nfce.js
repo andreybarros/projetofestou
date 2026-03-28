@@ -187,8 +187,13 @@ function gerarXMLNFCe(dados) {
     if (vDesc > 0) detXML += `<vDesc>${fmt2(vDesc)}</vDesc>`;
     detXML += `<indTot>1</indTot>`;
     detXML += `</prod>`;
+    // Mapear CSOSN → grupo ICMSSN conforme NF-e 4.0 XSD
+    // ICMSSN400 cobre CSOSN 400 (mais comum no Simples Nacional sem crédito de ICMS)
+    // ICMSSN102 cobre CSOSN 102, 103, 300 (tributação monofásica / substituição)
+    const _icmsGrpMap = {'101':'101','102':'102','103':'102','300':'102','400':'400','201':'201','202':'202','203':'202','500':'500'};
+    const icmsGrp = _icmsGrpMap[String(csosn)] || '900';
     detXML += `<imposto>`;
-    detXML += `<ICMS><ICMSSN${csosn}><orig>0</orig><CSOSN>${csosn}</CSOSN></ICMSSN${csosn}></ICMS>`;
+    detXML += `<ICMS><ICMSSN${icmsGrp}><orig>0</orig><CSOSN>${csosn}</CSOSN></ICMSSN${icmsGrp}></ICMS>`;
     detXML += `<PIS><PISNT><CST>07</CST></PISNT></PIS>`;
     detXML += `<COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>`;
     detXML += `</imposto>`;
@@ -392,9 +397,13 @@ function assinarXML(infNFe, infNFeSupl, certPfxB64, certPassword) {
     .replace('-----END CERTIFICATE-----', '')
     .replace(/\s/g, '');
 
-  // 2. Digest SHA-1 do infNFe (C14N = o próprio elemento com namespace)
+  // 2. Digest SHA-1 do infNFe em forma C14N
+  // C14N 1.0: namespace herdado do pai (<NFe xmlns="...">) aparece no próprio elemento
+  // Canonical form: <infNFe xmlns="http://www.portalfiscal.inf.br/nfe" Id="NFe..." versao="4.00">
+  // Namespace declarations (xmlns) vêm ANTES dos atributos regulares em C14N
+  const infNFeC14n = infNFe.replace('<infNFe ', `<infNFe xmlns="${NS_NFE}" `);
   const digestInfNFe = crypto.createHash('sha1')
-    .update(infNFe, 'utf8')
+    .update(infNFeC14n, 'utf8')
     .digest('base64');
 
   // Id da referência (chave NF-e)
@@ -415,9 +424,11 @@ function assinarXML(infNFe, infNFeSupl, certPfxB64, certPassword) {
     + `</Reference>`
     + `</SignedInfo>`;
 
-  // 4. Assinar SignedInfo com RSA-SHA1
+  // 4. Assinar C14N do SignedInfo — namespace herdado de <Signature xmlns="...">
+  // C14N: <SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#">...</SignedInfo>
+  const signedInfoC14n = signedInfo.replace('<SignedInfo>', `<SignedInfo xmlns="${NS_DSIG}">`);
   const md = forge.md.sha1.create();
-  md.update(signedInfo, 'utf8');
+  md.update(signedInfoC14n, 'utf8');
   const sig    = privateKey.sign(md);
   const sigB64 = forge.util.encode64(sig);
 
