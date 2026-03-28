@@ -331,18 +331,20 @@ function gerarXMLNFCe(dados) {
 }
 
 // ── QR Code NFC-e ────────────────────────────────────────────────
-// Formato V2 ONLINE (NT 2016.002 / NF-e 4.0 XSD):
-// URL?p=CHAVE44|2|tpAmb|cDest|SHA1(URL+CSC)
-// cDest = '0' sempre (padrão XSD só aceita 0 ou até 6 dígitos;
-// o CPF/CNPJ do consumidor fica no elemento <dest> do XML)
+// Formato NT 2015/002 para NFC-e sem CPF do consumidor:
+// URL?p=chave|2|tpAmb|0|cIdToken|SHA1(chave|2|tpAmb|0|cIdToken + CSC)
+// Nota: cIdToken é o CSC ID com 6 dígitos; CSC é concatenado SEM | após cIdToken
 function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest, csc, cscId) {
-  const cDest = '0';
-  const urlBase = `${urlConsulta}?p=${chave}|2|${tpAmb}|${cDest}`;
+  const cDest    = '0';
+  const cIdToken = String(cscId || '1').padStart(6, '0');
+  const qrBase   = `${chave}|2|${tpAmb}|${cDest}`;
+  // Input do hash: parâmetros + cIdToken (sem |) + CSC
+  const hashInput = `${qrBase}|${cIdToken}${csc}`;
   const hash = crypto.createHash('sha1')
-    .update(urlBase + csc, 'utf8')
+    .update(hashInput, 'utf8')
     .digest('hex')
     .toUpperCase();
-  return `${urlBase}|${hash}`;
+  return `${urlConsulta}?p=${qrBase}|${cIdToken}|${hash}`;
 }
 
 // ── Assinatura XML ───────────────────────────────────────────────
