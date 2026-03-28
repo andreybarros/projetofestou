@@ -236,8 +236,9 @@ function gerarXMLNFCe(dados) {
   const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
   const qrCode      = gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cliente?.cpf, csc, cscId);
 
-  // infNFe (sem assinatura ainda)
-  const infNFe = `<infNFe versao="4.00" Id="NFe${chave}" xmlns="${NS_NFE}">`
+  // infNFe — Id antes de versao (ordem alfabética C14N), sem xmlns
+  // (namespace herdado de <NFe xmlns="..."> no documento final)
+  const infNFe = `<infNFe Id="NFe${chave}" versao="4.00">`
     + `<ide>`
     + `<cUF>${CUF_AM}</cUF>`
     + `<cNF>${cNF}</cNF>`
@@ -399,9 +400,9 @@ function assinarXML(infNFe, infNFeSupl, certPfxB64, certPassword) {
   // Id da referência (chave NF-e)
   const refId = infNFe.match(/Id="(NFe[^"]+)"/)[1];
 
-  // 3. Construir SignedInfo
+  // 3. Construir SignedInfo — SEM xmlns (C14N: namespace herdado de <Signature xmlns="...">)
   const signedInfo =
-    `<SignedInfo xmlns="${NS_DSIG}">`
+    `<SignedInfo>`
     + `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></CanonicalizationMethod>`
     + `<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></SignatureMethod>`
     + `<Reference URI="#${refId}">`
@@ -672,9 +673,11 @@ module.exports = async function handler(req, res) {
         buscarPagamentos(venda_pk),
       ]);
 
-      if (venda.nfce_chave) {
+      // Bloquear retry SOMENTE se a NFC-e já foi AUTORIZADA (tem protocolo)
+      // Se foi rejeitada (sem protocolo), permitir nova tentativa
+      if (venda.nfce_chave && venda.nfce_protocolo) {
         return res.status(400).json({
-          erro: 'Esta venda já possui uma NFC-e emitida.',
+          erro: 'Esta venda já possui uma NFC-e autorizada.',
           chave: venda.nfce_chave,
           protocolo: venda.nfce_protocolo,
         });
@@ -784,17 +787,17 @@ module.exports = async function handler(req, res) {
         nfce_cpf_dest:   cpf_consumidor || null,
       };
 
+      const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
+
       if (autorizada) {
+        // venda.total é o valor total disponível neste escopo
         nfceUpdate.nfce_qrcode = gerarQRCode(
-          chave, tpAmb, dhEmi, vNF,
-          tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM,
-          cpf_consumidor, csc, cscId
+          chave, tpAmb, dhEmi, Number(venda.total || 0),
+          urlConsulta, cpf_consumidor, csc, cscId
         );
       }
 
       await atualizarVendaNFCe(venda_pk, nfceUpdate);
-
-      const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
 
       return res.status(200).json({
         ok:           autorizada,
@@ -809,9 +812,9 @@ module.exports = async function handler(req, res) {
         numero,
         serie,
         erro:         autorizada ? null : `SEFAZ: [${cStat}] ${xMotivo}`,
-        rawResp:      respSOAP.replace(/<[^>]+>/g, '').replace(/\s+/g, '').slice(0, 200),
-        // Debug: primeiros 2000 chars do infNFe para diagnóstico (remover em produção)
-        _debugXml:    !autorizada ? infNFe.slice(0, 2000) : undefined,
+        rawResp:      respSOAP.replace(/<[^>]+>/g, '').replace(/\s+/g, '').slice(0, 300),
+        // Debug completo do infNFe (remover em produção após resolver erro 215)
+        _debugXml:    !autorizada ? infNFe : undefined,
       });
     }
 
