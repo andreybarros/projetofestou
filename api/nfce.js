@@ -197,7 +197,23 @@ function gerarXMLNFCe(dados) {
     const _icmsGrpMap = {'101':'101','102':'102','103':'102','300':'102','400':'102','201':'201','202':'202','203':'202','500':'500'};
     const icmsGrp = _icmsGrpMap[String(csosn)] || '900';
     detXML += `<imposto>`;
-    detXML += `<ICMS><ICMSSN${icmsGrp}><orig>0</orig><CSOSN>${csosn}</CSOSN></ICMSSN${icmsGrp}></ICMS>`;
+    // ICMSSN900 (CSOSN=900) exige campos adicionais obrigatórios no XSD NF-e 4.0
+    // Os demais grupos (102, 500, etc.) aceitam apenas orig+CSOSN
+    if (icmsGrp === '900') {
+      detXML += `<ICMS><ICMSSN900>`
+        + `<orig>0</orig><CSOSN>900</CSOSN>`
+        + `<modBC>3</modBC>`      // 3 = Valor da operação
+        + `<vBC>0.00</vBC>`
+        + `<pICMS>0.00</pICMS>`
+        + `<vICMS>0.00</vICMS>`
+        + `<modBCST>3</modBCST>`
+        + `<vBCST>0.00</vBCST>`
+        + `<pICMSST>0.00</pICMSST>`
+        + `<vICMSST>0.00</vICMSST>`
+        + `</ICMSSN900></ICMS>`;
+    } else {
+      detXML += `<ICMS><ICMSSN${icmsGrp}><orig>0</orig><CSOSN>${csosn}</CSOSN></ICMSSN${icmsGrp}></ICMS>`;
+    }
     detXML += `<PIS><PISNT><CST>07</CST></PISNT></PIS>`;
     detXML += `<COFINS><COFINSNT><CST>07</CST></COFINSNT></COFINS>`;
     detXML += `</imposto>`;
