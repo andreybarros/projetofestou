@@ -188,9 +188,9 @@ function gerarXMLNFCe(dados) {
     detXML += `<indTot>1</indTot>`;
     detXML += `</prod>`;
     // Mapear CSOSN → grupo ICMSSN conforme NF-e 4.0 XSD
-    // ICMSSN400 cobre CSOSN 400 (mais comum no Simples Nacional sem crédito de ICMS)
-    // ICMSSN102 cobre CSOSN 102, 103, 300 (tributação monofásica / substituição)
-    const _icmsGrpMap = {'101':'101','102':'102','103':'102','300':'102','400':'400','201':'201','202':'202','203':'202','500':'500'};
+    // ICMSSN102 cobre CSOSN 102, 103, 300 E 400 (ICMSSN400 NÃO existe no XSD NF-e 4.0!)
+    // Ref: NF-e 4.0 XSD tipos válidos: ICMSSN101, ICMSSN102, ICMSSN201, ICMSSN202, ICMSSN500, ICMSSN900
+    const _icmsGrpMap = {'101':'101','102':'102','103':'102','300':'102','400':'102','201':'201','202':'202','203':'202','500':'500'};
     const icmsGrp = _icmsGrpMap[String(csosn)] || '900';
     detXML += `<imposto>`;
     detXML += `<ICMS><ICMSSN${icmsGrp}><orig>0</orig><CSOSN>${csosn}</CSOSN></ICMSSN${icmsGrp}></ICMS>`;
