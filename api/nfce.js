@@ -324,24 +324,17 @@ function gerarXMLNFCe(dados) {
 }
 
 // ── QR Code NFC-e ────────────────────────────────────────────────
+// Formato V2 ONLINE (NT 2016.002 / NF-e 4.0 XSD):
+// URL?p=CHAVE44|2|tpAmb|cDest|SHA1(URL+CSC)
+// cDest = CPF do consumidor (somente dígitos) ou '0' quando anônimo
 function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest, csc, cscId) {
-
-  // dhEmi ex: "2026-03-27T14:10:04-04:00"
-  // Extrair DDMMHHMM (sem separadores, data/hora local AM)
-  const m = dhEmi.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  // m = [_, YYYY, MM, DD, HH, NN]
-  const dhStr = m ? (m[3] + m[2] + m[4] + m[5]) : '01010000'; // DDMMHHNN
-  const vNFStr = fmt2(vNF).replace('.', '').replace(',', '');
-
-  let url = `${urlConsulta}?p=${chave}|2|${tpAmb}|${cpfDest ? stripNonNum(cpfDest) : ''}|${dhStr}|${vNFStr}|0.00`;
-
+  const cDest = cpfDest ? stripNonNum(cpfDest) : '0';
+  const urlBase = `${urlConsulta}?p=${chave}|2|${tpAmb}|${cDest}`;
   const hash = crypto.createHash('sha1')
-    .update(url + csc, 'utf8')
+    .update(urlBase + csc, 'utf8')
     .digest('hex')
     .toUpperCase();
-
-  url += `|${hash}|${cscId}`;
-  return url;
+  return `${urlBase}|${hash}`;
 }
 
 // ── Assinatura XML ───────────────────────────────────────────────
