@@ -759,8 +759,10 @@ module.exports = async function handler(req, res) {
       // Assinar
       const nfeAssinada = assinarXML(infNFe, infNFeSupl, certB64, certPwd);
 
-      // Log primeiros 3000 chars para diagnóstico no Vercel
-      console.log('[NFC-e XML gerado]', infNFe.slice(0, 3000));
+      // Log para diagnóstico — infNFe + infNFeSupl (estrutura completa exceto Signature)
+      console.log('[NFC-e infNFe]', infNFe.slice(0, 2000));
+      console.log('[NFC-e infNFeSupl]', infNFeSupl);
+      console.log('[NFC-e NFe (sem Signature)]', nfeAssinada.replace(/<Signature[\s\S]*<\/Signature>/, '<Signature.../>').slice(0, 1500));
 
       // Montar lote SOAP
       const lote    = Date.now();
