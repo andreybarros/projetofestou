@@ -313,16 +313,15 @@ function gerarXMLNFCe(dados) {
     + `<transp><modFrete>9</modFrete></transp>`
     + `<pag>${pagXML}</pag>`
     + `<infAdic><infCpl>Simples Nacional</infCpl></infAdic>`
-    // infNFeSupl é filho de infNFe conforme XSD TNFe (NF-e 4.0)
-    // Sem CDATA: C14N simplificado e SEFAZ expandem CDATA diferente,
-    // causando divergência no digest SHA-1 da assinatura.
-    + `<infNFeSupl>`
-    + `<qrCode>${qrCode}</qrCode>`
-    + `<urlChave>${urlConsulta}</urlChave>`
-    + `</infNFeSupl>`
     + `</infNFe>`;
 
-  const infNFeSupl = ''; // já embutido em infNFe (mantido por compatibilidade)
+  // infNFeSupl é filho de NFe (não de infNFe) conforme TNFe do XSD NF-e 4.0:
+  // TNFe = sequence { infNFe, infNFeSupl?, Signature }
+  // Não inclui infNFeSupl no digest SHA-1 da assinatura (cobre só infNFe).
+  const infNFeSupl = `<infNFeSupl>`
+    + `<qrCode>${qrCode}</qrCode>`
+    + `<urlChave>${urlConsulta}</urlChave>`
+    + `</infNFeSupl>`;
 
   return { infNFe, infNFeSupl };
 }
@@ -442,11 +441,12 @@ function assinarXML(infNFe, infNFeSupl, certPfxB64, certPassword) {
     + `</KeyInfo>`
     + `</Signature>`;
 
-  // 6. Montar NFe completa: <NFe> + infNFe (inclui infNFeSupl) + Signature + </NFe>
-  // infNFeSupl já está dentro de infNFe — TNFe aceita só infNFe + Signature
+  // 6. Montar NFe completa conforme TNFe XSD: NFe → infNFe → infNFeSupl? → Signature
+  // O digest cobre apenas infNFe; infNFeSupl fica entre infNFe e Signature.
   const nfe =
     `<NFe xmlns="${NS_NFE}">`
     + infNFe
+    + (infNFeSupl || '')
     + signature
     + `</NFe>`;
 
