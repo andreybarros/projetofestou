@@ -326,9 +326,10 @@ function gerarXMLNFCe(dados) {
 // ── QR Code NFC-e ────────────────────────────────────────────────
 // Formato V2 ONLINE (NT 2016.002 / NF-e 4.0 XSD):
 // URL?p=CHAVE44|2|tpAmb|cDest|SHA1(URL+CSC)
-// cDest = CPF do consumidor (somente dígitos) ou '0' quando anônimo
+// cDest = '0' sempre (padrão XSD só aceita 0 ou até 6 dígitos;
+// o CPF/CNPJ do consumidor fica no elemento <dest> do XML)
 function gerarQRCode(chave, tpAmb, dhEmi, vNF, urlConsulta, cpfDest, csc, cscId) {
-  const cDest = cpfDest ? stripNonNum(cpfDest) : '0';
+  const cDest = '0';
   const urlBase = `${urlConsulta}?p=${chave}|2|${tpAmb}|${cDest}`;
   const hash = crypto.createHash('sha1')
     .update(urlBase + csc, 'utf8')
