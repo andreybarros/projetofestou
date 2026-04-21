@@ -101,6 +101,32 @@
       </table>
     </div>
 
+    <!-- Modal Confirmação Exclusão -->
+    <Teleport to="body">
+      <div v-if="confirmarExclusao" @click.self="confirmarExclusao = null"
+        style="position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--bg2,#1e1e2e);border:1px solid rgba(255,255,255,.1);border-radius:16px;width:100%;max-width:420px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.5);">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+            <span class="material-symbols-outlined" style="font-size:32px;color:#f87171;">delete_forever</span>
+            <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text,#fff);">Excluir Batida</h3>
+          </div>
+          <p style="margin:0 0 20px;font-size:14px;color:var(--text2,rgba(255,255,255,.6));line-height:1.6;">
+            Deseja excluir a batida de <strong style="color:var(--text,#fff);">{{ confirmarExclusao.funcionarios?.nome || '—' }}</strong>
+            às <strong style="color:var(--text,#fff);">{{ confirmarExclusao.hora.substring(0,5) }}</strong>
+            do dia <strong style="color:var(--text,#fff);">{{ fmtData(confirmarExclusao.data) }}</strong>?
+            <br/><span style="color:#f87171;font-size:12px;">Esta ação não pode ser desfeita.</span>
+          </p>
+          <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button @click="confirmarExclusao = null" style="padding:9px 20px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--text2,rgba(255,255,255,.7));font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+            <button @click="confirmarRemover" :disabled="removendo" style="padding:9px 20px;border-radius:9px;background:#dc2626;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+              <span v-if="removendo" style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin-ab .7s linear infinite;display:inline-block;"></span>
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Modal Mapa (inline styles para funcionar com Teleport + CSS scoped) -->
     <Teleport to="body">
       <div
@@ -161,6 +187,8 @@ const totalManual = computed(() => lista.value.filter(b => b.tipo.includes('_man
 
 const toastMsg  = ref('');
 const toastTipo = ref('ok');
+const confirmarExclusao = ref(null);
+const removendo = ref(false);
 
 const modalMapa    = ref(false);
 const batidaMapa   = ref(null);
@@ -287,16 +315,24 @@ async function carregarFuncionarios() {
   funcionarios.value = data || [];
 }
 
-async function remover(b) {
-  if (!confirm(`Deseja realmente excluir a batida de ${b.funcionarios?.nome || '—'} às ${b.hora.substring(0,5)} do dia ${fmtData(b.data)}?`)) return;
-  
+function remover(b) {
+  confirmarExclusao.value = b;
+}
+
+async function confirmarRemover() {
+  const b = confirmarExclusao.value;
+  if (!b) return;
+  removendo.value = true;
   try {
     const { error } = await supabase.from('registro_ponto').delete().eq('pk', b.pk);
     if (error) throw error;
+    confirmarExclusao.value = null;
     toast('Batida removida com sucesso');
     await carregar();
   } catch (e) {
     toast('Erro ao remover: ' + e.message, 'err');
+  } finally {
+    removendo.value = false;
   }
 }
 
