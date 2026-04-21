@@ -2,7 +2,6 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "npm install --prefix backend",
   "functions": {
     "api/server.js": { "maxDuration": 30 },
     "api/nfce.js":   { "maxDuration": 60 },
