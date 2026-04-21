@@ -1,7 +1,15 @@
 {
+  "version": 2,
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "npm install --prefix backend",
   "functions": {
-    "api/nfce.js": {
-      "maxDuration": 60
-    }
-  }
+    "api/server.js": { "maxDuration": 30 },
+    "api/nfce.js":   { "maxDuration": 60 },
+    "api/webhook.js":{ "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/server" },
+    { "source": "/(.*)",       "destination": "/index.html" }
+  ]
 }
