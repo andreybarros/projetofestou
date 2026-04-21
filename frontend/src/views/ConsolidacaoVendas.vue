@@ -20,13 +20,18 @@
     <div class="cv-tabs">
       <button :class="['tab-btn', { active: abaAtiva === 'pendentes' }]" @click="trocarAba('pendentes')">
         <span class="material-symbols-outlined">pending_actions</span>
-        Pendentes
+        Vendas Pendentes
         <span v-if="totalPendentes > 0" class="tab-badge">{{ totalPendentes }}</span>
       </button>
       <button :class="['tab-btn', { active: abaAtiva === 'recebimentos' }]" @click="trocarAba('recebimentos')">
-        <span class="material-symbols-outlined">check_circle</span>
-        Recebimentos
+        <span class="material-symbols-outlined">account_balance_wallet</span>
+        Extrato de Recebimentos
       </button>
+      <div class="tab-spacer"></div>
+      <div class="cv-search-global">
+        <span class="material-symbols-outlined search-ico">search</span>
+        <input type="text" v-model="buscaGlobal" placeholder="Pesquisar venda ou cliente..." />
+      </div>
     </div>
 
     <!-- ─── ABA PENDENTES ─── -->
@@ -209,6 +214,9 @@
               <span class="conta-nome">{{ nomeContaPk(r.conta_pk) || '—' }}</span>
             </div>
             <div class="cv-col-btns">
+              <button v-if="!r.pagamento_pk" class="btn-match" @click="abrirConciliacao(r)" title="Conciliar com Venda">
+                <span class="material-symbols-outlined">link</span>
+              </button>
               <button class="btn-icon" @click="editarRecebimento(r)" title="Editar">
                 <span class="material-symbols-outlined">edit</span>
               </button>
@@ -275,6 +283,49 @@
       </div>
     </Teleport>
 
+    <!-- ─── MODAL CONCILIAR (MATCH) ─── -->
+    <Teleport to="body">
+      <div v-if="modalConciliarAberto" class="modal-overlay" @click.self="modalConciliarAberto = false">
+        <div class="modal-box modal-match">
+          <div class="modal-header">
+            <h3>Vincular Recebimento a Venda</h3>
+            <button class="modal-close" @click="modalConciliarAberto = false">×</button>
+          </div>
+          <div class="modal-body custom-scroll">
+            <div class="match-rec-summary">
+              <div class="mr-label">Recebimento selecionado:</div>
+              <div class="mr-val">
+                <strong>{{ fmt(recParaConciliar.valor) }}</strong> em {{ fmtDataSimples(recParaConciliar.data_recebimento) }} 
+                ({{ labelForma(recParaConciliar.forma) }})
+              </div>
+            </div>
+
+            <div class="match-title">Selecione a venda correspondente:</div>
+            
+            <div v-if="buscandoMatch" class="state-center"><span class="spin"></span> Buscando vendas…</div>
+            <div v-else-if="!pendentesParaMatch.length" class="state-center muted">
+              Nenhuma venda pendente encontrada para conciliação.
+            </div>
+            <div v-else class="match-list">
+              <div v-for="p in pendentesParaMatch" :key="p.pk" class="match-item" @click="confirmarMatch(p)">
+                <div class="mi-info">
+                  <span class="mi-venda">#{{ p.venda_numero }} — {{ p.venda_cliente || 'Sem cliente' }}</span>
+                  <span class="mi-meta">{{ p.venda_data }} | Forma: {{ labelForma(p.forma) }}</span>
+                </div>
+                <div class="mi-valor">
+                   <span v-if="Math.abs(p.valor - recParaConciliar.valor) < 0.01" class="badge-match">Valor Exato</span>
+                   <strong>{{ fmt(p.valor) }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="modalConciliarAberto = false">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ─── MODAL CONFIRMAR EXCLUSÃO ─── -->
     <Teleport to="body">
       <div v-if="excluindoRec" class="modal-overlay" @click.self="excluindoRec = null">
@@ -322,6 +373,7 @@ const inicioMes = hoje.slice(0, 8) + '01';
 const abaAtiva    = ref('pendentes');
 const filtroPend  = ref({ de: inicioMes, ate: hoje, forma: '' });
 const filtroRec   = ref({ de: inicioMes, ate: hoje, forma: '', conta_pk: '' });
+const buscaGlobal = ref('');
 
 const carregandoPend = ref(false);
 const carregandoRec  = ref(false);
@@ -337,6 +389,11 @@ const salvandoModal = ref(false);
 const modalForm     = ref({});
 const excluindoRec  = ref(null);
 const removendo     = ref(false);
+
+const modalConciliarAberto = ref(false);
+const recParaConciliar      = ref(null);
+const pendentesParaMatch    = ref([]);
+const buscandoMatch        = ref(false);
 
 const toastMsg  = ref('');
 const toastTipo = ref('ok');
@@ -603,6 +660,75 @@ async function confirmarExclusao() {
   }
 }
 
+async function abrirConciliacao(r) {
+  recParaConciliar.value = r;
+  modalConciliarAberto.value = true;
+  buscandoMatch.value = true;
+  try {
+    // Busca pendentes que não têm recebido e que sejam da mesma filial
+    // Filtramos um período amplo para dar margem de encontro
+    const de  = '2020-01-01T00:00:00'; 
+    const ate = '2030-12-31T23:59:59';
+
+    let q = supabase
+      .from('pagamentos_venda')
+      .select('pk, venda_pk, forma, valor, vendas!inner(pk, numero, criado_em, cliente, filial_pk)')
+      .eq('vendas.filial_pk', sessaoStore.filial?.pk)
+      .order('vendas(criado_em)', { ascending: false });
+
+    const { data: pagamentos, error } = await q;
+    if (error) throw error;
+
+    // Descobre quais já estão confirmados
+    const pks = (pagamentos || []).map(p => p.pk);
+    let jaConfirmados = new Set();
+    if (pks.length) {
+      const { data: recExist } = await supabase.from('recebimentos').select('pagamento_pk').in('pagamento_pk', pks);
+      jaConfirmados = new Set((recExist || []).map(re => re.pagamento_pk));
+    }
+
+    pendentesParaMatch.value = (pagamentos || [])
+      .filter(p => !jaConfirmados.has(p.pk))
+      .map(p => {
+        const v = p.vendas;
+        return {
+          pk: p.pk,
+          venda_pk: p.venda_pk,
+          venda_numero: v?.numero,
+          venda_cliente: v?.cliente,
+          venda_data: fmtDataSimples(v?.criado_em.slice(0, 10)),
+          forma: p.forma,
+          valor: p.valor
+        };
+      });
+  } catch (e) {
+    showToast('Erro ao buscar vendas: ' + e.message, 'err');
+  } finally {
+    buscandoMatch.value = false;
+  }
+}
+
+async function confirmarMatch(pend) {
+  if (!confirm(`Deseja vincular este recebimento à venda #${pend.venda_numero}?`)) return;
+  const rec = recParaConciliar.value;
+  try {
+    const { error } = await supabase.from('recebimentos')
+      .update({
+        pagamento_pk: pend.pk,
+        venda_pk:     pend.venda_pk,
+        descricao:    `Vínculo Venda #${pend.venda_numero}` + (rec.descricao ? ' - ' + rec.descricao : '')
+      })
+      .eq('pk', rec.pk);
+    
+    if (error) throw error;
+    showToast('Venda vinculada com sucesso!', 'ok');
+    modalConciliarAberto.value = false;
+    await carregarRecebimentos();
+  } catch (e) {
+    showToast('Erro ao vincular: ' + e.message, 'err');
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 function dataPrevisao(forma, base) {
   const f = forma?.toLowerCase();
@@ -684,6 +810,29 @@ function showToast(msg, tipo = 'ok') {
 .f-input:focus { outline: none; border-color: var(--accent); }
 .btn-buscar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; height: 35px; }
 .btn-buscar:disabled { opacity: .5; cursor: not-allowed; }
+.tab-spacer { flex: 1; }
+.cv-search-global { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; min-width: 260px; }
+.cv-search-global input { border: none; background: none; font-size: 13px; color: var(--text); width: 100%; outline: none; }
+.cv-search-global .search-ico { font-size: 18px; color: var(--text2); }
+
+/* Conciliação Match */
+.btn-match { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.3); border-radius: 7px; color: #60a5fa; cursor: pointer; transition: all .15s; }
+.btn-match:hover { background: #60a5fa; color: #fff; }
+
+.modal-match { max-width: 600px; }
+.match-rec-summary { background: var(--bg3); padding: 16px; border-radius: 12px; border-left: 4px solid var(--accent); margin-bottom: 20px; }
+.mr-label { font-size: 11px; text-transform: uppercase; color: var(--text2); font-weight: 700; margin-bottom: 4px; }
+.mr-val { font-size: 14px; color: var(--text); }
+.match-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.match-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+.match-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: all .15s; }
+.match-item:hover { border-color: var(--accent); transform: scale(1.01); background: var(--bg2); }
+.mi-info { display: flex; flex-direction: column; gap: 2px; }
+.mi-venda { font-size: 13px; font-weight: 700; color: var(--text); }
+.mi-meta { font-size: 11px; color: var(--text2); }
+.mi-valor { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.mi-valor strong { font-size: 15px; color: var(--text); }
+.badge-match { font-size: 10px; font-weight: 800; background: #16a34a; color: #fff; padding: 2px 8px; border-radius: 10px; margin-bottom: 4px; }
 
 /* Totais */
 .cv-totals { display: flex; gap: 12px; flex-wrap: wrap; }
