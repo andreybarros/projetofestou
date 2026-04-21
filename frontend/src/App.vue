@@ -92,7 +92,8 @@
           <div v-if="op?.admin || pode('fechamento')" class="nav-section">
             <p class="section-title">Relatórios</p>
             <RouterLink v-if="pode('fechamento')" to="/fechamento-caixa" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fde047">lock</span><span class="nav-label">Fechamento de Caixa</span></RouterLink>
-            <RouterLink v-if="pode('fechamento')" to="/relatorio-caixa"  class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">summarize</span><span class="nav-label">Relatório de Caixa</span></RouterLink>
+            <RouterLink v-if="pode('fechamento')" to="/relatorio-caixa"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">summarize</span><span class="nav-label">Relatório de Caixa</span></RouterLink>
+            <RouterLink v-if="pode('financeiro')" to="/consolidacao-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">account_balance</span><span class="nav-label">Consolidação de Recebimentos</span></RouterLink>
           </div>
         </nav>
 

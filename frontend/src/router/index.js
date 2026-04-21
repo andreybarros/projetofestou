@@ -36,7 +36,8 @@ const Operadores      = () => import('../views/Operadores.vue');
 const Caixa           = () => import('../views/Caixa.vue');
 const FormFilial      = () => import('../views/FormFilial.vue');
 const Parametros      = () => import('../views/Parametros.vue');
-const RelatorioCaixa  = () => import('../views/RelatorioCaixa.vue');
+const RelatorioCaixa      = () => import('../views/RelatorioCaixa.vue');
+const ConsolidacaoVendas  = () => import('../views/ConsolidacaoVendas.vue');
 
 const routes = [
   { path: '/',                  name: 'Home',             component: Home,            meta: { requiresAuth: true } },
@@ -80,7 +81,8 @@ const routes = [
   { path: '/operadores',        name: 'Operadores',       component: Operadores,      meta: { requiresAuth: true } },
   { path: '/caixa',             name: 'Caixa',            component: Caixa,           meta: { requiresAuth: true } },
   { path: '/parametros',        name: 'Parametros',       component: Parametros,      meta: { requiresAuth: true } },
-  { path: '/relatorio-caixa',   name: 'RelatorioCaixa',   component: RelatorioCaixa,  meta: { requiresAuth: true } },
+  { path: '/relatorio-caixa',     name: 'RelatorioCaixa',     component: RelatorioCaixa,     meta: { requiresAuth: true } },
+  { path: '/consolidacao-vendas', name: 'ConsolidacaoVendas', component: ConsolidacaoVendas, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
