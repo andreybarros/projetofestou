@@ -1,3 +1,30 @@
+# Dependências
 node_modules/
+**/node_modules/
+
+# Variáveis de ambiente (nunca commitar)
 .env
+**/.env
+!.env.example
+!**/.env.example
+
+# Build
+dist/
+**/dist/
+
+# Vercel
 .vercel/
+
+# Arquivos temporários / SO
+*.bkp
+.fuse_hidden*
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Diagramas e rascunhos locais
+scratch/
+*.drawio
+*.drawio.bkp
+".$Diagrama*"
+".$Processo*"

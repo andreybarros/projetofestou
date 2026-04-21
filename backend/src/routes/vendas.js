@@ -1,0 +1,284 @@
+const express = require('express');
+const supabase = require('../supabase');
+
+const router = express.Router();
+
+router.post('/validar', async (req, res) => {
+  try {
+    const { filial_pk, itens } = req.body;
+
+    if (!filial_pk || !Array.isArray(itens) || itens.length === 0) {
+      return res.status(400).json({ erro: 'filial_pk e itens obrigatórios' });
+    }
+
+    const { data: caixa, error: erroCaixa } = await supabase
+      .from('caixas')
+      .select('pk')
+      .eq('filial_pk', filial_pk)
+      .eq('status', 'aberto')
+      .maybeSingle();
+
+    if (erroCaixa) throw erroCaixa;
+
+    const produtoPks = itens.map(item => item.produto_pk).filter(Boolean);
+    if (produtoPks.length > 0) {
+      const { data: produtos, error: erroEstoque } = await supabase
+        .from('produtos')
+        .select('pk, saldo')
+        .in('pk', produtoPks);
+
+      if (erroEstoque) throw erroEstoque;
+
+      const estoquePorPk = {};
+      produtos?.forEach(p => {
+        estoquePorPk[p.pk] = parseFloat(p.saldo || 0);
+      });
+
+      const faltando = [];
+      itens.forEach(item => {
+        if (!item.produto_pk) return;
+        const estoque = estoquePorPk[item.produto_pk];
+        const qtd = parseFloat(item.qtd || 0);
+
+        if (estoque === undefined || estoque < qtd) {
+          faltando.push({
+            produto_pk: item.produto_pk,
+            saldo: estoque || 0,
+            qtd_solicitada: qtd
+          });
+        }
+      });
+
+      if (faltando.length > 0) {
+        return res.status(200).json({
+          ok: false,
+          erro: 'Estoque insuficiente para alguns produtos',
+          faltando
+        });
+      }
+    }
+
+    res.status(200).json({
+      ok: true,
+      caixa_pk: caixa ? caixa.pk : null,
+      validacoes: {
+        estoque_ok: true,
+        caixa_ok: !!caixa
+      }
+    });
+  } catch (err) {
+    console.error('[Vendas/Validar] Erro:', err);
+    res.status(500).json({ erro: err.message || 'Erro ao validar venda' });
+  }
+});
+
+router.post('/finalizar', async (req, res) => {
+  try {
+    const {
+      filial_pk,
+      operador,
+      cliente,
+      vendedor,
+      vendedor_pk,
+      itens,
+      pagamentos,
+      subtotal,
+      desconto_total,
+      total,
+      tipo_venda,
+      canal_venda,
+      data_locacao,
+      data_devolucao_prevista,
+      data_vencimento_crediario
+    } = req.body;
+
+    if (!Array.isArray(itens) || !Array.isArray(pagamentos) || total === undefined) {
+      return res.status(400).json({ erro: 'itens, pagamentos, total obrigatórios' });
+    }
+
+    // 1. Obtém o número da venda (sequencial por filial)
+    let qn = supabase.from('vendas').select('numero').order('numero', { ascending: false }).limit(1);
+    if (filial_pk) qn = qn.eq('filial_pk', filial_pk);
+    const { data: rn, error: errNum } = await qn;
+    if (errNum) throw errNum;
+    const numero = (rn && rn.length ? rn[0].numero : 999) + 1;
+
+    // 2. Montar objeto da venda
+    const payloadVenda = {
+      filial_pk: filial_pk || null,
+      numero,
+      cliente:      cliente || null,
+      vendedor:     vendedor || null,
+      vendedor_pk:  vendedor_pk || null,
+      subtotal:     parseFloat(subtotal || 0),
+      desconto_total: parseFloat(desconto_total || 0),
+      total:        parseFloat(total),
+      operador:     operador || null,
+      status: 'finalizada',
+      tipo_venda: tipo_venda || 'venda',
+      canal_venda: canal_venda || 'presencial',
+      criado_em: new Date().toISOString()
+    };
+
+    if (tipo_venda === 'locacao') {
+      if (!data_locacao || !data_devolucao_prevista) {
+        return res.status(400).json({ erro: "Para locações, informe data de retirada e devolução." });
+      }
+      payloadVenda.data_locacao = new Date(data_locacao).toISOString();
+      payloadVenda.data_devolucao_prevista = new Date(data_devolucao_prevista).toISOString();
+      payloadVenda.status_locacao = 'pendente';
+    }
+
+    const temCrediario = pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario');
+    if (temCrediario) {
+      if (!cliente) return res.status(400).json({ erro: "Crediário exige um cliente selecionado." });
+      if (!data_vencimento_crediario) return res.status(400).json({ erro: "Informe a data de vencimento do crediário." });
+      payloadVenda.data_vencimento_crediario = data_vencimento_crediario;
+      payloadVenda.status_crediario = 'pendente';
+    }
+
+    // 3. Inserir a Venda
+    const { data: vendaSalva, error: erroVenda } = await supabase
+      .from('vendas')
+      .insert(payloadVenda)
+      .select('pk, numero')
+      .single();
+
+    if (erroVenda) throw erroVenda;
+    const venda_pk = vendaSalva.pk;
+
+    // 4. Inserir itens
+    const itensPayload = itens.map(item => ({
+      venda_pk,
+      produto_pk:   item.produto_pk || null,
+      descricao:    item.descricao  || item.nome || '',
+      codigo:       item.codigo     || null,
+      qtd:          parseFloat(item.qtd          || 1),
+      preco_unit:   parseFloat(item.preco_unit   || 0),
+      total_item:   parseFloat(item.total_item   || 0),
+      desconto_val: parseFloat(item.desconto_val || 0),
+    }));
+
+    const { error: erroItens } = await supabase.from('itens_venda').insert(itensPayload);
+    if (erroItens) throw erroItens;
+
+    // 5. Inserir pagamentos
+    const pagamentosPayload = pagamentos.map(p => ({
+      venda_pk,
+      forma:  String(p.forma || 'dinheiro'),
+      valor:  parseFloat(p.valor  || 0),
+    }));
+
+    const { error: erroPag } = await supabase.from('pagamentos_venda').insert(pagamentosPayload);
+    if (erroPag) throw erroPag;
+
+    // 6. Decrementar estoque
+    for (const item of itens) {
+      if (!item.produto_pk) continue;
+      const { data: prod } = await supabase
+        .from('produtos').select('saldo').eq('pk', item.produto_pk).single();
+      if (prod) {
+        const novoEstoque = parseFloat(prod.saldo || 0) - parseFloat(item.qtd || 0);
+        await supabase.from('produtos').update({ saldo: novoEstoque }).eq('pk', item.produto_pk);
+      }
+    }
+
+    // 7. Associar ao caixa (se houver caixa aberto)
+    const { data: caixaAberto } = await supabase
+      .from('caixas')
+      .select('pk')
+      .eq('filial_pk', filial_pk)
+      .eq('status', 'aberto')
+      .maybeSingle();
+
+    if (caixaAberto) {
+      await supabase.from('movimentos_caixa').insert({
+        caixa_pk:   caixaAberto.pk,
+        venda_pk,
+        tipo:       'venda',
+        valor:      parseFloat(total),
+        descricao:  `Venda #${vendaSalva.numero}`,
+        criado_em: new Date().toISOString(),
+      });
+    }
+
+    res.status(201).json({
+      ok:       true,
+      venda_pk,
+      numero:   vendaSalva.numero,
+      total:    parseFloat(total),
+      caixa_pk: caixaAberto?.pk || null,
+    });
+
+  } catch (err) {
+    console.error('[Vendas/Finalizar] Erro:', err);
+    res.status(500).json({ erro: err.message || 'Erro ao finalizar venda' });
+  }
+});
+
+router.post('/devolver', async (req, res) => {
+  try {
+    const { venda_pk, motivo } = req.body;
+    if (!venda_pk) return res.status(400).json({ erro: 'venda_pk obrigatório' });
+
+    // 1. Busca a venda
+    const { data: venda, error: errVenda } = await supabase
+      .from('vendas')
+      .select('*')
+      .eq('pk', venda_pk)
+      .single();
+
+    if (errVenda || !venda) return res.status(404).json({ erro: 'Venda não encontrada' });
+    if (venda.status === 'devolvida') return res.status(400).json({ erro: 'Venda já foi devolvida' });
+
+    // 2. Busca os itens da venda
+    const { data: itens, error: errItens } = await supabase
+      .from('itens_venda')
+      .select('*')
+      .eq('venda_pk', venda_pk);
+
+    if (errItens) throw errItens;
+
+    // 3. Incrementa o estoque de volta
+    for (const item of itens) {
+      if (!item.produto_pk) continue;
+      const { data: prod } = await supabase
+        .from('produtos').select('saldo').eq('pk', item.produto_pk).single();
+      if (prod) {
+        const novoEstoque = parseFloat(prod.saldo || 0) + parseFloat(item.qtd || 0);
+        await supabase.from('produtos').update({ saldo: novoEstoque }).eq('pk', item.produto_pk);
+      }
+    }
+
+    // 4. Atualiza status da venda
+    await supabase.from('vendas').update({ 
+      status: 'devolvida'
+    }).eq('pk', venda_pk);
+
+    // 5. Gera movimento de estorno no caixa (se houver caixa aberto na filial da venda)
+    const { data: caixaAberto } = await supabase
+      .from('caixas')
+      .select('pk')
+      .eq('filial_pk', venda.filial_pk)
+      .eq('status', 'aberto')
+      .maybeSingle();
+
+    if (caixaAberto) {
+      await supabase.from('movimentos_caixa').insert({
+        caixa_pk:   caixaAberto.pk,
+        venda_pk:   venda_pk,
+        tipo:       'devolucao',
+        valor:      -parseFloat(venda.total),
+        descricao:  `ESTORNO: Devolução Venda #${venda.numero} ${motivo ? '('+motivo+')' : ''}`,
+        criado_em: new Date().toISOString(),
+      });
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('[Vendas/Devolver] Erro:', err);
+    res.status(500).json({ erro: err.message || 'Erro ao processar devolução' });
+  }
+});
+
+module.exports = router;

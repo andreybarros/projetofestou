@@ -28,6 +28,20 @@ const forge  = require('node-forge');
 const crypto = require('crypto');
 const https  = require('https');
 
+// ── Logger estruturado (Melhoria 10) ────────────────────────────
+const log = {
+  info(msg, ctx = {}) {
+    const entry = { level: 'info', ts: new Date().toISOString(), msg, ...ctx };
+    console.log(JSON.stringify(entry));
+  },
+  error(msg, ctx = {}, err = null) {
+    const entry = { level: 'error', ts: new Date().toISOString(), msg, ...ctx };
+    if (err) entry.err_message = err.message;
+    if (err && err.stack) entry.err_stack = err.stack.split('\n')[0];
+    console.error(JSON.stringify(entry));
+  }
+};
+
 // ── Constantes SEFAZ-AM ─────────────────────────────────────────
 const CUF_AM    = '13';
 const CMUN_MAN  = '1302603';  // IBGE Manaus
@@ -52,6 +66,36 @@ function fmt2(v)   { return Number(v || 0).toFixed(2); }
 function fmt4(v)   { return Number(v || 0).toFixed(4); }
 function fmt10(v)  { return Number(v || 0).toFixed(10); }
 function stripNonNum(s) { return String(s || '').replace(/\D/g, ''); }
+
+
+// ── Funções de criptografia de senha do certificado (Melhoria 1) ──
+function encryptCertPwd(plainPwd, encryptionKey) {
+  if (!encryptionKey) return plainPwd;
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(encryptionKey, 'hex'), iv);
+  let encrypted = cipher.update(plainPwd, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag();
+  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+}
+
+function decryptCertPwd(encryptedPwd, encryptionKey) {
+  if (!encryptionKey) return encryptedPwd;
+  try {
+    const parts = encryptedPwd.split(':');
+    if (parts.length !== 3) return encryptedPwd;
+    const iv = Buffer.from(parts[0], 'hex');
+    const authTag = Buffer.from(parts[1], 'hex');
+    const encrypted = parts[2];
+    const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(encryptionKey, 'hex'), iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (e) {
+    return encryptedPwd;
+  }
+}
 
 // ── Chave de Acesso NFC-e (44 dígitos) ──────────────────────────
 function gerarChave(cnpj, aamm, serie, nNF, cNF) {
@@ -496,6 +540,29 @@ function montarSOAP(nfeXML, tpAmb, lote) {
     + `</soap12:Envelope>`;
 }
 
+// ── Retry com exponential backoff (Melhoria 5) ────────────────────
+async function enviarSEFAZComRetry(soap, url, certB64, certPwd, maxTentativas = 3) {
+  let tentativa = 0;
+  let ultimoErro = null;
+  const delays = [2000, 4000];
+
+  while (tentativa < maxTentativas) {
+    tentativa++;
+    try {
+      const respSOAP = await enviarSEFAZ(soap, url, certB64, certPwd);
+      return respSOAP;
+    } catch (err) {
+      ultimoErro = err;
+      log.error(`Tentativa ${tentativa}/${maxTentativas} falhou para SEFAZ`, { url, tentativa }, err);
+      if (tentativa < maxTentativas) {
+        const delay = delays[Math.min(tentativa - 1, delays.length - 1)];
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw ultimoErro || new Error('Todas tentativas falharam');
+}
+
 // ── Enviar para SEFAZ via HTTPS com certificado mútuo ───────────
 async function enviarSEFAZ(soapBody, urlStr, certPfxB64, certPassword) {
   const url = new URL(urlStr);
@@ -514,7 +581,7 @@ async function enviarSEFAZ(soapBody, urlStr, certPfxB64, certPassword) {
       key:      keyPem,
       cert:     certPem,
       ca:       caPems,
-      rejectUnauthorized: false,  // SEFAZ AM usa certificados ICP-Brasil (pode ter chain issues)
+      rejectUnauthorized: false,  // ICP-Brasil usa cadeia propria nao reconhecida por padrao pelo Node.js. TODO: adicionar cert raiz ICP-Brasil em vez de desabilitar verificacao.
     };
 
     const req = https.request(options, (res) => {
@@ -617,15 +684,34 @@ async function atualizarVendaNFCe(vendaPk, nfceData) {
   });
 }
 
-// ── Buscar próximo número NFC-e ──────────────────────────────────
+// ── Buscar próximo número NFC-e (Melhoria 3) ────────────────────
 async function proximoNumeroNFCe(filialPk, serie) {
-  // Busca o maior número já emitido para esta filial/série
-  const url = `${process.env.SUPABASE_URL}/rest/v1/vendas`
+  const url = `${process.env.SUPABASE_URL}/rest/v1/rpc/next_nfce_numero`;
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey':        process.env.SUPABASE_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({ p_filial_pk: filialPk, p_serie: serie }),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      return data.nextnum || 1;
+    }
+  } catch (e) {
+    log.error('RPC next_nfce_numero falhou, fallback', { filialPk, serie }, e);
+  }
+
+  const urlFallback = `${process.env.SUPABASE_URL}/rest/v1/vendas`
     + `?filial_pk=eq.${filialPk}`
     + `&nfce_numero=not.is.null`
+    + `&nfce_protocolo=not.is.null`
     + `&nfce_serie=eq.${serie}`
     + `&select=nfce_numero&order=nfce_numero.desc&limit=1`;
-  const r = await fetch(url, {
+  const r = await fetch(urlFallback, {
     headers: {
       'apikey':        process.env.SUPABASE_KEY,
       'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
@@ -723,7 +809,9 @@ module.exports = async function handler(req, res) {
 
       // Configurações do certificado (DB ou .env)
       const certB64 = filial.nfce_cert_b64 || process.env.NFCE_CERT_B64;
-      const certPwd = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+      const certPwdEnc = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+      const encryptKey = process.env.CERT_ENCRYPT_KEY;
+      const certPwd = decryptCertPwd(certPwdEnc, encryptKey);
 
       if (!certB64) {
         return res.status(500).json({
@@ -791,8 +879,8 @@ module.exports = async function handler(req, res) {
       const soap    = montarSOAP(nfeAssinada, tpAmb, lote);
       const urlAuth = tpAmb === '1' ? URL_AUTH_PROD : URL_AUTH_HOM;
 
-      // Enviar para SEFAZ
-      const respSOAP = await enviarSEFAZ(soap, urlAuth, certB64, certPwd);
+      // Enviar para SEFAZ com retry
+      const respSOAP = await enviarSEFAZComRetry(soap, urlAuth, certB64, certPwd);
 
       // Parsear resposta
       let cStat    = getTag(respSOAP, 'cStat');
@@ -823,6 +911,7 @@ module.exports = async function handler(req, res) {
       const urlConsulta = tpAmb === '1' ? URL_QR_PROD : URL_QR_HOM;
 
       if (autorizada) {
+        nfceUpdate.nfce_xml = nfeAssinada;
         // venda.total é o valor total disponível neste escopo
         nfceUpdate.nfce_qrcode = gerarQRCode(
           chave, tpAmb, dhEmi, Number(venda.total || 0),
@@ -847,7 +936,194 @@ module.exports = async function handler(req, res) {
         erro:         autorizada ? null : `SEFAZ: [${cStat}] ${xMotivo}`,
         rawResp:      respSOAP.replace(/<[^>]+>/g, '').replace(/\s+/g, '').slice(0, 300),
         // Debug completo do infNFe (remover em produção após resolver erro 215)
-        _debugXml:    !autorizada ? infNFe : undefined,
+        _debugXml:    (!autorizada && tpAmb !== '1') ? infNFe : undefined,
+      });
+    }
+
+    // ── Cancelar NFC-e (Melhoria 6) ────────────────────────────────
+    if (action === 'cancelar') {
+      const { chave, justificativa, venda_pk } = body;
+      if (!chave || !justificativa) return res.status(400).json({ erro: 'chave e justificativa obrigatorios' });
+      if (justificativa.length < 15 || justificativa.length > 255) {
+        return res.status(400).json({ erro: 'justificativa entre 15 e 255 caracteres' });
+      }
+
+      const venda = await buscarVenda(venda_pk);
+      const filial = await buscarFilial(venda.filial_pk);
+      if (!venda.nfce_dh_emissao) return res.status(400).json({ erro: 'NFC-e sem data de emissao' });
+
+      const dhEmi = new Date(venda.nfce_dh_emissao);
+      const agora = new Date();
+      const minutosDecorridos = (agora - dhEmi) / 60000;
+      if (minutosDecorridos > 30) {
+        return res.status(400).json({ erro: 'NFC-e so pode cancelar em 30 minutos apos emissao' });
+      }
+
+      const tpAmb = venda.nfce_ambiente || '2';
+      const certB64 = filial.nfce_cert_b64 || process.env.NFCE_CERT_B64;
+      const certPwdEnc = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+      const encryptKey = process.env.CERT_ENCRYPT_KEY;
+      const certPwd = decryptCertPwd(certPwdEnc, encryptKey);
+
+      const eventoCnpj = stripNonNum(filial.cnpj);
+      const dhEvent = dhNFe();
+      const seqEvent = '1';
+      const cStatEv = '110111';
+
+      const eventoXml = `<evento versao="1.00" xmlns="${NS_NFE}">`
+        + `<infEvento Id="ID${cStatEv}${chave}${seqEvent}">`
+        + `<cOrgao>13</cOrgao>`
+        + `<tpAmb>${tpAmb}</tpAmb>`
+        + `<CNPJ>${eventoCnpj}</CNPJ>`
+        + `<chNFe>${chave}</chNFe>`
+        + `<dhEvento>${dhEvent}</dhEvento>`
+        + `<tpEvento>${cStatEv}</tpEvento>`
+        + `<nSeqEvento>${seqEvent}</nSeqEvento>`
+        + `<detEvento versao="1.00">`
+        + `<evCancNFe>`
+        + `<descEvento>Cancelamento</descEvento>`
+        + `<nProt>${venda.nfce_protocolo}</nProt>`
+        + `<xJust>${xStr(justificativa, 255)}</xJust>`
+        + `</evCancNFe>`
+        + `</detEvento>`
+        + `</infEvento>`
+        + `</evento>`;
+
+      const eventoAssinado = assinarXML(eventoXml, '', certB64, certPwd);
+      const soapEvento = `<?xml version="1.0" encoding="utf-8"?>`
+        + `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">`
+        + `<soap12:Body>`
+        + `<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeRecepcaoEvento4">`
+        + eventoAssinado
+        + `</nfeDadosMsg>`
+        + `</soap12:Body>`
+        + `</soap12:Envelope>`;
+
+      const urlEvento = tpAmb === '1'
+        ? 'https://nfce.sefaz.am.gov.br/nfce-services/services/NfeRecepcaoEvento4'
+        : 'https://homnfce.sefaz.am.gov.br/nfce-services/services/NfeRecepcaoEvento4';
+
+      const respEvento = await enviarSEFAZComRetry(soapEvento, urlEvento, certB64, certPwd);
+      const cStatCanc = getTag(respEvento, 'cStat') || 'FAULT';
+      const xMotivoCanc = getTag(respEvento, 'xMotivo') || 'Erro ao processar evento';
+
+      if (cStatCanc === '101') {
+        await atualizarVendaNFCe(venda_pk, { nfce_status: '101', nfce_motivo: 'Cancelado' });
+      }
+
+      return res.status(200).json({
+        ok: cStatCanc === '101',
+        cStat: cStatCanc,
+        xMotivo: xMotivoCanc,
+        erro: cStatCanc === '101' ? null : `[${cStatCanc}] ${xMotivoCanc}`,
+      });
+    }
+
+    // ── Consultar status NFC-e (Melhoria 8) ──────────────────────
+    if (action === 'consultar') {
+      const { chave, filial_pk } = body;
+      if (!chave) return res.status(400).json({ erro: 'chave obrigatoria' });
+
+      const filial = await buscarFilial(filial_pk);
+      if (!filial) return res.status(404).json({ erro: 'Filial nao encontrada' });
+
+      const tpAmb = filial.nfce_ambiente || '2';
+      const certB64 = filial.nfce_cert_b64 || process.env.NFCE_CERT_B64;
+      const certPwdEnc = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+      const encryptKey = process.env.CERT_ENCRYPT_KEY;
+      const certPwd = decryptCertPwd(certPwdEnc, encryptKey);
+
+      const consultaXml = `<consSitNFe versao="4.00" xmlns="${NS_NFE}">`
+        + `<tpAmb>${tpAmb}</tpAmb>`
+        + `<xServ>NfeConsultaProtocolo4</xServ>`
+        + `<chNFe>${chave}</chNFe>`
+        + `</consSitNFe>`;
+
+      const soapConsulta = `<?xml version="1.0" encoding="utf-8"?>`
+        + `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">`
+        + `<soap12:Body>`
+        + `<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NfeConsulta4">`
+        + consultaXml
+        + `</nfeDadosMsg>`
+        + `</soap12:Body>`
+        + `</soap12:Envelope>`;
+
+      const urlConsulta = tpAmb === '1'
+        ? 'https://nfce.sefaz.am.gov.br/nfce-services/services/NfeConsulta4'
+        : 'https://homnfce.sefaz.am.gov.br/nfce-services/services/NfeConsulta4';
+
+      const respConsulta = await enviarSEFAZComRetry(soapConsulta, urlConsulta, certB64, certPwd);
+      const cStatConsulta = getTag(respConsulta, 'cStat');
+      const xMotivoConsulta = getTag(respConsulta, 'xMotivo');
+      const nProt = getTag(respConsulta, 'nProt');
+      const dhRecbto = getTag(respConsulta, 'dhRecbto');
+
+      return res.status(200).json({
+        cStat: cStatConsulta,
+        xMotivo: xMotivoConsulta,
+        nProt,
+        dhRecbto,
+      });
+    }
+
+    // ── Inutilizar numeracao (Melhoria 9) ────────────────────────
+    if (action === 'inutilizar') {
+      const { filial_pk, serie, numero_ini, numero_fim, justificativa } = body;
+      if (!filial_pk || !serie || !numero_ini || !numero_fim || !justificativa) {
+        return res.status(400).json({ erro: 'Parametros obrigatorios: filial_pk, serie, numero_ini, numero_fim, justificativa' });
+      }
+
+      const filial = await buscarFilial(filial_pk);
+      if (!filial) return res.status(404).json({ erro: 'Filial nao encontrada' });
+
+      const tpAmb = filial.nfce_ambiente || '2';
+      const certB64 = filial.nfce_cert_b64 || process.env.NFCE_CERT_B64;
+      const certPwdEnc = filial.nfce_cert_senha || process.env.NFCE_CERT_PASSWORD;
+      const encryptKey = process.env.CERT_ENCRYPT_KEY;
+      const certPwd = decryptCertPwd(certPwdEnc, encryptKey);
+
+      const cnpj = stripNonNum(filial.cnpj);
+      const aamm = getAAMM();
+      const infInutId = `ID${CUF_AM}${aamm}${cnpj}65${pad(serie, 3)}${pad(numero_ini, 9)}${pad(numero_fim, 9)}`;
+
+      const infInut = `<infInut Id="${infInutId}" versao="4.00">`
+        + `<idInut>`
+        + `<cUF>${CUF_AM}</cUF>`
+        + `<CNPJ>${cnpj}</CNPJ>`
+        + `<mod>65</mod>`
+        + `<serie>${pad(serie, 3)}</serie>`
+        + `<nNFIni>${pad(numero_ini, 9)}</nNFIni>`
+        + `<nNFFim>${pad(numero_fim, 9)}</nNFFim>`
+        + `<dhRecbto>${dhNFe()}</dhRecbto>`
+        + `<tpAmb>${tpAmb}</tpAmb>`
+        + `<verifUso>0</verifUso>`
+        + `</idInut>`
+        + `<xJust>${xStr(justificativa, 255)}</xJust>`
+        + `</infInut>`;
+
+      const inutAssinada = assinarXML(infInut, '', certB64, certPwd);
+      const soapInut = `<?xml version="1.0" encoding="utf-8"?>`
+        + `<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">`
+        + `<soap12:Body>`
+        + `<nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NfeInutilizacao4">`
+        + inutAssinada
+        + `</nfeDadosMsg>`
+        + `</soap12:Body>`
+        + `</soap12:Envelope>`;
+
+      const urlInut = tpAmb === '1'
+        ? 'https://nfce.sefaz.am.gov.br/nfce-services/services/NfeInutilizacao4'
+        : 'https://homnfce.sefaz.am.gov.br/nfce-services/services/NfeInutilizacao4';
+
+      const respInut = await enviarSEFAZComRetry(soapInut, urlInut, certB64, certPwd);
+      const cStatInut = getTag(respInut, 'cStat');
+      const xMotivoInut = getTag(respInut, 'xMotivo');
+
+      return res.status(200).json({
+        ok: cStatInut === '102',
+        cStat: cStatInut,
+        xMotivo: xMotivoInut,
+        erro: cStatInut === '102' ? null : `[${cStatInut}] ${xMotivoInut}`,
       });
     }
 
