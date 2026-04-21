@@ -13,15 +13,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .filter(Boolean);
 
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    // Permite localhost / IPs locais
-    const local = /^https?:\/\/(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3})(:\d+)?$/;
-    if (local.test(origin)) return cb(null, true);
-    // Permite origens configuradas (.vercel.app, domínio próprio, etc.)
-    if (allowedOrigins.some(o => origin === o || origin.endsWith(o))) return cb(null, true);
-    cb(new Error('CORS não permitido: ' + origin));
-  },
+  origin: true, // Permite qualquer origem — seguro pois auth é feita via JWT
   credentials: true
 }));
 
