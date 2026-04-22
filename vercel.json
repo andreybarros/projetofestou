@@ -3,9 +3,7 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/server.js": { "maxDuration": 30 },
-    "api/nfce.js":   { "maxDuration": 60 },
-    "api/webhook.js":{ "maxDuration": 30 }
+    "api/server.js": { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/server" },
