@@ -187,6 +187,7 @@ const grupos = {
     { chave: 'pdv_exigir_vendedor',            tipo: 'boolean', label: 'Exigir vendedor na venda',            desc: 'Obriga selecionar um vendedor antes de finalizar qualquer venda.' },
     { chave: 'pdv_permitir_estoque_negativo',  tipo: 'boolean', label: 'Permitir venda sem estoque',          desc: 'Permite adicionar produtos com saldo zero ou negativo ao carrinho.' },
     { chave: 'pdv_desconto_maximo',            tipo: 'number',  label: 'Desconto máximo sem aprovação (%)',   desc: 'Limite de desconto que o operador pode aplicar livremente. 0 = sem limite.', min: 0, max: 100 },
+    { chave: 'crediario_exige_cliente',        tipo: 'boolean', label: 'Crediário exige cliente selecionado', desc: 'Quando ativo, não permite finalizar venda em crediário sem selecionar um cliente.' },
   ],
   ponto: [
     { chave: 'ponto_exigir_gps',               tipo: 'boolean', label: 'Exigir localização GPS',              desc: 'Bloqueia a batida de ponto se o GPS do dispositivo não estiver disponível.' },
@@ -210,6 +211,7 @@ const vals = reactive({
   pdv_exigir_vendedor:                  'false',
   pdv_permitir_estoque_negativo:        'false',
   pdv_desconto_maximo:                  '0',
+  crediario_exige_cliente:              'true',
   ponto_exigir_gps:                     'true',
   ponto_tolerancia_minutos:             '15',
   ponto_fechamento_exige_espelho:        'true',

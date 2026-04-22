@@ -131,8 +131,21 @@ router.post('/finalizar', async (req, res) => {
 
     const temCrediario = pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario');
     if (temCrediario) {
-      if (!cliente) return res.status(400).json({ erro: "Crediário exige um cliente selecionado." });
       if (!data_vencimento_crediario) return res.status(400).json({ erro: "Informe a data de vencimento do crediário." });
+
+      // Verifica parâmetro crediario_exige_cliente
+      const { data: paramCliente } = await supabase
+        .from('parametros')
+        .select('valor')
+        .eq('chave', 'crediario_exige_cliente')
+        .or(`filial_pk.eq.${filial_pk || 0},filial_pk.is.null`)
+        .order('filial_pk', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      const exigeCliente = paramCliente ? paramCliente.valor !== 'false' : true;
+
+      if (exigeCliente && !cliente) return res.status(400).json({ erro: "Crediário exige um cliente selecionado." });
+
       payloadVenda.data_vencimento_crediario = data_vencimento_crediario;
       payloadVenda.status_crediario = 'pendente';
     }

@@ -310,9 +310,17 @@
                 <input v-model.number="valorPag" type="number" min="0" step="0.01" placeholder="0,00" class="cart-input pag-val" />
                 <button class="pag-add" @click="addPag">+</button>
               </div>
-              <div v-if="formaPag === 'crediario'" style="margin-top:8px">
-                <label class="section-label">Vencimento</label>
-                <input v-model="dtVenc" type="date" class="cart-input sm" />
+              <div v-if="formaPag === 'crediario'" class="crediario-fields">
+                <div class="crediario-row">
+                  <div>
+                    <label class="section-label">Vencimento <span class="obrig">*</span></label>
+                    <input v-model="dtVenc" type="date" class="cart-input sm" />
+                  </div>
+                </div>
+                <div v-if="crediarioExigeCliente && !clienteSel" class="crediario-warn">
+                  <span class="material-symbols-outlined">warning</span>
+                  Selecione um cliente para usar o crediário
+                </div>
               </div>
               <div v-if="vendaStore.pagamentos.length" class="pag-list">
                 <div v-for="(p, i) in vendaStore.pagamentos" :key="i" class="pag-item">
@@ -491,14 +499,21 @@ const filtrados = computed(() => {
   return l;
 });
 
-const bloqueiarSemCaixa = computed(() => parametrosStore.getParam('pdv_bloquear_sem_caixa', true));
+const bloqueiarSemCaixa      = computed(() => parametrosStore.getParam('pdv_bloquear_sem_caixa', true));
+const crediarioExigeCliente  = computed(() => parametrosStore.getParam('crediario_exige_cliente', true));
+
+const temCrediario = computed(() =>
+  vendaStore.pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario')
+);
 
 const podeFinalizar = computed(() =>
   vendaStore.itens.length > 0 &&
   parseFloat(vendaStore.totalPago) >= parseFloat(vendaStore.total) - 0.009 &&
   !!vendedorSel.value &&
   !vendaFinalizada.value &&
-  (!bloqueiarSemCaixa.value || !!caixaStore.caixaAberto)
+  (!bloqueiarSemCaixa.value || !!caixaStore.caixaAberto) &&
+  (!temCrediario.value || !!dtVenc.value) &&
+  (!temCrediario.value || !crediarioExigeCliente.value || !!clienteSel.value)
 );
 
 const troco = computed(() =>
@@ -569,12 +584,22 @@ async function loadFormasPagamento() {
     .eq('ativo', true)
     .order('ordem');
   
-  if (data?.length) {
-    formasPagamento.value = data;
-    // Fallback caso "dinheiro" não exista ou esteja inativo, pega a primeira
-    if (!data.some(f => f.forma === formaPag.value)) {
-      formaPag.value = data[0].forma;
-    }
+  const base = data?.length ? data : [
+    { pk: 'dinheiro',  forma: 'dinheiro',  label: 'Dinheiro',  icone: '💵', ordem: 1 },
+    { pk: 'pix',       forma: 'pix',       label: 'PIX',       icone: '📱', ordem: 2 },
+    { pk: 'debito',    forma: 'debito',    label: 'Débito',    icone: '💳', ordem: 3 },
+    { pk: 'credito',   forma: 'credito',   label: 'Crédito',   icone: '💳', ordem: 4 },
+    { pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 5 },
+  ];
+
+  // Garante que crediário está sempre disponível
+  if (!base.some(f => f.forma === 'crediario')) {
+    base.push({ pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 99 });
+  }
+
+  formasPagamento.value = base;
+  if (!base.some(f => f.forma === formaPag.value)) {
+    formaPag.value = base[0].forma;
   }
 }
 
@@ -1788,6 +1813,10 @@ async function emitirNFCe() {
 .pag-del:hover { color: var(--red); }
 
 .pag-status { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 10px; }
+.crediario-fields { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.crediario-row { display: flex; gap: 12px; }
+.crediario-warn { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #f59e0b; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); border-radius: 7px; padding: 5px 10px; }
+.crediario-warn .material-symbols-outlined { font-size: 15px; }
 .pag-status strong { font-family: var(--mono); color: var(--text); }
 .falta { color: var(--red); font-weight: 600; }
 .troco { color: var(--green); font-weight: 600; }
