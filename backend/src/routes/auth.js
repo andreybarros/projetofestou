@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
 
     const { data: op, error } = await supabase
       .from('operadores')
-      .select('id, nome, login, senha, admin, ativo, filial_pk, acesso_produtos, acesso_armazens, acesso_agenda, acesso_pdv, acesso_clientes, acesso_historico, acesso_receitas, acesso_categorias, acesso_despesas, acesso_financeiro, acesso_dashboard, acesso_fechamento, acesso_funcionarios, acesso_ponto, acesso_separacao, acesso_criar_ordem, matricula, acesso_espelho_ponto')
+      .select('id, nome, login, senha, admin, ativo, filial_pk, acesso_produtos, acesso_armazens, acesso_agenda, acesso_pdv, acesso_clientes, acesso_historico, acesso_receitas, acesso_categorias, acesso_despesas, acesso_financeiro, acesso_dashboard, acesso_fechamento, acesso_funcionarios, acesso_ponto, acesso_separacao, acesso_criar_ordem, matricula, acesso_espelho_ponto, acesso_fornecedores, acesso_vendedores, acesso_caixa, acesso_relatorio_caixa, acesso_gestao_ponto, acesso_fechamento_ponto, acesso_relatorio_vendas')
       .eq('login', login)
       .or(`filial_pk.eq.${filial_pk},filial_pk.is.null`)
       .maybeSingle();
@@ -79,11 +79,48 @@ router.post('/login', async (req, res) => {
         acesso_funcionarios: op.acesso_funcionarios, acesso_ponto: op.acesso_ponto,
         acesso_separacao: op.acesso_separacao, acesso_criar_ordem: op.acesso_criar_ordem,
         matricula: op.matricula, acesso_espelho_ponto: op.acesso_espelho_ponto,
+        acesso_fornecedores: op.acesso_fornecedores, acesso_vendedores: op.acesso_vendedores,
+        acesso_caixa: op.acesso_caixa, acesso_relatorio_caixa: op.acesso_relatorio_caixa,
+        acesso_gestao_ponto: op.acesso_gestao_ponto, acesso_fechamento_ponto: op.acesso_fechamento_ponto,
+        acesso_relatorio_vendas: op.acesso_relatorio_vendas,
       },
       filial: filial || { pk: filial_pk },
     });
   } catch (err) {
     console.error('[Auth/login]', err.message);
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST /api/auth/trocar-senha  (publico — permite resetar senha sem a atual)
+router.post('/trocar-senha', async (req, res) => {
+  try {
+    const { filial_pk, login, nova_senha } = req.body;
+    if (!filial_pk || !login || !nova_senha)
+      return res.status(400).json({ erro: 'Filial, login e nova senha são obrigatórios.' });
+    if (nova_senha.length < 4)
+      return res.status(400).json({ erro: 'Nova senha deve ter pelo menos 4 caracteres.' });
+
+    const { data: op, error } = await supabase
+      .from('operadores')
+      .select('id, ativo')
+      .eq('login', login)
+      .or(`filial_pk.eq.${filial_pk},filial_pk.is.null`)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!op)        return res.status(401).json({ erro: 'Usuário não encontrado.' });
+    if (!op.ativo)  return res.status(401).json({ erro: 'Usuário inativo.' });
+
+    const { error: errUpd } = await supabase
+      .from('operadores')
+      .update({ senha: nova_senha })
+      .eq('id', op.id);
+    if (errUpd) throw errUpd;
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[Auth/trocar-senha]', err.message);
     return res.status(500).json({ erro: err.message });
   }
 });

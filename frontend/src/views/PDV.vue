@@ -406,6 +406,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { onBeforeRouteLeave } from 'vue-router';
 import { useVendaStore }      from '../stores/venda';
 import { useCaixaStore }      from '../stores/caixa';
 import { useSessaoStore }     from '../stores/sessao';
@@ -721,6 +722,16 @@ function limpar() {
   resultNfce.value = null;
   cpf.value = '';
 }
+
+onBeforeRouteLeave(() => {
+  if (vendaFinalizada.value) {
+    vendaStore.resetar();
+    vendaFinalizada.value = false;
+    vendaPk.value = null;
+    vendaNumero.value = null;
+    resultNfce.value = null;
+  }
+});
 
 // ── Orçamento ─────────────────────────────────────────────────
 async function copiarOrcamento() {

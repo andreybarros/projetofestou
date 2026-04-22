@@ -1,6 +1,17 @@
 <template>
   <div class="home-wrap">
 
+    <!-- Boas-vindas -->
+    <header class="home-header">
+      <div class="header-text">
+        <h1>Olá, {{ op?.nome?.split(' ')[0] || 'Operador' }}</h1>
+        <p>Seja bem-vindo ao sistema BarroStock! O que vamos fazer hoje?</p>
+      </div>
+      <div class="header-stats sm-hide">
+        <span class="material-symbols-outlined emoji-welcome">waving_hand</span>
+      </div>
+    </header>
+
     <!-- Hero cards -->
     <div class="hero-grid">
       <RouterLink v-if="pode('pdv')" to="/pdv" class="hero-card hero-pdv">
@@ -172,6 +183,33 @@ const podeRH      = computed(() => pode('funcionarios') || pode('ponto') || !!op
 <style scoped>
 .home-wrap { animation: fadeUp .32s ease both; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 0 4px;
+}
+.home-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.home-header p {
+  color: var(--text2);
+  font-size: 14px;
+}
+.emoji-welcome {
+  font-size: 40px;
+  color: #FBBF24;
+  animation: wave 2s infinite ease-in-out;
+}
+@keyframes wave {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(20deg); }
+}
 
 .hero-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;

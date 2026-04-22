@@ -43,7 +43,7 @@
       <div class="punch-actions">
         <button
           class="btn-punch btn-entrada"
-          :disabled="!geoOk || registrando"
+          :disabled="(exigeGps && !geoOk) || registrando"
           @click="registrar('entrada')"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -52,7 +52,7 @@
         </button>
         <button
           class="btn-punch btn-saida"
-          :disabled="!geoOk || registrando"
+          :disabled="(exigeGps && !geoOk) || registrando"
           @click="registrar('saida')"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -158,9 +158,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
+import { useParametrosStore } from '../stores/parametros';
+import apiClient from '../services/api';
 import { supabase } from '../composables/useSupabase';
 
 const sessao   = useSessaoStore();
+const parametrosStore = useParametrosStore();
 const operador = computed(() => sessao.operador);
 const isAdmin  = computed(() => !!sessao.operador?.admin);
 
@@ -170,6 +173,7 @@ const geoCarregando = ref(false);
 const geoErrHttps   = ref(false);
 const geoTxt        = ref('Aguardando geolocalização...');
 const geo           = ref({ lat: null, lng: null });
+const exigeGps      = computed(() => parametrosStore.getParam('ponto_exigir_gps', true));
 
 // Estado
 const funcNome        = ref('');
@@ -217,7 +221,12 @@ function obterGeo() {
     err => {
       geoOk.value         = false;
       geoCarregando.value = false;
-      geoTxt.value        = 'Erro ao obter localização: ' + err.message;
+      if (!exigeGps.value) {
+           geoTxt.value = `📍 Não obrigatório (${err.message})`;
+      } else {
+           geoTxt.value = 'Erro ao obter localização: ' + err.message;
+      }
+      
       const proto = window.location.protocol;
       const host  = window.location.hostname;
       if (proto !== 'https:' && host !== 'localhost' && host !== '127.0.0.1') {
@@ -244,59 +253,41 @@ async function carregarHistorico() {
   const mat = operador.value?.matricula;
   if (!mat) return;
   carregandoHist.value = true;
-  const hoje = new Date().toLocaleDateString('en-CA');
-  const { data, error } = await supabase
-    .from('registro_ponto')
-    .select('*, funcionarios(nome)')
-    .eq('data', hoje)
-    .eq('matricula', mat)
-    .order('hora', { ascending: false })
-    .limit(20);
-  carregandoHist.value = false;
-  if (!error) historico.value = data || [];
+  try {
+    const res = await apiClient.get(`/api/ponto/historico-dia/${mat}`);
+    historico.value = res.data || [];
+  } catch (e) {
+    console.error('Erro historico', e);
+  } finally {
+    carregandoHist.value = false;
+  }
 }
 
 async function registrar(tipo) {
   const mat = operador.value?.matricula;
+  const funcPk = operador.value?.funcionario_pk;
+  
   if (!mat) { toast('Seu usuário não possui matrícula vinculada.', 'err'); return; }
-  if (!geoOk.value) { toast('Geolocalização não capturada. Tente novamente.', 'err'); return; }
+  if (exigeGps.value && !geoOk.value) { toast('Geolocalização obrigatória não capturada. Tente novamente.', 'err'); return; }
 
   registrando.value     = true;
   tipoRegistrando.value = tipo;
 
   try {
-    // Valida funcionário ativo
-    const { data: func, error: errF } = await supabase
-      .from('funcionarios')
-      .select('pk, nome')
-      .eq('matricula', mat)
-      .eq('ativo', true)
-      .single();
-
-    if (errF || !func) {
-      toast('Funcionário não encontrado ou inativo.', 'err');
-      return;
-    }
-
-    const agora = new Date();
     const payload = {
       filial_pk:      sessao.filial?.pk || null,
-      funcionario_pk: func.pk,
+      funcionario_pk: funcPk,
       matricula:      mat,
       tipo,
-      data:           agora.toLocaleDateString('en-CA'),
-      hora:           agora.toLocaleTimeString('pt-BR', { hour12: false }),
-      latitude:       geo.value.lat,
-      longitude:      geo.value.lng,
+      lat:            geo.value.lat,
+      lng:            geo.value.lng,
     };
 
-    const { error } = await supabase.from('registro_ponto').insert([payload]);
-    if (error) throw error;
-
-    toast(`${tipo.charAt(0).toUpperCase() + tipo.slice(1)} registrada: ${func.nome}`);
+    const res = await apiClient.post('/api/ponto/batida', payload);
+    toast(`${tipo.charAt(0).toUpperCase() + tipo.slice(1)} registrada com sucesso.`);
     await carregarHistorico();
   } catch (e) {
-    toast('Erro ao registrar ponto: ' + e.message, 'err', 6000);
+    toast('Erro ao registrar ponto: ' + (e.response?.data?.erro || e.message), 'err', 6000);
   } finally {
     registrando.value     = false;
     tipoRegistrando.value = '';
@@ -331,23 +322,20 @@ async function inserirManual() {
   inserindoManual.value = true;
   try {
     const funcSel = funcionariosManual.value.find(f => f.pk === manual.value.funcionario_pk);
-    const payload = {
+    const res = await apiClient.post('/api/ponto/batida-manual', {
       filial_pk:      sessao.filial?.pk || null,
       funcionario_pk: manual.value.funcionario_pk,
       matricula:      funcSel?.matricula || '',
       tipo:           manual.value.tipo + '_manual',
       data:           manual.value.data,
-      hora:           manual.value.hora + ':00',
-      latitude:       null,
-      longitude:      null,
-    };
-    const { error } = await supabase.from('registro_ponto').insert([payload]);
-    if (error) throw error;
+      hora:           manual.value.hora + ':00'
+    });
+    
     toast('Batida manual inserida com sucesso!');
     fecharManual();
     await carregarHistorico();
   } catch (e) {
-    toast('Erro ao inserir: ' + e.message, 'err', 6000);
+    toast('Erro ao inserir: ' + (e.response?.data?.erro || e.message), 'err', 6000);
   } finally {
     inserindoManual.value = false;
   }

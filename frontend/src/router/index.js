@@ -38,6 +38,7 @@ const FormFilial      = () => import('../views/FormFilial.vue');
 const Parametros      = () => import('../views/Parametros.vue');
 const RelatorioCaixa      = () => import('../views/RelatorioCaixa.vue');
 const ConsolidacaoVendas  = () => import('../views/ConsolidacaoVendas.vue');
+const RelatorioVendas     = () => import('../views/RelatorioVendas.vue');
 
 const routes = [
   { path: '/',                  name: 'Home',             component: Home,            meta: { requiresAuth: true } },
@@ -83,6 +84,7 @@ const routes = [
   { path: '/parametros',        name: 'Parametros',       component: Parametros,      meta: { requiresAuth: true } },
   { path: '/relatorio-caixa',     name: 'RelatorioCaixa',     component: RelatorioCaixa,     meta: { requiresAuth: true } },
   { path: '/consolidacao-vendas', name: 'ConsolidacaoVendas', component: ConsolidacaoVendas, meta: { requiresAuth: true } },
+  { path: '/relatorio-vendas',    name: 'RelatorioVendas',    component: RelatorioVendas,     meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
@@ -98,6 +100,11 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !sessao.isAutenticado) {
     return false; // App.vue mostra o Login nativamente
   }
+});
+
+router.afterEach(() => {
+  const el = document.getElementById('content');
+  if (el) el.scrollTop = 0;
 });
 
 export default router;

@@ -11,6 +11,7 @@ const rotasPermissoes = {
   'GET /api/estoque': 'acesso_produtos',
   'POST /api/nfce/autorizar': 'acesso_pdv',
   'POST /api/nfce/cancelar': 'acesso_pdv',
+  'GET /api/relatorios/vendas/:filial_pk': 'acesso_relatorio_vendas',
 };
 
 async function permissoesMiddleware(req, res, next) {
@@ -18,7 +19,13 @@ async function permissoesMiddleware(req, res, next) {
     return res.status(401).json({ erro: 'Usuário não autenticado' });
   }
 
-  const rotaKey = `${req.method} ${req.baseUrl}${req.path}`;
+  let rotaKey = `${req.method} ${req.baseUrl}${req.path}`;
+  
+  // Tratamento para rotas com parâmetros (ex: /api/relatorios/vendas/2)
+  if (rotaKey.startsWith('GET /api/relatorios/vendas')) {
+    rotaKey = 'GET /api/relatorios/vendas/:filial_pk';
+  }
+
   const permissaoRequerida = rotasPermissoes[rotaKey];
 
   if (!permissaoRequerida) {

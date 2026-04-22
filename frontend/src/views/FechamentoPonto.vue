@@ -512,6 +512,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
+import apiClient from '../services/api';
 import { supabase } from '../composables/useSupabase';
 
 const sessao = useSessaoStore();
@@ -1088,7 +1089,6 @@ async function enviarEspelho() {
   }
 }
 
-// ── Salvar e bloquear ──────────────────────────────────────────────────────
 async function salvar() {
   if (espelhoStatus.value !== 'aprovado') {
     toast('Aguardando aprovação do espelho pelo funcionário.', 'err'); return;
@@ -1097,23 +1097,17 @@ async function salvar() {
   salvando.value = true;
   try {
     const payload = buildPayload(saldoFinal.value, true, espelhoStatus.value, espelhoObs.value, null);
-    const { data: fchRes, error } = await supabase.from('fechamento_ponto')
-      .upsert(payload, { onConflict: 'funcionario_pk, mes, ano, quinzena' }).select('pk').single();
-    if (error) throw error;
-
-    // Salvar descontos
-    await supabase.from('descontos_fechamento').delete().eq('fechamento_pk', fchRes.pk);
-    if (descontos.value.length > 0) {
-      await supabase.from('descontos_fechamento').insert(
-        descontos.value.map(d => ({ fechamento_pk: fchRes.pk, descricao: d.descricao, valor: d.valor }))
-      );
-    }
+    
+    await apiClient.post('/api/ponto/fechamento', {
+        payload,
+        descontos: descontos.value
+    });
 
     toast('Fechamento realizado e bloqueado!');
     await carregar();
     await carregarUltimosFechamentos(lista.value);
   } catch (e) {
-    toast('Erro ao salvar: ' + e.message, 'err', 6000);
+    toast('Erro ao salvar: ' + (e.response?.data?.erro || e.message), 'err', 6000);
   } finally {
     salvando.value = false;
   }
