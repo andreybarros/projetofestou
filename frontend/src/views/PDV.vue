@@ -1614,8 +1614,7 @@ async function emitirNFCe() {
 .cart-items {
   flex: 1;
   overflow-y: auto;
-  min-height: 60px;
-  max-height: calc(100vh - 420px);
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.08) transparent;
 }

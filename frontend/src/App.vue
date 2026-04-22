@@ -103,8 +103,8 @@
       <!-- Main -->
       <div :class="['app-main', { 'sidebar-collapsed': sidebarCollapsed }]">
 
-        <!-- Topbar -->
-        <header class="topbar">
+        <!-- Topbar (oculto no PDV para maximizar área do caixa) -->
+        <header v-show="!isPDV" class="topbar">
           <div class="topbar-left">
             <button class="hamburger lg-hide" @click="abrirSidebar">
               <span class="material-symbols-outlined">menu</span>
@@ -171,7 +171,7 @@
 
 <script setup>
 import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useSessaoStore } from './stores/sessao';
 import { useParametrosStore } from './stores/parametros';
 import LoginView from './views/Login.vue';
@@ -179,6 +179,8 @@ import LoginView from './views/Login.vue';
 const sessao      = useSessaoStore();
 const parametros  = useParametrosStore();
 const router      = useRouter();
+const route       = useRoute();
+const isPDV       = computed(() => route.name === 'PDV');
 const op          = computed(() => sessao.operador);
 
 // Carrega parâmetros assim que a sessão estiver autenticada
