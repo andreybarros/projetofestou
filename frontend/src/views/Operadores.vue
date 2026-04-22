@@ -187,20 +187,21 @@ const processando = ref(false);
 const modalAberto = ref(false);
 
 const ROTINAS = [
-  { id: 'produtos', icon: '📦', label: 'Produtos / Estoque', campo: 'acesso_produtos' },
-  { id: 'armazens', icon: '🏭', label: 'Armazéns', campo: 'acesso_armazens' },
-  { id: 'clientes', icon: '👥', label: 'Clientes', campo: 'acesso_clientes' },
-  { id: 'agenda', icon: '📅', label: 'Agenda', campo: 'acesso_agenda' },
-  { id: 'separacao', icon: '📋', label: 'Separação', campo: 'acesso_separacao' },
-  { id: 'pdv', icon: '🛒', label: 'PDV (Vendas)', campo: 'acesso_pdv' },
-  { id: 'historico', icon: '📊', label: 'Histórico Vendas', campo: 'acesso_historico' },
-  { id: 'receitas', icon: '📒', label: 'Contas a Receber', campo: 'acesso_receitas' },
-  { id: 'despesas', icon: '📉', label: 'Despesas', campo: 'acesso_despesas' },
-  { id: 'financeiro', icon: '💳', label: 'Financeiro', campo: 'acesso_financeiro' },
-  { id: 'dashboard', icon: '📈', label: 'Dashboard', campo: 'acesso_dashboard' },
-  { id: 'fechamento', icon: '💰', label: 'Fechamento Caixa', campo: 'acesso_fechamento' },
-  { id: 'funcionarios', icon: '👥', label: 'Funcionários', campo: 'acesso_funcionarios' },
-  { id: 'ponto', icon: '⏰', label: 'Ponto Eletrônico', campo: 'acesso_ponto' }
+  { id: 'produtos',     icon: '📦', label: 'Produtos / Estoque',                campo: 'acesso_produtos' },
+  { id: 'categorias',   icon: '🏷️', label: 'Categorias',                        campo: 'acesso_categorias' },
+  { id: 'armazens',     icon: '🏭', label: 'Armazéns',                           campo: 'acesso_armazens' },
+  { id: 'clientes',     icon: '👥', label: 'Clientes / Fornecedores',            campo: 'acesso_clientes' },
+  { id: 'agenda',       icon: '📅', label: 'Agenda',                             campo: 'acesso_agenda' },
+  { id: 'separacao',    icon: '📋', label: 'Separação',                          campo: 'acesso_separacao' },
+  { id: 'pdv',          icon: '🛒', label: 'PDV / Caixa / Vendedores',           campo: 'acesso_pdv' },
+  { id: 'historico',    icon: '📊', label: 'Histórico de Vendas',               campo: 'acesso_historico' },
+  { id: 'receitas',     icon: '📒', label: 'Contas a Receber',                   campo: 'acesso_receitas' },
+  { id: 'despesas',     icon: '📉', label: 'Despesas',                           campo: 'acesso_despesas' },
+  { id: 'financeiro',   icon: '💳', label: 'Financeiro / Consolidação',          campo: 'acesso_financeiro' },
+  { id: 'fechamento',   icon: '💰', label: 'Fechamento / Relatório de Caixa',   campo: 'acesso_fechamento' },
+  { id: 'dashboard',    icon: '📈', label: 'Dashboard',                          campo: 'acesso_dashboard' },
+  { id: 'funcionarios', icon: '👤', label: 'Funcionários / Fech. de Ponto',      campo: 'acesso_funcionarios' },
+  { id: 'ponto',        icon: '⏰', label: 'Ponto / Gestão de Batidas',          campo: 'acesso_ponto' },
 ];
 
 const f = reactive({
@@ -220,6 +221,7 @@ const f = reactive({
   acesso_historico: false,
   acesso_receitas: false,
   acesso_despesas: false,
+  acesso_categorias: false,
   acesso_financeiro: false,
   acesso_dashboard: false,
   acesso_fechamento: false,

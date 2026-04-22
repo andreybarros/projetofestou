@@ -103,6 +103,9 @@
                 <span class="material-symbols-outlined" style="font-size:13px">receipt</span>
                 Venda #{{ ev.venda_info.numero }}
                 <span v-if="ev.venda_info.cliente"> · {{ ev.venda_info.cliente }}</span>
+                <button class="btn-ver-venda" @click.stop="abrirDetalheVenda(ev.venda_pk)" title="Ver detalhes da venda">
+                  <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>
+                </button>
               </div>
               <div v-if="ev.descricao" class="panel-ev-desc">{{ ev.descricao }}</div>
               <div class="panel-ev-tipo">
@@ -213,6 +216,68 @@
       </div>
     </Teleport>
 
+    <!-- Modal detalhe da venda -->
+    <Teleport to="body">
+      <div v-if="vendaDetalhe" class="modal-overlay" @click.self="vendaDetalhe = null">
+        <div class="modal-box modal-det">
+          <div class="modal-header">
+            <h3>
+              <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle">receipt_long</span>
+              Venda #{{ vendaDetalhe.numero }}
+            </h3>
+            <button class="modal-close" @click="vendaDetalhe = null">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="modal-body" v-if="!carregandoDetalhe">
+            <div class="det-meta">
+              <div class="det-field">
+                <span class="det-label">Cliente</span>
+                <span class="det-val">{{ vendaDetalhe.cliente || '—' }}</span>
+              </div>
+              <div class="det-field">
+                <span class="det-label">Data</span>
+                <span class="det-val">{{ fmtDataSimples(vendaDetalhe.criado_em?.slice(0,10)) }}</span>
+              </div>
+              <div class="det-field">
+                <span class="det-label">Tipo</span>
+                <span class="det-val">{{ vendaDetalhe.tipo_venda === 'locacao' ? 'Locação' : 'Venda' }}</span>
+              </div>
+              <div class="det-field">
+                <span class="det-label">Total</span>
+                <span class="det-val bold">{{ fmtMoeda(vendaDetalhe.total) }}</span>
+              </div>
+            </div>
+
+            <div class="det-itens-titulo">Itens da venda</div>
+            <div v-if="!vendaDetalhe.itens_venda?.length" class="det-vazio">Nenhum item encontrado.</div>
+            <table v-else class="det-table">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th class="ta-r">Qtd</th>
+                  <th class="ta-r">Unit.</th>
+                  <th class="ta-r">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in vendaDetalhe.itens_venda" :key="item.pk">
+                  <td>{{ item.descricao }}</td>
+                  <td class="ta-r">{{ item.qtd }}</td>
+                  <td class="ta-r">{{ fmtMoeda(item.preco_unit) }}</td>
+                  <td class="ta-r bold">{{ fmtMoeda(item.total_item) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="state-center"><span class="spin"></span></div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="vendaDetalhe = null">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Modal exclusão -->
     <Teleport to="body">
       <div v-if="excluindo" class="modal-overlay" @click.self="excluindo = null">
@@ -268,6 +333,28 @@ const vendaResultados = ref([]);
 // Exclusão
 const excluindo = ref(null);
 const removendo = ref(false);
+
+// Detalhe da venda
+const vendaDetalhe      = ref(null);
+const carregandoDetalhe = ref(false);
+
+async function abrirDetalheVenda(venda_pk) {
+  if (!venda_pk) return;
+  vendaDetalhe.value      = { carregando: true };
+  carregandoDetalhe.value = true;
+  const { data, error } = await supabase
+    .from('vendas')
+    .select('pk, numero, cliente, total, tipo_venda, criado_em, itens_venda(pk, descricao, qtd, preco_unit, total_item)')
+    .eq('pk', venda_pk)
+    .single();
+  carregandoDetalhe.value = false;
+  if (error || !data) {
+    showToast('Erro ao carregar detalhes da venda.', 'err');
+    vendaDetalhe.value = null;
+    return;
+  }
+  vendaDetalhe.value = data;
+}
 
 // Toast
 const toastMsg  = ref('');
@@ -583,6 +670,10 @@ function labelTipo(tipo) {
   return m[tipo] || tipo;
 }
 
+function fmtMoeda(v) {
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 function fmtDataSimples(s) {
   if (!s) return '';
   const [y, m, d] = s.split('-');
@@ -611,7 +702,8 @@ function showToast(msg, tipo = 'ok') {
 .ag-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .page-title { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; color: var(--text); margin: 0 0 4px; }
 .ag-sub { color: var(--text2); font-size: 13px; margin: 0; }
-.btn-novo { display: flex; align-items: center; gap: 6px; padding: 9px 18px; background: var(--accent); border: none; border-radius: 9px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-novo { display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: #6366f1; border: none; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.btn-novo:hover { background: #4f46e5; }
 
 /* Layout */
 .ag-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
@@ -651,7 +743,8 @@ function showToast(msg, tipo = 'ok') {
 .ag-panel { padding: 0; overflow: hidden; position: sticky; top: 16px; }
 .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid var(--border); }
 .panel-date { font-size: 13px; font-weight: 700; color: var(--text); text-transform: capitalize; }
-.btn-add-day { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--accent); border: none; border-radius: 7px; color: #fff; cursor: pointer; }
+.btn-add-day { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #6366f1; border: none; border-radius: 7px; color: #fff; cursor: pointer; transition: background .15s; }
+.btn-add-day:hover { background: #4f46e5; }
 .btn-add-day .material-symbols-outlined { font-size: 18px; }
 
 .panel-events { display: flex; flex-direction: column; gap: 0; max-height: calc(100vh - 280px); overflow-y: auto; }
@@ -707,8 +800,28 @@ function showToast(msg, tipo = 'ok') {
 .vd-tipo { color: var(--accent); font-weight: 600; }
 .vd-data { opacity: .6; }
 
+.btn-ver-venda { background: none; border: none; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; padding: 0 2px; opacity: .8; }
+.btn-ver-venda:hover { opacity: 1; }
+
+/* Modal detalhe */
+.modal-det { max-width: 580px; }
+.det-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; padding: 10px 14px; background: var(--bg3); border-radius: 10px; margin-bottom: 14px; }
+.det-field { display: flex; flex-direction: column; gap: 2px; }
+.det-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; }
+.det-val { font-size: 13px; color: var(--text); font-weight: 600; }
+.det-val.bold { font-weight: 800; color: var(--accent); }
+.bold { font-weight: 700; }
+.det-itens-titulo { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; margin-bottom: 8px; }
+.det-vazio { font-size: 13px; color: var(--text2); padding: 12px; text-align: center; }
+.det-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.det-table th { text-align: left; padding: 7px 10px; background: var(--bg3); color: var(--text2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; border-bottom: 1px solid var(--border); }
+.det-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+.det-table tr:last-child td { border-bottom: none; }
+.ta-r { text-align: right; }
+
 .btn-cancel { padding: 8px 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; }
-.btn-salvar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-salvar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: #6366f1; border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.btn-salvar:hover:not(:disabled) { background: #4f46e5; }
 .btn-salvar:disabled { opacity: .5; cursor: not-allowed; }
 .btn-danger { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #991b1b; border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .btn-danger:disabled { opacity: .5; cursor: not-allowed; }
