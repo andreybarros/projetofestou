@@ -421,6 +421,12 @@ body {
 }
 @media(min-width:1024px) { .content-area { padding: 28px 40px 0; } }
 
+/* PDV ocupa 100% sem padding — evita scroll para ver os botões de ação */
+.content-area:has(.pdv-wrap) {
+  padding: 0;
+  overflow: hidden;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }

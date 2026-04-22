@@ -1180,9 +1180,9 @@ async function emitirNFCe() {
   flex-direction: column;
   overflow: hidden;
 
-  /* Quebra as amarras do padding global do content-area */
-  margin: -0px -16px;
-  height: 100vh;
+  /* Ocupa todo o espaço disponível do content-area (padding já zerado via :has) */
+  margin: 0;
+  height: 100%;
   border-radius: 0;
 }
 /* Topo removido */
