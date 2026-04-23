@@ -1108,34 +1108,35 @@ function imprimirRecibo() {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recibo #${vendaNumero.value}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   @page { margin: 0; size: auto; }
+  html, body { background: #fff; width: 280px; margin: 0 auto; -webkit-print-color-adjust: exact; }
   body { 
-    font-family: 'Courier New', monospace; 
+    font-family: 'Courier New', Courier, monospace; 
     font-size: 12px; 
+    line-height: 1.2;
     color: #000; 
-    width: 72mm; 
-    margin: 0; 
-    padding: 5mm; 
-    background: #fff;
+    padding: 10px;
   }
   .center { text-align: center; }
   .bold   { font-weight: bold; }
-  .sep    { border: none; border-top: 1px dashed #000; margin: 2mm 0; }
-  h1 { font-size: 15px; text-align: center; font-family: Arial, sans-serif; font-weight: 900; }
+  .sep    { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  h1 { font-size: 14px; text-align: center; font-weight: 900; margin-bottom: 2px; }
   h2 { font-size: 10px; text-align: center; font-weight: bold; margin-bottom: 1px; }
-  .dnf { font-size: 10px; text-align: center; border: 1px solid #000; padding: 1mm 2mm; display: inline-block; margin: 2mm auto; font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 1mm 0; vertical-align: top; font-size: 12px; font-weight: bold; }
-  .total-line { display: flex; justify-content: space-between; font-size: 15px; font-weight: bold; margin-top: 1mm; }
-  .sub-line   { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 0.5mm; }
-  .disc-line  { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 0.5mm; }
-  .troco-line { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 0.5mm; }
-  .rodape { font-size: 10px; text-align: center; font-weight: bold; margin-top: 3mm; line-height: 1.4; }
-  @media print { 
-    body { width: 72mm; padding: 2mm; }
+  .dnf { font-size: 10px; text-align: center; border: 1px solid #000; padding: 2px 4px; display: inline-block; margin: 4px auto; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin: 2px 0; }
+  td { padding: 2px 0; vertical-align: top; font-size: 11px; font-weight: bold; }
+  .total-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; }
+  .sub-line   { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 1px; }
+  .disc-line  { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 1px; }
+  .troco-line { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 1px; }
+  .rodape { font-size: 10px; text-align: center; font-weight: bold; margin-top: 10px; line-height: 1.3; }
+  
+  @media print {
+    html, body { width: 100%; }
     .no-print { display: none; }
   }
 </style>
@@ -1166,7 +1167,12 @@ ${troco.value > 0.009 ? `<div class="troco-line"><span>Troco</span><span>${fmt(t
   Obrigado pela preferência!<br/>
   Este documento não tem valor fiscal.
 </div>
-<script>window.onload = function(){ window.print(); }<\/script>
+<script>
+  window.onload = function() { 
+    window.print(); 
+    setTimeout(function() { window.close(); }, 500);
+  }
+<\/script>
 </body></html>`;
 
   const iframe = document.createElement('iframe');
