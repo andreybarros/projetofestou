@@ -1,8 +1,7 @@
 <template>
   <div class="pdv">
 
-    <!-- ── TOPO ────────────────────────────────────────────────── -->
-    <!-- Topo removido para ganhar mais espaço -->
+    <!-- PDV Topo agora via App.vue (topbar) -->
 
 
     <!-- ── CORPO SPLIT ─────────────────────────────────────────── -->
@@ -405,7 +404,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, nextTick, watch, inject } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useVendaStore }      from '../stores/venda';
 import { useCaixaStore }      from '../stores/caixa';
@@ -419,6 +418,7 @@ const vendaStore      = useVendaStore();
 const caixaStore      = useCaixaStore();
 const sessaoStore     = useSessaoStore();
 const parametrosStore = useParametrosStore();
+const abrirSidebarFn  = inject('abrirSidebar', () => {});
 
 // ── Estado ────────────────────────────────────────────────────
 const busca          = ref('');
@@ -2298,4 +2298,6 @@ async function emitirNFCe() {
 <style>
 /* Esconde o menu inferior global no PDV */
 #bottom-nav { display: none !important; }
+</style>
+
 </style>

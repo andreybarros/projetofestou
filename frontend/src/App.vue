@@ -104,8 +104,8 @@
       <!-- Main -->
       <div :class="['app-main', { 'sidebar-collapsed': sidebarCollapsed }]">
 
-        <!-- Topbar (oculto no PDV para maximizar área do caixa) -->
-        <header v-show="!isPDV" class="topbar">
+        <!-- Topbar (oculto no PDV em desktop para maximizar área do caixa) -->
+        <header :class="['topbar', { 'pdv-topbar': isPDV }]">
           <div class="topbar-left">
             <button class="hamburger lg-hide" @click="abrirSidebar">
               <span class="material-symbols-outlined">menu</span>
@@ -351,6 +351,7 @@ function showToast(msg, tipo = 'success') {
   _toastTimer = setTimeout(() => { toast.value.visible = false; }, 3500);
 }
 provide('showToast', showToast);
+provide('abrirSidebar', abrirSidebar);
 
 // Login callback
 function onLoginOk({ filial, operador, modulos }) {
@@ -525,6 +526,10 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
   flex-shrink: 0; z-index: 40;
+}
+.pdv-topbar { display: none; }
+@media (max-width: 768px) {
+  .pdv-topbar { display: flex !important; }
 }
 .topbar-left   { display: flex; align-items: center; gap: 12px; }
 .topbar-right  { display: flex; align-items: center; gap: 10px; }
