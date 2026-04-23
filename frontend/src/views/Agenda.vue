@@ -161,7 +161,7 @@
               </div>
               <div class="mf-group">
                 <label>Data <span class="obrig">*</span></label>
-                <input type="date" v-model="modalForm.data_inicio" class="m-input" />
+                <input type="date" v-model="modalForm.data_evento" class="m-input" />
               </div>
               <div class="mf-group">
                 <label>Horário</label>
@@ -206,7 +206,7 @@
           <div class="modal-footer">
             <button class="btn-cancel" @click="fecharModal">Cancelar</button>
             <button class="btn-salvar" @click="salvarEvento"
-              :disabled="salvando || !modalForm.titulo || !modalForm.data_inicio">
+              :disabled="salvando || !modalForm.titulo || !modalForm.data_evento">
               <span v-if="salvando" class="spin-sm"></span>
               <span class="material-symbols-outlined" v-else>save</span>
               Salvar
@@ -450,8 +450,8 @@ async function carregarEventos() {
         .from('agenda')
         .select('*, vendas(pk, numero, cliente)')
         .eq('filial_pk', sessaoStore.filial?.pk)
-        .gte('data_inicio', ini)
-        .lte('data_inicio', fim)
+        .gte('data_evento', ini)
+        .lte('data_evento', fim)
         .order('hora_inicio', { nullsFirst: true }),
 
       supabase
@@ -473,7 +473,7 @@ async function carregarEventos() {
         source:     'agenda',
         titulo:     ev.titulo,
         tipo:       ev.tipo || 'manual',
-        date:       ev.data_inicio,
+        date:       ev.data_evento || ev.data_inicio,
         hora:       ev.hora_inicio ? ev.hora_inicio.slice(0, 5) : null,
         descricao:  ev.descricao,
         cor:        ev.cor || COR_TIPOS[ev.tipo] || COR_TIPOS.manual,
@@ -555,7 +555,7 @@ function abrirModal(dateStr = null, ev = null) {
       pk:           ev.pk,
       titulo:       ev.titulo,
       tipo:         ev.tipo,
-      data_inicio:  ev.date,
+      data_evento:  ev.date,
       hora_inicio:  ev.hora || '',
       descricao:    ev.descricao || '',
       venda_pk:     ev.venda_pk || null,
@@ -566,7 +566,7 @@ function abrirModal(dateStr = null, ev = null) {
       pk:           null,
       titulo:       '',
       tipo:         'manual',
-      data_inicio:  dateStr || diaSelected.value || hoje.toISOString().slice(0, 10),
+      data_evento:  dateStr || diaSelected.value || hoje.toISOString().slice(0, 10),
       hora_inicio:  '',
       descricao:    '',
       venda_pk:     null,
@@ -583,14 +583,15 @@ function fecharModal() {
 
 async function salvarEvento() {
   const f = modalForm.value;
-  if (!f.titulo || !f.data_inicio) return;
+  if (!f.titulo || !f.data_evento) return;
   salvando.value = true;
   try {
     const payload = {
       filial_pk:   sessaoStore.filial?.pk,
       titulo:      f.titulo,
       tipo:        f.tipo || 'manual',
-      data_inicio: f.data_inicio,
+      data_evento: f.data_evento,
+      data_inicio: f.data_evento,
       hora_inicio: f.hora_inicio || null,
       descricao:   f.descricao  || null,
       venda_pk:    f.venda_pk   || null,
