@@ -2300,4 +2300,3 @@ async function emitirNFCe() {
 #bottom-nav { display: none !important; }
 </style>
 
-</style>
