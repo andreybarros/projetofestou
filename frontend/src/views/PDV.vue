@@ -751,7 +751,6 @@ function fecharScanner() {
   }
   scannerControls  = null;
   zxingReader      = null;
-  scannerDetectado = false;
   scannerAberto.value = false;
   scannerStatus.value = '';
 }
