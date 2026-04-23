@@ -1111,21 +1111,33 @@ function imprimirRecibo() {
 <title>Recibo #${vendaNumero.value}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', monospace; font-size: 13px; color: #000; width: 320px; margin: 0 auto; padding: 20px 10px; }
+  @page { margin: 0; size: auto; }
+  body { 
+    font-family: 'Courier New', monospace; 
+    font-size: 12px; 
+    color: #000; 
+    width: 72mm; 
+    margin: 0; 
+    padding: 5mm; 
+    background: #fff;
+  }
   .center { text-align: center; }
   .bold   { font-weight: bold; }
-  .sep    { border: none; border-top: 1px dashed #555; margin: 8px 0; }
-  h1 { font-size: 16px; text-align: center; font-family: Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
-  h2 { font-size: 11px; text-align: center; font-weight: bold; color: #000; margin-bottom: 2px; }
-  .dnf { font-size: 11px; text-align: center; border: 1px solid #000; padding: 3px 8px; display: inline-block; margin: 6px auto 2px; letter-spacing: .5px; font-weight: bold; }
+  .sep    { border: none; border-top: 1px dashed #000; margin: 2mm 0; }
+  h1 { font-size: 15px; text-align: center; font-family: Arial, sans-serif; font-weight: 900; }
+  h2 { font-size: 10px; text-align: center; font-weight: bold; margin-bottom: 1px; }
+  .dnf { font-size: 10px; text-align: center; border: 1px solid #000; padding: 1mm 2mm; display: inline-block; margin: 2mm auto; font-weight: bold; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 4px 2px; vertical-align: top; font-size: 13px; font-weight: bold; }
-  .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; }
-  .sub-line   { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
-  .disc-line  { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
-  .troco-line { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
-  .rodape { font-size: 11px; text-align: center; color: #000; font-weight: bold; margin-top: 10px; line-height: 1.7; }
-  @media print { body { padding: 4px; } }
+  td { padding: 1mm 0; vertical-align: top; font-size: 12px; font-weight: bold; }
+  .total-line { display: flex; justify-content: space-between; font-size: 15px; font-weight: bold; margin-top: 1mm; }
+  .sub-line   { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 0.5mm; }
+  .disc-line  { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 0.5mm; }
+  .troco-line { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 0.5mm; }
+  .rodape { font-size: 10px; text-align: center; font-weight: bold; margin-top: 3mm; line-height: 1.4; }
+  @media print { 
+    body { width: 72mm; padding: 2mm; }
+    .no-print { display: none; }
+  }
 </style>
 </head>
 <body>
