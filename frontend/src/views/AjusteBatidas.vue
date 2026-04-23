@@ -380,7 +380,7 @@ onMounted(() => {
 
 .ab-table { width: 100%; border-collapse: collapse; }
 .ab-table th { text-align: left; padding: 14px 20px; background: var(--bg3); font-size: 0.7rem; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
-.ab-table td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.ab-table td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--text); }
 .ab-table tr:last-child td { border-bottom: none; }
 .ab-table tr:hover td { background: var(--bg3); }
 
@@ -420,10 +420,17 @@ onMounted(() => {
 .ab-toast.ok { background: #10b981; }
 .ab-toast.err { background: #ef4444; }
 
-.td-muted { font-size: 0.8rem; color: var(--text2); opacity: 0.6; }
+.td-muted { font-size: 0.8rem; color: var(--text2); }
 
 .spin { width: 24px; height: 24px; border: 3px solid rgba(99,102,241,0.2); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+[data-theme="light"] .badge-tipo.entrada { background: rgba(16,185,129,0.12); color: #065f46; border-color: rgba(16,185,129,0.35); }
+[data-theme="light"] .badge-tipo.saida   { background: rgba(239,68,68,0.1);   color: #991b1b; border-color: rgba(239,68,68,0.35); }
+[data-theme="light"] .btn-gps            { color: #4338ca; background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); }
+[data-theme="light"] .btn-gps:hover      { background: rgba(99,102,241,0.18); border-color: #4338ca; }
+[data-theme="light"] .btn-delete         { color: #b91c1c; }
+[data-theme="light"] .btn-delete:hover   { background: rgba(185,28,28,0.1); }
 
 @media (max-width: 800px) {
   .ab-stats { grid-template-columns: 1fr; }

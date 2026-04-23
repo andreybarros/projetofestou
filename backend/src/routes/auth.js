@@ -47,47 +47,96 @@ router.post('/login', async (req, res) => {
 
     const { data: op, error } = await supabase
       .from('operadores')
-      .select('id, nome, login, senha, admin, ativo, filial_pk, acesso_produtos, acesso_armazens, acesso_agenda, acesso_pdv, acesso_clientes, acesso_historico, acesso_receitas, acesso_categorias, acesso_despesas, acesso_financeiro, acesso_dashboard, acesso_fechamento, acesso_funcionarios, acesso_ponto, acesso_separacao, acesso_criar_ordem, matricula, acesso_espelho_ponto, acesso_fornecedores, acesso_vendedores, acesso_caixa, acesso_relatorio_caixa, acesso_gestao_ponto, acesso_fechamento_ponto, acesso_relatorio_vendas')
+      .select('*')
       .eq('login', login)
-      .or(`filial_pk.eq.${filial_pk},filial_pk.is.null`)
       .maybeSingle();
 
-    if (error) throw error;
-    if (!op)       return res.status(401).json({ erro: 'Usuario nao encontrado' });
-    if (!op.ativo) return res.status(401).json({ erro: 'Usuario inativo' });
-    if (op.senha !== senha) return res.status(401).json({ erro: 'Senha incorreta' });
+    if (error) {
+      console.error('[Auth/login] DB Error:', error.message);
+      return res.status(500).json({ erro: 'Erro no banco de dados ao buscar operador' });
+    }
+    
+    if (!op) {
+      console.warn(`[Auth/login] Usuário não encontrado: "${login}"`);
+      return res.status(401).json({ erro: 'Usuario nao encontrado' });
+    }
 
-    const { data: filial } = await supabase
-      .from('filiais')
-      .select('pk, codigo, nome, cnpj, nfce_ambiente')
-      .eq('pk', filial_pk)
-      .single();
+    console.log(`[Auth/login] Usuário encontrado: "${op.login}" (ID: ${op.id || op.pk})`);
+    
+    // Validar filial: skip para admins ou se o operador for global (filial_pk nulo)
+    const opFilialPk = op.filial_pk;
+    if (!op.admin && opFilialPk !== null && String(opFilialPk) !== String(filial_pk)) {
+      console.warn(`[Auth/login] Filial inválida para "${login}". Do Operador: ${opFilialPk}, Selecionada no Login: ${filial_pk}`);
+      return res.status(401).json({ erro: 'Usuario sem acesso a esta filial' });
+    }
 
-    const token = gerarToken(op.id);
+    if (!op.ativo) {
+      console.warn(`[Auth/login] Usuário inativo: "${login}"`);
+      return res.status(401).json({ erro: 'Usuario inativo' });
+    }
+
+    const senhaCorreta = String(op.senha).trim() === String(senha).trim();
+    if (!senhaCorreta) {
+      console.warn(`[Auth/login] Senha incorreta para "${login}"`);
+      return res.status(401).json({ erro: 'Senha incorreta' });
+    }
+    console.log(`[Auth/login] Login realizado com sucesso: "${login}"`);
+
+    let filial = null;
+    try {
+      const { data: fData } = await supabase
+        .from('filiais')
+        .select('pk, codigo, nome, cnpj, nfce_ambiente')
+        .eq('pk', filial_pk)
+        .maybeSingle();
+      filial = fData;
+    } catch { /* ignore */ }
+
+    let modulos = [];
+    try {
+      const { data: modulosData } = await supabase
+        .from('modulos_filiais')
+        .select('modulo')
+        .eq('filial_pk', filial_pk)
+        .eq('ativo', true);
+      
+      if (modulosData) {
+        modulos = modulosData.map(m => m.modulo);
+      }
+    } catch { /* ignore */ }
+
+    const opId = op.id || op.pk;
+    const token = gerarToken(opId);
 
     return res.json({
       token,
       operador: {
-        pk: op.id, nome: op.nome, login: op.login, admin: op.admin,
-        filial_pk: op.filial_pk,
-        acesso_produtos: op.acesso_produtos, acesso_armazens: op.acesso_armazens,
-        acesso_agenda: op.acesso_agenda, acesso_pdv: op.acesso_pdv,
-        acesso_clientes: op.acesso_clientes, acesso_historico: op.acesso_historico,
-        acesso_receitas: op.acesso_receitas, acesso_categorias: op.acesso_categorias,
-        acesso_despesas: op.acesso_despesas, acesso_financeiro: op.acesso_financeiro,
-        acesso_dashboard: op.acesso_dashboard, acesso_fechamento: op.acesso_fechamento,
-        acesso_funcionarios: op.acesso_funcionarios, acesso_ponto: op.acesso_ponto,
-        acesso_separacao: op.acesso_separacao, acesso_criar_ordem: op.acesso_criar_ordem,
-        matricula: op.matricula, acesso_espelho_ponto: op.acesso_espelho_ponto,
-        acesso_fornecedores: op.acesso_fornecedores, acesso_vendedores: op.acesso_vendedores,
-        acesso_caixa: op.acesso_caixa, acesso_relatorio_caixa: op.acesso_relatorio_caixa,
-        acesso_gestao_ponto: op.acesso_gestao_ponto, acesso_fechamento_ponto: op.acesso_fechamento_ponto,
-        acesso_relatorio_vendas: op.acesso_relatorio_vendas,
+        ...op,
+        pk: opId, 
+        id: opId
       },
       filial: filial || { pk: filial_pk },
+      modulos
     });
   } catch (err) {
     console.error('[Auth/login]', err.message);
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// GET /api/auth/modulos/:filial_pk
+router.get('/modulos/:filial_pk', async (req, res) => {
+  try {
+    const { filial_pk } = req.params;
+    const { data, error } = await supabase
+      .from('modulos_filiais')
+      .select('modulo')
+      .eq('filial_pk', filial_pk)
+      .eq('ativo', true);
+    
+    if (error) throw error;
+    return res.json((data || []).map(m => m.modulo));
+  } catch (err) {
     return res.status(500).json({ erro: err.message });
   }
 });

@@ -240,11 +240,15 @@ async function carregarFiliais() {
   } catch { /* silencioso */ }
 }
 
-function trocarFilial(f) {
+async function trocarFilial(f) {
   if (f.pk === sessao.filial?.pk) { filialMenuAberto.value = false; return; }
   sessao.trocarFilial(f);
   parametros.carregar(f.pk);
   filialMenuAberto.value = false;
+  try {
+    const { data } = await apiClient.get(`/api/auth/modulos/${f.pk}`);
+    sessao.setModulos(data || []);
+  } catch(e) { console.error('Erro ao recarregar modulos', e); }
 }
 
 function fecharMenus(e) {
@@ -257,7 +261,16 @@ function fecharMenus(e) {
 }
 onMounted(async () => {
   document.addEventListener('click', fecharMenus, true);
-  if (sessao.isAutenticado) await carregarFiliais();
+  if (sessao.isAutenticado) {
+    await carregarFiliais();
+    // Recarregar módulos da filial atual para refletir alterações feitas no cadastro
+    if (sessao.filial?.pk) {
+      try {
+        const { data } = await apiClient.get(`/api/auth/modulos/${sessao.filial.pk}`);
+        sessao.setModulos(data || []);
+      } catch(e) { console.error('Erro ao recarregar modulos', e); }
+    }
+  }
 });
 onUnmounted(() => document.removeEventListener('click', fecharMenus, true));
 
@@ -268,7 +281,31 @@ function pode(modulo) {
   if (!sessao.isAutenticado) return false;
   const o = op.value;
   if (!o) return false;
+
+  // Mapeamento: qual módulo da filial libera cada item do menu
+  const FILIAL_MAP = {
+    produtos: 'produtos', armazens: 'armazens', clientes: 'clientes',
+    agenda: 'agenda', separacao: 'separacao', pdv: 'pdv',
+    historico: 'historico', receitas: 'receitas', categorias: 'categorias',
+    despesas: 'despesas', financeiro: 'financeiro', fechamento: 'fechamento',
+    vendedores: 'vendedores', funcionarios: 'funcionarios', ponto: 'ponto',
+    // Derivados: dependem do módulo-pai na filial
+    caixa: 'pdv', rel_vendas: 'historico', rel_caixa: 'fechamento',
+    dashboard: 'pdv', fornecedores: 'clientes',
+    espelho: 'ponto', gestao_ponto: 'ponto', fech_ponto: 'funcionarios',
+    criar_ordem: 'separacao',
+  };
+
+  // 1. FILIAL: bloqueia se a filial não tem o módulo (mesmo para admin)
+  const filialModulo = FILIAL_MAP[modulo];
+  if (filialModulo && !sessao.temModulo(filialModulo)) {
+    return false;
+  }
+
+  // 2. OPERADOR: admin tem acesso total (já passou pelo filtro da filial)
   if (o.admin) return true;
+
+  // 3. OPERADOR: verificar permissão individual
   const mapa = {
     produtos:     o.acesso_produtos,
     categorias:   o.acesso_categorias,
@@ -299,7 +336,11 @@ function pode(modulo) {
 }
 
 const podeVendas = computed(() => pode('pdv') || pode('receitas') || pode('historico'));
-const podeRH     = computed(() => pode('funcionarios') || pode('ponto') || !!op.value?.matricula || !!op.value?.acesso_espelho_ponto);
+const podeRH     = computed(() => {
+  const temRHnaFilial = sessao.temModulo('ponto') || sessao.temModulo('funcionarios');
+  if (!temRHnaFilial) return false;
+  return pode('funcionarios') || pode('ponto') || !!op.value?.matricula || !!op.value?.acesso_espelho_ponto;
+});
 
 // Toast
 const toast = ref({ visible: false, msg: '', tipo: 'success' });
@@ -358,6 +399,7 @@ function abrirManual() { window.open('/manual.html', '_blank'); }
   --bg: #eaecf4; --bg2: #ffffff; --bg3: #dde0ed; --bg4: #cfd3e6;
   --border: rgba(0,0,0,.14);
   --text: #0f172a; --text2: #374151;
+  color: var(--text);
 }
 
 body {
@@ -442,8 +484,8 @@ body {
   cursor: pointer; transition: all .15s;
 }
 .filial-badge-btn:hover { background: rgba(255,255,255,.1); color: var(--text); border-color: var(--primary); }
-[data-theme="light"] .filial-badge-btn { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.12); }
-[data-theme="light"] .filial-badge-btn:hover { background: rgba(0,0,0,.1); color: var(--text); }
+[data-theme="light"] .filial-badge-btn { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.12); color: var(--text); }
+[data-theme="light"] .filial-badge-btn:hover { background: rgba(0,0,0,.1); color: var(--text); border-color: var(--primary-c); }
 
 .filial-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0;
@@ -464,6 +506,8 @@ body {
 .filial-drop-item:hover { background: rgba(255,255,255,.07); }
 .filial-drop-item.active { color: var(--primary); font-weight: 700; }
 [data-theme="light"] .filial-drop-item:hover { background: rgba(0,0,0,.05); }
+[data-theme="light"] .filial-drop-item.active { color: var(--primary-c); }
+[data-theme="light"] .filial-drop-title { color: #64748b; }
 .nav-icon { font-size: 20px; }
 
 /* ── Drawer footer ─────────────────────────────────────── */

@@ -167,8 +167,8 @@ async function fazerLogin() {
     });
 
     authStore.setAuth(data.token, data.operador);
-    sessaoStore.setSessao(data.filial, data.operador, data.operador.modulos || []);
-    emit('login-ok', { filial: data.filial, operador: data.operador });
+    sessaoStore.setSessao(data.filial, data.operador, data.modulos || []);
+    emit('login-ok', { filial: data.filial, operador: data.operador, modulos: data.modulos });
   } catch (e) {
     erroMsg.value = e.response?.data?.erro || 'Erro ao fazer login.';
   } finally {

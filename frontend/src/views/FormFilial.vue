@@ -175,10 +175,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '../composables/useSupabase';
 import { vMaska } from 'maska/vue';
+
+const showToast = inject('showToast');
 
 const ROTINAS = [
   { id: 'produtos', icon: '📦', label: 'Produtos / Estoque' },
@@ -262,7 +264,7 @@ async function carregar() {
     }
 
   } catch (e) {
-    alert('Erro ao carregar filial: ' + e.message);
+    showToast('Erro ao carregar filial: ' + e.message, 'error');
     router.push('/filiais');
   } finally {
     carregando.value = false;
@@ -324,11 +326,15 @@ function limparCert() {
 }
 
 async function salvar() {
-  if (!form.codigo || !form.nome) return alert('Código e Nome são obrigatórios.');
+  if (!form.codigo || !form.nome) return showToast('Código e Nome são obrigatórios.', 'error');
 
   salvando.value = true;
   try {
     const payload = { ...form };
+    // Remover campos somente-leitura do banco
+    delete payload.pk;
+    delete payload.created_at;
+    delete payload.criado_em;
     if (certB64.value) {
       payload.nfce_cert_b64 = certB64.value;
       payload.nfce_cert_titular = certFileName.value;
@@ -362,10 +368,10 @@ async function salvar() {
       if (errMod) throw errMod;
     }
 
-    alert('Filial salva com sucesso!');
+    showToast('Filial salva com sucesso!');
     router.push('/filiais');
   } catch (e) {
-    alert('Erro ao salvar: ' + e.message);
+    showToast('Erro ao salvar: ' + e.message, 'error');
   } finally {
     salvando.value = false;
   }
@@ -386,7 +392,7 @@ async function salvar() {
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field label { font-size: 0.8rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
 .field input, .field select { padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; background: var(--bg3); color: var(--text); outline: none; transition: all 0.2s; }
-.field input:focus, .field select:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+.field input:focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
 .hint { font-size: 0.75rem; color: var(--text2); font-style: italic; }
 
 .col-2 { grid-column: span 2; }
@@ -403,7 +409,7 @@ async function salvar() {
 .input-code { font-family: monospace; font-weight: bold; text-align: center; font-size: 1.2rem !important; }
 
 .divider { grid-column: span 12; margin: 1.5rem 0 0.5rem; display: flex; align-items: center; gap: 1rem; }
-.divider span { font-size: 0.85rem; font-weight: 700; color: #667eea; white-space: nowrap; }
+.divider span { font-size: 0.85rem; font-weight: 700; color: var(--primary); white-space: nowrap; }
 .divider::after { content: ''; height: 1px; width: 100%; background: var(--border); }
 
 .cert-dropzone { border: 2px dashed var(--border); border-radius: 10px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg3); }
@@ -423,8 +429,8 @@ async function salvar() {
 .btn-clear-cert:hover { background: #fee2e2; }
 
 .form-actions { margin-top: 2rem; display: flex; justify-content: flex-end; }
-.btn-primary { background: #667eea; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-.btn-primary:hover { background: #5a67d8; }
+.btn-primary { background: var(--primary); color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.btn-primary:hover { background: var(--primary-c); }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-cancel { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 500; }
@@ -434,8 +440,8 @@ async function salvar() {
 
 .rotinas-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
 .rotina-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.2s; background: var(--bg3); }
-.rotina-item input { width: 1.1rem; height: 1.1rem; accent-color: #667eea; }
-.rotina-item.selected { border-color: #667eea; background: rgba(102,126,234,0.05); }
+.rotina-item input { width: 1.1rem; height: 1.1rem; accent-color: var(--primary); }
+.rotina-item.selected { border-color: var(--primary); background: rgba(102,126,234,0.05); }
 .rotina-content { display: flex; align-items: center; gap: 0.75rem; }
 .rotina-icon { font-size: 1.25rem; }
 .rotina-label { font-size: 0.9rem; font-weight: 500; }
@@ -445,4 +451,11 @@ async function salvar() {
 @media (max-width: 900px) {
   .content-grid { grid-template-columns: 1fr; }
 }
+
+[data-theme="light"] .divider span { color: var(--primary-c); }
+[data-theme="light"] .field input:focus,
+[data-theme="light"] .field select:focus { border-color: var(--primary-c); box-shadow: 0 0 0 3px rgba(5,96,186,0.12); }
+[data-theme="light"] .btn-primary { background: var(--primary-c); }
+[data-theme="light"] .btn-primary:hover { background: #024a95; }
+[data-theme="light"] .rotina-item.selected { border-color: var(--primary-c); background: rgba(5,96,186,0.06); }
 </style>

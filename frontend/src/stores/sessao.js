@@ -38,7 +38,12 @@ export const useSessaoStore = defineStore('sessao', () => {
     localStorage.setItem('festou_filial', JSON.stringify(novaFilial));
   }
 
+  function setModulos(mods) {
+    modulos.value = new Set(mods);
+    localStorage.setItem('festou_modulos', JSON.stringify(mods));
+  }
+
   function temModulo(m) { return modulos.value.has(m); }
 
-  return { filial, operador, modulos, isAutenticado, setSessao, logout, trocarFilial, temModulo };
+  return { filial, operador, modulos, isAutenticado, setSessao, logout, trocarFilial, setModulos, temModulo };
 });

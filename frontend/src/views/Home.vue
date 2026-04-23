@@ -108,7 +108,7 @@
           <div class="sc-icon" style="background:rgba(59,130,246,.12);color:#93C5FD"><span class="material-symbols-outlined">badge</span></div>
           <div><div class="sc-name">Funcionários</div><div class="sc-desc">Contratos e salários</div></div>
         </RouterLink>
-        <RouterLink v-if="pode('pdv')" to="/vendedores" class="small-card">
+        <RouterLink v-if="pode('vendedores')" to="/vendedores" class="small-card">
           <div class="sc-icon" style="background:rgba(139,92,246,.12);color:#C4B5FD"><span class="material-symbols-outlined">sell</span></div>
           <div><div class="sc-name">Vendedores</div><div class="sc-desc">Vinculados ao PDV</div></div>
         </RouterLink>
@@ -116,19 +116,19 @@
           <div class="sc-icon" style="background:rgba(234,179,8,.12);color:#FDE047"><span class="material-symbols-outlined">fingerprint</span></div>
           <div><div class="sc-name">Ponto</div><div class="sc-desc">Batidas e registros</div></div>
         </RouterLink>
-        <RouterLink v-if="op?.matricula" to="/holerites" class="small-card">
+        <RouterLink v-if="op?.matricula && (sessao.temModulo('funcionarios') || sessao.temModulo('ponto'))" to="/holerites" class="small-card">
           <div class="sc-icon" style="background:rgba(16,185,129,.12);color:#6EE7B7"><span class="material-symbols-outlined">description</span></div>
           <div><div class="sc-name">Holerites</div><div class="sc-desc">Contracheques</div></div>
         </RouterLink>
-        <RouterLink v-if="op?.matricula || op?.acesso_espelho_ponto" to="/espelho-ponto" class="small-card">
-          <div class="sc-icon" style="background:rgba(99,102,241,.12);color:#A5B4FC"><span class="material-symbols-outlined">calendar_view_month</span></div>
+        <RouterLink v-if="(op?.matricula || op?.acesso_espelho_ponto) && (sessao.temModulo('ponto') || sessao.temModulo('funcionarios'))" to="/espelho-ponto" class="small-card">
+          <div class="sc-icon" style="background:rgba(99,102,241,.12);color:#A5B4FD"><span class="material-symbols-outlined">calendar_view_month</span></div>
           <div><div class="sc-name">Espelho de Ponto</div><div class="sc-desc">Aprovação de ponto</div></div>
         </RouterLink>
-        <RouterLink v-if="op?.admin || pode('ponto')" to="/ajuste-batidas" class="small-card">
+        <RouterLink v-if="pode('ponto')" to="/ajuste-batidas" class="small-card">
           <div class="sc-icon" style="background:rgba(251,113,133,.12);color:#fb7185"><span class="material-symbols-outlined">location_on</span></div>
           <div><div class="sc-name">Gestão de Batidas</div><div class="sc-desc">Ajuste de registros</div></div>
         </RouterLink>
-        <RouterLink v-if="op?.admin || pode('funcionarios')" to="/fechamento-ponto" class="small-card">
+        <RouterLink v-if="pode('funcionarios')" to="/fechamento-ponto" class="small-card">
           <div class="sc-icon" style="background:rgba(251,146,60,.12);color:#fb923c"><span class="material-symbols-outlined">lock_clock</span></div>
           <div><div class="sc-name">Fechamento Ponto</div><div class="sc-desc">Fechamento mensal</div></div>
         </RouterLink>
@@ -163,7 +163,27 @@ const op     = computed(() => sessao.operador);
 function pode(modulo) {
   const o = op.value;
   if (!o) return false;
+
+  // Mapeamento: qual módulo da filial libera cada item do menu
+  const FILIAL_MAP = {
+    produtos: 'produtos', armazens: 'armazens', clientes: 'clientes',
+    agenda: 'agenda', separacao: 'separacao', pdv: 'pdv',
+    historico: 'historico', receitas: 'receitas', categorias: 'categorias',
+    despesas: 'despesas', financeiro: 'financeiro', fechamento: 'fechamento',
+    vendedores: 'vendedores', funcionarios: 'funcionarios', ponto: 'ponto',
+    caixa: 'pdv', dashboard: 'pdv', fornecedores: 'clientes',
+  };
+
+  // 1. FILIAL: bloqueia se a filial não tem o módulo (mesmo para admin)
+  const filialModulo = FILIAL_MAP[modulo];
+  if (filialModulo && !sessao.temModulo(filialModulo)) {
+    return false;
+  }
+
+  // 2. OPERADOR: admin tem acesso total (já passou pelo filtro da filial)
   if (o.admin) return true;
+
+  // 3. OPERADOR: verificar permissão individual
   const mapa = {
     produtos: o.acesso_produtos, categorias: o.acesso_produtos || o.acesso_categorias,
     clientes: o.acesso_clientes, armazens: o.acesso_armazens, agenda: o.acesso_agenda,
@@ -171,13 +191,18 @@ function pode(modulo) {
     historico: o.acesso_pdv || o.acesso_historico, funcionarios: o.acesso_funcionarios,
     ponto: o.acesso_ponto, separacao: o.acesso_separacao || o.acesso_criar_ordem,
     despesas: o.acesso_despesas, financeiro: o.acesso_financeiro, fechamento: o.acesso_fechamento,
+    vendedores: o.acesso_vendedores,
   };
   return !!mapa[modulo];
 }
 
 const podeVendas  = computed(() => pode('pdv') || pode('receitas') || pode('historico') || pode('despesas') || pode('financeiro'));
 const podeEstoque = computed(() => pode('produtos') || pode('armazens') || pode('separacao') || pode('agenda') || pode('categorias') || pode('clientes'));
-const podeRH      = computed(() => pode('funcionarios') || pode('ponto') || !!op.value?.matricula || !!op.value?.acesso_espelho_ponto || pode('pdv'));
+const podeRH      = computed(() => {
+  const temRHnaFilial = sessao.temModulo('ponto') || sessao.temModulo('funcionarios');
+  if (!temRHnaFilial) return false;
+  return pode('funcionarios') || pode('ponto') || !!op.value?.matricula || !!op.value?.acesso_espelho_ponto;
+});
 </script>
 
 <style scoped>
