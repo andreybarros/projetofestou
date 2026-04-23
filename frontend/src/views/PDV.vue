@@ -657,11 +657,14 @@ function maskCpf() {
 function filtrarProdutos() {}
 
 // ── Scanner de Código de Barras ───────────────────────────────
-let zxingReader = null;
+let zxingReader      = null;
+let scannerControls  = null;
+let scannerDetectado = false;
 
 async function abrirScanner() {
-  scannerAberto.value = true;
-  scannerStatus.value = '';
+  scannerAberto.value  = true;
+  scannerDetectado     = false;
+  scannerStatus.value  = '';
   scannerStatusTipo.value = '';
 
   // aguarda dois ticks para garantir que o Teleport montou o <video>
@@ -696,7 +699,7 @@ async function abrirScanner() {
 
     zxingReader = new BrowserMultiFormatReader(hints);
 
-    await zxingReader.decodeFromConstraints(
+    scannerControls = await zxingReader.decodeFromConstraints(
       {
         video: {
           facingMode: { ideal: 'environment' },
@@ -706,7 +709,8 @@ async function abrirScanner() {
       },
       videoEl,
       (result, error) => {
-        if (!result) return;
+        if (!result || scannerDetectado) return;
+        scannerDetectado = true;
         const codigo = result.getText();
         fecharScanner();
         const produto = todos.value.find(p =>
@@ -737,8 +741,17 @@ async function abrirScanner() {
 }
 
 function fecharScanner() {
+  try { scannerControls?.stop(); } catch {}
   try { zxingReader?.reset(); } catch {}
-  zxingReader = null;
+  // para todas as tracks da câmera explicitamente
+  const videoEl = document.getElementById('pdv-scanner-video');
+  if (videoEl?.srcObject) {
+    videoEl.srcObject.getTracks().forEach(t => t.stop());
+    videoEl.srcObject = null;
+  }
+  scannerControls  = null;
+  zxingReader      = null;
+  scannerDetectado = false;
   scannerAberto.value = false;
   scannerStatus.value = '';
 }
