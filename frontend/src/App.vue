@@ -579,8 +579,8 @@ body {
 @media(min-width:1024px) { .content-area { padding: 28px 40px 0; } }
 
 /* PDV ocupa 100% sem padding — evita scroll para ver os botões de ação */
-.content-area:has(.pdv-wrap) {
-  padding: 0;
+.content-area:has(.pdv-wrap), .content-area:has(.pdv) {
+  padding: 0 !important;
   overflow: hidden;
 }
 

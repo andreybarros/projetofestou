@@ -28,7 +28,7 @@
     </div>
 
     <div v-else class="cards-grid">
-      <div v-for="a in filtrados" :key="a.pk" class="arm-card">
+      <div v-for="a in paginados" :key="a.pk" class="arm-card">
         <!-- Ícone + Info -->
         <div class="arm-top">
           <div class="arm-icon">
@@ -65,6 +65,13 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Paginação -->
+    <div v-if="totalPaginas > 1" class="paginacao">
+      <button class="pg-btn" :disabled="pagina === 1" @click="pagina--">‹</button>
+      <span class="pg-info">{{ pagina }} / {{ totalPaginas }}</span>
+      <button class="pg-btn" :disabled="pagina === totalPaginas" @click="pagina++">›</button>
     </div>
 
     <!-- ── Modal de confirmação de exclusão ── -->
@@ -120,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 import { useRouter } from 'vue-router';
@@ -134,6 +141,8 @@ const busca       = ref('');
 const armToDelete = ref(null);
 const excluindo   = ref(false);
 const toast       = ref('');
+const pagina      = ref(1);
+const POR_PAGINA  = 12;
 
 function showToast(msg, duracao = 2800) {
   toast.value = msg;
@@ -148,6 +157,14 @@ const filtrados = computed(() => {
     (a.localizacao || '').toLowerCase().includes(q)
   );
 });
+
+const totalPaginas = computed(() => Math.max(1, Math.ceil(filtrados.value.length / POR_PAGINA)));
+const paginados    = computed(() => {
+  const ini = (pagina.value - 1) * POR_PAGINA;
+  return filtrados.value.slice(ini, ini + POR_PAGINA);
+});
+
+watch(busca, () => { pagina.value = 1; });
 
 function enderecosPorArmazem(armPk) {
   return enderecos.value.filter(e => e.armazem_pk == armPk);
@@ -208,7 +225,7 @@ async function confirmarExclusao() {
 </script>
 
 <style scoped>
-.page-wrap    { display: flex; flex-direction: column; gap: 1.5rem; }
+.page-wrap    { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem; margin-bottom: 3rem; }
 .page-header  { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
 .page-title   { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--text); }
 .page-sub     { margin: 3px 0 0; font-size: .85rem; color: var(--text2); }
@@ -271,6 +288,13 @@ async function confirmarExclusao() {
 .spin { width: 24px; height: 24px; border: 3px solid rgba(99,102,241,.2); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
 .spin-xs { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Paginação */
+.paginacao { display: flex; align-items: center; justify-content: center; gap: .5rem; }
+.pg-btn { background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 1rem; line-height: 1; transition: background .15s; }
+.pg-btn:hover:not(:disabled) { background: var(--bg3); }
+.pg-btn:disabled { opacity: .35; cursor: default; }
+.pg-info { font-size: .85rem; color: var(--text2); min-width: 60px; text-align: center; }
 
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #10b981; color: #fff; padding: 10px 24px; border-radius: 12px; font-weight: 600; font-size: .9rem; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,.3); }
 </style>

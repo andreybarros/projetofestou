@@ -88,7 +88,7 @@
               <td>{{ p.descricao }}</td>
               <td>{{ p.categoria_nome || "—" }}</td>
               <td class="mono">{{ fmt(p.valor_venda) }}</td>
-              <td :class="['saldo', p.saldo <= 0 ? 'zero' : p.saldo < 5 ? 'baixo' : 'ok']">{{ p.saldo ?? '∞' }}</td>
+              <td :class="['saldo', (p.saldo || 0) <= 0 ? 'zero' : (p.saldo || 0) < 5 ? 'baixo' : 'ok']">{{ p.saldo ?? '∞' }}</td>
               <td class="mono">{{ p.ncm || '—' }}</td>
               <td class="acoes">
                 <button class="btn-edit" title="Editar">
@@ -125,7 +125,7 @@
       </div>
       <div class="total-item">
         <span class="total-label">Total de produtos em estoque</span>
-        <span class="total-val">{{ totais.qtd.toLocaleString('pt-BR') }}</span>
+        <span class="total-val">{{ (totais.qtd || 0).toLocaleString('pt-BR') }}</span>
       </div>
       <div class="total-item">
         <span class="total-label">Valor de custo em estoque</span>
@@ -156,7 +156,7 @@ const pagina      = ref(1);
 const POR_PAGINA  = 48;
 
 const produtosFiltrados = computed(() => {
-  const q = busca.value.trim().toLowerCase();
+  const q = (busca.value || "").trim().toLowerCase();
   if (!q) return produtos.value;
   const palavras = q.split(/\s+/).filter(Boolean);
   return produtos.value.filter(p => {
@@ -175,18 +175,30 @@ const produtosPaginados = computed(() => {
 });
 
 const totais = computed(() => {
-  return produtos.value.reduce((acc, p) => {
-    const s = parseFloat(p.saldo || 0);
-    acc.qtd   += s;
-    acc.custo += s * parseFloat(p.preco_custo || 0);
-    acc.venda += s * parseFloat(p.valor_venda || 0);
-    return acc;
-  }, { qtd: 0, custo: 0, venda: 0 });
+  try {
+    return produtos.value.reduce((acc, p) => {
+      const s = parseFloat(p.saldo || 0) || 0;
+      acc.qtd   += s;
+      acc.custo += s * (parseFloat(p.preco_custo || 0) || 0);
+      acc.venda += s * (parseFloat(p.valor_venda || 0) || 0);
+      return acc;
+    }, { qtd: 0, custo: 0, venda: 0 });
+  } catch (err) {
+    console.error("Erro calcular totais:", err);
+    return { qtd: 0, custo: 0, venda: 0 };
+  }
 });
 
 watch(busca, () => { pagina.value = 1; });
 
-onMounted(async () => { await carregarCategorias(); await carregar(); });
+onMounted(async () => { 
+  try {
+    await carregarCategorias(); 
+    await carregar(); 
+  } catch (err) {
+    console.error("Erro onMounted Produtos:", err);
+  }
+});
 
 async function carregar() {
   carregando.value = true;
@@ -198,25 +210,34 @@ async function carregar() {
     if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
     const { data, error } = await q;
     if (error) throw error;
+    
     const catMap = {};
-    categorias.value.forEach(c => { catMap[c.pk] = c.nome; });
+    categorias.value.forEach(c => { if (c && c.pk) catMap[c.pk] = c.nome; });
     produtos.value = (data || []).map(p => ({ ...p, categoria_nome: catMap[p.categoria_pk] || "" }));
   } catch (e) {
-    console.error(e.message);
+    console.error("Erro carregar produtos:", e.message);
   } finally {
     carregando.value = false;
   }
 }
 
 async function carregarCategorias() {
-  let q = supabase.from("categorias").select("pk, nome").order("nome");
-  if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
-  const { data } = await q;
-  categorias.value = data || [];
+  try {
+    let q = supabase.from("categorias").select("pk, nome").order("nome");
+    if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
+    const { data } = await q;
+    categorias.value = data || [];
+  } catch (err) {
+    console.error("Erro carregar categorias:", err);
+  }
 }
 
 function fmt(v) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+  try {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+  } catch (err) {
+    return "R$ 0,00";
+  }
 }
 </script>
 

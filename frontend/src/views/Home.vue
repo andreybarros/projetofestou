@@ -207,14 +207,14 @@ const podeRH      = computed(() => {
 </script>
 
 <style scoped>
-.home-wrap { animation: fadeUp .32s ease both; }
+.home-wrap { animation: fadeUp .32s ease both; margin-top: 1rem; margin-bottom: 3rem; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 
 .home-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 40px;
   padding: 0 4px;
 }
 .home-header h1 {

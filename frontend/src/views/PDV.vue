@@ -1399,9 +1399,10 @@ async function emitirNFCe() {
 /* ── Corpo ────────────────────────────────────────────────────── */
 .pdv-body {
   display: grid;
-  grid-template-columns: 1fr 480px;
+  grid-template-columns: 1fr 560px;
   flex: 1;
   overflow: hidden;
+  margin-bottom: 1rem;
 }
 
 /* ══ CATÁLOGO ═══════════════════════════════════════════════════ */
@@ -2238,7 +2239,7 @@ async function emitirNFCe() {
 /* ── Toast ──────────────────────────────────────────────────── */
 .pdv-toast {
   position: fixed;
-  bottom: 28px;
+  bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
@@ -2398,7 +2399,7 @@ async function emitirNFCe() {
 
   /* Compactação extrema solicitada pelo usuário */
   .vendedor-section { 
-    padding: 6px 12px; 
+    padding: 10px 12px; 
     display: flex; 
     align-items: center; 
     gap: 10px;

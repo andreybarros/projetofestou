@@ -232,7 +232,7 @@ function statusCls(s) {
 @keyframes spin    { to { transform: rotate(360deg); } }
 @keyframes fadeUp  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-.dash-wrap { display: flex; flex-direction: column; gap: 1.75rem; animation: fadeUp .35s ease-out; }
+.dash-wrap { display: flex; flex-direction: column; gap: 1.75rem; animation: fadeUp .35s ease-out;margin-bottom: 3rem; }
 
 /* ── Cabeçalho ──────────────────────────────── */
 .dash-header  { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
