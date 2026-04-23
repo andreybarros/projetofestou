@@ -82,7 +82,7 @@
 
       <!-- ══ DIREITA: Carrinho em abas ════════════════════════════ -->
       <aside :class="['cart', { 'mobile-hidden': mobileView === 'catalog' }]">
-        <!-- Botão Voltar Mobile (dentro do cart) -->
+        <!-- Botão Voltar Mobile -->
         <button v-if="mobileView === 'cart'" class="cart-back-mobile lg-hide" @click="mobileView = 'catalog'">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           Voltar ao Catálogo
@@ -95,7 +95,11 @@
             Itens
             <span v-if="vendaStore.itens.length" class="tab-badge">{{ vendaStore.itens.reduce((s,i) => s + parseFloat(i.qtd||1), 0) }}</span>
           </button>
-          <button :class="['cart-tab', { active: cartTab === 1 }]" @click="cartTab = 1">
+          <button :class="['cart-tab', { active: cartTab === 1 }]" @click="cartTab = 1" :disabled="!vendaStore.itens.length">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Detalhes
+          </button>
+          <button :class="['cart-tab', { active: cartTab === 2 }]" @click="cartTab = 2" :disabled="!vendaStore.itens.length">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
             Pagamento
             <span v-if="parseFloat(vendaStore.faltaPagar) <= 0.009 && vendaStore.pagamentos.length" class="tab-badge ok">✓</span>
@@ -107,8 +111,6 @@
 
         <!-- ── ABA 0: Itens ──────────────────────────────────── -->
         <div v-show="cartTab === 0" class="tab-panel">
-
-          <!-- Lista de itens -->
           <div class="cart-items" ref="cartItemsEl">
             <div v-if="!vendaStore.itens.length" class="cart-empty">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
@@ -116,8 +118,6 @@
             </div>
             <TransitionGroup name="item" tag="div" class="items-list">
               <div v-for="(it, i) in vendaStore.itens" :key="it.produto_pk" class="cart-item">
-
-                <!-- Linha 1: nome e excluir -->
                 <div class="ci-row ci-top">
                   <div class="item-name-wrap">
                     <span class="item-name">{{ it.nome }}</span>
@@ -127,52 +127,30 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
                   </button>
                 </div>
-
-                <!-- Linha 2: qtd, desconto, preço total -->
                 <div class="ci-row ci-bottom">
                   <div class="item-controls">
                     <button class="qty-btn" @click="vendaStore.atualizarQuantidade(i, it.qtd - 1)" :disabled="it.qtd <= 1">−</button>
                     <span class="qty-val">{{ it.qtd }}</span>
                     <button class="qty-btn" @click="incrementarItem(i, it)" :disabled="!permitirEstoqueNegativo && it.saldo !== null && it.qtd >= it.saldo">+</button>
                   </div>
-                  
                   <div class="item-desc-inline">
                     <div class="desc-type-toggle compact">
-                      <button :class="['desc-type-btn', { active: itemDescAberto === i && itemDescTipo === 'pct' }]"
-                        @click="toggleDescItem(i, 'pct')">%</button>
-                      <button :class="['desc-type-btn', { active: itemDescAberto === i && itemDescTipo === 'brl' }]"
-                        @click="toggleDescItem(i, 'brl')">R$</button>
+                      <button :class="['desc-type-btn', { active: itemDescAberto === i && itemDescTipo === 'pct' }]" @click="toggleDescItem(i, 'pct')">%</button>
+                      <button :class="['desc-type-btn', { active: itemDescAberto === i && itemDescTipo === 'brl' }]" @click="toggleDescItem(i, 'brl')">R$</button>
                     </div>
                     <template v-if="itemDescAberto === i">
-                      <input 
-                        v-model.number="itemDescVal"
-                        type="number" min="0" step="0.01"
-                        :max="itemDescTipo === 'pct' ? 100 : undefined"
-                        :placeholder="itemDescTipo === 'pct' ? '%' : '0,00'"
-                        class="cart-input item-desc-input"
-                        prevent
-                        @keydown.enter.prevent="aplicarDescontoItem(i)"
-                      />
-                      <button class="desc-confirm-btn" @click.stop.prevent="aplicarDescontoItem(i)">
-                        ✓
-                      </button>
+                      <input v-model.number="itemDescVal" type="number" min="0" step="0.01" :max="itemDescTipo === 'pct' ? 100 : undefined" :placeholder="itemDescTipo === 'pct' ? '%' : '0,00'" class="cart-input item-desc-input" prevent @keydown.enter.prevent="aplicarDescontoItem(i)" />
+                      <button class="desc-confirm-btn" @click.stop.prevent="aplicarDescontoItem(i)">✓</button>
                     </template>
-                    <span v-else-if="it.desconto_pct > 0" class="item-disc-badge" @click="toggleDescItem(i, 'pct')" style="cursor:pointer">
-                      −{{ it.desconto_pct % 1 === 0 ? it.desconto_pct : it.desconto_pct.toFixed(1) }}%
-                    </span>
+                    <span v-else-if="it.desconto_pct > 0" class="item-disc-badge" @click="toggleDescItem(i, 'pct')" style="cursor:pointer">−{{ it.desconto_pct % 1 === 0 ? it.desconto_pct : it.desconto_pct.toFixed(1) }}%</span>
                   </div>
-
                   <span class="item-total">{{ fmt(it.preco_total) }}</span>
                 </div>
-
               </div>
             </TransitionGroup>
           </div>
 
-          <!-- Descontos (só aparecem se há itens) -->
           <template v-if="vendaStore.itens.length">
-
-            <!-- Desconto decorador (fixo 10%) -->
             <div v-if="catsDecorador.length" class="cart-section">
               <label class="section-label">Desconto decorador</label>
               <div v-for="cd in catsDecorador" :key="cd.pk" class="decorador-row">
@@ -182,26 +160,22 @@
               </div>
             </div>
 
-            <!-- Resumo compacto -->
             <div class="cart-summary">
               <div class="summary-row">
                 <span>{{ vendaStore.itens.reduce((s,i) => s + parseFloat(i.qtd||1), 0) }} {{ vendaStore.itens.reduce((s,i) => s + parseFloat(i.qtd||1), 0) === 1 ? 'item' : 'itens' }}</span>
                 <span>{{ fmt(vendaStore.subtotal) }}</span>
               </div>
               <div v-if="parseFloat(vendaStore.desconto) > 0" class="summary-row disc">
-                <span>Desconto</span>
-                <span>− {{ fmt(vendaStore.desconto) }}</span>
+                <span>Desconto</span><span>− {{ fmt(vendaStore.desconto) }}</span>
               </div>
               <div class="summary-total">
-                <span>Total</span>
-                <span>{{ fmt(vendaStore.total) }}</span>
+                <span>Total</span><span>{{ fmt(vendaStore.total) }}</span>
               </div>
             </div>
 
-            <!-- Avançar -->
             <div class="cart-actions">
               <button class="btn-avancar" @click="cartTab = 1">
-                Avançar para Pagamento
+                Detalhes da Venda
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
               <button class="btn-orcamento" :class="{ copiado: orcCopiado }" @click="copiarOrcamento">
@@ -210,24 +184,35 @@
                 {{ orcCopiado ? 'Copiado!' : 'Gerar Orçamento' }}
               </button>
             </div>
-
           </template>
         </div>
 
-        <!-- ── ABA 1: Pagamento ─────────────────────────────── -->
+        <!-- ── ABA 1: Detalhes da Venda ─────────────────────── -->
         <div v-show="cartTab === 1" class="tab-panel">
 
-          <!-- Total em destaque -->
-          <div class="total-hero">
-            <span class="total-hero-label">Total da Venda</span>
-            <span class="total-hero-value">{{ fmt(vendaStore.total) }}</span>
-            <div v-if="parseFloat(vendaStore.desconto) > 0" class="total-hero-disc">
+          <!-- Resumo visual para o cliente -->
+          <div class="det-total-hero">
+            <div class="det-hero-top">
+              <span class="det-hero-label">Total da Venda</span>
+              <span class="det-hero-value">{{ fmt(vendaStore.total) }}</span>
+            </div>
+            <div v-if="parseFloat(vendaStore.desconto) > 0" class="det-hero-disc">
               Subtotal {{ fmt(vendaStore.subtotal) }} · Desconto − {{ fmt(vendaStore.desconto) }}
             </div>
           </div>
 
-          <div class="pag-scroll">
+          <!-- Itens (modo leitura) -->
+          <div class="det-items-list">
+            <div v-for="it in vendaStore.itens" :key="it.produto_pk" class="det-item-row">
+              <div class="det-item-left">
+                <span class="det-item-nome">{{ it.nome }}</span>
+                <span class="det-item-sub">{{ it.qtd }} × {{ fmt(it.preco_unitario) }}<span v-if="it.desconto_pct > 0" class="det-item-desc"> −{{ it.desconto_pct % 1 === 0 ? it.desconto_pct : it.desconto_pct.toFixed(1) }}%</span></span>
+              </div>
+              <span class="det-item-total">{{ fmt(it.preco_total) }}</span>
+            </div>
+          </div>
 
+          <div class="pag-scroll">
             <!-- Cliente -->
             <div class="cart-section cliente-section">
               <label class="section-label">Cliente <span class="opt">(opcional)</span></label>
@@ -262,23 +247,14 @@
               </div>
             </div>
 
-            <!-- CPF na nota -->
-            <div class="cart-section">
-              <label class="section-label">CPF na nota <span class="opt">(opcional)</span></label>
-              <input v-model="cpf" type="text" class="cart-input" placeholder="000.000.000-00" maxlength="14" @input="maskCpf" />
-            </div>
-
-            <!-- Canal de venda -->
-            <div class="cart-section">
-              <label class="section-label">Canal de venda</label>
-              <div class="canal-selector">
-                <button :class="['canal-btn', { active: canalVenda === 'presencial' }]" @click="canalVenda = 'presencial'">
-                  🏪 Presencial
-                </button>
-                <button :class="['canal-btn', { active: canalVenda === 'whatsapp' }]" @click="canalVenda = 'whatsapp'">
-                  💬 WhatsApp
-                </button>
-              </div>
+            <!-- Vendedor -->
+            <div class="cart-section vendedor-section">
+              <label class="section-label">Vendedor <span v-if="exigeVendedor" class="obrig">*</span></label>
+              <select v-model="vendedorSel" class="cart-select vendedor-select">
+                <option :value="null" disabled>— Selecione o vendedor —</option>
+                <option v-for="v in vendedores" :key="v.pk" :value="v">{{ v.nome }}</option>
+              </select>
+              <span v-if="exigeVendedor && !vendedorSel" class="vendedor-aviso">Selecione um vendedor para finalizar</span>
             </div>
 
             <!-- Tipo de venda -->
@@ -302,14 +278,73 @@
               </div>
             </div>
 
-            <!-- Pagamento -->
+            <!-- Canal de venda -->
+            <div class="cart-section">
+              <label class="section-label">Canal de venda</label>
+              <div class="canal-selector">
+                <button :class="['canal-btn', { active: canalVenda === 'presencial' }]" @click="canalVenda = 'presencial'">🏪 Presencial</button>
+                <button :class="['canal-btn', { active: canalVenda === 'whatsapp' }]" @click="canalVenda = 'whatsapp'">💬 WhatsApp</button>
+              </div>
+            </div>
+
+            <!-- CPF na nota -->
+            <div class="cart-section">
+              <label class="section-label">CPF na nota <span class="opt">(opcional)</span></label>
+              <input v-model="cpf" type="text" class="cart-input" placeholder="000.000.000-00" maxlength="14" @input="maskCpf" />
+            </div>
+          </div>
+
+          <div class="cart-actions">
+            <button class="btn-avancar" @click="cartTab = 2">
+              Formas de Pagamento
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── ABA 2: Pagamento ─────────────────────────────── -->
+        <div v-show="cartTab === 2" class="tab-panel">
+
+          <!-- Total + troco em destaque -->
+          <div class="total-hero">
+            <span class="total-hero-label">Total da Venda</span>
+            <span class="total-hero-value">{{ fmt(vendaStore.total) }}</span>
+            <div v-if="parseFloat(vendaStore.desconto) > 0" class="total-hero-disc">
+              Subtotal {{ fmt(vendaStore.subtotal) }} · Desconto − {{ fmt(vendaStore.desconto) }}
+            </div>
+          </div>
+
+          <!-- Cartão de status do pagamento -->
+          <div class="pag-status-card">
+            <div class="psc-row">
+              <span class="psc-label">Total</span>
+              <span class="psc-val">{{ fmt(vendaStore.total) }}</span>
+            </div>
+            <div class="psc-row">
+              <span class="psc-label">Pago</span>
+              <span class="psc-val psc-pago">{{ fmt(vendaStore.totalPago) }}</span>
+            </div>
+            <div v-if="parseFloat(vendaStore.faltaPagar) > 0.009" class="psc-row psc-falta">
+              <span class="psc-label">Falta</span>
+              <span class="psc-val">{{ fmt(vendaStore.faltaPagar) }}</span>
+            </div>
+            <div v-else-if="troco > 0.009" class="psc-row psc-troco">
+              <span class="psc-label">Troco</span>
+              <span class="psc-val">{{ fmt(troco) }}</span>
+            </div>
+            <div v-if="parseFloat(vendaStore.faltaPagar) <= 0.009 && vendaStore.pagamentos.length" class="psc-ok">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Pagamento completo
+            </div>
+          </div>
+
+          <div class="pag-scroll">
+            <!-- Forma de pagamento -->
             <div class="cart-section">
               <label class="section-label">Forma de pagamento</label>
               <div class="pag-row">
                 <select v-model="formaPag" class="cart-select flex1">
-                  <option v-for="f in formasPagamento" :key="f.pk" :value="f.forma">
-                    {{ f.icone }} {{ f.label }}
-                  </option>
+                  <option v-for="f in formasPagamento" :key="f.pk" :value="f.forma">{{ f.icone }} {{ f.label }}</option>
                 </select>
                 <input v-model.number="valorPag" type="number" min="0" step="0.01" placeholder="0,00" class="cart-input pag-val" />
                 <button class="pag-add" @click="addPag">+</button>
@@ -333,23 +368,7 @@
                   <button class="pag-del" @click="vendaStore.removerPagamento(i)">×</button>
                 </div>
               </div>
-              <div class="pag-status">
-                <span>Pago: <strong>{{ fmt(vendaStore.totalPago) }}</strong></span>
-                <span v-if="parseFloat(vendaStore.faltaPagar) > 0.009" class="falta">Falta: {{ fmt(vendaStore.faltaPagar) }}</span>
-                <span v-else-if="troco > 0.009" class="troco">Troco: {{ fmt(troco) }}</span>
-              </div>
             </div>
-
-          </div><!-- /pag-scroll -->
-
-          <!-- Seletor de Vendedor (obrigatório) -->
-          <div class="cart-section vendedor-section">
-            <label class="section-label">Vendedor <span v-if="exigeVendedor" class="obrig">*</span></label>
-            <select v-model="vendedorSel" class="cart-select vendedor-select">
-              <option :value="null" disabled>— Selecione o vendedor —</option>
-              <option v-for="v in vendedores" :key="v.pk" :value="v">{{ v.nome }}</option>
-            </select>
-            <span v-if="exigeVendedor && !vendedorSel && vendaStore.itens.length" class="vendedor-aviso">Selecione um vendedor para finalizar</span>
           </div>
 
           <!-- Ações fixas no fundo -->
@@ -378,7 +397,7 @@
             </div>
           </div>
 
-        </div><!-- /tab 1 -->
+        </div><!-- /tab 2 -->
 
       </aside>
     </div>
@@ -2533,6 +2552,164 @@ async function emitirNFCe() {
 .scanner-status { text-align: center; font-size: .85rem; font-weight: 700; padding: .5rem; border-radius: 8px; }
 .scanner-status.err { background: rgba(239,68,68,.2); color: #fca5a5; }
 .scanner-status.ok  { background: rgba(16,185,129,.2); color: #6ee7b7; }
+
+/* ── Aba 1: Detalhes da Venda ─────────────────────────────── */
+.det-total-hero {
+  padding: 16px 16px 12px;
+  background: linear-gradient(135deg, rgba(99,102,241,.14), rgba(99,102,241,.05));
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  text-align: center;
+}
+.det-hero-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.det-hero-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.det-hero-value {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent2);
+  line-height: 1;
+}
+.det-hero-disc {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.det-items-list {
+  max-height: 160px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.07) transparent;
+}
+.det-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.det-item-row:last-child { border-bottom: none; }
+.det-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.det-item-nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.det-item-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--sans);
+}
+.det-item-desc {
+  margin-left: 4px;
+  padding: 0 4px;
+  background: rgba(245,158,11,.15);
+  border-radius: 3px;
+  color: var(--amber);
+  font-size: 10px;
+  font-weight: 700;
+}
+.det-item-total {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent2);
+  flex-shrink: 0;
+}
+
+/* ── Aba 2: Cartão de status pagamento ──────────────────────── */
+.pag-status-card {
+  margin: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.psc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.psc-row:last-child { border-bottom: none; }
+.psc-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.psc-val {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.psc-pago .psc-val,
+.psc-row .psc-val.psc-pago { color: var(--green); }
+.psc-falta .psc-label,
+.psc-falta .psc-val { color: var(--red); }
+.psc-falta { background: rgba(239,68,68,.06); }
+.psc-troco .psc-label,
+.psc-troco .psc-val { color: var(--green); }
+.psc-troco { background: rgba(16,185,129,.06); }
+.psc-ok {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(16,185,129,.08);
+  border-top: 1px solid rgba(16,185,129,.15);
+}
+
+/* Light mode — novos elementos */
+[data-theme="light"] .det-total-hero { background: linear-gradient(135deg, rgba(67,56,202,.1), rgba(67,56,202,.04)); }
+[data-theme="light"] .det-hero-value { color: #4338ca; }
+[data-theme="light"] .det-hero-disc  { color: #4b5563; }
+[data-theme="light"] .det-item-nome  { color: #0f172a; }
+[data-theme="light"] .det-item-sub   { color: #6b7280; }
+[data-theme="light"] .det-item-total { color: #4338ca; }
+[data-theme="light"] .det-items-list { scrollbar-color: rgba(0,0,0,.1) transparent; }
+[data-theme="light"] .pag-status-card { background: #fff; border-color: rgba(0,0,0,.12); }
+[data-theme="light"] .psc-row        { border-bottom-color: rgba(0,0,0,.08); }
+[data-theme="light"] .psc-label      { color: #374151; }
+[data-theme="light"] .psc-val        { color: #0f172a; }
+
+/* Mobile — ajustes das novas abas */
+@media (max-width: 900px) {
+  .det-total-hero  { padding: 12px 14px 8px; }
+  .det-hero-value  { font-size: 26px; }
+  .det-items-list  { max-height: 130px; }
+  .pag-status-card { margin: 8px 12px; }
+}
 </style>
 
 <style>
