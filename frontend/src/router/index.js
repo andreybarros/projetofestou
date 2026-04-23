@@ -39,6 +39,7 @@ const Parametros      = () => import('../views/Parametros.vue');
 const RelatorioCaixa      = () => import('../views/RelatorioCaixa.vue');
 const ConsolidacaoVendas  = () => import('../views/ConsolidacaoVendas.vue');
 const RelatorioVendas     = () => import('../views/RelatorioVendas.vue');
+const ImportarProdutos    = () => import('../views/ImportarProdutos.vue');
 
 const routes = [
   { path: '/',                  name: 'Home',             component: Home,            meta: { requiresAuth: true } },
@@ -47,6 +48,7 @@ const routes = [
   { path: '/produtos',              name: 'Produtos',         component: Produtos,        meta: { requiresAuth: true } },
   { path: '/produtos/novo',         name: 'NovoProduto',      component: FormProduto,     meta: { requiresAuth: true } },
   { path: '/produtos/:pk/editar',   name: 'EditarProduto',    component: FormProduto,     meta: { requiresAuth: true } },
+  { path: '/produtos/importar',     name: 'ImportarProdutos', component: ImportarProdutos, meta: { requiresAuth: true } },
   { path: '/categorias',            name: 'Categorias',       component: Categorias,      meta: { requiresAuth: true } },
   { path: '/categorias/novo',       name: 'NovaCategoria',    component: FormCategoria,   meta: { requiresAuth: true } },
   { path: '/categorias/:pk/editar', name: 'EditarCategoria',  component: FormCategoria,   meta: { requiresAuth: true } },
