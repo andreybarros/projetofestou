@@ -274,11 +274,14 @@ async function registrar(tipo) {
   tipoRegistrando.value = tipo;
 
   try {
+    const agora = new Date();
     const payload = {
       filial_pk:      sessao.filial?.pk || null,
       funcionario_pk: funcPk,
       matricula:      mat,
       tipo,
+      data:           agora.toLocaleDateString('en-CA'),
+      hora:           agora.toLocaleTimeString('pt-BR', { hour12: false }).substring(0, 8),
       lat:            geo.value.lat,
       lng:            geo.value.lng,
     };

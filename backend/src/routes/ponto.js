@@ -31,8 +31,8 @@ router.post('/batida', async (req, res) => {
     }
 
     const agora = new Date();
-    const dataAtual = agora.toLocaleDateString('en-CA');
-    const horaAtual = agora.toLocaleTimeString('pt-BR', { hour12: false });
+    const dataAtual = req.body.data || agora.toLocaleDateString('en-CA', { timeZone: 'America/Manaus' });
+    const horaAtual = req.body.hora || agora.toLocaleTimeString('pt-BR', { hour12: false, timeZone: 'America/Manaus' });
 
     const payload = {
       filial_pk: filial_pk || null,
@@ -59,7 +59,7 @@ router.post('/batida', async (req, res) => {
 router.get('/historico-dia/:matricula', async (req, res) => {
   try {
     const { matricula } = req.params;
-    const hoje = new Date().toLocaleDateString('en-CA');
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Manaus' });
     
     const { data, error } = await supabase
       .from('registro_ponto')
