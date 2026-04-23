@@ -190,28 +190,6 @@
         <!-- ── ABA 1: Detalhes da Venda ─────────────────────── -->
         <div v-show="cartTab === 1" class="tab-panel">
 
-          <!-- Resumo visual para o cliente -->
-          <div class="det-total-hero">
-            <div class="det-hero-top">
-              <span class="det-hero-label">Total da Venda</span>
-              <span class="det-hero-value">{{ fmt(vendaStore.total) }}</span>
-            </div>
-            <div v-if="parseFloat(vendaStore.desconto) > 0" class="det-hero-disc">
-              Subtotal {{ fmt(vendaStore.subtotal) }} · Desconto − {{ fmt(vendaStore.desconto) }}
-            </div>
-          </div>
-
-          <!-- Itens (modo leitura) -->
-          <div class="det-items-list">
-            <div v-for="it in vendaStore.itens" :key="it.produto_pk" class="det-item-row">
-              <div class="det-item-left">
-                <span class="det-item-nome">{{ it.nome }}</span>
-                <span class="det-item-sub">{{ it.qtd }} × {{ fmt(it.preco_unitario) }}<span v-if="it.desconto_pct > 0" class="det-item-desc"> −{{ it.desconto_pct % 1 === 0 ? it.desconto_pct : it.desconto_pct.toFixed(1) }}%</span></span>
-              </div>
-              <span class="det-item-total">{{ fmt(it.preco_total) }}</span>
-            </div>
-          </div>
-
           <div class="pag-scroll">
             <!-- Cliente -->
             <div class="cart-section cliente-section">
@@ -1766,7 +1744,7 @@ async function emitirNFCe() {
 .total-hero-value {
   display: block;
   font-family: var(--mono);
-  font-size: 28px;
+  font-size: 38px;
   font-weight: 700;
   color: var(--accent2);
   line-height: 1;
@@ -2435,7 +2413,7 @@ async function emitirNFCe() {
   .btn-recibo, .btn-contrato, .btn-nfce { padding: 7px; font-size: 12px; height: 36px; }
 
   .total-hero { padding: 8px 14px 4px; }
-  .total-hero-value { font-size: 22px; }
+  .total-hero-value { font-size: 30px; }
   .total-hero-label { font-size: 9px; margin-bottom: 0; }
 
   .cart-back-mobile {
