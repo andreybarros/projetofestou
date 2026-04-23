@@ -685,6 +685,8 @@ INSERT INTO parametros (filial_pk, chave, valor) VALUES
   -- Ponto Eletrônico
   (null, 'ponto_exigir_gps',                     'true'),
   (null, 'ponto_tolerancia_minutos',             '15'),
+  (null, 'ponto_adicional_hora_extra',           '60'),
+  (null, 'ponto_adicional_hora_domingo',         '100'),
   (null, 'ponto_fechamento_exige_espelho',        'true'),
   -- Fiscal / NFC-e
   (null, 'nfce_ativa',                           'false'),

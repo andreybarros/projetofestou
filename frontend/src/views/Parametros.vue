@@ -192,6 +192,8 @@ const grupos = {
   ponto: [
     { chave: 'ponto_exigir_gps',               tipo: 'boolean', label: 'Exigir localização GPS',              desc: 'Bloqueia a batida de ponto se o GPS do dispositivo não estiver disponível.' },
     { chave: 'ponto_tolerancia_minutos',        tipo: 'number',  label: 'Tolerância de ponto (minutos)',       desc: 'Minutos de tolerância na entrada e saída sem gerar banco de horas — CLT Art. 58 §1º.', min: 0, max: 60 },
+    { chave: 'ponto_adicional_hora_extra',      tipo: 'number',  label: 'Adicional hora extra — dias úteis (%)', desc: 'Percentual acrescido sobre a hora normal em horas extras de segunda a sábado. Padrão CLT: 50%.', min: 0, max: 200 },
+    { chave: 'ponto_adicional_hora_domingo',    tipo: 'number',  label: 'Adicional hora extra — domingo/feriado (%)', desc: 'Percentual acrescido sobre a hora normal em domingos e feriados. Padrão CLT: 100%.', min: 0, max: 200 },
     { chave: 'ponto_fechamento_exige_espelho',  tipo: 'boolean', label: 'Fechar folha exige espelho aprovado', desc: 'Impede salvar o fechamento de ponto sem que o espelho esteja como "Aprovado".' },
   ],
   fiscal: [
@@ -214,6 +216,8 @@ const vals = reactive({
   crediario_exige_cliente:              'true',
   ponto_exigir_gps:                     'true',
   ponto_tolerancia_minutos:             '15',
+  ponto_adicional_hora_extra:           '60',
+  ponto_adicional_hora_domingo:         '100',
   ponto_fechamento_exige_espelho:        'true',
   nfce_ativa:                           'false',
   nfce_ambiente:                        '2',

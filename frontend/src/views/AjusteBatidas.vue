@@ -105,19 +105,19 @@
     <Teleport to="body">
       <div v-if="confirmarExclusao" @click.self="confirmarExclusao = null"
         style="position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:var(--bg2,#1e1e2e);border:1px solid rgba(255,255,255,.1);border-radius:16px;width:100%;max-width:420px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.5);">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:420px;padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.5);">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
             <span class="material-symbols-outlined" style="font-size:32px;color:#f87171;">delete_forever</span>
-            <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text,#fff);">Excluir Batida</h3>
+            <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text);">Excluir Batida</h3>
           </div>
-          <p style="margin:0 0 20px;font-size:14px;color:var(--text2,rgba(255,255,255,.6));line-height:1.6;">
-            Deseja excluir a batida de <strong style="color:var(--text,#fff);">{{ confirmarExclusao.funcionarios?.nome || '—' }}</strong>
-            às <strong style="color:var(--text,#fff);">{{ confirmarExclusao.hora.substring(0,5) }}</strong>
-            do dia <strong style="color:var(--text,#fff);">{{ fmtData(confirmarExclusao.data) }}</strong>?
+          <p style="margin:0 0 20px;font-size:14px;color:var(--text2);line-height:1.6;">
+            Deseja excluir a batida de <strong style="color:var(--text);">{{ confirmarExclusao.funcionarios?.nome || '—' }}</strong>
+            às <strong style="color:var(--text);">{{ confirmarExclusao.hora.substring(0,5) }}</strong>
+            do dia <strong style="color:var(--text);">{{ fmtData(confirmarExclusao.data) }}</strong>?
             <br/><span style="color:#f87171;font-size:12px;">Esta ação não pode ser desfeita.</span>
           </p>
           <div style="display:flex;justify-content:flex-end;gap:10px;">
-            <button @click="confirmarExclusao = null" style="padding:9px 20px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--text2,rgba(255,255,255,.7));font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+            <button @click="confirmarExclusao = null" style="padding:9px 20px;border-radius:9px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
             <button @click="confirmarRemover" :disabled="removendo" style="padding:9px 20px;border-radius:9px;background:#dc2626;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
               <span v-if="removendo" style="width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin-ab .7s linear infinite;display:inline-block;"></span>
               Excluir
@@ -134,30 +134,30 @@
         @click.self="modalMapa = false"
         style="position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;"
       >
-        <div style="background:#1e1e2e;border:1px solid rgba(255,255,255,.1);border-radius:18px;width:100%;max-width:640px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;width:100%;max-width:640px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);">
           <!-- Cabeçalho -->
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);">
             <div>
-              <h2 style="margin:0;font-size:1rem;font-weight:700;color:#fff;">Localização da Batida</h2>
-              <p v-if="batidaMapa" style="margin:3px 0 0;font-size:.8rem;color:rgba(255,255,255,.5);">
+              <h2 style="margin:0;font-size:1rem;font-weight:700;color:var(--text);">Localização da Batida</h2>
+              <p v-if="batidaMapa" style="margin:3px 0 0;font-size:.8rem;color:var(--text2);">
                 {{ batidaMapa.funcionarios?.nome }} · {{ fmtData(batidaMapa.data) }} às {{ batidaMapa.hora.substring(0,5) }}
               </p>
             </div>
-            <button @click="modalMapa = false" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer;width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;">×</button>
+            <button @click="modalMapa = false" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:20px;cursor:pointer;width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;">×</button>
           </div>
 
           <!-- Área do mapa -->
           <div style="position:relative;">
-            <div v-if="mapaCarregando" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#12121f;z-index:2;">
+            <div v-if="mapaCarregando" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg);z-index:2;">
               <div style="width:36px;height:36px;border:3px solid rgba(99,102,241,.2);border-top-color:#6366f1;border-radius:50%;animation:spin-ab .7s linear infinite;"></div>
-              <span style="color:rgba(255,255,255,.5);font-size:.85rem;">Carregando mapa...</span>
+              <span style="color:var(--text2);font-size:.85rem;">Carregando mapa...</span>
             </div>
             <div id="mapa-ab-container" style="height:380px;width:100%;"></div>
           </div>
 
           <!-- Rodapé -->
-          <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid rgba(255,255,255,.08);">
-            <button @click="modalMapa = false" style="padding:9px 22px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.8);font-size:.875rem;font-weight:600;cursor:pointer;">Fechar</button>
+          <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--border);">
+            <button @click="modalMapa = false" style="padding:9px 22px;border-radius:9px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:.875rem;font-weight:600;cursor:pointer;">Fechar</button>
           </div>
         </div>
       </div>
@@ -174,7 +174,9 @@
 <script setup>
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { supabase } from '../composables/useSupabase';
+import { useSessaoStore } from '../stores/sessao';
 
+const sessao  = useSessaoStore();
 const hojeStr = new Date().toISOString().split('T')[0];
 
 const loading = ref(true);
@@ -288,7 +290,7 @@ async function abrirMapa(b) {
 async function carregar() {
   loading.value = true;
   try {
-    const query = supabase
+    let query = supabase
       .from('registro_ponto')
       .select('*, funcionarios(nome)')
       .gte('data', filtro.value.inicio)
@@ -296,9 +298,8 @@ async function carregar() {
       .order('data', { ascending: false })
       .order('hora', { ascending: false });
 
-    if (filtro.value.funcionario_pk) {
-      query.eq('funcionario_pk', filtro.value.funcionario_pk);
-    }
+    if (sessao.filial?.pk) query = query.eq('filial_pk', sessao.filial.pk);
+    if (filtro.value.funcionario_pk) query = query.eq('funcionario_pk', filtro.value.funcionario_pk);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -311,7 +312,9 @@ async function carregar() {
 }
 
 async function carregarFuncionarios() {
-  const { data } = await supabase.from('funcionarios').select('pk, nome').eq('ativo', true).order('nome');
+  let q = supabase.from('funcionarios').select('pk, nome').eq('ativo', true).order('nome');
+  if (sessao.filial?.pk) q = q.or(`filial_pk.eq.${sessao.filial.pk},filial_pk.is.null`);
+  const { data } = await q;
   funcionarios.value = data || [];
 }
 
@@ -379,7 +382,7 @@ onMounted(() => {
 .ab-table th { text-align: left; padding: 14px 20px; background: var(--bg3); font-size: 0.7rem; text-transform: uppercase; color: var(--text2); letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
 .ab-table td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
 .ab-table tr:last-child td { border-bottom: none; }
-.ab-table tr:hover { background: rgba(255,255,255,0.02); }
+.ab-table tr:hover td { background: var(--bg3); }
 
 .ab-func-cell { display: flex; flex-direction: column; }
 .ab-func-cell strong { font-size: 0.95rem; }

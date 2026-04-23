@@ -114,9 +114,26 @@
           <div class="topbar-right">
             <!-- Badge de filial + toggle tema -->
             <div class="filial-area" v-if="sessao.filial">
-              <div class="filial-badge">
-                <span class="sm-hide">{{ sessao.filial.codigo }} · {{ sessao.filial.nome }}</span>
-                <span class="lg-hide">{{ sessao.filial.codigo }}</span>
+              <div class="filial-switch-wrap" ref="filialMenuRef">
+                <button class="filial-badge filial-badge-btn" @click="filialMenuAberto = !filialMenuAberto" :title="'Trocar filial'">
+                  <span class="sm-hide">{{ sessao.filial.codigo }} · {{ sessao.filial.nome }}</span>
+                  <span class="lg-hide">{{ sessao.filial.codigo }}</span>
+                  <span class="material-symbols-outlined" style="font-size:14px;opacity:.6;margin-left:4px">unfold_more</span>
+                </button>
+                <Transition name="dropdown">
+                  <div v-if="filialMenuAberto" class="filial-dropdown">
+                    <div class="filial-drop-title">Trocar Filial</div>
+                    <button
+                      v-for="f in todasFiliais"
+                      :key="f.pk"
+                      :class="['filial-drop-item', { active: f.pk === sessao.filial?.pk }]"
+                      @click="trocarFilial(f)"
+                    >
+                      <span class="material-symbols-outlined" style="font-size:16px">{{ f.pk === sessao.filial?.pk ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                      [{{ f.codigo }}] {{ f.nome }}
+                    </button>
+                  </div>
+                </Transition>
               </div>
               <button class="tema-toggle" @click="toggleTema" :title="tema === 'dark' ? 'Mudar para Light' : 'Mudar para Dark'">
                 <span class="material-symbols-outlined">{{ tema === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
@@ -175,6 +192,7 @@ import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSessaoStore } from './stores/sessao';
 import { useParametrosStore } from './stores/parametros';
+import apiClient from './services/api';
 import LoginView from './views/Login.vue';
 
 const sessao      = useSessaoStore();
@@ -209,13 +227,41 @@ function toggleCollapse()  {
 // Menu do usuário (dropdown)
 const userMenuAberto = ref(false);
 const userMenuRef    = ref(null);
-function fecharUserMenu(e) {
+
+// Dropdown de filial
+const filialMenuAberto = ref(false);
+const filialMenuRef    = ref(null);
+const todasFiliais     = ref([]);
+
+async function carregarFiliais() {
+  try {
+    const { data } = await apiClient.get('/api/auth/filiais');
+    todasFiliais.value = data || [];
+  } catch { /* silencioso */ }
+}
+
+function trocarFilial(f) {
+  if (f.pk === sessao.filial?.pk) { filialMenuAberto.value = false; return; }
+  sessao.trocarFilial(f);
+  parametros.carregar(f.pk);
+  filialMenuAberto.value = false;
+}
+
+function fecharMenus(e) {
   if (userMenuRef.value && !userMenuRef.value.contains(e.target)) {
     userMenuAberto.value = false;
   }
+  if (filialMenuRef.value && !filialMenuRef.value.contains(e.target)) {
+    filialMenuAberto.value = false;
+  }
 }
-onMounted(()   => document.addEventListener('click', fecharUserMenu, true));
-onUnmounted(() => document.removeEventListener('click', fecharUserMenu, true));
+onMounted(async () => {
+  document.addEventListener('click', fecharMenus, true);
+  if (sessao.isAutenticado) await carregarFiliais();
+});
+onUnmounted(() => document.removeEventListener('click', fecharMenus, true));
+
+watch(() => sessao.isAutenticado, (ok) => { if (ok) carregarFiliais(); });
 
 // Permissões
 function pode(modulo) {
@@ -386,6 +432,38 @@ body {
 [data-theme="light"] .content-area { background: var(--bg); }
 [data-theme="light"] .toast.success { background: #065f46; }
 [data-theme="light"] .toast.error   { background: #991b1b; }
+
+/* Filial switch */
+.filial-switch-wrap { position: relative; }
+.filial-badge-btn {
+  display: flex; align-items: center;
+  padding: 4px 12px; background: rgba(255,255,255,.06); border: 1px solid var(--border);
+  border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--text2);
+  cursor: pointer; transition: all .15s;
+}
+.filial-badge-btn:hover { background: rgba(255,255,255,.1); color: var(--text); border-color: var(--primary); }
+[data-theme="light"] .filial-badge-btn { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.12); }
+[data-theme="light"] .filial-badge-btn:hover { background: rgba(0,0,0,.1); color: var(--text); }
+
+.filial-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 220px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 6px; z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,.3);
+}
+.filial-drop-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text2); padding: 4px 10px 8px;
+}
+.filial-drop-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 10px; border-radius: 8px; background: none; border: none;
+  color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background .13s; text-align: left;
+}
+.filial-drop-item:hover { background: rgba(255,255,255,.07); }
+.filial-drop-item.active { color: var(--primary); font-weight: 700; }
+[data-theme="light"] .filial-drop-item:hover { background: rgba(0,0,0,.05); }
 .nav-icon { font-size: 20px; }
 
 /* ── Drawer footer ─────────────────────────────────────── */

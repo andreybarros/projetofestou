@@ -234,7 +234,7 @@
               <div class="extra-pay-grid">
                 <!-- Extras Normais -->
                 <div class="extra-pay-item">
-                  <span class="extra-pay-label">Normais (60%)</span>
+                  <span class="extra-pay-label">Normais ({{ parametros.getParam('ponto_adicional_hora_extra', 60) }}%)</span>
                   <span class="extra-pay-rate">{{ fmt(valorHoraNormal) }}/h</span>
                   <div class="fin-field-row">
                     <input v-model.number="pagarHorasNormal" type="number" min="0" :max="extraNormalH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
@@ -244,7 +244,7 @@
                 </div>
                 <!-- Extras Domingo -->
                 <div class="extra-pay-item extra-pay-dom">
-                  <span class="extra-pay-label">Domingo (100%)</span>
+                  <span class="extra-pay-label">Domingo ({{ parametros.getParam('ponto_adicional_hora_domingo', 100) }}%)</span>
                   <span class="extra-pay-rate">{{ fmt(valorHoraDomingo) }}/h</span>
                   <div class="fin-field-row">
                     <input v-model.number="pagarHorasDomingo" type="number" min="0" :max="extraDomRawH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
@@ -308,8 +308,8 @@
             <button
               v-if="!bloqueado"
               class="btn-salvar"
-              :disabled="salvando || espelhoStatus !== 'aprovado'"
-              :title="espelhoStatus !== 'aprovado' ? 'Aguardando aprovação do espelho' : ''"
+              :disabled="salvando || (parametros.getParam('ponto_fechamento_exige_espelho', true) && espelhoStatus !== 'aprovado')"
+              :title="parametros.getParam('ponto_fechamento_exige_espelho', true) && espelhoStatus !== 'aprovado' ? 'Aguardando aprovação do espelho' : ''"
               @click="salvar"
             >
               <span v-if="salvando" class="spin-xs"></span>
@@ -512,10 +512,12 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
+import { useParametrosStore } from '../stores/parametros';
 import apiClient from '../services/api';
 import { supabase } from '../composables/useSupabase';
 
-const sessao = useSessaoStore();
+const sessao     = useSessaoStore();
+const parametros = useParametrosStore();
 
 // ── Lista ──────────────────────────────────────────────────────────────────
 const lista          = ref([]);
@@ -708,9 +710,12 @@ function toast(msg, tipo = 'ok', dur = 3500) {
 }
 
 // ── Computed financeiro ────────────────────────────────────────────────────
+const multExtra   = computed(() => 1 + parametros.getParam('ponto_adicional_hora_extra',   60)  / 100);
+const multDomingo = computed(() => 1 + parametros.getParam('ponto_adicional_hora_domingo', 100) / 100);
+
 const extraNormalH  = computed(() => summaries.value.saldoMes >= 0 ? summaries.value.extraSecNormal / 3600 : 0);
 const extraDomRawH  = computed(() => summaries.value.extraSecDomingo / 3600);
-const extraDomValH  = computed(() => extraDomRawH.value * 2);
+const extraDomValH  = computed(() => extraDomRawH.value * multDomingo.value);
 const extraTotalH   = computed(() => extraNormalH.value + extraDomValH.value);
 const totalDescontos = computed(() => descontos.value.reduce((s, d) => s + d.valor, 0));
 
@@ -746,13 +751,13 @@ const valorHoraBase = computed(() => {
 const valorHoraNormal = computed(() => {
   const f = funcSelecionado.value;
   if (!f || f.diarista) return 0;
-  return parseFloat((valorHoraBase.value * 1.6).toFixed(2));
+  return parseFloat((valorHoraBase.value * multExtra.value).toFixed(2));
 });
 
 const valorHoraDomingo = computed(() => {
   const f = funcSelecionado.value;
   if (!f || f.diarista) return 0;
-  return parseFloat((valorHoraBase.value * 2.0).toFixed(2));
+  return parseFloat((valorHoraBase.value * multDomingo.value).toFixed(2));
 });
 
 const totalOT = computed(() => {
@@ -762,7 +767,7 @@ const totalOT = computed(() => {
 const totalLiquido = computed(() => salProp.value + totalOT.value - totalDescontos.value);
 
 const saldoFinal = computed(() => {
-  const totalDescontar = pagarHorasNormal.value + (pagarHorasDomingo.value * 2);
+  const totalDescontar = pagarHorasNormal.value + (pagarHorasDomingo.value * multDomingo.value);
   return (summaries.value.saldoAcum || 0) - totalDescontar;
 });
 
@@ -960,11 +965,10 @@ function processar(a1, m1, q1, dataIni, dataFim) {
       if (entPrev === null && saiPrev !== null) entPrev = saiPrev - cargaSec - intSec;
       if (saiPrev === null && entPrev !== null) saiPrev = entPrev + cargaSec + intSec;
 
-      // Tolerância 15 min entrada (CLT Art. 58 §1º): bateu antes → não gera extra antecipado
-      if (entPrev !== null && ent < entPrev && (entPrev - ent) <= 900) ent = entPrev;
-
-      // Tolerância 15 min saída: bateu depois dentro da janela → não gera extra de saída
-      if (saiPrev !== null && sai > saiPrev && (sai - saiPrev) <= 900) sai = saiPrev;
+      // Tolerância entrada/saída (CLT Art. 58 §1º) — configurável via parâmetro ponto_tolerancia_minutos
+      const tolerSec = parametros.getParam('ponto_tolerancia_minutos', 15) * 60;
+      if (entPrev !== null && ent < entPrev && (entPrev - ent) <= tolerSec) ent = entPrev;
+      if (saiPrev !== null && sai > saiPrev && (sai - saiPrev) <= tolerSec) sai = saiPrev;
 
       trabalhado = Math.max(0, sai - ent - intSec);
     }
@@ -1090,7 +1094,8 @@ async function enviarEspelho() {
 }
 
 async function salvar() {
-  if (espelhoStatus.value !== 'aprovado') {
+  const exigeEspelho = parametros.getParam('ponto_fechamento_exige_espelho', true);
+  if (exigeEspelho && espelhoStatus.value !== 'aprovado') {
     toast('Aguardando aprovação do espelho pelo funcionário.', 'err'); return;
   }
   if (!confirm('O período será bloqueado e o saldo final do banco de horas será carregado para o próximo período. Continuar?')) return;

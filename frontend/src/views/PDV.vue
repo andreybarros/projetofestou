@@ -340,12 +340,12 @@
 
           <!-- Seletor de Vendedor (obrigatório) -->
           <div class="cart-section vendedor-section">
-            <label class="section-label">Vendedor <span class="obrig">*</span></label>
+            <label class="section-label">Vendedor <span v-if="exigeVendedor" class="obrig">*</span></label>
             <select v-model="vendedorSel" class="cart-select vendedor-select">
               <option :value="null" disabled>— Selecione o vendedor —</option>
               <option v-for="v in vendedores" :key="v.pk" :value="v">{{ v.nome }}</option>
             </select>
-            <span v-if="!vendedorSel && vendaStore.itens.length" class="vendedor-aviso">Selecione um vendedor para finalizar</span>
+            <span v-if="exigeVendedor && !vendedorSel && vendaStore.itens.length" class="vendedor-aviso">Selecione um vendedor para finalizar</span>
           </div>
 
           <!-- Ações fixas no fundo -->
@@ -363,7 +363,7 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
               Imprimir Contrato
             </button>
-            <button v-if="vendaFinalizada" class="btn-nfce" :disabled="emitindo" @click="emitirNFCe">
+            <button v-if="vendaFinalizada && parametrosStore.getParam('nfce_ativa', false)" class="btn-nfce" :disabled="emitindo" @click="emitirNFCe">
               <span v-if="emitindo" class="spin-sm"></span>
               <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
               {{ emitindo ? 'Emitindo…' : 'Emitir NFC-e' }}
@@ -500,8 +500,10 @@ const filtrados = computed(() => {
   return l;
 });
 
-const bloqueiarSemCaixa      = computed(() => parametrosStore.getParam('pdv_bloquear_sem_caixa', true));
-const crediarioExigeCliente  = computed(() => parametrosStore.getParam('crediario_exige_cliente', true));
+const bloqueiarSemCaixa         = computed(() => parametrosStore.getParam('pdv_bloquear_sem_caixa', true));
+const crediarioExigeCliente     = computed(() => parametrosStore.getParam('crediario_exige_cliente', true));
+const exigeVendedor             = computed(() => parametrosStore.getParam('pdv_exigir_vendedor', false));
+const permitirEstoqueNegativo   = computed(() => parametrosStore.getParam('pdv_permitir_estoque_negativo', false));
 
 const temCrediario = computed(() =>
   vendaStore.pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario')
@@ -510,7 +512,7 @@ const temCrediario = computed(() =>
 const podeFinalizar = computed(() =>
   vendaStore.itens.length > 0 &&
   parseFloat(vendaStore.totalPago) >= parseFloat(vendaStore.total) - 0.009 &&
-  !!vendedorSel.value &&
+  (!exigeVendedor.value || !!vendedorSel.value) &&
   !vendaFinalizada.value &&
   (!bloqueiarSemCaixa.value || !!caixaStore.caixaAberto) &&
   (!temCrediario.value || !!dtVenc.value) &&
@@ -657,6 +659,13 @@ function onClienteBlur() {
 }
 
 function aplicarDescCat(cd) {
+  if (!parametrosStore.getParam('venda_permite_desconto_sem_aprovacao', true)) {
+    toast('Descontos desabilitados pelo administrador.', 'err'); return;
+  }
+  const descontoMax = parametrosStore.getParam('pdv_desconto_maximo', 0);
+  if (descontoMax > 0 && 10 > descontoMax) {
+    toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
+  }
   vendaStore.aplicarDescontoCategoria(cd.pk, 10);
 }
 
@@ -676,12 +685,22 @@ function toggleDescItem(i, tipo = 'pct') {
 }
 
 function aplicarDescontoItem(i) {
+  if (!parametrosStore.getParam('venda_permite_desconto_sem_aprovacao', true)) {
+    toast('Descontos desabilitados pelo administrador.', 'err'); return;
+  }
+  const descontoMax = parametrosStore.getParam('pdv_desconto_maximo', 0);
+  if (descontoMax > 0 && itemDescTipo.value === 'pct' && itemDescVal.value > descontoMax) {
+    toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
+  }
   vendaStore.atualizarDescontoItem(i, itemDescVal.value, itemDescTipo.value);
   itemDescAberto.value = null;
 }
 
 function add(p) {
   if (vendaFinalizada.value) return;
+  if (!permitirEstoqueNegativo.value && p.saldo !== null && p.saldo <= 0) {
+    toast('Produto sem estoque disponível.', 'err'); return;
+  }
   const qtd = qtdMultiplicador.value;
   vendaStore.adicionarItem({
     produto_pk:     p.pk,
@@ -904,8 +923,10 @@ async function finalizar() {
     vendaPk.value         = data.venda_pk;
     vendaNumero.value     = data.numero;
     vendaFinalizada.value = true;
-    if (tipoVenda.value === 'locacao') imprimirContrato();
-    else imprimirRecibo();
+    if (parametrosStore.getParam('venda_imprime_cupom', false)) {
+      if (tipoVenda.value === 'locacao') imprimirContrato();
+      else imprimirRecibo();
+    }
     toast(`Venda #${data.numero} finalizada com sucesso!`);
   } catch (e) {
     toast('Erro: ' + (e.response?.data?.erro || e.message), 'err', 6000);
