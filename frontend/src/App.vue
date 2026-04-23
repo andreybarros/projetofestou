@@ -79,13 +79,13 @@
           </div>
 
           <!-- Admin -->
-          <div v-if="op?.admin" class="nav-section">
+          <div v-if="podeAdmin" class="nav-section">
             <p class="section-title">Administração</p>
-            <RouterLink                            to="/parametros"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">tune</span><span class="nav-label">Parâmetros</span></RouterLink>
+            <RouterLink v-if="op?.admin"           to="/parametros"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">tune</span><span class="nav-label">Parâmetros</span></RouterLink>
             <RouterLink v-if="pode('despesas')"   to="/despesas"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Despesas</span></RouterLink>
             <RouterLink v-if="pode('financeiro')" to="/financeiro"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Financeiro</span></RouterLink>
-            <RouterLink                            to="/filiais"           class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">corporate_fare</span><span class="nav-label">Filiais</span></RouterLink>
-            <RouterLink                            to="/operadores"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a5b4fc">manage_accounts</span><span class="nav-label">Operadores</span></RouterLink>
+            <RouterLink v-if="op?.admin"           to="/filiais"           class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">corporate_fare</span><span class="nav-label">Filiais</span></RouterLink>
+            <RouterLink v-if="op?.admin"           to="/operadores"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a5b4fc">manage_accounts</span><span class="nav-label">Operadores</span></RouterLink>
           </div>
 
           <!-- Relatórios -->
@@ -335,7 +335,8 @@ function pode(modulo) {
   return !!mapa[modulo];
 }
 
-const podeVendas = computed(() => pode('pdv') || pode('receitas') || pode('historico'));
+const podeVendas = computed(() => pode('pdv') || pode('receitas') || pode('historico') || pode('despesas') || pode('financeiro'));
+const podeAdmin  = computed(() => op.value?.admin || pode('despesas') || pode('financeiro'));
 const podeRH     = computed(() => {
   const temRHnaFilial = sessao.temModulo('ponto') || sessao.temModulo('funcionarios');
   if (!temRHnaFilial) return false;

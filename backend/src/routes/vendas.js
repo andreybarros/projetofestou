@@ -293,7 +293,7 @@ router.get('/', async (req, res) => {
     
     let q = supabase
       .from('vendas')
-      .select('pk, numero, criado_em, cliente, operador, total, status, tipo_venda, nfce_chave, nfce_protocolo, nfce_dh_emissao, filial_pk', { count: 'exact' });
+      .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, nfce_chave, nfce_protocolo, nfce_dh_emissao, filial_pk', { count: 'exact' });
 
     if (filial_pk && filial_pk !== 'undefined' && filial_pk !== 'null' && filial_pk !== '') {
       q = q.eq('filial_pk', parseInt(filial_pk));

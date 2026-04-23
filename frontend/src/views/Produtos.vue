@@ -37,9 +37,9 @@
 
     <!-- Grade de Cards -->
     <div v-else-if="viewMode === 'grid'" class="cards-grid">
-      <div v-for="p in produtosFiltrados" :key="p.pk" class="prod-card" @click="$router.push(`/produtos/${p.pk}/editar`)">
+      <div v-for="p in produtosPaginados" :key="p.pk" class="prod-card" @click="$router.push(`/produtos/${p.pk}/editar`)">
         <div class="card-foto">
-          <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" class="card-img" />
+          <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" class="card-img" loading="lazy" width="190" height="165" />
           <div v-else class="card-avatar">{{ p.descricao?.charAt(0)?.toUpperCase() }}</div>
           <span :class="['saldo-badge', p.saldo <= 0 ? 'zero' : p.saldo < 5 ? 'baixo' : 'ok']">
             {{ p.saldo != null ? p.saldo : '∞' }}
@@ -56,8 +56,15 @@
       </div>
     </div>
 
+    <!-- Paginação Grade -->
+    <div v-if="viewMode === 'grid' && totalPaginas > 1 && !carregando && produtosFiltrados.length" class="paginacao">
+      <button class="pg-btn" :disabled="pagina === 1" @click="pagina--">‹</button>
+      <span class="pg-info">{{ pagina }} / {{ totalPaginas }}</span>
+      <button class="pg-btn" :disabled="pagina === totalPaginas" @click="pagina++">›</button>
+    </div>
+
     <!-- Tabela -->
-    <div v-else class="tabela-wrap">
+    <div v-if="viewMode === 'table' && !carregando && produtosFiltrados.length" class="tabela-wrap">
       <table class="tabela">
         <thead>
           <tr>
@@ -72,10 +79,10 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in produtosFiltrados" :key="p.pk">
+          <tr v-for="p in produtosPaginados" :key="p.pk">
             <td>
               <div class="table-thumb">
-                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" class="thumb-img" />
+                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" class="thumb-img" loading="lazy" width="42" height="42" />
                 <div v-else class="thumb-avatar">{{ p.descricao?.charAt(0)?.toUpperCase() }}</div>
               </div>
             </td>
@@ -93,13 +100,21 @@
           </tr>
         </tbody>
       </table>
-      <div class="resumo">{{ produtosFiltrados.length }} produto(s)</div>
+      <div class="resumo">
+        {{ (pagina - 1) * POR_PAGINA + 1 }}–{{ Math.min(pagina * POR_PAGINA, produtosFiltrados.length) }} de {{ produtosFiltrados.length }} produto(s)
+        <span v-if="totalPaginas > 1" class="resumo-paginas">
+          &nbsp;·&nbsp;
+          <button class="pg-btn" :disabled="pagina === 1" @click="pagina--">‹</button>
+          {{ pagina }} / {{ totalPaginas }}
+          <button class="pg-btn" :disabled="pagina === totalPaginas" @click="pagina++">›</button>
+        </span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useSessaoStore } from "../stores/sessao";
 import { supabase } from "../composables/useSupabase";
@@ -111,6 +126,8 @@ const categorias  = ref([]);
 const carregando  = ref(true);
 const busca       = ref("");
 const viewMode    = ref("grid");
+const pagina      = ref(1);
+const POR_PAGINA  = 48;
 
 const produtosFiltrados = computed(() => {
   const q = busca.value.trim().toLowerCase();
@@ -124,6 +141,14 @@ const produtosFiltrados = computed(() => {
     return palavras.every(w => desc.includes(w));
   });
 });
+
+const totalPaginas    = computed(() => Math.max(1, Math.ceil(produtosFiltrados.value.length / POR_PAGINA)));
+const produtosPaginados = computed(() => {
+  const ini = (pagina.value - 1) * POR_PAGINA;
+  return produtosFiltrados.value.slice(ini, ini + POR_PAGINA);
+});
+
+watch(busca, () => { pagina.value = 1; });
 
 onMounted(async () => { await carregarCategorias(); await carregar(); });
 
@@ -239,6 +264,14 @@ function fmt(v) {
 .vazio   { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text2); padding: 4rem; }
 .spin { width: 26px; height: 26px; border: 3px solid rgba(99,102,241,.2); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Paginação ────────────────────────────── */
+.paginacao { display: flex; align-items: center; justify-content: center; gap: .5rem; }
+.pg-btn { background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 1rem; line-height: 1; transition: background .15s; }
+.pg-btn:hover:not(:disabled) { background: var(--bg3); }
+.pg-btn:disabled { opacity: .35; cursor: default; }
+.pg-info { font-size: .85rem; color: var(--text2); min-width: 60px; text-align: center; }
+.resumo-paginas { display: inline-flex; align-items: center; gap: .35rem; }
 
 @media (max-width: 600px) {
   .busca-input { width: 100%; }

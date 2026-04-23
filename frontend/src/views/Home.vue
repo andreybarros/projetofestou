@@ -62,14 +62,6 @@
           <div class="sc-icon" style="background:rgba(234,179,8,.12);color:#FBBF24"><span class="material-symbols-outlined">local_atm</span></div>
           <div><div class="sc-name">Fech. de Caixa</div><div class="sc-desc">Fechamento diário</div></div>
         </RouterLink>
-        <RouterLink v-if="pode('financeiro')" to="/financeiro" class="small-card">
-          <div class="sc-icon" style="background:rgba(163,230,53,.12);color:#a3e635"><span class="material-symbols-outlined">account_balance_wallet</span></div>
-          <div><div class="sc-name">Financeiro</div><div class="sc-desc">Contas e extratos</div></div>
-        </RouterLink>
-        <RouterLink v-if="pode('despesas')" to="/despesas" class="small-card">
-          <div class="sc-icon" style="background:rgba(239,68,68,.12);color:#F87171"><span class="material-symbols-outlined">trending_down</span></div>
-          <div><div class="sc-name">Despesas</div><div class="sc-desc">Contas a pagar</div></div>
-        </RouterLink>
       </div>
     </template>
 
@@ -136,14 +128,22 @@
     </template>
 
     <!-- Admin -->
-    <template v-if="op?.admin">
+    <template v-if="podeAdmin">
       <div class="section-label">Administração</div>
       <div class="small-grid">
-        <RouterLink to="/filiais" class="small-card">
+        <RouterLink v-if="pode('financeiro')" to="/financeiro" class="small-card">
+          <div class="sc-icon" style="background:rgba(163,230,53,.12);color:#a3e635"><span class="material-symbols-outlined">account_balance_wallet</span></div>
+          <div><div class="sc-name">Financeiro</div><div class="sc-desc">Contas e extratos</div></div>
+        </RouterLink>
+        <RouterLink v-if="pode('despesas')" to="/despesas" class="small-card">
+          <div class="sc-icon" style="background:rgba(239,68,68,.12);color:#F87171"><span class="material-symbols-outlined">trending_down</span></div>
+          <div><div class="sc-name">Despesas</div><div class="sc-desc">Contas a pagar</div></div>
+        </RouterLink>
+        <RouterLink v-if="op?.admin" to="/filiais" class="small-card">
           <div class="sc-icon" style="background:rgba(239,68,68,.12);color:#FCA5A5"><span class="material-symbols-outlined">corporate_fare</span></div>
           <div><div class="sc-name">Filiais</div><div class="sc-desc">Unidades da empresa</div></div>
         </RouterLink>
-        <RouterLink to="/operadores" class="small-card">
+        <RouterLink v-if="op?.admin" to="/operadores" class="small-card">
           <div class="sc-icon" style="background:rgba(107,114,128,.12);color:#9CA3AF"><span class="material-symbols-outlined">manage_accounts</span></div>
           <div><div class="sc-name">Operadores</div><div class="sc-desc">Permissões e acesso</div></div>
         </RouterLink>
@@ -197,6 +197,7 @@ function pode(modulo) {
 }
 
 const podeVendas  = computed(() => pode('pdv') || pode('receitas') || pode('historico') || pode('despesas') || pode('financeiro'));
+const podeAdmin   = computed(() => op.value?.admin || pode('despesas') || pode('financeiro'));
 const podeEstoque = computed(() => pode('produtos') || pode('armazens') || pode('separacao') || pode('agenda') || pode('categorias') || pode('clientes'));
 const podeRH      = computed(() => {
   const temRHnaFilial = sessao.temModulo('ponto') || sessao.temModulo('funcionarios');

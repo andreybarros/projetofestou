@@ -12,11 +12,16 @@
 
         <!-- Busca + categorias -->
         <div class="catalog-controls">
-          <div class="search-wrap">
-            <svg class="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-            <input v-model="busca" type="text" placeholder="Buscar… ou 4* para adicionar 4 un." class="search-input" @input="filtrarProdutos" @keydown.esc="busca = ''" />
-            <span v-if="qtdMultiplicador > 1" class="qty-multiplier-badge">× {{ qtdMultiplicador }}</span>
-            <button v-if="busca" class="search-clear" @click="busca = ''">×</button>
+          <div class="search-row">
+            <div class="search-wrap">
+              <svg class="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+              <input v-model="busca" type="text" placeholder="Buscar… ou 4* para adicionar 4 un." class="search-input" @input="filtrarProdutos" @keydown.esc="busca = ''" />
+              <span v-if="qtdMultiplicador > 1" class="qty-multiplier-badge">× {{ qtdMultiplicador }}</span>
+              <button v-if="busca" class="search-clear" @click="busca = ''">×</button>
+            </div>
+            <button class="btn-scan" @click="abrirScanner" title="Ler código de barras">
+              <span class="material-symbols-outlined">barcode_scanner</span>
+            </button>
           </div>
 
           <div class="cat-scroll">
@@ -56,7 +61,7 @@
               @click="add(p)"
             >
               <div class="prod-img">
-                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" />
+                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" loading="lazy" width="90" height="90" />
                 <span v-else class="prod-img-icon">{{ (p.descricao||'?')[0].toUpperCase() }}</span>
               </div>
               <div class="prod-info">
@@ -128,7 +133,7 @@
                   <div class="item-controls">
                     <button class="qty-btn" @click="vendaStore.atualizarQuantidade(i, it.qtd - 1)" :disabled="it.qtd <= 1">−</button>
                     <span class="qty-val">{{ it.qtd }}</span>
-                    <button class="qty-btn" @click="vendaStore.atualizarQuantidade(i, it.qtd + 1)">+</button>
+                    <button class="qty-btn" @click="incrementarItem(i, it)" :disabled="!permitirEstoqueNegativo && it.saldo !== null && it.qtd >= it.saldo">+</button>
                   </div>
                   
                   <div class="item-desc-inline">
@@ -401,6 +406,34 @@
     </Transition>
 
   </div>
+
+  <!-- Modal Scanner de Código de Barras -->
+  <Teleport to="body">
+    <div v-if="scannerAberto" class="scanner-overlay">
+      <div class="scanner-box">
+        <div class="scanner-header">
+          <span class="material-symbols-outlined scanner-icon">barcode_scanner</span>
+          <span class="scanner-title">Aponte para o código de barras</span>
+          <button class="scanner-close" @click="fecharScanner">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="scanner-viewport">
+          <video id="pdv-scanner-video" class="scanner-video" playsinline muted></video>
+          <div class="scanner-frame">
+            <span class="sf-corner tl"></span>
+            <span class="sf-corner tr"></span>
+            <span class="sf-corner bl"></span>
+            <span class="sf-corner br"></span>
+          </div>
+          <div class="scanner-line"></div>
+        </div>
+
+        <p v-if="scannerStatus" class="scanner-status" :class="scannerStatusTipo">{{ scannerStatus }}</p>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -422,6 +455,10 @@ const abrirSidebarFn  = inject('abrirSidebar', () => {});
 
 // ── Estado ────────────────────────────────────────────────────
 const busca          = ref('');
+const scannerAberto     = ref(false);
+const scannerStatus     = ref('');
+const scannerStatusTipo = ref('');
+
 const catSel         = ref(null);
 const carregando     = ref(true);
 const caixaVerificado = ref(false);
@@ -619,6 +656,73 @@ function maskCpf() {
 
 function filtrarProdutos() {}
 
+// ── Scanner de Código de Barras ───────────────────────────────
+let zxingReader = null;
+
+async function abrirScanner() {
+  scannerAberto.value = true;
+  scannerStatus.value = '';
+  scannerStatusTipo.value = '';
+
+  // aguarda dois ticks para garantir que o Teleport montou o <video>
+  await nextTick();
+  await nextTick();
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    scannerStatus.value = 'Câmera requer conexão segura (HTTPS). Acesse via https://';
+    scannerStatusTipo.value = 'err';
+    return;
+  }
+
+  const videoEl = document.getElementById('pdv-scanner-video');
+  if (!videoEl) {
+    scannerStatus.value = 'Erro interno: elemento de vídeo não encontrado.';
+    scannerStatusTipo.value = 'err';
+    return;
+  }
+
+  try {
+    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+    zxingReader = new BrowserMultiFormatReader();
+
+    // undefined → biblioteca usa facingMode:'environment' automaticamente
+    await zxingReader.decodeFromVideoDevice(undefined, videoEl, (result, error) => {
+      if (!result) return; // NotFoundException por frame sem código — ignorar
+      const codigo = result.getText();
+      fecharScanner();
+      const produto = todos.value.find(p =>
+        p.codigo_barras === codigo || p.codigo === codigo
+      );
+      if (produto) {
+        add(produto);
+        toast(`${produto.descricao} adicionado.`, 'ok');
+      } else {
+        busca.value = codigo;
+        filtrarProdutos();
+        toast(`Código lido: ${codigo}`, 'ok');
+      }
+    });
+  } catch (e) {
+    console.error('[Scanner]', e);
+    const msg = e?.message || '';
+    if (/permission|denied|notallowed/i.test(msg)) {
+      scannerStatus.value = 'Permissão de câmera negada. Libere nas configurações do navegador.';
+    } else if (/notfound|devicenotfound/i.test(msg)) {
+      scannerStatus.value = 'Nenhuma câmera encontrada neste dispositivo.';
+    } else {
+      scannerStatus.value = msg || 'Não foi possível iniciar o scanner.';
+    }
+    scannerStatusTipo.value = 'err';
+  }
+}
+
+function fecharScanner() {
+  try { zxingReader?.reset(); } catch {}
+  zxingReader = null;
+  scannerAberto.value = false;
+  scannerStatus.value = '';
+}
+
 function buscarClientes() {
   showClienteDrop.value = true;
   clearTimeout(_clienteTimer);
@@ -698,10 +802,17 @@ function aplicarDescontoItem(i) {
 
 function add(p) {
   if (vendaFinalizada.value) return;
-  if (!permitirEstoqueNegativo.value && p.saldo !== null && p.saldo <= 0) {
-    toast('Produto sem estoque disponível.', 'err'); return;
-  }
   const qtd = qtdMultiplicador.value;
+  if (!permitirEstoqueNegativo.value && p.saldo !== null) {
+    const noCarrinho = vendaStore.itens.find(i => i.produto_pk === p.pk);
+    const qtdAtual = noCarrinho ? parseFloat(noCarrinho.qtd || 0) : 0;
+    if (qtdAtual + qtd > p.saldo) {
+      const disponivel = p.saldo - qtdAtual;
+      if (disponivel <= 0) toast('Produto sem estoque disponível.', 'err');
+      else toast(`Estoque insuficiente. Disponível: ${disponivel}`, 'err');
+      return;
+    }
+  }
   vendaStore.adicionarItem({
     produto_pk:     p.pk,
     nome:           p.descricao,
@@ -711,6 +822,7 @@ function add(p) {
     qtd,
     preco_total:    parseFloat(p.valor_venda || 0) * qtd,
     desconto_val:   0,
+    saldo:          p.saldo,
   });
   // limpa o multiplicador após adicionar
   if (qtdMultiplicador.value > 1) busca.value = '';
@@ -718,6 +830,13 @@ function add(p) {
     if (cartItemsEl.value)
       cartItemsEl.value.scrollTop = cartItemsEl.value.scrollHeight;
   });
+}
+
+function incrementarItem(idx, it) {
+  if (!permitirEstoqueNegativo.value && it.saldo !== null && it.qtd >= it.saldo) {
+    toast(`Estoque insuficiente. Máximo: ${it.saldo}`, 'err'); return;
+  }
+  vendaStore.atualizarQuantidade(idx, it.qtd + 1);
 }
 
 function addPag() {
@@ -743,6 +862,7 @@ function limpar() {
 }
 
 onBeforeRouteLeave(() => {
+  fecharScanner();
   if (vendaFinalizada.value) {
     vendaStore.resetar();
     vendaFinalizada.value = false;
@@ -943,11 +1063,11 @@ function imprimirRecibo() {
   const fmtDt = (d) => d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   const linhaItens = itens.map(it => {
-    const desc = it.desconto_pct > 0 ? ` <span style="color:#d97706">(-${it.desconto_pct}%)</span>` : '';
+    const desc = it.desconto_pct > 0 ? ` (-${it.desconto_pct}%)` : '';
     return `
       <tr>
-        <td>${it.nome}${desc}<br/><span style="color:#888;font-size:10px">${it.qtd} × ${fmt(it.preco_unitario)}</span></td>
-        <td style="text-align:right;white-space:nowrap">${fmt(it.preco_total)}</td>
+        <td>${it.nome}${desc}<br/><span style="font-size:13px;font-weight:bold">${it.qtd} × ${fmt(it.preco_unitario)}</span></td>
+        <td style="text-align:right;white-space:nowrap;font-weight:bold">${fmt(it.preco_total)}</td>
       </tr>`;
   }).join('');
 
@@ -962,20 +1082,20 @@ function imprimirRecibo() {
 <title>Recibo #${vendaNumero.value}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; color: #111; width: 320px; margin: 0 auto; padding: 20px 10px; }
+  body { font-family: 'Courier New', monospace; font-size: 13px; color: #000; width: 320px; margin: 0 auto; padding: 20px 10px; }
   .center { text-align: center; }
   .bold   { font-weight: bold; }
-  .sep    { border: none; border-top: 1px dashed #aaa; margin: 8px 0; }
-  h1 { font-size: 14px; text-align: center; font-family: Arial, sans-serif; letter-spacing: 1px; }
-  h2 { font-size: 10px; text-align: center; font-weight: normal; color: #555; margin-bottom: 2px; }
-  .dnf { font-size: 10px; text-align: center; border: 1px solid #333; padding: 3px 8px; display: inline-block; margin: 6px auto 2px; letter-spacing: .5px; }
+  .sep    { border: none; border-top: 1px dashed #555; margin: 8px 0; }
+  h1 { font-size: 16px; text-align: center; font-family: Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
+  h2 { font-size: 11px; text-align: center; font-weight: bold; color: #000; margin-bottom: 2px; }
+  .dnf { font-size: 11px; text-align: center; border: 1px solid #000; padding: 3px 8px; display: inline-block; margin: 6px auto 2px; letter-spacing: .5px; font-weight: bold; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 3px 2px; vertical-align: top; font-size: 12px; }
-  .total-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; }
-  .sub-line   { display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-top: 2px; }
-  .disc-line  { display: flex; justify-content: space-between; font-size: 11px; color: #d97706; margin-top: 2px; }
-  .troco-line { display: flex; justify-content: space-between; font-size: 11px; color: #059669; margin-top: 2px; }
-  .rodape { font-size: 10px; text-align: center; color: #777; margin-top: 10px; line-height: 1.7; }
+  td { padding: 4px 2px; vertical-align: top; font-size: 13px; font-weight: bold; }
+  .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; }
+  .sub-line   { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
+  .disc-line  { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
+  .troco-line { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
+  .rodape { font-size: 11px; text-align: center; color: #000; font-weight: bold; margin-top: 10px; line-height: 1.7; }
   @media print { body { padding: 4px; } }
 </style>
 </head>
@@ -989,7 +1109,6 @@ function imprimirRecibo() {
 <div class="sub-line"><span>Nº da venda</span><span>#${vendaNumero.value}</span></div>
 <div class="sub-line"><span>Data/hora</span><span>${fmtDt(agora)}</span></div>
 ${cli.nome ? `<div class="sub-line"><span>Cliente</span><span>${cli.nome}</span></div>` : ''}
-${cpf.value ? `<div class="sub-line"><span>CPF</span><span>${cpf.value}</span></div>` : ''}
 <div class="sub-line"><span>Vendedor</span><span>${vendedorSel.value?.nome || '—'}</span></div>
 <hr class="sep"/>
 <table>${linhaItens}</table>
@@ -1275,11 +1394,33 @@ async function emitirNFCe() {
   gap: 10px;
 }
 
+.search-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
 .search-wrap {
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1;
 }
+.btn-scan {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.btn-scan:hover { background: rgba(99,102,241,.12); color: var(--primary); border-color: rgba(99,102,241,.4); }
+.btn-scan .material-symbols-outlined { font-size: 20px; }
 .search-ico {
   position: absolute;
   left: 11px;
@@ -2293,6 +2434,73 @@ async function emitirNFCe() {
 .btn-go-caixa:hover { transform: translateY(-3px); }
 
 [data-theme="light"] .caixa-closed-overlay { background: rgba(232, 234, 242, 0.85); }
+
+/* ── Scanner ─────────────────────────────────── */
+.scanner-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.92);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.scanner-box {
+  width: 100%; max-width: 420px;
+  display: flex; flex-direction: column; gap: .75rem;
+}
+.scanner-header {
+  display: flex; align-items: center; gap: .5rem;
+  color: #fff;
+}
+.scanner-icon { font-size: 22px; color: #6366f1; }
+.scanner-title { flex: 1; font-size: .95rem; font-weight: 700; }
+.scanner-close {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.scanner-close:hover { background: rgba(255,255,255,.18); }
+.scanner-close .material-symbols-outlined { font-size: 18px; }
+
+.scanner-viewport {
+  position: relative;
+  width: 100%; aspect-ratio: 1;
+  border-radius: 16px; overflow: hidden;
+  background: #000;
+}
+.scanner-video {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+
+/* Cantos do viewfinder */
+.scanner-frame { position: absolute; inset: 0; }
+.sf-corner {
+  position: absolute; width: 28px; height: 28px;
+  border-color: #6366f1; border-style: solid;
+}
+.sf-corner.tl { top: 16px;    left: 16px;    border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.sf-corner.tr { top: 16px;    right: 16px;   border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.sf-corner.bl { bottom: 16px; left: 16px;    border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.sf-corner.br { bottom: 16px; right: 16px;   border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+/* Linha animada */
+.scanner-line {
+  position: absolute; left: 16px; right: 16px; height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, transparent);
+  animation: scanLine 2s ease-in-out infinite;
+  box-shadow: 0 0 8px #6366f1;
+}
+@keyframes scanLine {
+  0%   { top: 20%; }
+  50%  { top: 78%; }
+  100% { top: 20%; }
+}
+
+.scanner-status { text-align: center; font-size: .85rem; font-weight: 700; padding: .5rem; border-radius: 8px; }
+.scanner-status.err { background: rgba(239,68,68,.2); color: #fca5a5; }
+.scanner-status.ok  { background: rgba(16,185,129,.2); color: #6ee7b7; }
 </style>
 
 <style>
