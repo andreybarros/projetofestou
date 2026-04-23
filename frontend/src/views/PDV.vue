@@ -1108,35 +1108,40 @@ function imprimirRecibo() {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Recibo #${vendaNumero.value}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  @page { margin: 0; size: auto; }
-  html, body { background: #fff; width: 280px; margin: 0 auto; -webkit-print-color-adjust: exact; }
-  body { 
-    font-family: 'Courier New', Courier, monospace; 
-    font-size: 12px; 
-    line-height: 1.2;
-    color: #000; 
-    padding: 10px;
+  @page { 
+    size: 80mm auto; 
+    margin: 0; 
   }
+  html, body { 
+    width: 75mm; 
+    background: #fff; 
+    margin: 0 auto;
+    font-family: 'Courier New', Courier, monospace; 
+    font-size: 13px; 
+    line-height: 1.2;
+    color: #000;
+  }
+  body { padding: 4mm 2mm; -webkit-print-color-adjust: exact; }
   .center { text-align: center; }
   .bold   { font-weight: bold; }
-  .sep    { border: none; border-top: 1px dashed #000; margin: 4px 0; }
-  h1 { font-size: 14px; text-align: center; font-weight: 900; margin-bottom: 2px; }
-  h2 { font-size: 10px; text-align: center; font-weight: bold; margin-bottom: 1px; }
-  .dnf { font-size: 10px; text-align: center; border: 1px solid #000; padding: 2px 4px; display: inline-block; margin: 4px auto; font-weight: bold; }
+  .sep    { border: none; border-top: 1px dashed #000; margin: 3mm 0; }
+  h1 { font-size: 16px; text-align: center; font-weight: 900; margin-bottom: 2px; }
+  h2 { font-size: 11px; text-align: center; font-weight: bold; margin-bottom: 1px; }
+  .dnf { font-size: 11px; text-align: center; border: 1px solid #000; padding: 2px 5px; display: inline-block; margin: 4px auto; font-weight: bold; }
   table { width: 100%; border-collapse: collapse; margin: 2px 0; }
-  td { padding: 2px 0; vertical-align: top; font-size: 11px; font-weight: bold; }
-  .total-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 4px; }
-  .sub-line   { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 1px; }
-  .disc-line  { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 1px; }
-  .troco-line { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-top: 1px; }
-  .rodape { font-size: 10px; text-align: center; font-weight: bold; margin-top: 10px; line-height: 1.3; }
+  td { padding: 3px 0; vertical-align: top; font-size: 12px; font-weight: bold; }
+  .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 5px; }
+  .sub-line   { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .disc-line  { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .troco-line { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .rodape { font-size: 11px; text-align: center; font-weight: bold; margin-top: 15px; line-height: 1.4; }
   
   @media print {
-    html, body { width: 100%; }
+    html, body { width: 75mm; margin: 0; }
     .no-print { display: none; }
   }
 </style>
@@ -1170,24 +1175,14 @@ ${troco.value > 0.009 ? `<div class="troco-line"><span>Troco</span><span>${fmt(t
 <script>
   window.onload = function() { 
     window.print(); 
-    setTimeout(function() { window.close(); }, 500);
+    setTimeout(function() { window.close(); }, 1200);
   }
 <\/script>
 </body></html>`;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
-  iframe.contentWindow.document.open();
-  iframe.contentWindow.document.write(html);
-  iframe.contentWindow.document.close();
-  // O script interno do HTML chama window.print() ao carregar
-  setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 10_000);
+  const win = window.open('', '_blank', 'width=450,height=600');
+  win.document.write(html);
+  win.document.close();
 }
 
 // ── Contrato de Locação ───────────────────────────────────────
