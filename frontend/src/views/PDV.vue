@@ -713,14 +713,7 @@ async function abrirScanner() {
         const produto = todos.value.find(p =>
           p.codigo_barras === codigo || p.codigo === codigo
         );
-        if (produto) {
-          add(produto);
-          toast(`${produto.descricao} adicionado.`, 'ok');
-        } else {
-          busca.value = codigo;
-          filtrarProdutos();
-          toast(`Código lido: ${codigo}`, 'ok');
-        }
+        
       }
     );
   } catch (e) {
