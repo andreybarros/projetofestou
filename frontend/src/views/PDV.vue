@@ -683,25 +683,45 @@ async function abrirScanner() {
 
   try {
     const { BrowserMultiFormatReader } = await import('@zxing/browser');
-    zxingReader = new BrowserMultiFormatReader();
+    const { DecodeHintType, BarcodeFormat } = await import('@zxing/library');
 
-    // undefined → biblioteca usa facingMode:'environment' automaticamente
-    await zxingReader.decodeFromVideoDevice(undefined, videoEl, (result, error) => {
-      if (!result) return; // NotFoundException por frame sem código — ignorar
-      const codigo = result.getText();
-      fecharScanner();
-      const produto = todos.value.find(p =>
-        p.codigo_barras === codigo || p.codigo === codigo
-      );
-      if (produto) {
-        add(produto);
-        toast(`${produto.descricao} adicionado.`, 'ok');
-      } else {
-        busca.value = codigo;
-        filtrarProdutos();
-        toast(`Código lido: ${codigo}`, 'ok');
+    const hints = new Map([
+      [DecodeHintType.TRY_HARDER, true],
+      [DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
+        BarcodeFormat.CODE_128, BarcodeFormat.CODE_39,
+        BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+      ]],
+    ]);
+
+    zxingReader = new BrowserMultiFormatReader(hints);
+
+    await zxingReader.decodeFromConstraints(
+      {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width:  { min: 640, ideal: 1280 },
+          height: { min: 480, ideal: 720 },
+        }
+      },
+      videoEl,
+      (result, error) => {
+        if (!result) return;
+        const codigo = result.getText();
+        fecharScanner();
+        const produto = todos.value.find(p =>
+          p.codigo_barras === codigo || p.codigo === codigo
+        );
+        if (produto) {
+          add(produto);
+          toast(`${produto.descricao} adicionado.`, 'ok');
+        } else {
+          busca.value = codigo;
+          filtrarProdutos();
+          toast(`Código lido: ${codigo}`, 'ok');
+        }
       }
-    });
+    );
   } catch (e) {
     console.error('[Scanner]', e);
     const msg = e?.message || '';
