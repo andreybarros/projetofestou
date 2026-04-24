@@ -46,7 +46,7 @@
             <th>Motivo</th>
             <th>Data</th>
             <th>Status</th>
-            <th>Ações</th>
+            <th style="text-align:center">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -60,18 +60,20 @@
               <div v-if="v.observacao && v.status === 'rejeitado'" class="vl-obs">{{ v.observacao }}</div>
             </td>
             <td class="vl-acoes">
-              <template v-if="ehGestor && v.status === 'pendente'">
-                <button class="btn-act aprovar" @click="aprovar(v)" :disabled="processando === v.pk">Aprovar</button>
-                <button class="btn-act rejeitar" @click="iniciarRejeitar(v)" :disabled="processando === v.pk">Rejeitar</button>
-              </template>
-              <button v-if="ehGestor && v.status === 'aprovado'" class="btn-act pagar" @click="pagar(v)" :disabled="processando === v.pk">
-                <span v-if="processando === v.pk" class="spin-xs"></span>
-                <span v-else>Marcar Pago</span>
-              </button>
-              <span v-if="v.status === 'descontado'" class="vl-disc-info">
-                <span class="material-symbols-outlined" style="font-size:14px;color:var(--text2)">check_circle</span>
-                Descontado
-              </span>
+              <div class="vl-acoes-inner">
+                <template v-if="ehGestor && v.status === 'pendente'">
+                  <button class="btn-act aprovar" @click="aprovar(v)" :disabled="processando === v.pk">Aprovar</button>
+                  <button class="btn-act rejeitar" @click="iniciarRejeitar(v)" :disabled="processando === v.pk">Rejeitar</button>
+                </template>
+                <button v-if="ehGestor && v.status === 'aprovado'" class="btn-act pagar" @click="pagar(v)" :disabled="processando === v.pk">
+                  <span v-if="processando === v.pk" class="spin-xs"></span>
+                  <span v-else>Marcar Pago</span>
+                </button>
+                <span v-if="v.status === 'descontado'" class="vl-disc-info">
+                  <span class="material-symbols-outlined" style="font-size:14px">check_circle</span>
+                  Descontado
+                </span>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -112,6 +114,34 @@
               <span v-if="salvando" class="spin-xs"></span>
               <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Enviar Solicitação
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Modal Confirmar Pagamento -->
+    <Teleport to="body">
+      <div v-if="modalPagar" class="modal-backdrop" @click.self="modalPagar = null">
+        <div class="modal-box modal-box-sm">
+          <div class="modal-header">
+            <h3 class="modal-title">Confirmar Pagamento</h3>
+            <button class="modal-close" @click="modalPagar = null">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="pagar-info">
+              Confirmar pagamento de <strong>{{ fmt(modalPagar.valor) }}</strong> para <strong>{{ modalPagar.funcionario_nome }}</strong>?
+            </p>
+            <p class="pagar-sub">Esta ação marcará o vale como pago e não poderá ser desfeita.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancelar" @click="modalPagar = null">Cancelar</button>
+            <button class="btn-pagar-confirm" @click="confirmarPagar" :disabled="processando === modalPagar?.pk">
+              <span v-if="processando === modalPagar?.pk" class="spin-xs"></span>
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Confirmar Pagamento
             </button>
           </div>
         </div>
@@ -171,9 +201,10 @@ const filtroStatus = ref('');
 const processando  = ref(null);
 const salvando     = ref(false);
 
-const modalAberto  = ref(false);
+const modalAberto   = ref(false);
 const modalRejeitar = ref(null);
-const rejObs       = ref('');
+const modalPagar    = ref(null);
+const rejObs        = ref('');
 
 const form = ref({ funcionario_nome: '', funcionario_pk: null, valor: null, motivo: '' });
 
@@ -190,9 +221,8 @@ function toast(msg, tipo = 'ok', dur = 3500) {
 const gestorPk = computed(() => parametros.getParam('vale_gestor_pk', null));
 
 const ehGestor = computed(() => {
-  if (op.value?.admin) return true;
   const gPk = gestorPk.value;
-  if (!gPk) return false;
+  if (!gPk) return op.value?.admin === true;
   return String(op.value?.id) === String(gPk);
 });
 
@@ -318,12 +348,18 @@ async function confirmarRejeitar() {
   }
 }
 
-async function pagar(v) {
-  if (!confirm(`Confirmar pagamento de ${fmt(v.valor)} para ${v.funcionario_nome}?`)) return;
+function pagar(v) {
+  modalPagar.value = v;
+}
+
+async function confirmarPagar() {
+  const v = modalPagar.value;
+  if (!v) return;
   processando.value = v.pk;
   try {
     await apiClient.patch(`/api/vales/${v.pk}/pagar`);
     toast('Vale marcado como pago!');
+    modalPagar.value = null;
     await carregar();
   } catch (e) {
     toast('Erro ao registrar pagamento: ' + (e.response?.data?.erro || e.message), 'err');
@@ -415,10 +451,12 @@ onMounted(async () => {
 .vl-badge.descontado { background: rgba(148,163,184,.15);color: #64748b; }
 
 /* Ações */
-.vl-acoes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vl-acoes { width: 1%; white-space: nowrap; }
+.vl-acoes-inner { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .btn-act {
   padding: 5px 12px; border-radius: 7px; font-size: .78rem; font-weight: 600;
-  cursor: pointer; border: 1px solid; transition: all .15s; display: flex; align-items: center; gap: 5px;
+  cursor: pointer; border: 1px solid; transition: all .15s;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
 }
 .btn-act:disabled { opacity: .4; cursor: not-allowed; }
 .btn-act.aprovar  { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); color: #059669; }
@@ -427,7 +465,7 @@ onMounted(async () => {
 .btn-act.rejeitar:hover:not(:disabled) { background: rgba(239,68,68,.2); }
 .btn-act.pagar    { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.3); color: #6366f1; }
 .btn-act.pagar:hover:not(:disabled) { background: rgba(99,102,241,.2); }
-.vl-disc-info { display: flex; align-items: center; gap: 4px; font-size: .78rem; color: var(--text2); }
+.vl-disc-info { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; color: var(--text2); }
 
 /* Modal */
 .modal-backdrop {
@@ -478,6 +516,20 @@ onMounted(async () => {
 .vl-aviso-modal .material-symbols-outlined { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
 .rej-info { margin: 0; font-size: .88rem; color: var(--text2); }
 .rej-info strong { color: var(--text); }
+
+.modal-box-sm { max-width: 400px; }
+.pagar-info { margin: 0; font-size: .92rem; color: var(--text); }
+.pagar-info strong { color: var(--primary); }
+.pagar-sub  { margin: 8px 0 0; font-size: .78rem; color: var(--text2); }
+
+.btn-pagar-confirm {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 18px; background: #059669; color: #fff;
+  border: none; border-radius: 8px; font-size: .85rem; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-pagar-confirm:disabled { opacity: .4; cursor: not-allowed; }
+.btn-pagar-confirm:hover:not(:disabled) { opacity: .88; }
 
 .btn-cancelar {
   padding: 8px 16px; background: var(--bg3); border: 1px solid var(--border);

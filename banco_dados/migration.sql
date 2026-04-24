@@ -710,6 +710,9 @@ CREATE TABLE IF NOT EXISTS vales (
   funcionario_pk   INTEGER,
   funcionario_nome TEXT NOT NULL,
   valor            NUMERIC(10,2) NOT NULL,
+  valor_original   NUMERIC(10,2),
+  valor_pago       NUMERIC(10,2) DEFAULT 0,
+  valor_restante   NUMERIC(10,2),
   motivo           TEXT,
   status           TEXT NOT NULL DEFAULT 'pendente',
   solicitado_em    TIMESTAMPTZ DEFAULT NOW(),
@@ -720,6 +723,11 @@ CREATE TABLE IF NOT EXISTS vales (
   fechamento_pk    INTEGER,
   observacao       TEXT
 );
+
+ALTER TABLE vales ADD COLUMN IF NOT EXISTS valor_original  NUMERIC(10,2);
+ALTER TABLE vales ADD COLUMN IF NOT EXISTS valor_pago      NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE vales ADD COLUMN IF NOT EXISTS valor_restante  NUMERIC(10,2);
+UPDATE vales SET valor_original = valor, valor_restante = valor WHERE valor_original IS NULL;
 
 ALTER TABLE vales ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all_vales" ON vales;

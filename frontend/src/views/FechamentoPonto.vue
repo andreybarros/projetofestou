@@ -194,142 +194,180 @@
           </div>
         </div>
 
-        <!-- Coluna direita: painel financeiro -->
+        <!-- Coluna direita: painel financeiro em etapas -->
         <div class="close-right">
           <div class="fin-card">
-            <h3 class="fin-title">Resumo Financeiro</h3>
 
-            <!-- Salário base -->
-            <div class="fin-row-group">
-              <div class="fin-stat">
-                <span class="fin-label">{{ funcSelecionado.diarista ? 'Valor da Diária' : 'Salário Base' }}</span>
-                <span class="fin-val">{{ fmt(summaries.baseSalary) }}</span>
+            <!-- Indicador de etapa -->
+            <div class="fin-etapas">
+              <div :class="['fin-etapa', { active: etapaFin === 1 }]">
+                <span class="etapa-num">1</span>
+                <span class="etapa-label">Resumo</span>
               </div>
-              <div class="fin-stat">
-                <span class="fin-label">{{ funcSelecionado.diarista ? 'Total por Diárias' : 'Salário Proporcional' }}</span>
-                <span class="fin-val">{{ labelProp }}</span>
+              <div class="etapa-sep"></div>
+              <div :class="['fin-etapa', { active: etapaFin === 2 }]">
+                <span class="etapa-num">2</span>
+                <span class="etapa-label">Descontos</span>
               </div>
             </div>
 
-            <!-- Banco de horas extras -->
-            <div v-if="extraTotalH > 0" class="extra-card">
-              <div class="extra-title">🕐 Banco de Horas Extras</div>
-              <div class="extra-linha">
-                <span>Extras normais (Seg–Sáb)</span>
-                <strong>{{ extraNormalH.toFixed(2) }}h</strong>
-              </div>
-              <div class="extra-linha">
-                <span>Extras Domingo <small>(×2 = 100%)</small></span>
-                <strong>{{ extraDomRawH.toFixed(2) }}h → {{ extraDomValH.toFixed(2) }}h</strong>
-              </div>
-              <div class="extra-linha extra-total">
-                <span>Total disponível</span>
-                <strong>{{ extraTotalH.toFixed(2) }}h</strong>
-              </div>
-            </div>
+            <!-- ── ETAPA 1: Batidas + Resumo + Horas Extras ── -->
+            <template v-if="etapaFin === 1">
+              <h3 class="fin-title">Resumo Financeiro</h3>
 
-            <!-- Pagamento de Horas Extras -->
-            <div class="fin-field">
-              <label>Pagar Horas Extras (Banco)</label>
-              <div class="extra-pay-grid">
-                <!-- Extras Normais -->
-                <div class="extra-pay-item">
-                  <span class="extra-pay-label">Normais ({{ parametros.getParam('ponto_adicional_hora_extra', 60) }}%)</span>
-                  <span class="extra-pay-rate">{{ fmt(valorHoraNormal) }}/h</span>
-                  <div class="fin-field-row">
-                    <input v-model.number="pagarHorasNormal" type="number" min="0" :max="extraNormalH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
-                    <span class="fin-unit">h</span>
-                  </div>
-                  <small class="td-muted">Disp: {{ extraNormalH.toFixed(2) }}h</small>
-                </div>
-                <!-- Extras Domingo -->
-                <div class="extra-pay-item extra-pay-dom">
-                  <span class="extra-pay-label">Domingo ({{ parametros.getParam('ponto_adicional_hora_domingo', 100) }}%)</span>
-                  <span class="extra-pay-rate">{{ fmt(valorHoraDomingo) }}/h</span>
-                  <div class="fin-field-row">
-                    <input v-model.number="pagarHorasDomingo" type="number" min="0" :max="extraDomRawH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
-                    <span class="fin-unit">h</span>
-                  </div>
-                  <small class="td-muted">Disp: {{ extraDomRawH.toFixed(2) }}h</small>
-                </div>
-              </div>
-              <div v-if="!bloqueado" class="extra-pay-actions">
-                <button class="btn-banco-acao" @click="pagarTudoExtra">Pagar Tudo Disponível</button>
-                <button class="btn-banco-acao btn-dom" @click="pagarSoDomingo">Pagar Só Domingo</button>
-              </div>
-              <small style="margin-top:4px">O desconto no banco de horas é automático (Domingo desconta ×2).</small>
-            </div>
+              <button class="btn-ajustar-batidas" @click="abrirTodasBatidas">
+                <span class="material-symbols-outlined" style="font-size: 20px;">location_on</span>
+                Ajustar Batidas / Localização
+              </button>
 
-            <!-- Descontos -->
-            <div class="fin-field">
-              <label>Descontos Detalhados</label>
-              <!-- Sugestão de desconto de vales -->
-              <div v-if="valesPendentes.length" class="vales-sugestao">
-                <div class="vales-sug-title">
-                  <span class="material-symbols-outlined" style="font-size:16px">request_quote</span>
-                  {{ valesPendentes.length === 1 ? 'Vale pendente de desconto' : 'Vales pendentes de desconto' }}
+              <div class="fin-row-group">
+                <div class="fin-stat">
+                  <span class="fin-label">{{ funcSelecionado.diarista ? 'Valor da Diária' : 'Salário Base' }}</span>
+                  <span class="fin-val">{{ fmt(summaries.baseSalary) }}</span>
                 </div>
-                <div v-for="v in valesPendentes" :key="v.pk" class="vales-sug-item">
-                  <div class="vales-sug-info">
-                    <span class="vales-sug-val">{{ fmt(v.valor) }}</span>
-                    <span v-if="v.motivo" class="vales-sug-mot">{{ v.motivo }}</span>
-                  </div>
-                  <button v-if="!bloqueado" class="btn-incluir-vale" @click="incluirValeComoDesconto(v)">Incluir no desconto</button>
+                <div class="fin-stat">
+                  <span class="fin-label">{{ funcSelecionado.diarista ? 'Total por Diárias' : 'Salário Proporcional' }}</span>
+                  <span class="fin-val">{{ labelProp }}</span>
                 </div>
               </div>
 
-              <div class="descontos-lista">
-                <div v-if="descontos.length === 0" class="descontos-vazio">Nenhum desconto lançado.</div>
-                <div v-for="(d, i) in descontos" :key="i" class="desconto-item">
-                  <span>{{ d.descricao }}</span>
-                  <div class="desconto-item-right">
-                    <strong>{{ fmt(d.valor) }}</strong>
-                    <button v-if="!bloqueado" class="btn-rm-desc" @click="removerDesconto(i)">×</button>
+              <div v-if="extraTotalH > 0" class="extra-card">
+                <div class="extra-title">🕐 Banco de Horas Extras</div>
+                <div class="extra-linha">
+                  <span>Extras normais (Seg–Sáb)</span>
+                  <strong>{{ extraNormalH.toFixed(2) }}h</strong>
+                </div>
+                <div class="extra-linha">
+                  <span>Extras Domingo <small>(×2 = 100%)</small></span>
+                  <strong>{{ extraDomRawH.toFixed(2) }}h → {{ extraDomValH.toFixed(2) }}h</strong>
+                </div>
+                <div class="extra-linha extra-total">
+                  <span>Total disponível</span>
+                  <strong>{{ extraTotalH.toFixed(2) }}h</strong>
+                </div>
+              </div>
+
+              <div class="fin-field">
+                <label>Pagar Horas Extras (Banco)</label>
+                <div class="extra-pay-grid">
+                  <div class="extra-pay-item">
+                    <span class="extra-pay-label">Normais ({{ parametros.getParam('ponto_adicional_hora_extra', 60) }}%)</span>
+                    <span class="extra-pay-rate">{{ fmt(valorHoraNormal) }}/h</span>
+                    <div class="fin-field-row">
+                      <input v-model.number="pagarHorasNormal" type="number" min="0" :max="extraNormalH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
+                      <span class="fin-unit">h</span>
+                    </div>
+                    <small class="td-muted">Disp: {{ extraNormalH.toFixed(2) }}h</small>
+                  </div>
+                  <div class="extra-pay-item extra-pay-dom">
+                    <span class="extra-pay-label">Domingo ({{ parametros.getParam('ponto_adicional_hora_domingo', 100) }}%)</span>
+                    <span class="extra-pay-rate">{{ fmt(valorHoraDomingo) }}/h</span>
+                    <div class="fin-field-row">
+                      <input v-model.number="pagarHorasDomingo" type="number" min="0" :max="extraDomRawH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
+                      <span class="fin-unit">h</span>
+                    </div>
+                    <small class="td-muted">Disp: {{ extraDomRawH.toFixed(2) }}h</small>
                   </div>
                 </div>
+                <div v-if="!bloqueado" class="extra-pay-actions">
+                  <button class="btn-banco-acao" @click="pagarTudoExtra">Pagar Tudo Disponível</button>
+                  <button class="btn-banco-acao btn-dom" @click="pagarSoDomingo">Pagar Só Domingo</button>
+                </div>
+                <small style="margin-top:4px">O desconto no banco de horas é automático (Domingo desconta ×2).</small>
               </div>
-              <div v-if="!bloqueado" class="desconto-add">
-                <input v-model="novoDescNome"  type="text"   placeholder="Motivo (ex: Vale)" class="fp-input" />
-                <input v-model.number="novoDescVal" type="number" placeholder="R$" class="fp-input" style="width:80px" />
-                <button class="btn-add-desc" @click="addDesconto">+</button>
+
+              <button class="btn-avancar-etapa" @click="etapaFin = 2">
+                Avançar para Descontos
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </template>
+
+            <!-- ── ETAPA 2: Descontos + Total + Ações ── -->
+            <template v-else>
+              <h3 class="fin-title">Descontos &amp; Fechamento</h3>
+
+              <div class="fin-field">
+                <label>Descontos Detalhados</label>
+                <div v-if="valesPendentes.length" class="vales-sugestao">
+                  <div class="vales-sug-title">
+                    <span class="material-symbols-outlined" style="font-size:16px">request_quote</span>
+                    {{ valesPendentes.length === 1 ? 'Vale pendente de desconto' : 'Vales pendentes de desconto' }}
+                  </div>
+                  <div v-for="v in valesPendentes" :key="v.pk" :class="['vales-sug-item', { 'vales-sug-item-incluido': v._incluido }]">
+                    <div class="vales-sug-info">
+                      <span class="vales-sug-val">{{ fmt(v.valor_restante ?? v.valor) }}</span>
+                      <span class="vales-sug-mot">
+                        {{ v._incluido ? 'Saldo restante após desconto' : (v.motivo || '') }}
+                      </span>
+                    </div>
+                    <div v-if="!bloqueado && !v._incluido" class="vales-sug-acoes">
+                      <input
+                        v-model.number="valeInputs[v.pk]"
+                        type="number"
+                        :placeholder="String(v.valor_restante ?? v.valor)"
+                        :max="v.valor_restante ?? v.valor"
+                        min="0.01"
+                        step="0.01"
+                        class="fp-input vale-desc-input"
+                      />
+                      <button class="btn-incluir-vale" @click="incluirValeComoDesconto(v)">Incluir</button>
+                    </div>
+                    <span v-else-if="v._incluido" class="vales-sug-restante-tag">Saldo pendente</span>
+                  </div>
+                </div>
+
+                <div class="descontos-lista">
+                  <div v-if="descontos.length === 0" class="descontos-vazio">Nenhum desconto lançado.</div>
+                  <div v-for="(d, i) in descontos" :key="i" class="desconto-item">
+                    <span>{{ d.descricao }}</span>
+                    <div class="desconto-item-right">
+                      <strong>{{ fmt(d.valor) }}</strong>
+                      <button v-if="!bloqueado" class="btn-rm-desc" @click="removerDesconto(i)">×</button>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="!bloqueado" class="desconto-add">
+                  <input v-model="novoDescNome" type="text" placeholder="Motivo (ex: Vale)" class="fp-input" />
+                  <input v-model.number="novoDescVal" type="number" placeholder="R$" class="fp-input" style="width:80px" />
+                  <button class="btn-add-desc" @click="addDesconto">+</button>
+                </div>
               </div>
-            </div>
 
-            <div class="fin-field">
-              <label>Total Descontos (R$)</label>
-              <input :value="totalDescontos.toFixed(2)" type="text" readonly class="fp-input" style="opacity:.7" />
-            </div>
+              <div class="fin-field">
+                <label>Total Descontos (R$)</label>
+                <input :value="totalDescontos.toFixed(2)" type="text" readonly class="fp-input" style="opacity:.7" />
+              </div>
 
-            <!-- Total líquido -->
-            <div class="total-box">
-              <span>TOTAL LÍQUIDO A PAGAR</span>
-              <strong>{{ fmt(totalLiquido) }}</strong>
-            </div>
+              <div class="total-box">
+                <span>TOTAL LÍQUIDO A PAGAR</span>
+                <strong>{{ fmt(totalLiquido) }}</strong>
+              </div>
 
-            <!-- Botões de ação -->
-            <button class="btn-ajustar-batidas" @click="abrirTodasBatidas" style="margin-bottom: 8px;">
-              <span class="material-symbols-outlined" style="font-size: 20px;">location_on</span>
-              Ajustar Batidas / Localização
-            </button>
+              <button
+                v-if="!bloqueado"
+                class="btn-espelho"
+                :disabled="salvando"
+                @click="enviarEspelho"
+              >
+                📤 Enviar Espelho para Aprovação
+              </button>
+              <button
+                v-if="!bloqueado"
+                class="btn-salvar"
+                :disabled="salvando || (parametros.getParam('ponto_fechamento_exige_espelho', true) && espelhoStatus !== 'aprovado')"
+                :title="parametros.getParam('ponto_fechamento_exige_espelho', true) && espelhoStatus !== 'aprovado' ? 'Aguardando aprovação do espelho' : ''"
+                @click="salvar"
+              >
+                <span v-if="salvando" class="spin-xs"></span>
+                {{ salvando ? 'Salvando…' : 'Salvar e Bloquear Período' }}
+              </button>
 
-            <button
-              v-if="!bloqueado"
-              class="btn-espelho"
-              :disabled="salvando"
-              @click="enviarEspelho"
-            >
-              📤 Enviar Espelho para Aprovação
-            </button>
-            <button
-              v-if="!bloqueado"
-              class="btn-salvar"
-              :disabled="salvando || (parametros.getParam('ponto_fechamento_exige_espelho', true) && espelhoStatus !== 'aprovado')"
-              :title="parametros.getParam('ponto_fechamento_exige_espelho', true) && espelhoStatus !== 'aprovado' ? 'Aguardando aprovação do espelho' : ''"
-              @click="salvar"
-            >
-              <span v-if="salvando" class="spin-xs"></span>
-              {{ salvando ? 'Salvando…' : 'Salvar e Bloquear Período' }}
-            </button>
+              <button class="btn-voltar-etapa" @click="etapaFin = 1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                Voltar ao Resumo
+              </button>
+            </template>
+
           </div>
         </div>
 
@@ -577,6 +615,8 @@ const novoDescVal        = ref(null);
 const salvando           = ref(false);
 const valesPendentes     = ref([]);
 const valesParaDescontar = ref([]);
+const valeInputs         = ref({});
+const etapaFin           = ref(1);
 
 const summaries = ref({
   saldoAnt: 0, previsto: 0, trabalhado: 0,
@@ -863,31 +903,59 @@ function selecionarFunc(f) {
   pagarHorasDomingo.value  = 0;
   valesPendentes.value     = [];
   valesParaDescontar.value = [];
+  valeInputs.value         = {};
+  etapaFin.value           = 1;
   carregar();
   carregarValesPendentes();
 }
 
 async function carregarValesPendentes() {
-  const fk = funcSelecionado.value?.pk;
-  if (!fk) return;
-  const { data } = await supabase
-    .from('vales')
-    .select('*')
-    .eq('funcionario_pk', fk)
-    .in('status', ['aprovado', 'pago'])
-    .order('solicitado_em');
-  valesPendentes.value = (data || []).filter(v =>
-    !valesParaDescontar.value.some(vd => vd.pk === v.pk)
+  const func = funcSelecionado.value;
+  if (!func) return;
+
+  const [r1, r2] = await Promise.all([
+    supabase.from('vales').select('*')
+      .eq('funcionario_pk', func.pk)
+      .in('status', ['aprovado', 'pago'])
+      .order('solicitado_em'),
+    supabase.from('vales').select('*')
+      .is('funcionario_pk', null)
+      .ilike('funcionario_nome', func.nome)
+      .in('status', ['aprovado', 'pago'])
+      .order('solicitado_em'),
+  ]);
+
+  const todos = [...(r1.data || []), ...(r2.data || [])];
+  const seen  = new Set();
+  const uniq  = todos.filter(v => { if (seen.has(v.pk)) return false; seen.add(v.pk); return true; });
+
+  valesPendentes.value = uniq.filter(v =>
+    !valesParaDescontar.value.some(vd => vd.vale.pk === v.pk)
   );
 }
 
 function incluirValeComoDesconto(v) {
+  const base      = parseFloat(v.valor_restante ?? v.valor);
+  const valorDesc = parseFloat(valeInputs.value[v.pk] || base);
+  if (!(valorDesc > 0)) { toast('Informe um valor para desconto.', 'err'); return; }
+  if (valorDesc > base + 0.009) { toast('Valor maior que o saldo restante do vale.', 'err'); return; }
+
   descontos.value.push({
     descricao: `Vale${v.motivo ? ' — ' + v.motivo : ''}`,
-    valor: parseFloat(v.valor),
+    valor: valorDesc,
+    _valePk: v.pk,
   });
-  valesParaDescontar.value.push(v);
-  valesPendentes.value = valesPendentes.value.filter(x => x.pk !== v.pk);
+  valesParaDescontar.value.push({ vale: v, valorDescontado: valorDesc });
+
+  const restante = base - valorDesc;
+  const idx = valesPendentes.value.findIndex(x => x.pk === v.pk);
+  if (restante > 0.009) {
+    // Atualiza o mesmo objeto com saldo restante e marca como incluído
+    valesPendentes.value[idx] = { ...v, valor_restante: parseFloat(restante.toFixed(2)), _incluido: true };
+  } else {
+    valesPendentes.value.splice(idx, 1);
+  }
+  delete valeInputs.value[v.pk];
 }
 
 function voltarLista() {
@@ -1070,7 +1138,24 @@ function addDesconto() {
   novoDescNome.value = '';
   novoDescVal.value  = null;
 }
-function removerDesconto(i) { descontos.value.splice(i, 1); }
+function removerDesconto(i) {
+  const desc = descontos.value[i];
+  if (desc._valePk) {
+    const idx = valesParaDescontar.value.findIndex(vd => vd.vale.pk === desc._valePk);
+    if (idx !== -1) {
+      const vale = valesParaDescontar.value[idx].vale;
+      const existeIdx = valesPendentes.value.findIndex(x => x.pk === vale.pk);
+      if (existeIdx !== -1) {
+        // Restaura para estado original (remove _incluido)
+        valesPendentes.value[existeIdx] = { ...vale };
+      } else {
+        valesPendentes.value.push({ ...vale });
+      }
+      valesParaDescontar.value.splice(idx, 1);
+    }
+  }
+  descontos.value.splice(i, 1);
+}
 function recalcular() { /* computed já recalcula automaticamente */ }
 
 function pagarTudoExtra() {
@@ -1151,10 +1236,13 @@ async function salvar() {
         descontos: descontos.value
     });
 
-    const fechamentoPk = fchResp?.pk || null;
-    for (const v of valesParaDescontar.value) {
+    const fechamentoPk = fchResp?.fechamento_pk || null;
+    for (const { vale, valorDescontado } of valesParaDescontar.value) {
       try {
-        await apiClient.patch(`/api/vales/${v.pk}/descontar`, { fechamento_pk: fechamentoPk });
+        await apiClient.patch(`/api/vales/${vale.pk}/desconto-parcial`, {
+          valor_desconto: valorDescontado,
+          fechamento_pk:  fechamentoPk,
+        });
       } catch { /* não bloqueia o fechamento */ }
     }
     valesParaDescontar.value = [];
@@ -1400,6 +1488,45 @@ onMounted(carregarLista);
   border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px;
   position: sticky; top: 16px;
 }
+
+/* Indicador de etapas */
+.fin-etapas {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 4px; border-bottom: 1px solid var(--border);
+}
+.fin-etapa {
+  display: flex; align-items: center; gap: 6px;
+  opacity: .4; transition: opacity .2s;
+}
+.fin-etapa.active { opacity: 1; }
+.etapa-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--border); color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; flex-shrink: 0;
+  transition: background .2s, color .2s;
+}
+.fin-etapa.active .etapa-num { background: #6366f1; color: #fff; }
+.etapa-label { font-size: .78rem; font-weight: 600; color: var(--text2); }
+.fin-etapa.active .etapa-label { color: var(--text); }
+.etapa-sep { flex: 1; height: 1px; background: var(--border); }
+
+/* Botões de navegação entre etapas */
+.btn-avancar-etapa {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 11px; background: #6366f1; color: #fff;
+  border: none; border-radius: 10px; font-size: .88rem; font-weight: 700;
+  cursor: pointer; transition: opacity .15s; margin-top: auto;
+}
+.btn-avancar-etapa:hover { opacity: .88; }
+.btn-voltar-etapa {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 8px; background: none;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-size: .82rem; font-weight: 600; color: var(--text2);
+  cursor: pointer; transition: all .15s;
+}
+.btn-voltar-etapa:hover { color: var(--text); border-color: #6366f1; }
 .fin-title { font-size: .95rem; font-weight: 700; color: var(--text); margin: 0; }
 .fin-row-group { display: flex; flex-direction: column; gap: 8px; }
 .fin-stat { display: flex; justify-content: space-between; align-items: center; }
@@ -1441,8 +1568,8 @@ onMounted(carregarLista);
 }
 
 .vales-sugestao {
-  background: rgba(167,139,250,.08);
-  border: 1px solid rgba(167,139,250,.25);
+  background: rgba(99,102,241,.07);
+  border: 1px solid rgba(99,102,241,.22);
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 8px;
@@ -1453,23 +1580,37 @@ onMounted(carregarLista);
 .vales-sug-title {
   display: flex; align-items: center; gap: 6px;
   font-size: .75rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .4px; color: #a78bfa;
+  letter-spacing: .4px; color: var(--primary);
 }
 .vales-sug-item {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
   padding: 6px 8px; background: var(--bg3); border-radius: 7px;
   border: 1px solid var(--border);
 }
-.vales-sug-info { display: flex; flex-direction: column; gap: 1px; }
-.vales-sug-val  { font-size: .85rem; font-weight: 700; color: var(--text); font-family: monospace; }
-.vales-sug-mot  { font-size: .72rem; color: var(--text2); }
-.btn-incluir-vale {
-  padding: 4px 11px; background: rgba(167,139,250,.15);
-  border: 1px solid rgba(167,139,250,.3); border-radius: 6px;
-  color: #a78bfa; font-size: .75rem; font-weight: 700;
-  cursor: pointer; white-space: nowrap; transition: background .15s;
+.vales-sug-info  { display: flex; flex-direction: column; gap: 1px; }
+.vales-sug-val   { font-size: .85rem; font-weight: 700; color: var(--text); font-family: monospace; }
+.vales-sug-mot   { font-size: .72rem; color: var(--text2); }
+.vales-sug-acoes { display: flex; align-items: center; gap: 6px; }
+.vale-desc-input { width: 88px !important; font-size: .78rem; padding: 3px 7px; text-align: right; }
+.vales-sug-item-incluido { opacity: .65; }
+.vales-sug-restante-tag {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+  padding: 2px 8px; border-radius: 20px;
+  background: rgba(245,158,11,.15); color: #d97706;
+  border: 1px solid rgba(245,158,11,.25); white-space: nowrap;
 }
-.btn-incluir-vale:hover { background: rgba(167,139,250,.25); }
+[data-theme="light"] .vales-sug-restante-tag { background: rgba(245,158,11,.12); color: #92400e; }
+.btn-incluir-vale {
+  padding: 4px 11px; background: var(--primary);
+  border: none; border-radius: 6px;
+  color: #fff; font-size: .75rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: opacity .15s;
+}
+.btn-incluir-vale:hover { opacity: .85; }
+
+[data-theme="light"] .vales-sugestao    { background: rgba(5,96,186,.06); border-color: rgba(5,96,186,.2); }
+[data-theme="light"] .vales-sug-title   { color: #0560ba; }
+[data-theme="light"] .btn-incluir-vale  { background: #0560ba; }
 
 .descontos-lista { display: flex; flex-direction: column; gap: 6px; }
 .descontos-vazio { font-size: .75rem; color: var(--text2); font-style: italic; }

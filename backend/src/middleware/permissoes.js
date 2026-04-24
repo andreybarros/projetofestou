@@ -17,7 +17,8 @@ const rotasPermissoes = {
   'PATCH /api/vales/:pk/aprovar':   'acesso_vales',
   'PATCH /api/vales/:pk/rejeitar':  'acesso_vales',
   'PATCH /api/vales/:pk/pagar':     'acesso_vales',
-  'PATCH /api/vales/:pk/descontar': 'acesso_vales',
+  'PATCH /api/vales/:pk/descontar':         'acesso_vales',
+  'PATCH /api/vales/:pk/desconto-parcial':  'acesso_vales',
 };
 
 async function permissoesMiddleware(req, res, next) {
@@ -31,7 +32,7 @@ async function permissoesMiddleware(req, res, next) {
   if (rotaKey.startsWith('GET /api/relatorios/vendas')) {
     rotaKey = 'GET /api/relatorios/vendas/:filial_pk';
   }
-  if (rotaKey.match(/^PATCH \/api\/vales\/\d+\/(aprovar|rejeitar|pagar|descontar)$/)) {
+  if (rotaKey.match(/^PATCH \/api\/vales\/\d+\/(aprovar|rejeitar|pagar|descontar|desconto-parcial)$/)) {
     const acao = rotaKey.split('/').pop();
     rotaKey = `PATCH /api/vales/:pk/${acao}`;
   }
