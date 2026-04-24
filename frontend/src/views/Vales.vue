@@ -157,6 +157,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSessaoStore }     from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
+import { supabase }           from '../composables/useSupabase';
 import apiClient              from '../services/api';
 
 const sessao     = useSessaoStore();
@@ -237,23 +238,24 @@ async function carregar() {
   }
 }
 
-async function resolverFuncionarioPk() {
+async function abrirSolicitar() {
   const matricula = op.value?.matricula;
-  if (!matricula) return null;
-  try {
-    const { supabase } = await import('../composables/useSupabase');
-    const { data } = await supabase.from('funcionarios').select('pk').eq('matricula', matricula).maybeSingle();
-    return data?.pk || null;
-  } catch { return null; }
-}
+  let funcionario_pk   = null;
+  let funcionario_nome = op.value?.nome || '';
 
-function abrirSolicitar() {
-  form.value = {
-    funcionario_nome: op.value?.nome || '',
-    funcionario_pk:   null,
-    valor:  null,
-    motivo: '',
-  };
+  if (matricula) {
+    const { data } = await supabase
+      .from('funcionarios')
+      .select('pk, nome')
+      .eq('matricula', matricula)
+      .maybeSingle();
+    if (data) {
+      funcionario_pk   = data.pk;
+      funcionario_nome = data.nome;
+    }
+  }
+
+  form.value = { funcionario_nome, funcionario_pk, valor: null, motivo: '' };
   modalAberto.value = true;
 }
 
@@ -265,13 +267,12 @@ async function solicitar() {
   if (!form.value.valor || form.value.valor <= 0) return;
   salvando.value = true;
   try {
-    const funcionario_pk = await resolverFuncionarioPk();
     await apiClient.post('/api/vales', {
-      filial_pk:       sessao.filial?.pk,
-      funcionario_pk,
+      filial_pk:        sessao.filial?.pk,
+      funcionario_pk:   form.value.funcionario_pk,
       funcionario_nome: form.value.funcionario_nome,
-      valor:           form.value.valor,
-      motivo:          form.value.motivo || null,
+      valor:            form.value.valor,
+      motivo:           form.value.motivo || null,
     });
     toast('Solicitação enviada com sucesso!');
     fecharModal();
