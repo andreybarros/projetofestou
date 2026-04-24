@@ -192,7 +192,7 @@ const ehGestor = computed(() => {
   if (op.value?.admin) return true;
   const gPk = gestorPk.value;
   if (!gPk) return false;
-  return String(op.value?.pk) === String(gPk) || String(op.value?.id) === String(gPk);
+  return String(op.value?.id) === String(gPk);
 });
 
 const statusOpts = [

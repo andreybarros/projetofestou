@@ -174,7 +174,7 @@
                 @change="e => salvar('vale_gestor_pk', e.target.value)"
               >
                 <option value="">— Nenhum (somente admins) —</option>
-                <option v-for="op in operadoresAtivos" :key="op.pk" :value="String(op.pk)">
+                <option v-for="op in operadoresAtivos" :key="op.id" :value="String(op.id)">
                   {{ op.nome }}
                 </option>
               </select>
@@ -262,7 +262,7 @@ const vals = reactive({
 onMounted(async () => {
   const [, { data: ops }] = await Promise.all([
     parametrosStore.carregar(sessaoStore.filial?.pk),
-    supabase.from('operadores').select('pk, nome').eq('ativo', true).order('nome'),
+    supabase.from('operadores').select('id, nome').eq('ativo', true).order('nome'),
   ]);
   operadoresAtivos.value = ops || [];
   Object.keys(vals).forEach(k => {
