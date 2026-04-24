@@ -963,26 +963,34 @@ async function copiarOrcamento() {
   const texto = partes.join('\n');
 
   // Copia para área de transferência
+  let copiou = false;
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(texto);
-    } else {
-      // Fallback para contextos não seguros (HTTP/IP)
-      const textArea = document.createElement("textarea");
+      copiou = true;
+    }
+  } catch (_) { /* tenta fallback */ }
+
+  if (!copiou) {
+    try {
+      const textArea = document.createElement('textarea');
       textArea.value = texto;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "0";
+      textArea.setAttribute('readonly', '');
+      textArea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
       document.body.appendChild(textArea);
       textArea.focus();
+      textArea.setSelectionRange(0, texto.length); // iOS Safari
       textArea.select();
-      document.execCommand('copy');
+      copiou = document.execCommand('copy');
       document.body.removeChild(textArea);
+    } catch (err) {
+      console.error('Falha ao copiar:', err);
     }
+  }
+
+  if (copiou) {
     orcCopiado.value = true;
     setTimeout(() => { orcCopiado.value = false; }, 2500);
-  } catch (err) {
-    console.error('Falha ao copiar:', err);
   }
 
   toast(`Orçamento ${codigo} copiado! Cole o código na busca para importar.`);
