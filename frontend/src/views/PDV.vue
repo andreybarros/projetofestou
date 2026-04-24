@@ -962,37 +962,48 @@ async function copiarOrcamento() {
   partes.push(`━━━━━━━━━━━━━━━━━━━━\nCódigo: ${codigo}`);
   const texto = partes.join('\n');
 
-  // Copia para área de transferência
+  // Mobile: share sheet nativa (iOS/Android) — não sofre com perda de contexto de gesto
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: `Orçamento ${codigo} — FESTOU`, text: texto });
+      orcCopiado.value = true;
+      setTimeout(() => { orcCopiado.value = false; }, 2500);
+      toast(`Orçamento ${codigo} gerado!`);
+    } catch (e) {
+      if (e.name === 'AbortError') return; // usuário fechou o painel — não faz nada
+      toast(`Orçamento ${codigo} gerado. Código: ${codigo}`, 'ok', 6000);
+    }
+    return;
+  }
+
+  // Desktop: clipboard API
   let copiou = false;
   try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(texto);
       copiou = true;
     }
-  } catch (_) { /* tenta fallback */ }
+  } catch (_) {}
 
   if (!copiou) {
     try {
-      const textArea = document.createElement('textarea');
-      textArea.value = texto;
-      textArea.setAttribute('readonly', '');
-      textArea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.setSelectionRange(0, texto.length); // iOS Safari
-      textArea.select();
-      copiou = document.execCommand('copy');
-      document.body.removeChild(textArea);
-    } catch (err) {
-      console.error('Falha ao copiar:', err);
-    }
+      const el = document.createElement('textarea');
+      el.value = texto;
+      el.setAttribute('readonly', '');
+      el.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+      document.body.appendChild(el);
+      el.focus();
+      el.setSelectionRange(0, texto.length);
+      el.select();
+      copiou = !!document.execCommand('copy');
+      document.body.removeChild(el);
+    } catch {}
   }
 
   if (copiou) {
     orcCopiado.value = true;
     setTimeout(() => { orcCopiado.value = false; }, 2500);
   }
-
   toast(`Orçamento ${codigo} copiado! Cole o código na busca para importar.`);
 }
 
