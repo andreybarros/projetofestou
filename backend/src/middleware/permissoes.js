@@ -12,6 +12,12 @@ const rotasPermissoes = {
   'POST /api/nfce/autorizar': 'acesso_pdv',
   'POST /api/nfce/cancelar': 'acesso_pdv',
   'GET /api/relatorios/vendas/:filial_pk': 'acesso_relatorio_vendas',
+  'GET /api/vales':              'acesso_vales',
+  'POST /api/vales':             'acesso_vales',
+  'PATCH /api/vales/:pk/aprovar':   'acesso_vales',
+  'PATCH /api/vales/:pk/rejeitar':  'acesso_vales',
+  'PATCH /api/vales/:pk/pagar':     'acesso_vales',
+  'PATCH /api/vales/:pk/descontar': 'acesso_vales',
 };
 
 async function permissoesMiddleware(req, res, next) {
@@ -24,6 +30,10 @@ async function permissoesMiddleware(req, res, next) {
   // Tratamento para rotas com parâmetros (ex: /api/relatorios/vendas/2)
   if (rotaKey.startsWith('GET /api/relatorios/vendas')) {
     rotaKey = 'GET /api/relatorios/vendas/:filial_pk';
+  }
+  if (rotaKey.match(/^PATCH \/api\/vales\/\d+\/(aprovar|rejeitar|pagar|descontar)$/)) {
+    const acao = rotaKey.split('/').pop();
+    rotaKey = `PATCH /api/vales/:pk/${acao}`;
   }
 
   const permissaoRequerida = rotasPermissoes[rotaKey];

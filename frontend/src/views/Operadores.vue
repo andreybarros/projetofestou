@@ -211,6 +211,7 @@ const ROTINAS = [
   { id: 'gestao_ponto', icon: '🛠️', label: 'Gestão de Ponto (Ajustes)',          campo: 'acesso_gestao_ponto' },
   { id: 'fech_ponto',   icon: '🔐', label: 'Fechamento de Ponto (RH)',          campo: 'acesso_fechamento_ponto' },
   { id: 'rel_vendas',  icon: '💰', label: 'Relatórios de Vendas',               campo: 'acesso_relatorio_vendas' },
+  { id: 'vales',       icon: '💵', label: 'Vales (Adiantamento Salarial)',       campo: 'acesso_vales' },
 ];
 
 const f = reactive({
@@ -244,7 +245,8 @@ const f = reactive({
   acesso_fornecedores: false,
   acesso_gestao_ponto: false,
   acesso_fechamento_ponto: false,
-  acesso_relatorio_vendas: false
+  acesso_relatorio_vendas: false,
+  acesso_vales:            false,
 });
 
 onMounted(async () => {

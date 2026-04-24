@@ -32,6 +32,7 @@ const Financeiro      = () => import('../views/Financeiro.vue');
 const Filiais         = () => import('../views/Filiais.vue');
 const FechamentoCaixa = () => import('../views/FechamentoCaixa.vue');
 const FechamentoPonto = () => import('../views/FechamentoPonto.vue');
+const Vales           = () => import('../views/Vales.vue');
 const Operadores      = () => import('../views/Operadores.vue');
 const Caixa           = () => import('../views/Caixa.vue');
 const FormFilial      = () => import('../views/FormFilial.vue');
@@ -81,6 +82,7 @@ const routes = [
   { path: '/filiais/:pk/editar',   name: 'EditarFilial',     component: FormFilial,      meta: { requiresAuth: true } },
   { path: '/fechamento-caixa',  name: 'FechamentoCaixa',  component: FechamentoCaixa, meta: { requiresAuth: true } },
   { path: '/fechamento-ponto',  name: 'FechamentoPonto',  component: FechamentoPonto, meta: { requiresAuth: true } },
+  { path: '/vales',             name: 'Vales',            component: Vales,           meta: { requiresAuth: true } },
   { path: '/operadores',        name: 'Operadores',       component: Operadores,      meta: { requiresAuth: true } },
   { path: '/caixa',             name: 'Caixa',            component: Caixa,           meta: { requiresAuth: true } },
   { path: '/parametros',        name: 'Parametros',       component: Parametros,      meta: { requiresAuth: true } },

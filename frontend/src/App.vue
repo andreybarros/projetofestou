@@ -70,6 +70,7 @@
             <RouterLink v-if="op?.matricula || pode('espelho')" to="/espelho-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f472b6">calendar_view_month</span><span class="nav-label">Espelho de Ponto</span></RouterLink>
             <RouterLink v-if="pode('gestao_ponto')" to="/ajuste-batidas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">location_on</span><span class="nav-label">Gestão de Batidas</span></RouterLink>
             <RouterLink v-if="pode('fech_ponto')" to="/fechamento-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">lock_clock</span><span class="nav-label">Fechamento de Ponto</span></RouterLink>
+            <RouterLink v-if="pode('vales')" to="/vales" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">request_quote</span><span class="nav-label">Vales</span></RouterLink>
           </div>
 
           <!-- Operação -->
@@ -293,7 +294,7 @@ function pode(modulo) {
     caixa: 'pdv', rel_vendas: 'historico', rel_caixa: 'fechamento',
     dashboard: 'pdv', fornecedores: 'clientes',
     espelho: 'ponto', gestao_ponto: 'ponto', fech_ponto: 'funcionarios',
-    criar_ordem: 'separacao',
+    criar_ordem: 'separacao', vales: 'funcionarios',
   };
 
   // 1. FILIAL: bloqueia se a filial não tem o módulo (mesmo para admin)
@@ -330,7 +331,8 @@ function pode(modulo) {
     espelho:      o.acesso_espelho_ponto,
     gestao_ponto: o.acesso_gestao_ponto || o.acesso_ponto,
     fech_ponto:   o.acesso_fechamento_ponto || o.acesso_funcionarios,
-    rel_vendas:   o.acesso_relatorio_vendas || o.acesso_historico || o.acesso_pdv
+    rel_vendas:   o.acesso_relatorio_vendas || o.acesso_historico || o.acesso_pdv,
+    vales:        o.acesso_vales,
   };
   return !!mapa[modulo];
 }

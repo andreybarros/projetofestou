@@ -198,6 +198,7 @@ const ROTINAS = [
   { id: 'vendedores', icon: '👤', label: 'Vendedores' },
   { id: 'funcionarios', icon: '👥', label: 'Funcionários' },
   { id: 'ponto', icon: '⏰', label: 'Ponto Eletrônico' },
+  { id: 'vales', icon: '💵', label: 'Vales (Adiantamento Salarial)' },
 ];
 
 const route = useRoute();

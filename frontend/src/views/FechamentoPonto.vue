@@ -263,6 +263,21 @@
             <!-- Descontos -->
             <div class="fin-field">
               <label>Descontos Detalhados</label>
+              <!-- Sugestão de desconto de vales -->
+              <div v-if="valesPendentes.length" class="vales-sugestao">
+                <div class="vales-sug-title">
+                  <span class="material-symbols-outlined" style="font-size:16px">request_quote</span>
+                  {{ valesPendentes.length === 1 ? 'Vale pendente de desconto' : 'Vales pendentes de desconto' }}
+                </div>
+                <div v-for="v in valesPendentes" :key="v.pk" class="vales-sug-item">
+                  <div class="vales-sug-info">
+                    <span class="vales-sug-val">{{ fmt(v.valor) }}</span>
+                    <span v-if="v.motivo" class="vales-sug-mot">{{ v.motivo }}</span>
+                  </div>
+                  <button v-if="!bloqueado" class="btn-incluir-vale" @click="incluirValeComoDesconto(v)">Incluir no desconto</button>
+                </div>
+              </div>
+
               <div class="descontos-lista">
                 <div v-if="descontos.length === 0" class="descontos-vazio">Nenhum desconto lançado.</div>
                 <div v-for="(d, i) in descontos" :key="i" class="desconto-item">
@@ -556,10 +571,12 @@ const espelhoObs    = ref('');
 const fechPk        = ref(null);
 const punches       = ref([]);
 const justs         = ref([]);
-const descontos     = ref([]);
-const novoDescNome  = ref('');
-const novoDescVal   = ref(null);
-const salvando      = ref(false);
+const descontos          = ref([]);
+const novoDescNome       = ref('');
+const novoDescVal        = ref(null);
+const salvando           = ref(false);
+const valesPendentes     = ref([]);
+const valesParaDescontar = ref([]);
 
 const summaries = ref({
   saldoAnt: 0, previsto: 0, trabalhado: 0,
@@ -842,9 +859,35 @@ function selecionarFunc(f) {
     summaries.value.baseSalary      = f.salario_mensal || 0;
     summaries.value.horasFechamento = f.horas_fechamento > 0 ? f.horas_fechamento : 120;
   }
-  pagarHorasNormal.value = 0;
-  pagarHorasDomingo.value = 0;
+  pagarHorasNormal.value   = 0;
+  pagarHorasDomingo.value  = 0;
+  valesPendentes.value     = [];
+  valesParaDescontar.value = [];
   carregar();
+  carregarValesPendentes();
+}
+
+async function carregarValesPendentes() {
+  const fk = funcSelecionado.value?.pk;
+  if (!fk) return;
+  const { data } = await supabase
+    .from('vales')
+    .select('*')
+    .eq('funcionario_pk', fk)
+    .in('status', ['aprovado', 'pago'])
+    .order('solicitado_em');
+  valesPendentes.value = (data || []).filter(v =>
+    !valesParaDescontar.value.some(vd => vd.pk === v.pk)
+  );
+}
+
+function incluirValeComoDesconto(v) {
+  descontos.value.push({
+    descricao: `Vale${v.motivo ? ' — ' + v.motivo : ''}`,
+    valor: parseFloat(v.valor),
+  });
+  valesParaDescontar.value.push(v);
+  valesPendentes.value = valesPendentes.value.filter(x => x.pk !== v.pk);
 }
 
 function voltarLista() {
@@ -1103,10 +1146,18 @@ async function salvar() {
   try {
     const payload = buildPayload(saldoFinal.value, true, espelhoStatus.value, espelhoObs.value, null);
     
-    await apiClient.post('/api/ponto/fechamento', {
+    const { data: fchResp } = await apiClient.post('/api/ponto/fechamento', {
         payload,
         descontos: descontos.value
     });
+
+    const fechamentoPk = fchResp?.pk || null;
+    for (const v of valesParaDescontar.value) {
+      try {
+        await apiClient.patch(`/api/vales/${v.pk}/descontar`, { fechamento_pk: fechamentoPk });
+      } catch { /* não bloqueia o fechamento */ }
+    }
+    valesParaDescontar.value = [];
 
     toast('Fechamento realizado e bloqueado!');
     await carregar();
@@ -1388,6 +1439,37 @@ onMounted(carregarLista);
   background: var(--bg3); border: 1px solid var(--border); border-radius: 7px;
   color: var(--text2); cursor: pointer; transition: all .15s;
 }
+
+.vales-sugestao {
+  background: rgba(167,139,250,.08);
+  border: 1px solid rgba(167,139,250,.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vales-sug-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .4px; color: #a78bfa;
+}
+.vales-sug-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 8px; background: var(--bg3); border-radius: 7px;
+  border: 1px solid var(--border);
+}
+.vales-sug-info { display: flex; flex-direction: column; gap: 1px; }
+.vales-sug-val  { font-size: .85rem; font-weight: 700; color: var(--text); font-family: monospace; }
+.vales-sug-mot  { font-size: .72rem; color: var(--text2); }
+.btn-incluir-vale {
+  padding: 4px 11px; background: rgba(167,139,250,.15);
+  border: 1px solid rgba(167,139,250,.3); border-radius: 6px;
+  color: #a78bfa; font-size: .75rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: background .15s;
+}
+.btn-incluir-vale:hover { background: rgba(167,139,250,.25); }
 
 .descontos-lista { display: flex; flex-direction: column; gap: 6px; }
 .descontos-vazio { font-size: .75rem; color: var(--text2); font-style: italic; }

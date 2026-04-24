@@ -695,8 +695,35 @@ INSERT INTO parametros (filial_pk, chave, valor) VALUES
   (null, 'venda_permite_desconto_sem_aprovacao', 'true'),
   (null, 'venda_imprime_cupom',                  'false'),
   -- Crediário
-  (null, 'crediario_exige_cliente',              'true')
+  (null, 'crediario_exige_cliente',              'true'),
+  -- Vales
+  (null, 'vale_gestor_pk',                       '')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- SEÇÃO 12 — TABELA VALES (Adiantamento Salarial)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS vales (
+  pk               SERIAL PRIMARY KEY,
+  filial_pk        INTEGER,
+  funcionario_pk   INTEGER,
+  funcionario_nome TEXT NOT NULL,
+  valor            NUMERIC(10,2) NOT NULL,
+  motivo           TEXT,
+  status           TEXT NOT NULL DEFAULT 'pendente',
+  solicitado_em    TIMESTAMPTZ DEFAULT NOW(),
+  aprovado_em      TIMESTAMPTZ,
+  aprovado_por     TEXT,
+  pago_em          TIMESTAMPTZ,
+  descontado_em    TIMESTAMPTZ,
+  fechamento_pk    INTEGER,
+  observacao       TEXT
+);
+
+ALTER TABLE vales ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_vales" ON vales;
+CREATE POLICY "anon_all_vales" ON vales FOR ALL TO anon USING (true) WITH CHECK (true);
 
 ALTER TABLE parametros ENABLE ROW LEVEL SECURITY;
 
@@ -722,6 +749,7 @@ ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_caixa            boolean 
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_relatorio_caixa  boolean DEFAULT false;
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_gestao_ponto     boolean DEFAULT false;
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_relatorio_vendas boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_vales            boolean DEFAULT false;
 
 
 

@@ -7,6 +7,7 @@ const permissoesRoutes = require('./permissoes');
 const nfceRoutes      = require('./nfce');
 const relatoriosRoutes = require('./relatorios');
 const pontoRoutes      = require('./ponto');
+const valesRoutes      = require('./vales');
 
 function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   // Health
@@ -26,6 +27,7 @@ function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   app.use('/api/nfce',    authMiddleware, permissoesMiddleware, nfceRoutes);
   app.use('/api/relatorios', authMiddleware, permissoesMiddleware, relatoriosRoutes);
   app.use('/api/ponto',   authMiddleware, permissoesMiddleware, pontoRoutes);
+  app.use('/api/vales',  authMiddleware, permissoesMiddleware, valesRoutes);
 }
 
 module.exports = setupRoutes;

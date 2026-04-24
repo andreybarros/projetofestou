@@ -152,6 +152,37 @@
         </div>
       </section>
 
+      <!-- ── Vales ────────────────────────────────────────────── -->
+      <section class="param-group">
+        <div class="group-header">
+          <span class="material-symbols-outlined group-icon" style="color:#a78bfa">request_quote</span>
+          <div>
+            <h3>Vales</h3>
+            <p>Configurações do módulo de adiantamento salarial.</p>
+          </div>
+        </div>
+        <div class="param-list">
+          <div class="param-row">
+            <div class="param-info">
+              <div class="param-label">Gestor responsável pela aprovação</div>
+              <div class="param-desc">Operador que receberá e poderá aprovar ou rejeitar solicitações de vale. Admins sempre têm acesso.</div>
+            </div>
+            <div class="param-ctrl">
+              <select
+                class="param-select"
+                :value="vals.vale_gestor_pk"
+                @change="e => salvar('vale_gestor_pk', e.target.value)"
+              >
+                <option value="">— Nenhum (somente admins) —</option>
+                <option v-for="op in operadoresAtivos" :key="op.pk" :value="String(op.pk)">
+                  {{ op.nome }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
 
     <!-- Toast -->
@@ -170,12 +201,15 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useParametrosStore } from '../stores/parametros';
+import { supabase } from '../composables/useSupabase';
+import { useSessaoStore } from '../stores/sessao';
 import { useSessaoStore } from '../stores/sessao';
 
 const parametrosStore = useParametrosStore();
 const sessaoStore     = useSessaoStore();
 
-const carregando = ref(true);
+const carregando      = ref(true);
+const operadoresAtivos = ref([]);
 const toastMsg   = ref('');
 const toastTipo  = ref('ok');
 let toastTimer   = null;
@@ -223,10 +257,15 @@ const vals = reactive({
   nfce_ambiente:                        '2',
   venda_permite_desconto_sem_aprovacao: 'true',
   venda_imprime_cupom:                  'false',
+  vale_gestor_pk:                       '',
 });
 
 onMounted(async () => {
-  await parametrosStore.carregar(sessaoStore.filial?.pk);
+  const [, { data: ops }] = await Promise.all([
+    parametrosStore.carregar(sessaoStore.filial?.pk),
+    supabase.from('operadores').select('pk, nome').eq('ativo', true).order('nome'),
+  ]);
+  operadoresAtivos.value = ops || [];
   Object.keys(vals).forEach(k => {
     if (parametrosStore.mapa[k] !== undefined) vals[k] = parametrosStore.mapa[k];
   });
