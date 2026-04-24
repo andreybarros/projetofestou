@@ -203,7 +203,6 @@ import { ref, reactive, onMounted } from 'vue';
 import { useParametrosStore } from '../stores/parametros';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
-import { useSessaoStore } from '../stores/sessao';
 
 const parametrosStore = useParametrosStore();
 const sessaoStore     = useSessaoStore();
