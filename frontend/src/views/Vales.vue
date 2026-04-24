@@ -226,6 +226,21 @@ const ehGestor = computed(() => {
   return String(op.value?.id) === String(gPk);
 });
 
+const meuFuncionarioPk   = ref(null);
+const meuFuncionarioNome = ref('');
+
+async function resolverFuncionario() {
+  meuFuncionarioNome.value = op.value?.nome || '';
+  const matricula = op.value?.matricula;
+  if (!matricula) return;
+  const { data } = await supabase
+    .from('funcionarios').select('pk, nome').eq('matricula', matricula).maybeSingle();
+  if (data) {
+    meuFuncionarioPk.value   = data.pk;
+    meuFuncionarioNome.value = data.nome;
+  }
+}
+
 const statusOpts = [
   { v: 'pendente',   label: 'Pendente' },
   { v: 'aprovado',   label: 'Aprovado' },
@@ -259,8 +274,27 @@ async function carregar() {
   carregando.value = true;
   try {
     const filial_pk = sessao.filial?.pk;
-    const { data } = await apiClient.get('/api/vales', { params: { filial_pk } });
-    vales.value = data || [];
+    const params = { filial_pk };
+
+    if (!ehGestor.value && !op.value?.admin) {
+      if (meuFuncionarioPk.value) {
+        params.funcionario_pk = meuFuncionarioPk.value;
+      }
+    }
+
+    const { data } = await apiClient.get('/api/vales', { params });
+
+    // Filtro extra client-side: garante que operadores sem vínculo de matrícula
+    // só vejam vales com seu nome (quando funcionario_pk é null no registro)
+    if (!ehGestor.value && !op.value?.admin) {
+      const nome = meuFuncionarioNome.value.toLowerCase();
+      vales.value = (data || []).filter(v =>
+        (meuFuncionarioPk.value && v.funcionario_pk === meuFuncionarioPk.value) ||
+        (!v.funcionario_pk && v.funcionario_nome?.toLowerCase() === nome)
+      );
+    } else {
+      vales.value = data || [];
+    }
   } catch (e) {
     toast('Erro ao carregar vales: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
@@ -268,24 +302,13 @@ async function carregar() {
   }
 }
 
-async function abrirSolicitar() {
-  const matricula = op.value?.matricula;
-  let funcionario_pk   = null;
-  let funcionario_nome = op.value?.nome || '';
-
-  if (matricula) {
-    const { data } = await supabase
-      .from('funcionarios')
-      .select('pk, nome')
-      .eq('matricula', matricula)
-      .maybeSingle();
-    if (data) {
-      funcionario_pk   = data.pk;
-      funcionario_nome = data.nome;
-    }
-  }
-
-  form.value = { funcionario_nome, funcionario_pk, valor: null, motivo: '' };
+function abrirSolicitar() {
+  form.value = {
+    funcionario_nome: meuFuncionarioNome.value,
+    funcionario_pk:   meuFuncionarioPk.value,
+    valor: null,
+    motivo: '',
+  };
   modalAberto.value = true;
 }
 
@@ -370,6 +393,7 @@ async function confirmarPagar() {
 
 onMounted(async () => {
   await parametros.carregar(sessao.filial?.pk);
+  await resolverFuncionario();
   await carregar();
 });
 </script>
