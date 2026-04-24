@@ -470,6 +470,12 @@ ALTER TABLE produtos
   ADD COLUMN IF NOT EXISTS unidade_tributavel text DEFAULT 'UN',
   ADD COLUMN IF NOT EXISTS origem            text DEFAULT '0';
 
+-- 5.2 Promoção Relâmpago por produto
+ALTER TABLE produtos
+  ADD COLUMN IF NOT EXISTS preco_promo  NUMERIC(10,2) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS promo_inicio TIMESTAMPTZ   DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS promo_fim    TIMESTAMPTZ   DEFAULT NULL;
+
 -- 5.2 Dados fiscais e NFC-e nas filiais
 ALTER TABLE filiais
   ADD COLUMN IF NOT EXISTS ie               text    DEFAULT NULL,
@@ -615,6 +621,9 @@ ALTER TABLE vendas ADD COLUMN IF NOT EXISTS vendedor    text;
 -- 7.4 Forma de recebimento na venda
 ALTER TABLE vendas ADD COLUMN IF NOT EXISTS forma_recebimento text;
 
+-- 7.5 Cliente vinculado à venda
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS cliente_pk bigint REFERENCES clientes(pk) ON DELETE SET NULL;
+
 
 
 -- ============================================================
@@ -696,6 +705,7 @@ INSERT INTO parametros (filial_pk, chave, valor) VALUES
   (null, 'venda_imprime_cupom',                  'false'),
   -- Crediário
   (null, 'crediario_exige_cliente',              'true'),
+  (null, 'crediario_bloqueia_inadimplente',      'true'),
   -- Vales
   (null, 'vale_gestor_pk',                       '')
 ON CONFLICT DO NOTHING;

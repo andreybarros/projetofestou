@@ -69,12 +69,16 @@
                 <span class="prod-code">{{ p.codigo || '' }}</span>
               </div>
               <div class="prod-bottom">
-                <span class="prod-price">{{ fmt(p.valor_venda) }}</span>
+                <div class="prod-price-wrap">
+                  <span v-if="getPromoAtiva(p)" class="prod-price-original">{{ fmt(p.valor_venda) }}</span>
+                  <span :class="['prod-price', { 'prod-price-promo': getPromoAtiva(p) }]">{{ fmt(getPrecoEfetivo(p)) }}</span>
+                </div>
                 <span :class="['prod-stock', p.saldo <= 0 ? 'zero' : p.saldo <= 5 ? 'low' : '']">
                   {{ p.saldo !== null ? p.saldo : '∞' }}
                 </span>
               </div>
-              <div class="prod-add-badge">+</div>
+              <div v-if="getPromoAtiva(p)" class="prod-promo-badge">PROMO</div>
+              <div v-else class="prod-add-badge">+</div>
             </button>
           </div>
         </div>
@@ -82,6 +86,7 @@
 
       <!-- ══ DIREITA: Carrinho em abas ════════════════════════════ -->
       <aside :class="['cart', { 'mobile-hidden': mobileView === 'catalog' }]">
+
         <!-- Botão Voltar Mobile -->
         <button v-if="mobileView === 'cart'" class="cart-back-mobile lg-hide" @click="mobileView = 'catalog'">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
@@ -339,6 +344,10 @@
                   Selecione um cliente para usar o crediário
                 </div>
               </div>
+              <div v-if="temCrediario && clienteInadimplente && crediarioBloqueiainadimpl" class="crediario-warn inadimpl" style="margin-top:6px">
+                <span class="material-symbols-outlined">block</span>
+                <span>Cliente possui <b>{{ inadimplenteQtd }} boleto(s) em atraso</b>. Crediário disponível somente após quitar as dívidas.</span>
+              </div>
               <div v-if="vendaStore.pagamentos.length" class="pag-list">
                 <div v-for="(p, i) in vendaStore.pagamentos" :key="i" class="pag-item">
                   <span class="pag-forma">{{ p.forma }}</span>
@@ -356,26 +365,28 @@
               <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               {{ processando ? 'Processando…' : 'Finalizar Venda' }}
             </button>
-            <button v-if="vendaFinalizada && tipoVenda !== 'locacao'" class="btn-recibo" @click="imprimirRecibo">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+
+            <!-- Botão de Recibo após finalizar -->
+            <button v-if="vendaFinalizada" class="btn-recibo-pos" @click="imprimirRecibo">
+              <span class="material-symbols-outlined">print</span>
               Imprimir Recibo
             </button>
-            <button v-if="vendaFinalizada && tipoVenda === 'locacao'" class="btn-contrato" @click="imprimirContrato">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+
+            <!-- Botão de Contrato (apenas locação) -->
+            <button v-if="vendaFinalizada && tipoVenda === 'locacao'" class="btn-contrato-pos" @click="imprimirContrato">
+              <span class="material-symbols-outlined">description</span>
               Imprimir Contrato
             </button>
-            <button v-if="vendaFinalizada && parametrosStore.getParam('nfce_ativa', false)" class="btn-nfce" :disabled="emitindo" @click="emitirNFCe">
-              <span v-if="emitindo" class="spin-sm"></span>
-              <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
-              {{ emitindo ? 'Emitindo…' : 'Emitir NFC-e' }}
+
+            <!-- Botão de Limpar/Nova Venda após finalizar -->
+            <button v-if="vendaFinalizada" type="button" class="btn-limpar-pos" @click="limpar">
+              <span class="material-symbols-outlined">delete_sweep</span>
+              Nova Venda
             </button>
-            <div v-if="resultNfce" :class="['nfce-result', resultNfce.ok ? 'ok' : 'err']">
-              <div v-if="resultNfce.ok"><strong>NFC-e autorizada</strong><br/><span class="mono">{{ resultNfce.chave }}</span></div>
-              <div v-else><strong>Rejeitada:</strong> {{ resultNfce.erro }}</div>
-            </div>
           </div>
 
         </div><!-- /tab 2 -->
+
 
       </aside>
     </div>
@@ -536,12 +547,34 @@ const filtrados = computed(() => {
 
 const bloqueiarSemCaixa         = computed(() => parametrosStore.getParam('pdv_bloquear_sem_caixa', true));
 const crediarioExigeCliente     = computed(() => parametrosStore.getParam('crediario_exige_cliente', true));
+const crediarioBloqueiainadimpl = computed(() => parametrosStore.getParam('crediario_bloqueia_inadimplente', true));
 const exigeVendedor             = computed(() => parametrosStore.getParam('pdv_exigir_vendedor', false));
 const permitirEstoqueNegativo   = computed(() => parametrosStore.getParam('pdv_permitir_estoque_negativo', false));
 
 const temCrediario = computed(() =>
   vendaStore.pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario')
 );
+
+const clienteInadimplente  = ref(false);
+const inadimplenteQtd      = ref(0);
+
+watch([clienteSel, temCrediario, crediarioBloqueiainadimpl], async ([cli, temCred, bloqueiaInadimpl]) => {
+  if (!cli?.pk || !temCred || !bloqueiaInadimpl) {
+    clienteInadimplente.value = false;
+    inadimplenteQtd.value     = 0;
+    return;
+  }
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from('vendas')
+    .select('pk')
+    .eq('cliente_pk', cli.pk)
+    .not('data_vencimento_crediario', 'is', null)
+    .or('status_crediario.is.null,status_crediario.eq.pendente')
+    .lt('data_vencimento_crediario', hoje);
+  inadimplenteQtd.value     = data?.length || 0;
+  clienteInadimplente.value = inadimplenteQtd.value > 0;
+}, { immediate: false });
 
 const podeFinalizar = computed(() =>
   vendaStore.itens.length > 0 &&
@@ -550,17 +583,24 @@ const podeFinalizar = computed(() =>
   !vendaFinalizada.value &&
   (!bloqueiarSemCaixa.value || !!caixaStore.caixaAberto) &&
   (!temCrediario.value || !!dtVenc.value) &&
-  (!temCrediario.value || !crediarioExigeCliente.value || !!clienteSel.value)
+  (!temCrediario.value || !crediarioExigeCliente.value || !!clienteSel.value) &&
+  (!temCrediario.value || !crediarioBloqueiainadimpl.value || !clienteInadimplente.value)
 );
 
 const troco = computed(() =>
   Math.max(0, parseFloat(vendaStore.totalPago) - parseFloat(vendaStore.total))
 );
 
+// ── Sincronização vendedor/cliente com store ──────────────────
+watch(vendedorSel, v  => vendaStore.setVendedor(v));
+watch(clienteSel,  c  => vendaStore.setCliente(c));
+
 // ── Mount ─────────────────────────────────────────────────────
 onMounted(async () => {
   await checkCaixa();
   await Promise.all([loadProdutos(), loadCategorias(), loadVendedores(), loadFormasPagamento()]);
+  // Restaura cliente (objeto completo) diretamente
+  if (vendaStore.cliente) clienteSel.value = vendaStore.cliente;
 });
 
 async function loadProdutos() {
@@ -568,7 +608,7 @@ async function loadProdutos() {
   try {
     let q = supabase
       .from('produtos')
-      .select('pk, codigo, descricao, valor_venda, saldo, categoria_pk, foto_url, codigo_barras, ncm, cfop, csosn, unidade_comercial')
+      .select('pk, codigo, descricao, valor_venda, preco_promo, promo_inicio, promo_fim, saldo, categoria_pk, foto_url, codigo_barras, ncm, cfop, csosn, unidade_comercial')
       .order('descricao');
     if (sessaoStore.filial?.pk)
       q = q.eq('filial_pk', sessaoStore.filial.pk);
@@ -829,6 +869,16 @@ function aplicarDescontoItem(i) {
   itemDescAberto.value = null;
 }
 
+function getPromoAtiva(p) {
+  if (!p.preco_promo || !p.promo_inicio || !p.promo_fim) return false;
+  const agora = new Date();
+  return agora >= new Date(p.promo_inicio) && agora <= new Date(p.promo_fim);
+}
+
+function getPrecoEfetivo(p) {
+  return getPromoAtiva(p) ? p.preco_promo : (p.valor_venda || 0);
+}
+
 function add(p) {
   if (vendaFinalizada.value) return;
   const qtd = qtdMultiplicador.value;
@@ -842,14 +892,17 @@ function add(p) {
       return;
     }
   }
+  
+  const preco = getPrecoEfetivo(p);
+  
   vendaStore.adicionarItem({
     produto_pk:     p.pk,
     nome:           p.descricao,
     codigo:         p.codigo,
     categoria_pk:   p.categoria_pk,
-    preco_unitario: parseFloat(p.valor_venda || 0),
+    preco_unitario: parseFloat(preco),
     qtd,
-    preco_total:    parseFloat(p.valor_venda || 0) * qtd,
+    preco_total:    parseFloat(preco) * qtd,
     desconto_val:   0,
     saldo:          p.saldo,
   });
@@ -883,11 +936,29 @@ function addPag() {
 
 function limpar() {
   vendaStore.resetar();
-  vendaFinalizada.value = false;
-  vendaPk.value = null;
-  vendaNumero.value = null;
-  resultNfce.value = null;
-  cpf.value = '';
+  vendaFinalizada.value      = false;
+  vendaPk.value              = null;
+  vendaNumero.value          = null;
+  resultNfce.value           = null;
+  cpf.value                  = '';
+  dtVenc.value               = '';
+  dtLocacao.value            = '';
+  dtDevolucao.value          = '';
+  formaPag.value             = 'dinheiro';
+  valorPag.value             = 0;
+  tipoVenda.value            = 'venda';
+  canalVenda.value           = 'presencial';
+  vendedorSel.value          = null;
+  clienteSel.value           = null;
+  clienteBusca.value         = '';
+  clienteResultados.value    = [];
+  showClienteDrop.value      = false;
+  clienteInadimplente.value  = false;
+  inadimplenteQtd.value      = 0;
+  itemDescAberto.value       = null;
+  busca.value                = '';
+  catSel.value               = null;
+  cartTab.value              = 0;
 }
 
 onBeforeRouteLeave(() => {
@@ -1085,17 +1156,18 @@ async function finalizar() {
       tipo_venda:     tipoVenda.value,
       canal_venda:    canalVenda.value,
       ...(tipoVenda.value === 'locacao' ? { data_locacao: dtLocacao.value, data_devolucao_prevista: dtDevolucao.value } : {}),
-      ...(dtVenc.value ? { data_vencimento_crediario: dtVenc.value } : {}),
+      ...(dtVenc.value ? { data_vencimento_crediario: dtVenc.value, status_crediario: 'pendente' } : {}),
     };
     const { data } = await apiClient.post('/api/vendas/finalizar', payload);
     vendaPk.value         = data.venda_pk;
     vendaNumero.value     = data.numero;
     vendaFinalizada.value = true;
-    if (parametrosStore.getParam('venda_imprime_cupom', false)) {
-      if (tipoVenda.value === 'locacao') imprimirContrato();
-      else imprimirRecibo();
-    }
     toast(`Venda #${data.numero} finalizada com sucesso!`);
+    
+    // Impressão automática
+    setTimeout(() => {
+      imprimirRecibo();
+    }, 500);
   } catch (e) {
     toast('Erro: ' + (e.response?.data?.erro || e.message), 'err', 6000);
   } finally {
@@ -1191,17 +1263,19 @@ ${troco.value > 0.009 ? `<div class="troco-line"><span>Troco</span><span>${fmt(t
   Obrigado pela preferência!<br/>
   Este documento não tem valor fiscal.
 </div>
-<script>
-  window.onload = function() { 
-    window.print(); 
-    setTimeout(function() { window.close(); }, 1200);
-  }
-<\/script>
+<script>window.onload = function(){ window.print(); }<\/script>
 </body></html>`;
 
-  const win = window.open('', '_blank', 'width=450,height=600');
-  win.document.write(html);
-  win.document.close();
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  document.body.appendChild(iframe);
+  iframe.contentWindow.document.open();
+  iframe.contentWindow.document.write(html);
+  iframe.contentWindow.document.close();
+  iframe.contentWindow.addEventListener('afterprint', () => {
+    if (iframe.parentNode) document.body.removeChild(iframe);
+  });
+  setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 15_000);
 }
 
 // ── Contrato de Locação ───────────────────────────────────────
@@ -1248,7 +1322,8 @@ function imprimirContrato() {
   .clausulas p { font-size: 10.5px; margin-bottom: 6px; text-align: justify; }
   .assinaturas { display: flex; justify-content: space-between; margin-top: 40px; }
   .assin { width: 45%; border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 11px; }
-  @media print { body { padding: 15px 20px; } }
+  .page-break { page-break-before: always; }
+  @media print { body { padding: 15px 20px; } .page-break { page-break-before: always; } }
 </style>
 </head>
 <body>
@@ -1308,7 +1383,7 @@ function imprimirContrato() {
 </table>
 <div class="total-line">TOTAL: ${fmt(vendaStore.total)}</div>
 
-<div class="clausulas">
+<div class="clausulas page-break">
 <div class="section-title">Cláusulas Contratuais</div>
 <p>1. A locação terá a duração de 1 (um) dia útil, contados a partir da retirada e conforme negociação para devolução. A entrega deverá ser feita no dia informado no contrato, caso contrário será cobrado o mesmo valor da locação.</p>
 <p>2. O pagamento total deverá ser efetuado no ato da locação. Optando pelo frete, este será cobrado de acordo com a localização da entrega e recolhimento (conforme tabela afixada no estabelecimento).</p>
@@ -1339,6 +1414,11 @@ function imprimirContrato() {
   iframe.style.height = '0';
   iframe.style.border = '0';
   document.body.appendChild(iframe);
+  iframe.onload = () => {
+    iframe.contentWindow.addEventListener('afterprint', () => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    });
+  };
   iframe.contentWindow.document.open();
   iframe.contentWindow.document.write(html);
   iframe.contentWindow.document.close();
@@ -1687,8 +1767,19 @@ async function emitirNFCe() {
 }
 .prod-card:hover .prod-add-badge { opacity: 1; }
 
+.prod-price-wrap { display: flex; flex-direction: column; gap: 1px; }
+.prod-price-original { font-size: 10px; color: var(--text2); text-decoration: line-through; font-family: var(--mono); }
+.prod-price-promo { color: #ef4444 !important; }
+.prod-promo-badge {
+  position: absolute; top: 6px; right: 6px;
+  background: #ef4444; color: #fff;
+  font-size: 9px; font-weight: 800; letter-spacing: .6px;
+  padding: 2px 6px; border-radius: 4px; line-height: 1.4;
+}
+
 /* ══ CARRINHO ════════════════════════════════════════════════════ */
 .cart {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--bg1);
@@ -2051,6 +2142,7 @@ async function emitirNFCe() {
 .crediario-row { display: flex; gap: 12px; }
 .crediario-warn { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #f59e0b; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); border-radius: 7px; padding: 5px 10px; }
 .crediario-warn .material-symbols-outlined { font-size: 15px; }
+.crediario-warn.inadimpl { color: #ef4444; background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.25); }
 .pag-status strong { font-family: var(--mono); color: var(--text); }
 .falta { color: var(--red); font-weight: 600; }
 .troco { color: var(--green); font-weight: 600; }
@@ -2102,6 +2194,7 @@ async function emitirNFCe() {
   font-weight: 600;
   cursor: pointer;
   transition: background .15s;
+  touch-action: manipulation;
 }
 .btn-recibo:hover { background: rgba(16,185,129,.1); border-color: var(--green); }
 
@@ -2120,6 +2213,7 @@ async function emitirNFCe() {
   font-weight: 600;
   cursor: pointer;
   transition: background .15s;
+  touch-action: manipulation;
 }
 .btn-contrato:hover { background: rgba(245,158,11,.1); border-color: var(--amber); }
 
@@ -2141,6 +2235,24 @@ async function emitirNFCe() {
 }
 .btn-nfce:hover:not(:disabled) { background: rgba(99,102,241,.1); border-color: var(--accent); }
 .btn-nfce:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-nova-venda {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--primary); color: #fff; border: none;
+  border-radius: 10px; padding: 0 14px; height: 44px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: opacity .15s; width: 100%;
+  touch-action: manipulation;
+}
+.btn-nova-venda:hover { opacity: .85; }
+.btn-nova-venda:active { opacity: .7; }
+
+.nfce-result {
+  padding: 8px 10px; border-radius: 8px; font-size: 12px;
+  border: 1px solid; word-break: break-all;
+}
+.nfce-result.ok { color: var(--green); border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.08); }
+.nfce-result.err { color: var(--red); border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.08); }
 
 /* Cliente */
 .cliente-section { position: relative; }
@@ -2457,6 +2569,9 @@ async function emitirNFCe() {
   }
 
   .cart-items { max-height: none; }
+
+  .btn-nova-venda { height: 48px; font-size: 14px; }
+  .btn-recibo, .btn-contrato, .btn-nfce { height: 44px; font-size: 13px; }
 }
 
 /* Caixa Fechado Overlay */
@@ -2714,7 +2829,89 @@ async function emitirNFCe() {
 [data-theme="light"] .psc-label      { color: #374151; }
 [data-theme="light"] .psc-val        { color: #0f172a; }
 
+.btn-recibo-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+.btn-recibo-pos:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+.btn-recibo-pos .material-symbols-outlined { font-size: 20px; }
+
+.btn-contrato-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+.btn-contrato-pos:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+}
+.btn-contrato-pos .material-symbols-outlined { font-size: 20px; }
+
+.btn-limpar-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.8;
+}
+.btn-limpar-pos:hover {
+  opacity: 1;
+  background: var(--bg3);
+  border-color: var(--text2);
+}
+.btn-limpar-pos .material-symbols-outlined { font-size: 20px; color: var(--red); }
+
 /* Mobile — ajustes das novas abas */
+@media (max-width: 900px) {
+  .btn-recibo-pos, .btn-limpar-pos {
+    padding: 16px;
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 900px) {
   .det-total-hero  { padding: 12px 14px 8px; }
   .det-hero-value  { font-size: 26px; }

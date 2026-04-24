@@ -22,11 +22,36 @@
           <span class="material-symbols-outlined">add</span>
           Novo Produto
         </button>
-        <button @click="$router.push('/produtos/importar')" class="btn-secondary">
-          <span class="material-symbols-outlined">upload_file</span>
-          Importar CSV
-        </button>
+
+        <!-- Dropdown Outras Ações -->
+        <div class="dropdown-wrap">
+          <button @click="showAcoes = !showAcoes" :class="['btn-secondary', showAcoes ? 'active' : '']">
+            <span class="material-symbols-outlined">{{ showAcoes ? 'expand_less' : 'more_vert' }}</span>
+            Outras Ações
+          </button>
+          
+          <Transition name="drop">
+            <div v-if="showAcoes" class="dropdown-menu card-glass">
+              <button class="drop-item" @click="$router.push('/produtos/importar'); showAcoes = false">
+                <span class="material-symbols-outlined">upload_file</span>
+                Importar CSV
+              </button>
+              <button class="drop-item" @click="$router.push('/produtos/reajuste'); showAcoes = false">
+                <span class="material-symbols-outlined">payments</span>
+                Reajuste em Massa
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
+    </div>
+
+    <!-- Filtros rápidos -->
+    <div class="filtros-rapidos">
+      <button :class="['filtro-chip', { active: filtroPromo }]" @click="filtroPromo = !filtroPromo">
+        <span class="material-symbols-outlined">local_offer</span>
+        Em Promoção
+      </button>
     </div>
 
     <div v-if="carregando" class="loading">
@@ -54,10 +79,15 @@
             <p class="card-desc">{{ p.descricao }}</p>
             <p class="card-cat">{{ p.categoria_nome || '—' }}</p>
             <div class="card-footer">
-              <span class="card-preco">{{ fmt(p.valor_venda) }}</span>
+              <div v-if="estaEmPromo(p)" class="card-promo-area">
+                <span class="card-preco-antigo">{{ fmt(p.valor_venda) }}</span>
+                <span class="card-preco-novo">{{ fmt(p.preco_promo) }}</span>
+              </div>
+              <span v-else class="card-preco">{{ fmt(p.valor_venda) }}</span>
               <span v-if="p.codigo" class="card-cod">{{ p.codigo }}</span>
             </div>
           </div>
+          <div v-if="estaEmPromo(p)" class="promo-badge-tag">PROMO</div>
         </div>
       </div>
 
@@ -87,7 +117,13 @@
               <td class="mono">{{ p.codigo || "—" }}</td>
               <td>{{ p.descricao }}</td>
               <td>{{ p.categoria_nome || "—" }}</td>
-              <td class="mono">{{ fmt(p.valor_venda) }}</td>
+              <td class="mono">
+                <div v-if="estaEmPromo(p)" class="table-promo">
+                  <span class="table-old-price">{{ fmt(p.valor_venda) }}</span>
+                  <span class="table-new-price">{{ fmt(p.preco_promo) }}</span>
+                </div>
+                <span v-else>{{ fmt(p.valor_venda) }}</span>
+              </td>
               <td :class="['saldo', (p.saldo || 0) <= 0 ? 'zero' : (p.saldo || 0) < 5 ? 'baixo' : 'ok']">{{ p.saldo ?? '∞' }}</td>
               <td class="mono">{{ p.ncm || '—' }}</td>
               <td class="acoes">
@@ -150,16 +186,19 @@ const sessaoStore = useSessaoStore();
 const produtos    = ref([]);
 const categorias  = ref([]);
 const carregando  = ref(true);
-const busca       = ref("");
-const viewMode    = ref("grid");
-const pagina      = ref(1);
-const POR_PAGINA  = 48;
+const busca        = ref("");
+const viewMode     = ref("grid");
+const pagina       = ref(1);
+const POR_PAGINA   = 48;
+const showAcoes    = ref(false);
+const filtroPromo  = ref(false);
 
 const produtosFiltrados = computed(() => {
   const q = (busca.value || "").trim().toLowerCase();
-  if (!q) return produtos.value;
-  const palavras = q.split(/\s+/).filter(Boolean);
   return produtos.value.filter(p => {
+    if (filtroPromo.value && !estaEmPromo(p)) return false;
+    if (!q) return true;
+    const palavras = q.split(/\s+/).filter(Boolean);
     const desc   = (p.descricao     || '').toLowerCase();
     const codigo = (p.codigo        || '').toLowerCase();
     const barras = (p.codigo_barras || '').toLowerCase();
@@ -189,7 +228,8 @@ const totais = computed(() => {
   }
 });
 
-watch(busca, () => { pagina.value = 1; });
+watch(busca,       () => { pagina.value = 1; });
+watch(filtroPromo, () => { pagina.value = 1; });
 
 onMounted(async () => { 
   try {
@@ -205,7 +245,7 @@ async function carregar() {
   try {
     let q = supabase
       .from("produtos")
-      .select("pk, codigo, codigo_barras, descricao, valor_venda, preco_custo, saldo, ncm, cfop, csosn, unidade_comercial, categoria_pk, foto_url")
+      .select("pk, codigo, codigo_barras, descricao, valor_venda, preco_custo, saldo, ncm, cfop, csosn, unidade_comercial, categoria_pk, foto_url, preco_promo, promo_inicio, promo_fim")
       .order("descricao");
     if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
     const { data, error } = await q;
@@ -239,11 +279,42 @@ function fmt(v) {
     return "R$ 0,00";
   }
 }
+function estaEmPromo(p) {
+  if (!p.preco_promo || p.preco_promo <= 0) return false;
+  if (!p.promo_inicio || !p.promo_fim) return false;
+  const agora = new Date();
+  return agora >= new Date(p.promo_inicio) && agora <= new Date(p.promo_fim);
+}
 </script>
 
 <style scoped>
 .prod-wrap    { display: flex; flex-direction: column; gap: 1.5rem; }
-.prod-header  { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; }
+.prod-header  { margin-bottom: -1rem; }
+.filtros-rapidos { margin-bottom: -1rem; }
+.paginacao    { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1rem; }
+
+/* Dropdown Outras Ações */
+.dropdown-wrap { position: relative; }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; min-width: 220px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 8px; z-index: 100; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.drop-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 10px 12px; border-radius: 8px; background: none; border: none;
+  color: var(--text); font-size: 13.5px; font-weight: 500; cursor: pointer;
+  transition: all .15s; text-align: left;
+}
+.drop-item:hover { background: rgba(99,102,241, 0.1); color: var(--primary); }
+.drop-item .material-symbols-outlined { font-size: 20px; color: var(--text2); }
+.drop-item:hover .material-symbols-outlined { color: var(--primary); }
+
+/* Animação Drop */
+.drop-enter-active, .drop-leave-active { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.drop-enter-from, .drop-leave-to { opacity: 0; transform: translateY(-8px) scale(0.95); }
+
 .page-title   { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--text); }
 .page-sub     { margin: 3px 0 0; font-size: .85rem; color: var(--text2); }
 
@@ -265,6 +336,13 @@ function fmt(v) {
 .btn-secondary { display: flex; align-items: center; gap: 5px; padding: .55rem 1.1rem; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .9rem; transition: all .15s; white-space: nowrap; }
 .btn-secondary:hover:not(:disabled) { background: var(--bg3); border-color: var(--accent); }
 .btn-secondary:disabled { opacity: .5; cursor: default; }
+
+/* Filtros rápidos */
+.filtros-rapidos { display: flex; gap: 6px; flex-wrap: wrap; }
+.filtro-chip { display: flex; align-items: center; gap: 5px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.filtro-chip .material-symbols-outlined { font-size: 15px; }
+.filtro-chip.active { background: rgba(239,68,68,.12); color: #ef4444; border-color: rgba(239,68,68,.35); }
+.filtro-chip:not(.active):hover { background: var(--bg3); color: var(--text); }
 
 /* ── Cards ────────────────────────────────── */
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
@@ -334,6 +412,15 @@ function fmt(v) {
 .total-val.venda { color: #6366f1; }
 
 .card-glass { box-shadow: 0 8px 32px rgba(0,0,0,.08); }
+
+/* Promoções */
+.promo-badge-tag { position: absolute; top: 10px; left: 10px; background: #ef4444; color: #fff; font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 8px rgba(239,68,68,0.4); }
+.card-promo-area { display: flex; flex-direction: column; gap: 0; }
+.card-preco-antigo { font-size: 0.75rem; color: var(--text2); text-decoration: line-through; opacity: 0.7; margin-bottom: -2px; }
+.card-preco-novo { font-size: 1.1rem; color: #ef4444; font-weight: 800; font-family: var(--mono); }
+.table-promo { display: flex; flex-direction: column; line-height: 1.2; }
+.table-old-price { font-size: 0.7rem; color: var(--text2); text-decoration: line-through; }
+.table-new-price { color: #ef4444; font-weight: 800; }
 
 @media (max-width: 600px) {
   .busca-input { width: 100%; }

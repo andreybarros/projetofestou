@@ -79,6 +79,37 @@
         </div>
       </div>
 
+      <!-- ── Seção: Promoção Relâmpago (NOVO) ──────────────── -->
+      <div class="form-section promo-section">
+        <div class="section-header">
+          <span class="material-symbols-outlined section-icon" style="color:#ef4444">bolt</span>
+          <h3 class="section-title">Promoção Relâmpago</h3>
+          <span class="badge-novo">OPCIONAL</span>
+        </div>
+        <p class="section-sub">Defina um preço especial que entrará em vigor automaticamente no período selecionado.</p>
+        
+        <div class="form-grid">
+          <div class="field">
+            <label>Preço Promocional (R$)</label>
+            <input v-model.number="form.preco_promo" type="number" step="0.01" min="0" placeholder="0.00" />
+          </div>
+          <div class="field">
+            <label>Início da Promoção</label>
+            <input v-model="form.promo_inicio" type="datetime-local" />
+          </div>
+          <div class="field">
+            <label>Fim da Promoção</label>
+            <input v-model="form.promo_fim" type="datetime-local" />
+          </div>
+          <div class="field" v-if="form.preco_promo > 0">
+            <label>Economia para o Cliente</label>
+            <div class="economy-display" v-if="form.valor_venda > form.preco_promo">
+              {{ Math.round((1 - form.preco_promo / form.valor_venda) * 100) }}% de desconto
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Seção: Localização no Estoque (NOVO) ──────────── -->
       <div class="form-section">
         <div class="section-header">
@@ -151,6 +182,9 @@
           {{ salvando ? 'Salvando...' : (pk ? 'Salvar Alterações' : 'Cadastrar Produto') }}
         </button>
       </div>
+      <div 
+          style="margin-bottom: 20px;">
+      </div>
     </form>
   </div>
 </template>
@@ -178,6 +212,9 @@ const form = ref({
   valor_venda: 0, preco_custo: 0, saldo: 0,
   ncm: '', cfop: '5102', csosn: '400', unidade_comercial: 'UN',
   categoria_pk: '',
+  preco_promo: 0,
+  promo_inicio: '',
+  promo_fim: '',
   armazem_pk: '',
   endereco_armazem_pk: '',
 });
@@ -237,10 +274,20 @@ onMounted(async () => {
       categoria_pk:        data.categoria_pk        || '',
       armazem_pk:          data.armazem_pk          || '',
       endereco_armazem_pk: data.endereco_armazem_pk || '',
+      promo_inicio:        isoParaDT(data.promo_inicio),
+      promo_fim:           isoParaDT(data.promo_fim),
     };
   }
   carregando.value = false;
 });
+
+function isoParaDT(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 async function salvar() {
   if (!form.value.descricao?.trim()) { erro.value = 'Descrição obrigatória.'; return; }
@@ -261,7 +308,10 @@ async function salvar() {
       categoria_pk:      form.value.categoria_pk      || null,
       armazem_pk:          form.value.armazem_pk          || null,
       endereco_armazem_pk: form.value.endereco_armazem_pk || null,
-      filial_pk:         sessaoStore.filial?.pk       || null,
+      filial_pk:           sessaoStore.filial?.pk         || null,
+      preco_promo:  form.value.preco_promo > 0 ? parseFloat(form.value.preco_promo) : null,
+      promo_inicio: form.value.promo_inicio ? new Date(form.value.promo_inicio).toISOString() : null,
+      promo_fim:    form.value.promo_fim    ? new Date(form.value.promo_fim).toISOString()    : null,
     };
 
     let error;
@@ -338,6 +388,12 @@ async function salvar() {
 .spin { width: 22px; height: 22px; border: 3px solid rgba(99,102,241,.2); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
 .spin-xs { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Promoção */
+.promo-section { border: 2px solid rgba(239,68,68,.15); background: rgba(239,68,68,.02); }
+.section-sub { font-size: .82rem; color: var(--text2); margin: -5px 0 15px 34px; }
+.badge-novo { font-size: .65rem; padding: 2px 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-weight: 700; margin-left: 8px; }
+.economy-display { padding: .55rem .8rem; background: rgba(16,185,129,.1); color: #10b981; border-radius: 9px; font-weight: 800; font-size: .9rem; text-align: center; border: 1px solid rgba(16,185,129,.2); }
 
 @media (max-width: 600px) {
   .form-grid { grid-template-columns: 1fr; }

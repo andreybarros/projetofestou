@@ -2,9 +2,11 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export const useVendaStore = defineStore('venda', () => {
-  const itens = ref([]);
-  const desconto = ref(0);
+  const itens      = ref([]);
+  const desconto   = ref(0);
   const pagamentos = ref([]);
+  const vendedor   = ref(null);
+  const cliente    = ref(null);
 
   const subtotal = computed(() => {
     return itens.value.reduce((sum, item) => {
@@ -88,16 +90,23 @@ export const useVendaStore = defineStore('venda', () => {
     pagamentos.value.splice(index, 1);
   }
 
+  function setVendedor(v) { vendedor.value = v; }
+  function setCliente(c)  { cliente.value  = c; }
+
   function resetar() {
-    itens.value = [];
-    desconto.value = 0;
+    itens.value      = [];
+    desconto.value   = 0;
     pagamentos.value = [];
+    vendedor.value   = null;
+    cliente.value    = null;
   }
 
   return {
     itens,
     desconto,
     pagamentos,
+    vendedor,
+    cliente,
     subtotal,
     total,
     totalPago,
@@ -110,6 +119,8 @@ export const useVendaStore = defineStore('venda', () => {
     setDesconto,
     adicionarPagamento,
     removerPagamento,
+    setVendedor,
+    setCliente,
     resetar
   };
 });

@@ -713,7 +713,7 @@ function showToast(msg, tipo = 'ok') {
 /* Calendário */
 .ag-calendar { padding: 20px; }
 
-.cal-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.cal-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 26px; }
 .cal-nav-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text2); cursor: pointer; display: flex; padding: 4px; }
 .cal-nav-btn:hover { color: var(--text); border-color: var(--accent); }
 .cal-mes { flex: 1; text-align: center; font-size: 16px; font-weight: 700; color: var(--text); margin: 0; text-transform: capitalize; }
