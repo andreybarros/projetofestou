@@ -79,7 +79,7 @@
             <p class="card-desc">{{ p.descricao }}</p>
             <p class="card-cat">{{ p.categoria_nome || '—' }}</p>
             <div class="card-footer">
-              <div v-if="estaEmPromo(p)" class="card-promo-area">
+              <div v-if="p.em_promo" class="card-promo-area">
                 <span class="card-preco-antigo">{{ fmt(p.valor_venda) }}</span>
                 <span class="card-preco-novo">{{ fmt(p.preco_promo) }}</span>
               </div>
@@ -87,7 +87,7 @@
               <span v-if="p.codigo" class="card-cod">{{ p.codigo }}</span>
             </div>
           </div>
-          <div v-if="estaEmPromo(p)" class="promo-badge-tag">PROMO</div>
+          <div v-if="p.em_promo" class="promo-badge-tag">PROMO</div>
         </div>
       </div>
 
@@ -118,7 +118,7 @@
               <td>{{ p.descricao }}</td>
               <td>{{ p.categoria_nome || "—" }}</td>
               <td class="mono">
-                <div v-if="estaEmPromo(p)" class="table-promo">
+                <div v-if="p.em_promo" class="table-promo">
                   <span class="table-old-price">{{ fmt(p.valor_venda) }}</span>
                   <span class="table-new-price">{{ fmt(p.preco_promo) }}</span>
                 </div>
@@ -196,7 +196,7 @@ const filtroPromo  = ref(false);
 const produtosFiltrados = computed(() => {
   const q = (busca.value || "").trim().toLowerCase();
   return produtos.value.filter(p => {
-    if (filtroPromo.value && !estaEmPromo(p)) return false;
+    if (filtroPromo.value && !p.em_promo) return false;
     if (!q) return true;
     const palavras = q.split(/\s+/).filter(Boolean);
     const desc   = (p.descricao     || '').toLowerCase();
@@ -253,7 +253,13 @@ async function carregar() {
     
     const catMap = {};
     categorias.value.forEach(c => { if (c && c.pk) catMap[c.pk] = c.nome; });
-    produtos.value = (data || []).map(p => ({ ...p, categoria_nome: catMap[p.categoria_pk] || "" }));
+    const agora = new Date();
+    produtos.value = (data || []).map(p => ({
+      ...p,
+      categoria_nome: catMap[p.categoria_pk] || "",
+      em_promo: !!(p.preco_promo > 0 && p.promo_inicio && p.promo_fim &&
+                   agora >= new Date(p.promo_inicio) && agora <= new Date(p.promo_fim)),
+    }));
   } catch (e) {
     console.error("Erro carregar produtos:", e.message);
   } finally {
@@ -278,12 +284,6 @@ function fmt(v) {
   } catch (err) {
     return "R$ 0,00";
   }
-}
-function estaEmPromo(p) {
-  if (!p.preco_promo || p.preco_promo <= 0) return false;
-  if (!p.promo_inicio || !p.promo_fim) return false;
-  const agora = new Date();
-  return agora >= new Date(p.promo_inicio) && agora <= new Date(p.promo_fim);
 }
 </script>
 

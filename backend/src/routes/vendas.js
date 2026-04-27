@@ -186,14 +186,29 @@ router.post('/finalizar', async (req, res) => {
     const { error: erroPag } = await supabase.from('pagamentos_venda').insert(pagamentosPayload);
     if (erroPag) throw erroPag;
 
-    // 6. Decrementar estoque
+    // 6. Decrementar estoque (atômico com FOR UPDATE — sem race condition)
+    const { data: paramEstoque } = await supabase
+      .from('parametros')
+      .select('valor')
+      .eq('chave', 'pdv_permitir_estoque_negativo')
+      .or(`filial_pk.eq.${filial_pk || 0},filial_pk.is.null`)
+      .order('filial_pk', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
+
     for (const item of itens) {
       if (!item.produto_pk) continue;
-      const { data: prod } = await supabase
-        .from('produtos').select('saldo').eq('pk', item.produto_pk).single();
-      if (prod) {
-        const novoEstoque = parseFloat(prod.saldo || 0) - parseFloat(item.qtd || 0);
-        await supabase.from('produtos').update({ saldo: novoEstoque }).eq('pk', item.produto_pk);
+      const { data: ok } = await supabase.rpc('ajustar_saldo_produto', {
+        p_pk: item.produto_pk,
+        p_delta: -parseFloat(item.qtd || 0),
+        p_permitir_negativo: permitirNegativo,
+      });
+      if (ok === false) {
+        return res.status(400).json({
+          erro: `Estoque insuficiente para o produto ${item.descricao || item.produto_pk}.`,
+          produto_pk: item.produto_pk,
+        });
       }
     }
 
@@ -253,12 +268,11 @@ router.post('/devolver', async (req, res) => {
 
     for (const item of itens) {
       if (!item.produto_pk) continue;
-      const { data: prod } = await supabase
-        .from('produtos').select('saldo').eq('pk', item.produto_pk).single();
-      if (prod) {
-        const novoEstoque = parseFloat(prod.saldo || 0) + parseFloat(item.qtd || 0);
-        await supabase.from('produtos').update({ saldo: novoEstoque }).eq('pk', item.produto_pk);
-      }
+      await supabase.rpc('ajustar_saldo_produto', {
+        p_pk: item.produto_pk,
+        p_delta: parseFloat(item.qtd || 0),
+        p_permitir_negativo: true,
+      });
     }
 
     await supabase.from('vendas').update({ status: 'devolvida' }).eq('pk', venda_pk);
@@ -348,11 +362,11 @@ router.delete('/:pk', async (req, res) => {
       if (itens) {
         for (const item of itens) {
           if (!item.produto_pk) continue;
-          const { data: prod } = await supabase.from('produtos').select('saldo').eq('pk', item.produto_pk).single();
-          if (prod) {
-            const novoEstoque = parseFloat(prod.saldo || 0) + parseFloat(item.qtd || 0);
-            await supabase.from('produtos').update({ saldo: novoEstoque }).eq('pk', item.produto_pk);
-          }
+          await supabase.rpc('ajustar_saldo_produto', {
+            p_pk: item.produto_pk,
+            p_delta: parseFloat(item.qtd || 0),
+            p_permitir_negativo: true,
+          });
         }
       }
     }

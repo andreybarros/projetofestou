@@ -1,5 +1,15 @@
 const supabase = require('../supabase');
 
+const SELECT_PERMISSOES =
+  'id, admin, ativo,' +
+  ' acesso_pdv, acesso_produtos, acesso_categorias, acesso_clientes,' +
+  ' acesso_fornecedores, acesso_armazens, acesso_agenda, acesso_caixa,' +
+  ' acesso_vendedores, acesso_receitas, acesso_historico, acesso_funcionarios,' +
+  ' acesso_ponto, acesso_espelho_ponto, acesso_fechamento_ponto,' +
+  ' acesso_separacao, acesso_criar_ordem, acesso_despesas, acesso_financeiro,' +
+  ' acesso_fechamento, acesso_relatorio_caixa, acesso_dashboard,' +
+  ' acesso_gestao_ponto, acesso_relatorio_vendas, acesso_vales';
+
 const rotasPermissoes = {
   'POST /api/caixa/abrir': 'acesso_pdv',
   'POST /api/caixa/fechar': 'acesso_pdv',
@@ -46,7 +56,7 @@ async function permissoesMiddleware(req, res, next) {
   try {
     const { data: op, error } = await supabase
       .from('operadores')
-      .select('*')
+      .select(SELECT_PERMISSOES)
       .eq('id', req.user.pk)
       .single();
 

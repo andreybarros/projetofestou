@@ -3,7 +3,21 @@
 const express  = require('express');
 const router   = express.Router();
 const crypto   = require('crypto');
+const bcrypt   = require('bcrypt');
 const supabase = require('../supabase');
+
+const BCRYPT_ROUNDS = 10;
+
+// Campos usados em login — exclui colunas desnecessárias (ex: dados internos futuros)
+const SELECT_OPERADOR =
+  'id, login, senha, nome, admin, ativo, filial_pk, matricula,' +
+  ' acesso_pdv, acesso_produtos, acesso_categorias, acesso_clientes,' +
+  ' acesso_fornecedores, acesso_armazens, acesso_agenda, acesso_caixa,' +
+  ' acesso_vendedores, acesso_receitas, acesso_historico, acesso_funcionarios,' +
+  ' acesso_ponto, acesso_espelho_ponto, acesso_fechamento_ponto,' +
+  ' acesso_separacao, acesso_criar_ordem, acesso_despesas, acesso_financeiro,' +
+  ' acesso_fechamento, acesso_relatorio_caixa, acesso_dashboard,' +
+  ' acesso_gestao_ponto, acesso_relatorio_vendas, acesso_vales';
 
 function gerarToken(operadorPk) {
   const secret = process.env.JWT_SECRET || 'festou_secret_2024';
@@ -38,6 +52,21 @@ function validarToken(token) {
   }
 }
 
+// Verifica senha: suporta bcrypt (novo) e plain text (legado — migra no sucesso)
+async function verificarSenha(senhaDigitada, senhaArmazenada, operadorId) {
+  const isBcrypt = String(senhaArmazenada).startsWith('$2');
+  if (isBcrypt) {
+    return bcrypt.compare(String(senhaDigitada), senhaArmazenada);
+  }
+  // Legado: comparação direta + migração automática para bcrypt
+  const correta = String(senhaArmazenada).trim() === String(senhaDigitada).trim();
+  if (correta) {
+    const hash = await bcrypt.hash(String(senhaDigitada).trim(), BCRYPT_ROUNDS);
+    await supabase.from('operadores').update({ senha: hash }).eq('id', operadorId);
+  }
+  return correta;
+}
+
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
@@ -47,7 +76,7 @@ router.post('/login', async (req, res) => {
 
     const { data: op, error } = await supabase
       .from('operadores')
-      .select('*')
+      .select(SELECT_OPERADOR)
       .eq('login', login)
       .maybeSingle();
 
@@ -55,32 +84,24 @@ router.post('/login', async (req, res) => {
       console.error('[Auth/login] DB Error:', error.message);
       return res.status(500).json({ erro: 'Erro no banco de dados ao buscar operador' });
     }
-    
+
     if (!op) {
-      console.warn(`[Auth/login] Usuário não encontrado: "${login}"`);
       return res.status(401).json({ erro: 'Usuario nao encontrado' });
     }
 
-    console.log(`[Auth/login] Usuário encontrado: "${op.login}" (ID: ${op.id || op.pk})`);
-    
-    // Validar filial: skip para admins ou se o operador for global (filial_pk nulo)
     const opFilialPk = op.filial_pk;
     if (!op.admin && opFilialPk !== null && String(opFilialPk) !== String(filial_pk)) {
-      console.warn(`[Auth/login] Filial inválida para "${login}". Do Operador: ${opFilialPk}, Selecionada no Login: ${filial_pk}`);
       return res.status(401).json({ erro: 'Usuario sem acesso a esta filial' });
     }
 
     if (!op.ativo) {
-      console.warn(`[Auth/login] Usuário inativo: "${login}"`);
       return res.status(401).json({ erro: 'Usuario inativo' });
     }
 
-    const senhaCorreta = String(op.senha).trim() === String(senha).trim();
+    const senhaCorreta = await verificarSenha(senha, op.senha, op.id);
     if (!senhaCorreta) {
-      console.warn(`[Auth/login] Senha incorreta para "${login}"`);
       return res.status(401).json({ erro: 'Senha incorreta' });
     }
-    console.log(`[Auth/login] Login realizado com sucesso: "${login}"`);
 
     let filial = null;
     try {
@@ -99,24 +120,20 @@ router.post('/login', async (req, res) => {
         .select('modulo')
         .eq('filial_pk', filial_pk)
         .eq('ativo', true);
-      
-      if (modulosData) {
-        modulos = modulosData.map(m => m.modulo);
-      }
+      if (modulosData) modulos = modulosData.map(m => m.modulo);
     } catch { /* ignore */ }
 
     const opId = op.id || op.pk;
     const token = gerarToken(opId);
 
+    // Não expõe o hash de senha na resposta
+    const { senha: _omit, ...operadorSemSenha } = op;
+
     return res.json({
       token,
-      operador: {
-        ...op,
-        pk: opId, 
-        id: opId
-      },
+      operador: { ...operadorSemSenha, pk: opId, id: opId },
       filial: filial || { pk: filial_pk },
-      modulos
+      modulos,
     });
   } catch (err) {
     console.error('[Auth/login]', err.message);
@@ -133,7 +150,6 @@ router.get('/modulos/:filial_pk', async (req, res) => {
       .select('modulo')
       .eq('filial_pk', filial_pk)
       .eq('ativo', true);
-    
     if (error) throw error;
     return res.json((data || []).map(m => m.modulo));
   } catch (err) {
@@ -141,29 +157,34 @@ router.get('/modulos/:filial_pk', async (req, res) => {
   }
 });
 
-// POST /api/auth/trocar-senha  (publico — permite resetar senha sem a atual)
+// POST /api/auth/trocar-senha
+// Exige senha_atual para evitar reset arbitrário sem autenticação
 router.post('/trocar-senha', async (req, res) => {
   try {
-    const { filial_pk, login, nova_senha } = req.body;
-    if (!filial_pk || !login || !nova_senha)
-      return res.status(400).json({ erro: 'Filial, login e nova senha são obrigatórios.' });
+    const { filial_pk, login, senha_atual, nova_senha } = req.body;
+    if (!filial_pk || !login || !senha_atual || !nova_senha)
+      return res.status(400).json({ erro: 'Filial, login, senha atual e nova senha são obrigatórios.' });
     if (nova_senha.length < 4)
       return res.status(400).json({ erro: 'Nova senha deve ter pelo menos 4 caracteres.' });
 
     const { data: op, error } = await supabase
       .from('operadores')
-      .select('id, ativo')
+      .select('id, senha, ativo')
       .eq('login', login)
       .or(`filial_pk.eq.${filial_pk},filial_pk.is.null`)
       .maybeSingle();
 
     if (error) throw error;
-    if (!op)        return res.status(401).json({ erro: 'Usuário não encontrado.' });
-    if (!op.ativo)  return res.status(401).json({ erro: 'Usuário inativo.' });
+    if (!op)       return res.status(401).json({ erro: 'Usuário não encontrado.' });
+    if (!op.ativo) return res.status(401).json({ erro: 'Usuário inativo.' });
 
+    const senhaValida = await verificarSenha(senha_atual, op.senha, op.id);
+    if (!senhaValida) return res.status(401).json({ erro: 'Senha atual incorreta.' });
+
+    const novoHash = await bcrypt.hash(String(nova_senha).trim(), BCRYPT_ROUNDS);
     const { error: errUpd } = await supabase
       .from('operadores')
-      .update({ senha: nova_senha })
+      .update({ senha: novoHash })
       .eq('id', op.id);
     if (errUpd) throw errUpd;
 

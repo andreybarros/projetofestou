@@ -234,11 +234,16 @@ const filialMenuAberto = ref(false);
 const filialMenuRef    = ref(null);
 const todasFiliais     = ref([]);
 
+let _carregandoFiliais = false;
 async function carregarFiliais() {
+  if (todasFiliais.value.length > 0 || _carregandoFiliais) return;
+  _carregandoFiliais = true;
   try {
     const { data } = await apiClient.get('/api/auth/filiais');
     todasFiliais.value = data || [];
-  } catch { /* silencioso */ }
+  } catch { /* silencioso */ } finally {
+    _carregandoFiliais = false;
+  }
 }
 
 async function trocarFilial(f) {

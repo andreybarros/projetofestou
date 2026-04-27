@@ -799,6 +799,31 @@ UPDATE operadores SET acesso_fechamento_ponto = true WHERE acesso_funcionarios =
 
 
 -- ============================================================
+-- Função: ajuste atômico de saldo de produto (evita race condition)
+-- Usar via supabase.rpc('ajustar_saldo_produto', { p_pk, p_delta })
+-- p_delta positivo = entrada; negativo = saída
+-- ============================================================
+CREATE OR REPLACE FUNCTION ajustar_saldo_produto(
+  p_pk                INTEGER,
+  p_delta             NUMERIC,
+  p_permitir_negativo BOOLEAN DEFAULT TRUE
+)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_saldo NUMERIC;
+BEGIN
+  -- FOR UPDATE bloqueia a linha até o commit, eliminando race condition
+  SELECT saldo INTO v_saldo FROM produtos WHERE pk = p_pk FOR UPDATE;
+  IF NOT FOUND THEN RETURN FALSE; END IF;
+  IF NOT p_permitir_negativo AND (v_saldo + p_delta) < 0 THEN
+    RETURN FALSE;
+  END IF;
+  UPDATE produtos SET saldo = v_saldo + p_delta WHERE pk = p_pk;
+  RETURN TRUE;
+END;
+$$;
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 
