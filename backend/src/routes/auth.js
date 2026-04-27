@@ -5,7 +5,6 @@ const router   = express.Router();
 const crypto   = require('crypto');
 const supabase = require('../supabase');
 
-
 function gerarToken(operadorPk) {
   const secret = process.env.JWT_SECRET || 'festou_secret_2024';
   const ts     = Math.floor(Date.now() / 1000);
@@ -58,22 +57,30 @@ router.post('/login', async (req, res) => {
     }
 
     if (!op) {
+      console.warn(`[Auth/login] Usuário não encontrado: "${login}"`);
       return res.status(401).json({ erro: 'Usuario nao encontrado' });
     }
 
+    console.log(`[Auth/login] Usuário encontrado: "${op.login}" (ID: ${op.id || op.pk})`);
+
+    // Validar filial: skip para admins ou se o operador for global (filial_pk nulo)
     const opFilialPk = op.filial_pk;
     if (!op.admin && opFilialPk !== null && String(opFilialPk) !== String(filial_pk)) {
+      console.warn(`[Auth/login] Filial inválida para "${login}". Do Operador: ${opFilialPk}, Selecionada no Login: ${filial_pk}`);
       return res.status(401).json({ erro: 'Usuario sem acesso a esta filial' });
     }
 
     if (!op.ativo) {
+      console.warn(`[Auth/login] Usuário inativo: "${login}"`);
       return res.status(401).json({ erro: 'Usuario inativo' });
     }
 
     const senhaCorreta = String(op.senha).trim() === String(senha).trim();
     if (!senhaCorreta) {
+      console.warn(`[Auth/login] Senha incorreta para "${login}"`);
       return res.status(401).json({ erro: 'Senha incorreta' });
     }
+    console.log(`[Auth/login] Login realizado com sucesso: "${login}"`);
 
     let filial = null;
     try {
@@ -92,19 +99,24 @@ router.post('/login', async (req, res) => {
         .select('modulo')
         .eq('filial_pk', filial_pk)
         .eq('ativo', true);
-      if (modulosData) modulos = modulosData.map(m => m.modulo);
+
+      if (modulosData) {
+        modulos = modulosData.map(m => m.modulo);
+      }
     } catch { /* ignore */ }
 
     const opId = op.id || op.pk;
     const token = gerarToken(opId);
 
-    const { senha: _omit, ...operadorSemSenha } = op;
-
     return res.json({
       token,
-      operador: { ...operadorSemSenha, pk: opId, id: opId },
+      operador: {
+        ...op,
+        pk: opId,
+        id: opId
+      },
       filial: filial || { pk: filial_pk },
-      modulos,
+      modulos
     });
   } catch (err) {
     console.error('[Auth/login]', err.message);
@@ -121,6 +133,7 @@ router.get('/modulos/:filial_pk', async (req, res) => {
       .select('modulo')
       .eq('filial_pk', filial_pk)
       .eq('ativo', true);
+
     if (error) throw error;
     return res.json((data || []).map(m => m.modulo));
   } catch (err) {
@@ -128,7 +141,7 @@ router.get('/modulos/:filial_pk', async (req, res) => {
   }
 });
 
-// POST /api/auth/trocar-senha
+// POST /api/auth/trocar-senha  (publico — permite resetar senha sem a atual)
 router.post('/trocar-senha', async (req, res) => {
   try {
     const { filial_pk, login, nova_senha } = req.body;
@@ -145,8 +158,8 @@ router.post('/trocar-senha', async (req, res) => {
       .maybeSingle();
 
     if (error) throw error;
-    if (!op)       return res.status(401).json({ erro: 'Usuário não encontrado.' });
-    if (!op.ativo) return res.status(401).json({ erro: 'Usuário inativo.' });
+    if (!op)        return res.status(401).json({ erro: 'Usuário não encontrado.' });
+    if (!op.ativo)  return res.status(401).json({ erro: 'Usuário inativo.' });
 
     const { error: errUpd } = await supabase
       .from('operadores')
