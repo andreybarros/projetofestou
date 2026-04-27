@@ -3,12 +3,8 @@
 const express  = require('express');
 const router   = express.Router();
 const crypto   = require('crypto');
-const bcrypt   = require('bcryptjs');
 const supabase = require('../supabase');
 
-const BCRYPT_ROUNDS = 10;
-
-// Campos usados em login — exclui colunas desnecessárias (ex: dados internos futuros)
 const SELECT_OPERADOR =
   'id, login, senha, nome, admin, ativo, filial_pk, matricula,' +
   ' acesso_pdv, acesso_produtos, acesso_categorias, acesso_clientes,' +
@@ -52,21 +48,6 @@ function validarToken(token) {
   }
 }
 
-// Verifica senha: suporta bcrypt (novo) e plain text (legado — migra no sucesso)
-async function verificarSenha(senhaDigitada, senhaArmazenada, operadorId) {
-  const isBcrypt = String(senhaArmazenada).startsWith('$2');
-  if (isBcrypt) {
-    return bcrypt.compare(String(senhaDigitada), senhaArmazenada);
-  }
-  // Legado: comparação direta + migração automática para bcrypt
-  const correta = String(senhaArmazenada).trim() === String(senhaDigitada).trim();
-  if (correta) {
-    const hash = await bcrypt.hash(String(senhaDigitada).trim(), BCRYPT_ROUNDS);
-    await supabase.from('operadores').update({ senha: hash }).eq('id', operadorId);
-  }
-  return correta;
-}
-
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
@@ -98,7 +79,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ erro: 'Usuario inativo' });
     }
 
-    const senhaCorreta = await verificarSenha(senha, op.senha, op.id);
+    const senhaCorreta = String(op.senha).trim() === String(senha).trim();
     if (!senhaCorreta) {
       return res.status(401).json({ erro: 'Senha incorreta' });
     }
@@ -126,7 +107,6 @@ router.post('/login', async (req, res) => {
     const opId = op.id || op.pk;
     const token = gerarToken(opId);
 
-    // Não expõe o hash de senha na resposta
     const { senha: _omit, ...operadorSemSenha } = op;
 
     return res.json({
@@ -158,18 +138,17 @@ router.get('/modulos/:filial_pk', async (req, res) => {
 });
 
 // POST /api/auth/trocar-senha
-// Exige senha_atual para evitar reset arbitrário sem autenticação
 router.post('/trocar-senha', async (req, res) => {
   try {
-    const { filial_pk, login, senha_atual, nova_senha } = req.body;
-    if (!filial_pk || !login || !senha_atual || !nova_senha)
-      return res.status(400).json({ erro: 'Filial, login, senha atual e nova senha são obrigatórios.' });
+    const { filial_pk, login, nova_senha } = req.body;
+    if (!filial_pk || !login || !nova_senha)
+      return res.status(400).json({ erro: 'Filial, login e nova senha são obrigatórios.' });
     if (nova_senha.length < 4)
       return res.status(400).json({ erro: 'Nova senha deve ter pelo menos 4 caracteres.' });
 
     const { data: op, error } = await supabase
       .from('operadores')
-      .select('id, senha, ativo')
+      .select('id, ativo')
       .eq('login', login)
       .or(`filial_pk.eq.${filial_pk},filial_pk.is.null`)
       .maybeSingle();
@@ -178,13 +157,9 @@ router.post('/trocar-senha', async (req, res) => {
     if (!op)       return res.status(401).json({ erro: 'Usuário não encontrado.' });
     if (!op.ativo) return res.status(401).json({ erro: 'Usuário inativo.' });
 
-    const senhaValida = await verificarSenha(senha_atual, op.senha, op.id);
-    if (!senhaValida) return res.status(401).json({ erro: 'Senha atual incorreta.' });
-
-    const novoHash = await bcrypt.hash(String(nova_senha).trim(), BCRYPT_ROUNDS);
     const { error: errUpd } = await supabase
       .from('operadores')
-      .update({ senha: novoHash })
+      .update({ senha: nova_senha })
       .eq('id', op.id);
     if (errUpd) throw errUpd;
 
