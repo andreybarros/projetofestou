@@ -5,15 +5,6 @@ const router   = express.Router();
 const crypto   = require('crypto');
 const supabase = require('../supabase');
 
-const SELECT_OPERADOR =
-  'id, login, senha, nome, admin, ativo, filial_pk, matricula,' +
-  ' acesso_pdv, acesso_produtos, acesso_categorias, acesso_clientes,' +
-  ' acesso_fornecedores, acesso_armazens, acesso_agenda, acesso_caixa,' +
-  ' acesso_vendedores, acesso_receitas, acesso_historico, acesso_funcionarios,' +
-  ' acesso_ponto, acesso_espelho_ponto, acesso_fechamento_ponto,' +
-  ' acesso_separacao, acesso_criar_ordem, acesso_despesas, acesso_financeiro,' +
-  ' acesso_fechamento, acesso_relatorio_caixa, acesso_dashboard,' +
-  ' acesso_gestao_ponto, acesso_relatorio_vendas, acesso_vales';
 
 function gerarToken(operadorPk) {
   const secret = process.env.JWT_SECRET || 'festou_secret_2024';
@@ -57,7 +48,7 @@ router.post('/login', async (req, res) => {
 
     const { data: op, error } = await supabase
       .from('operadores')
-      .select(SELECT_OPERADOR)
+      .select('*')
       .eq('login', login)
       .maybeSingle();
 
