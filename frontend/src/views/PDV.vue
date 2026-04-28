@@ -1033,21 +1033,7 @@ async function copiarOrcamento() {
   partes.push(`━━━━━━━━━━━━━━━━━━━━\nCódigo: ${codigo}`);
   const texto = partes.join('\n');
 
-  // Mobile: share sheet nativa (iOS/Android) — não sofre com perda de contexto de gesto
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: `Orçamento ${codigo} — FESTOU`, text: texto });
-      orcCopiado.value = true;
-      setTimeout(() => { orcCopiado.value = false; }, 2500);
-      toast(`Orçamento ${codigo} gerado!`);
-    } catch (e) {
-      if (e.name === 'AbortError') return; // usuário fechou o painel — não faz nada
-      toast(`Orçamento ${codigo} gerado. Código: ${codigo}`, 'ok', 6000);
-    }
-    return;
-  }
-
-  // Desktop: clipboard API
+  // Copia direto para a área de transferência — funciona em desktop e mobile
   let copiou = false;
   try {
     if (navigator.clipboard?.writeText) {
