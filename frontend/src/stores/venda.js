@@ -35,20 +35,38 @@ export const useVendaStore = defineStore('venda', () => {
       existente.qtd = parseFloat(existente.qtd || 0) + parseFloat(item.qtd || 1);
       existente.preco_total = (existente.qtd * existente.preco_unitario * (1 - (existente.desconto_pct || 0) / 100)).toFixed(2);
     } else {
+      const uni = parseFloat(item.preco_unitario || 0);
+      const qty = parseFloat(item.qtd || 1);
       itens.value.push({
         ...item,
+        preco_unitario: uni,
         desconto_pct: 0,
-        preco_total: (parseFloat(item.qtd || 1) * parseFloat(item.preco_unitario || 0)).toFixed(2)
+        desconto_val: 0,
+        preco_total: (qty * uni).toFixed(2),
       });
     }
   }
 
   function aplicarDescontoCategoria(categoria_pk, pct) {
     itens.value.forEach(it => {
-      if (it.categoria_pk !== categoria_pk) return;
-      it.desconto_pct  = parseFloat(pct) || 0;
-      it.desconto_val  = parseFloat((it.qtd * it.preco_unitario * it.desconto_pct / 100).toFixed(2));
-      it.preco_total   = (it.qtd * it.preco_unitario * (1 - it.desconto_pct / 100)).toFixed(2);
+      if (Number(it.categoria_pk) !== Number(categoria_pk)) return;
+      const uni = parseFloat(it.preco_unitario);
+      const qty = parseFloat(it.qtd);
+      const d   = parseFloat(pct) || 0;
+      it.desconto_pct = d;
+      it.desconto_val = parseFloat((qty * uni * d / 100).toFixed(2));
+      it.preco_total  = (qty * uni * (1 - d / 100)).toFixed(2);
+    });
+  }
+
+  function removerDescontoCategoria(categoria_pk) {
+    itens.value.forEach(it => {
+      if (Number(it.categoria_pk) !== Number(categoria_pk)) return;
+      const uni = parseFloat(it.preco_unitario);
+      const qty = parseFloat(it.qtd);
+      it.desconto_pct = 0;
+      it.desconto_val = 0;
+      it.preco_total  = (qty * uni).toFixed(2);
     });
   }
 
@@ -59,8 +77,11 @@ export const useVendaStore = defineStore('venda', () => {
   function atualizarQuantidade(index, novaQtd) {
     const it = itens.value[index];
     if (!it) return;
-    it.qtd = parseFloat(novaQtd);
-    it.preco_total = (it.qtd * it.preco_unitario * (1 - (it.desconto_pct || 0) / 100)).toFixed(2);
+    const qty = parseFloat(novaQtd);
+    const uni = parseFloat(it.preco_unitario);
+    it.qtd         = qty;
+    it.desconto_val = parseFloat((qty * uni * (it.desconto_pct || 0) / 100).toFixed(2));
+    it.preco_total  = (qty * uni * (1 - (it.desconto_pct || 0) / 100)).toFixed(2);
   }
 
   function atualizarDescontoItem(index, valor, tipo) {
@@ -116,6 +137,7 @@ export const useVendaStore = defineStore('venda', () => {
     atualizarQuantidade,
     atualizarDescontoItem,
     aplicarDescontoCategoria,
+    removerDescontoCategoria,
     setDesconto,
     adicionarPagamento,
     removerPagamento,

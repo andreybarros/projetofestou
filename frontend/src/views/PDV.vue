@@ -162,6 +162,10 @@
                 <span class="decorador-nome">🎈 {{ cd.nome }}</span>
                 <span class="decorador-pct-label">10%</span>
                 <button class="btn-apply-dec" @click="aplicarDescCat(cd)">Aplicar</button>
+                <button class="btn-remove-dec" @click="vendaStore.removerDescontoCategoria(cd.pk)" title="Remover desconto">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  Tirar
+                </button>
               </div>
             </div>
 
@@ -2427,6 +2431,13 @@ async function emitirNFCe() {
   cursor: pointer; white-space: nowrap; transition: background .15s;
 }
 .btn-apply-dec:hover { background: rgba(245,158,11,.25); }
+.btn-remove-dec {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 10px; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+  border-radius: 7px; color: #f87171; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: background .15s;
+}
+.btn-remove-dec:hover { background: rgba(239,68,68,.2); }
 
 /* NFC-e result */
 .nfce-result {
