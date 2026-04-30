@@ -58,6 +58,7 @@
                 class="day-ev-chip"
                 :style="{ background: ev.cor + '22', borderLeft: '2px solid ' + ev.cor }"
                 :title="ev.titulo"
+                @click.stop="selecionarDia(dia.dateStr); abrirDetalheEvento(ev)"
               >{{ ev.titulo }}</div>
               <div v-if="eventosDodia(dia.dateStr).length > 3" class="day-ev-more">
                 +{{ eventosDodia(dia.dateStr).length - 3 }}
@@ -94,7 +95,8 @@
 
           <div v-else class="panel-events">
             <div v-for="ev in eventosDodia(diaSelected)" :key="ev.id" class="panel-ev"
-              :style="{ borderLeft: '3px solid ' + ev.cor }">
+              :style="{ borderLeft: '3px solid ' + ev.cor }"
+              @click="abrirDetalheEvento(ev)">
               <div class="panel-ev-header">
                 <span class="panel-ev-titulo">{{ ev.titulo }}</span>
                 <span class="panel-ev-hora">{{ ev.hora || '' }}</span>
@@ -103,24 +105,15 @@
                 <span class="material-symbols-outlined" style="font-size:13px">receipt</span>
                 Venda #{{ ev.venda_info.numero }}
                 <span v-if="ev.venda_info.cliente"> · {{ ev.venda_info.cliente }}</span>
-                <button class="btn-ver-venda" @click.stop="abrirDetalheVenda(ev.venda_pk)" title="Ver detalhes da venda">
-                  <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>
-                </button>
               </div>
               <div v-if="ev.descricao" class="panel-ev-desc">{{ ev.descricao }}</div>
               <div class="panel-ev-tipo">
                 <span class="tipo-chip" :style="{ background: ev.cor + '22', color: ev.cor }">
                   {{ labelTipo(ev.tipo) }}
                 </span>
-                <!-- Ações apenas para eventos manuais (não de locação) -->
-                <div v-if="ev.source === 'agenda'" class="ev-actions">
-                  <button class="btn-icon-sm" @click="abrirModal(diaSelected, ev)" title="Editar">
-                    <span class="material-symbols-outlined">edit</span>
-                  </button>
-                  <button class="btn-icon-sm del" @click="confirmarExclusao(ev)" title="Excluir">
-                    <span class="material-symbols-outlined">delete</span>
-                  </button>
-                </div>
+                <span class="ev-click-hint">
+                  <span class="material-symbols-outlined" style="font-size:13px">open_in_new</span>
+                </span>
               </div>
             </div>
           </div>
@@ -278,6 +271,81 @@
       </div>
     </Teleport>
 
+    <!-- Modal detalhe do evento -->
+    <Teleport to="body">
+      <div v-if="eventoDetalhe" class="modal-overlay" @click.self="eventoDetalhe = null">
+        <div class="modal-box modal-ev-det">
+          <div class="modal-header" :style="{ borderBottom: '3px solid ' + eventoDetalhe.cor }">
+            <div class="ev-det-header-info">
+              <span class="tipo-chip" :style="{ background: eventoDetalhe.cor + '22', color: eventoDetalhe.cor }">
+                {{ labelTipo(eventoDetalhe.tipo) }}
+              </span>
+              <h3 class="ev-det-titulo">{{ eventoDetalhe.titulo }}</h3>
+            </div>
+            <button class="modal-close" @click="eventoDetalhe = null">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <!-- Data e hora -->
+            <div class="ev-det-meta">
+              <div class="ev-det-meta-item">
+                <span class="material-symbols-outlined ev-det-icon">calendar_today</span>
+                <div>
+                  <div class="ev-det-label">Data</div>
+                  <div class="ev-det-val">{{ fmtDataExtenso(eventoDetalhe.date) }}</div>
+                </div>
+              </div>
+              <div v-if="eventoDetalhe.hora" class="ev-det-meta-item">
+                <span class="material-symbols-outlined ev-det-icon">schedule</span>
+                <div>
+                  <div class="ev-det-label">Horário</div>
+                  <div class="ev-det-val">{{ eventoDetalhe.hora }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Descrição -->
+            <div v-if="eventoDetalhe.descricao" class="ev-det-desc-box">
+              <span class="material-symbols-outlined ev-det-icon" style="flex-shrink:0">notes</span>
+              <p class="ev-det-desc-text">{{ eventoDetalhe.descricao }}</p>
+            </div>
+
+            <!-- Venda vinculada -->
+            <div v-if="eventoDetalhe.venda_info" class="ev-det-venda-box">
+              <div class="ev-det-venda-header">
+                <span class="material-symbols-outlined" style="font-size:16px">receipt_long</span>
+                Venda vinculada
+              </div>
+              <div class="ev-det-venda-info">
+                <span class="ev-det-venda-num">#{{ eventoDetalhe.venda_info.numero }}</span>
+                <span v-if="eventoDetalhe.venda_info.cliente" class="ev-det-venda-cliente">
+                  {{ eventoDetalhe.venda_info.cliente }}
+                </span>
+                <button class="btn-ver-venda-det" @click="abrirDetalheVenda(eventoDetalhe.venda_pk); eventoDetalhe = null">
+                  <span class="material-symbols-outlined" style="font-size:14px">open_in_new</span>
+                  Ver detalhes
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="eventoDetalhe = null">Fechar</button>
+            <template v-if="eventoDetalhe.source === 'agenda'">
+              <button class="btn-icon-action del" @click="confirmarExclusao(eventoDetalhe); eventoDetalhe = null">
+                <span class="material-symbols-outlined">delete</span>
+                Excluir
+              </button>
+              <button class="btn-salvar" @click="abrirModal(eventoDetalhe.date, eventoDetalhe); eventoDetalhe = null">
+                <span class="material-symbols-outlined">edit</span>
+                Editar
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Modal exclusão -->
     <Teleport to="body">
       <div v-if="excluindo" class="modal-overlay" @click.self="excluindo = null">
@@ -333,6 +401,10 @@ const vendaResultados = ref([]);
 // Exclusão
 const excluindo = ref(null);
 const removendo = ref(false);
+
+// Detalhe do evento
+const eventoDetalhe = ref(null);
+function abrirDetalheEvento(ev) { eventoDetalhe.value = ev; }
 
 // Detalhe da venda
 const vendaDetalhe      = ref(null);
@@ -803,6 +875,33 @@ function showToast(msg, tipo = 'ok') {
 
 .btn-ver-venda { background: none; border: none; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; padding: 0 2px; opacity: .8; }
 .btn-ver-venda:hover { opacity: 1; }
+
+.ev-click-hint { display: flex; align-items: center; color: var(--text2); opacity: 0; transition: opacity .15s; }
+.panel-ev:hover .ev-click-hint { opacity: 1; }
+.panel-ev { cursor: pointer; }
+
+/* Modal detalhe evento */
+.modal-ev-det { max-width: 480px; }
+.ev-det-header-info { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; padding-right: 12px; }
+.ev-det-titulo { font-size: 17px; font-weight: 800; color: var(--text); margin: 0; line-height: 1.3; }
+.ev-det-meta { display: flex; flex-direction: column; gap: 12px; }
+.ev-det-meta-item { display: flex; align-items: flex-start; gap: 10px; }
+.ev-det-icon { font-size: 20px; color: var(--text2); flex-shrink: 0; margin-top: 1px; }
+.ev-det-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; margin-bottom: 2px; }
+.ev-det-val { font-size: 14px; font-weight: 600; color: var(--text); text-transform: capitalize; }
+.ev-det-desc-box { display: flex; align-items: flex-start; gap: 10px; background: var(--bg3); border-radius: 10px; padding: 12px 14px; }
+.ev-det-desc-text { font-size: 13px; color: var(--text2); margin: 0; line-height: 1.6; white-space: pre-wrap; }
+.ev-det-venda-box { background: var(--bg3); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ev-det-venda-header { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; }
+.ev-det-venda-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ev-det-venda-num { font-size: 15px; font-weight: 800; color: var(--accent); }
+.ev-det-venda-cliente { font-size: 13px; color: var(--text); font-weight: 600; }
+.btn-ver-venda-det { display: flex; align-items: center; gap: 4px; padding: 5px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--accent); font-size: 12px; font-weight: 700; cursor: pointer; margin-left: auto; transition: background .15s; }
+.btn-ver-venda-det:hover { background: var(--bg2); }
+.btn-icon-action { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.btn-icon-action.del { background: rgba(239,68,68,.12); color: #f87171; }
+.btn-icon-action.del:hover { background: rgba(239,68,68,.22); }
+.btn-icon-action .material-symbols-outlined { font-size: 16px; }
 
 /* Modal detalhe */
 .modal-det { max-width: 580px; }
