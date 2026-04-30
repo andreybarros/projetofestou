@@ -1477,6 +1477,7 @@ ${cli.nome ? `<div class="sub-line"><span>Cliente</span><span>${cli.nome}</span>
 <div class="sub-line"><span>Vendedor</span><span>${vendedorSel.value?.nome || '—'}</span></div>
 <hr class="sep"/>
 <table>${linhaItens}</table>
+<div class="sub-line"><span>Total de itens</span><span>${itens.reduce((s, i) => s + parseFloat(i.qtd || 1), 0)} un. (${itens.length} produto${itens.length !== 1 ? 's' : ''})</span></div>
 <hr class="sep"/>
 ${parseFloat(vendaStore.desconto) > 0 ? `
   <div class="sub-line"><span>Subtotal</span><span>${fmt(vendaStore.subtotal)}</span></div>
