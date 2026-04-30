@@ -15,7 +15,7 @@
           <div class="search-row">
             <div class="search-wrap">
               <svg class="search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-              <input v-model="busca" type="text" placeholder="Buscar… ou 4* para adicionar 4 un." class="search-input" @input="filtrarProdutos" @keydown.esc="busca = ''" />
+              <input v-model="busca" type="text" placeholder="Buscar… ou 4* para adicionar 4 un." class="search-input" @input="filtrarProdutos" @keydown.esc="busca = ''" @keydown.enter="adicionarPorBarras" />
               <span v-if="qtdMultiplicador > 1" class="qty-multiplier-badge">× {{ qtdMultiplicador }}</span>
               <button v-if="busca" class="search-clear" @click="busca = ''">×</button>
             </div>
@@ -734,6 +734,27 @@ function maskCpf() {
 }
 
 function filtrarProdutos() {}
+
+function adicionarPorBarras() {
+  const q = termoBusca.value;
+  if (!q) return;
+
+  // Busca exata por código de barras ou código interno primeiro
+  const exato = todos.value.find(p =>
+    p.codigo_barras === q || p.codigo === q
+  );
+  if (exato) {
+    add(exato);
+    busca.value = '';
+    return;
+  }
+
+  // Se filtrou apenas 1 resultado, adiciona diretamente
+  if (filtrados.value.length === 1) {
+    add(filtrados.value[0]);
+    busca.value = '';
+  }
+}
 
 // ── Scanner de Código de Barras ───────────────────────────────
 let zxingReader      = null;
