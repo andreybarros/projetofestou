@@ -218,8 +218,16 @@
             </button>
             <button v-if="!detalhe.nfce_chave && detalhe.status === 'finalizada'"
               @click="emitirNFCeDetalhe" class="det-btn-nfce" :disabled="emitindoPk === detalhe.pk">
-              <span class="material-symbols-outlined">{{ emitindoPk === detalhe.pk ? 'sync' : 'receipt_long' }}</span>
+              <span class="material-symbols-outlined" :style="emitindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
+                {{ emitindoPk === detalhe.pk ? 'sync' : 'receipt_long' }}
+              </span>
               {{ emitindoPk === detalhe.pk ? 'Emitindo...' : 'Emitir NFC-e' }}
+            </button>
+            <button v-if="detalhe.nfce_chave" @click="reimprimirNFCe" class="det-btn-nfce" :disabled="reimprimindoPk === detalhe.pk">
+              <span class="material-symbols-outlined" :style="reimprimindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
+                {{ reimprimindoPk === detalhe.pk ? 'sync' : 'print' }}
+              </span>
+              {{ reimprimindoPk === detalhe.pk ? 'Buscando...' : 'Reimprimir NFC-e' }}
             </button>
           </div>
         </div>
@@ -465,8 +473,9 @@ async function emitirNFCeDetalhe() {
     const resp = await apiClient.post("/api/nfce/emitir", { venda_pk: v.pk });
     if (resp.data.ok) {
       nfceResult.value = resp.data;
-      detalhe.value = { ...v, nfce_chave: resp.data.chave || 'emitida' };
+      detalhe.value = { ...v, nfce_chave: resp.data.chave || 'emitida', nfce_danfe: resp.data.danfe || null };
       await carregar(paginaAtual.value);
+      if (resp.data.danfe) imprimirDanfe(resp.data.danfe);
     } else {
       toast(resp.data.erro || 'NFC-e rejeitada', 'err');
     }
@@ -474,6 +483,27 @@ async function emitirNFCeDetalhe() {
     toast("Erro: " + (e.response?.data?.erro || e.message), 'err');
   } finally {
     emitindoPk.value = null;
+  }
+}
+
+const reimprimindoPk = ref(null);
+async function reimprimirNFCe() {
+  const v = detalhe.value;
+  if (!v) return;
+  if (v.nfce_danfe) { imprimirDanfe(v.nfce_danfe); return; }
+  reimprimindoPk.value = v.pk;
+  try {
+    const resp = await apiClient.post('/api/nfce/consultar', { venda_pk: v.pk });
+    if (resp.data.danfe) {
+      detalhe.value = { ...v, nfce_danfe: resp.data.danfe };
+      imprimirDanfe(resp.data.danfe);
+    } else {
+      toast('DANFE não disponível para esta nota.', 'err');
+    }
+  } catch (e) {
+    toast('Erro ao buscar DANFE: ' + (e.response?.data?.erro || e.message), 'err');
+  } finally {
+    reimprimindoPk.value = null;
   }
 }
 
@@ -501,12 +531,25 @@ async function processarDevolucao() {
   }
 }
 
-function imprimirDanfe(base64) {
-  const bin = atob(base64);
-  const buf = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-  const blob = new Blob([buf], { type: 'application/pdf' });
-  window.open(URL.createObjectURL(blob), '_blank');
+async function imprimirDanfe(url) {
+  try {
+    const resp = await apiClient.get('/api/nfce/danfe-html', { params: { url } });
+    const html = resp.data;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(iframe);
+    iframe.contentWindow.document.open();
+    iframe.contentWindow.document.write(
+      html + '<script>window.onload=function(){window.print()}<\/script>'
+    );
+    iframe.contentWindow.document.close();
+    iframe.contentWindow.addEventListener('afterprint', () => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    });
+    setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 30000);
+  } catch {
+    window.open(url, '_blank');
+  }
 }
 
 function fmt(v) {

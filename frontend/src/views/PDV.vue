@@ -378,6 +378,35 @@
               Imprimir Contrato
             </button>
 
+            <!-- Botão NFC-e após finalizar -->
+            <button
+              v-if="vendaFinalizada"
+              class="btn-nfce"
+              :disabled="emitindo || (resultNfce && resultNfce.ok)"
+              @click="emitirNFCe"
+            >
+              <span v-if="emitindo" class="spin-sm"></span>
+              <span v-else class="material-symbols-outlined">receipt_long</span>
+              {{ emitindo ? 'Emitindo…' : (resultNfce && resultNfce.ok ? 'NFC-e Emitida' : 'Emitir NFC-e') }}
+            </button>
+
+            <!-- Resultado NFC-e -->
+            <div v-if="resultNfce" class="nfce-result" :class="resultNfce.ok ? 'ok' : 'err'">
+              <div v-if="resultNfce.ok">
+                <strong>NFC-e autorizada</strong><br>
+                <span class="mono">{{ resultNfce.chave }}</span>
+              </div>
+              <div v-else>{{ resultNfce.erro }}</div>
+              <button
+                v-if="resultNfce.danfe"
+                class="btn-danfe"
+                @click="abrirDanfe"
+              >
+                <span class="material-symbols-outlined">print</span>
+                Imprimir DANFE
+              </button>
+            </div>
+
             <!-- Botão de Limpar/Nova Venda após finalizar -->
             <button v-if="vendaFinalizada" type="button" class="btn-limpar-pos" @click="limpar">
               <span class="material-symbols-outlined">delete_sweep</span>
@@ -550,6 +579,7 @@ const crediarioExigeCliente     = computed(() => parametrosStore.getParam('credi
 const crediarioBloqueiainadimpl = computed(() => parametrosStore.getParam('crediario_bloqueia_inadimplente', true));
 const exigeVendedor             = computed(() => parametrosStore.getParam('pdv_exigir_vendedor', false));
 const permitirEstoqueNegativo   = computed(() => parametrosStore.getParam('pdv_permitir_estoque_negativo', false));
+const nfceAtiva                 = computed(() => parametrosStore.getParam('nfce_ativa', false));
 
 const temCrediario = computed(() =>
   vendaStore.pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario')
@@ -1427,6 +1457,31 @@ function imprimirContrato() {
 }
 
 // ── NFC-e ─────────────────────────────────────────────────────
+async function imprimirDanfe(url) {
+  try {
+    const resp = await apiClient.get('/api/nfce/danfe-html', { params: { url } });
+    const html = resp.data;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(iframe);
+    iframe.contentWindow.document.open();
+    iframe.contentWindow.document.write(
+      html + '<script>window.onload=function(){window.print()}<\/script>'
+    );
+    iframe.contentWindow.document.close();
+    iframe.contentWindow.addEventListener('afterprint', () => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    });
+    setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 30000);
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
+function abrirDanfe() {
+  if (resultNfce.value?.danfe) imprimirDanfe(resultNfce.value.danfe);
+}
+
 async function emitirNFCe() {
   if (!vendaPk.value) return;
   emitindo.value = true;
@@ -1437,6 +1492,9 @@ async function emitirNFCe() {
       cpf_consumidor: cpf.value.replace(/\D/g, '') || null,
     });
     resultNfce.value = data;
+    if (data.ok && data.danfe) {
+      imprimirDanfe(data.danfe);
+    }
   } catch (e) {
     resultNfce.value = { ok: false, erro: e.response?.data?.erro || 'Erro ao emitir NFC-e.' };
   } finally {
@@ -2340,6 +2398,14 @@ async function emitirNFCe() {
 .nfce-result.ok  { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.2); color: #6ee7b7; }
 .nfce-result.err { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.2);  color: #fca5a5; }
 .mono { font-family: var(--mono); font-size: 10px; word-break: break-all; }
+.btn-danfe {
+  display: flex; align-items: center; gap: 6px; margin-top: 8px;
+  background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.35);
+  color: #6ee7b7; border-radius: 6px; padding: 6px 10px; font-size: 12px;
+  font-weight: 600; cursor: pointer; width: 100%;
+  justify-content: center; transition: background .15s;
+}
+.btn-danfe:hover { background: rgba(16,185,129,.25); }
 
 /* Spinner */
 .spin {

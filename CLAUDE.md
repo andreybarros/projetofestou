@@ -11,7 +11,7 @@
 npm run install-all   # instala deps frontend e backend
 npm run dev           # frontend :5173 + backend :3001
 ```
-`.env` (backend): `SUPABASE_URL`, `SUPABASE_KEY`, `JWT_SECRET`, `PORT=3001`, `BRASILNFE_TOKEN`, `NFCE_AMBIENTE=2`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `GROQ_API_KEY`
+`.env` (backend): `SUPABASE_URL`, `SUPABASE_KEY`, `JWT_SECRET`, `PORT=3001`, `FOCUSNFE_TOKEN`, `NFCE_AMBIENTE=2`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `GROQ_API_KEY`
 
 Vite faz proxy `/api` → `http://localhost:3001` (`frontend/vite.config.js`).
 

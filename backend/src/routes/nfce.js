@@ -4,9 +4,20 @@ const express  = require('express');
 const router   = express.Router();
 const supabase = require('../supabase');
 
-const BRASILNFE_URL = 'https://api.brasilnfe.com.br/services/fiscal';
+// Focus NFe — homologação: https://homologacao.focusnfe.com.br
+//            produção:    https://api.focusnfe.com.br
+function focusBaseUrl() {
+  return Number(process.env.NFCE_AMBIENTE || 2) === 1
+    ? 'https://api.focusnfe.com.br'
+    : 'https://homologacao.focusnfe.com.br';
+}
 
-// ── Mapa de formas de pagamento ──────────────────────────────────
+function focusAuth() {
+  const token = process.env.FOCUSNFE_TOKEN;
+  if (!token) throw new Error('FOCUSNFE_TOKEN não configurado no .env');
+  return 'Basic ' + Buffer.from(token + ':').toString('base64');
+}
+
 const FORMA_PAGAMENTO = {
   dinheiro:      '01',
   cheque:        '02',
@@ -48,92 +59,104 @@ async function salvarResultado(venda_pk, update) {
   if (error) console.error('[NFC-e salvarResultado]', error.message);
 }
 
-// ── Montar payload BrasilNFe ─────────────────────────────────────
-function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfConsumidor, tpAmb }) {
-  const produtos = itens.map((item, idx) => {
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Chamar Focus NFe ─────────────────────────────────────────────
+async function focusRequest(method, path, body) {
+  const url  = focusBaseUrl() + path;
+  const auth = focusAuth();
+
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: auth },
+    signal: AbortSignal.timeout(30000),
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  const resp = await fetch(url, opts);
+  const text = await resp.text();
+  console.log(`\n=== Focus NFe ${method} ${path} | HTTP ${resp.status} ===\n${text}\n===`);
+  try { return { status: resp.status, data: JSON.parse(text) }; }
+  catch { return { status: resp.status, data: { _raw: text } }; }
+}
+
+// Aguarda o processamento assíncrono da Focus NFe (máx ~28s)
+async function aguardarAutorizacao(ref, tentativas = 14, intervalo = 2000) {
+  for (let i = 0; i < tentativas; i++) {
+    await sleep(intervalo);
+    const { data } = await focusRequest('GET', `/v2/nfce/${ref}`);
+    if (data.status !== 'processando_autorizacao') return data;
+  }
+  return { status: 'timeout', mensagem_sefaz: 'Tempo limite aguardando resposta da SEFAZ' };
+}
+
+// ── Montar payload Focus NFe ─────────────────────────────────────
+function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfConsumidor }) {
+  const cnpj = String(filial.cnpj || '').replace(/\D/g, '');
+
+  // Data no fuso de Manaus (UTC-4)
+  const dataEmissao = new Date().toLocaleString('sv-SE', { timeZone: 'America/Manaus' })
+    .replace(' ', 'T') + '-04:00';
+
+  const itensFocus = itens.map((item, idx) => {
     const fiscal = prodsFiscalMap[item.produto_pk] || {};
-    const ncm    = (fiscal.ncm || '95030099').replace(/\D/g, '').padStart(8, '0');
-    return {
-      NmProduto:                  item.descricao || `PRODUTO ${idx + 1}`,
-      CodProdutoServico:          String(item.codigo || item.produto_pk || idx + 1),
-      EAN:                        'SEM GTIN',
-      NCM:                        ncm,
-      UnidadeComercial:           fiscal.unidade_comercial || 'UN',
-      UnidadeComercialTributavel: fiscal.unidade_comercial || 'UN',
-      Quantidade:                 Number(item.qtd || 1),
-      QuantidadeTributavel:       Number(item.qtd || 1),
-      ValorUnitario:              Number(item.preco_unit || 0),
-      ValorUnitarioTributavel:    Number(item.preco_unit || 0),
-      ValorTotal:                 Number(item.total_item || 0) + Number(item.desconto_val || 0),
-      ValorDesconto:              Number(item.desconto_val || 0),
-      ValorSeguro:                0,
-      ValorFrete:                 0,
-      ValorOutrasDespesas:        0,
-      CFOP:                       parseInt(fiscal.cfop || '5102'),
-      OrigemProduto:              0,
-      Imposto: {
-        ICMS:   { CodSituacaoTributaria: fiscal.csosn || '400' },
-        PIS:    { CodSituacaoTributaria: '07', BaseCalculo: 0, Aliquota: 0 },
-        COFINS: { CodSituacaoTributaria: '07', BaseCalculo: 0, Aliquota: 0 },
-      },
+    const ncm    = (fiscal.ncm || '00000000').replace(/\D/g, '').padStart(8, '0');
+    const vlBruto = Number(item.total_item || 0) + Number(item.desconto_val || 0);
+
+    const obj = {
+      numero_item:               idx + 1,
+      codigo_produto:            String(item.codigo || item.produto_pk || idx + 1),
+      descricao:                 item.descricao || `PRODUTO ${idx + 1}`,
+      cfop:                      String(fiscal.cfop || '5102'),
+      unidade_comercial:         fiscal.unidade_comercial || 'UN',
+      quantidade_comercial:      Number(item.qtd || 1),
+      valor_unitario_comercial:  Number(item.preco_unit || 0),
+      valor_unitario_tributavel: Number(item.preco_unit || 0),
+      unidade_tributavel:        fiscal.unidade_comercial || 'UN',
+      quantidade_tributavel:     Number(item.qtd || 1),
+      valor_bruto:               vlBruto,
+      codigo_ncm:                ncm,
+      icms_situacao_tributaria:  fiscal.csosn || '400',
+      icms_origem:               0,
+      pis_situacao_tributaria:   '07',
+      cofins_situacao_tributaria:'07',
     };
+
+    if (Number(item.desconto_val || 0) > 0) {
+      obj.valor_desconto = Number(item.desconto_val);
+    }
+
+    return obj;
   });
 
-  const pagamentosPayload = pagamentos.map(p => ({
-    IndicadorPagamento: 0,
-    FormaPagamento:     FORMA_PAGAMENTO[String(p.forma).toLowerCase()] || '99',
-    VlPago:             Number(p.valor || 0),
+  const formasPagamento = pagamentos.map(p => ({
+    forma_pagamento: FORMA_PAGAMENTO[String(p.forma).toLowerCase()] || '99',
+    valor_pagamento: Number(p.valor || 0),
   }));
 
   const payload = {
-    ModeloDocumento:      65,
-    Serie:                1,
-    TipoAmbiente:         Number(tpAmb || 2),
-    NaturezaOperacao:     'VENDA DE MERCADORIA AO CONSUMIDOR',
-    Finalidade:           1,
-    IndicadorPresenca:    1,
-    ConsumidorFinal:      true,
-    CalcularIBPT:         false,
-    Observacao:           'Simples Nacional',
-    IdentificadorInterno: String(venda.pk),
-    Produtos:             produtos,
-    Pagamentos:           pagamentosPayload,
-    Transporte:           { ModalidadeFrete: 9 },
+    cnpj_emitente:         cnpj,
+    natureza_operacao:     'VENDA DE MERCADORIA AO CONSUMIDOR',
+    data_emissao:          dataEmissao,
+    tipo_documento:        1,
+    presenca_comprador:    1,
+    consumidor_final:      1,
+    finalidade_emissao:    1,
+    indicador_inscricao_estadual_destinatario: 9,
+    modalidade_frete:      9,
+    itens:                 itensFocus,
+    formas_pagamento:      formasPagamento,
   };
 
   if (cpfConsumidor) {
     const cpf = String(cpfConsumidor).replace(/\D/g, '');
     if (cpf.length === 11) {
-      payload.Cliente = {
-        CpfCnpj:     cpf,
-        NmCliente:   venda.cliente || 'CONSUMIDOR',
-        IndicadorIe: 9,
-        Ie:          'ISENTO',
-      };
+      payload.cpf_destinatario  = cpf;
+      payload.nome_destinatario = venda.cliente || 'CONSUMIDOR';
     }
   }
 
   return payload;
-}
-
-// ── Chamar BrasilNFe ─────────────────────────────────────────────
-async function chamarBrasilNFe(endpoint, body) {
-  const token = process.env.BRASILNFE_TOKEN;
-  if (!token) throw new Error('BRASILNFE_TOKEN não configurado');
-
-  const resp = await fetch(`${BRASILNFE_URL}${endpoint}`, {
-    method:  'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Token':        token,
-    },
-    body:   JSON.stringify(body),
-    signal: AbortSignal.timeout(30000),
-  });
-
-  const text = await resp.text();
-  process.stdout.write(`\n=== BrasilNFe ${endpoint} | HTTP ${resp.status} ===\n${text}\n===\n`);
-  try { return JSON.parse(text); } catch { return { _raw: text }; }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -152,54 +175,63 @@ router.post('/emitir', async (req, res) => {
 
     if (venda.nfce_chave && venda.nfce_protocolo) {
       return res.status(400).json({
-        erro: 'NFC-e já autorizada.', chave: venda.nfce_chave, protocolo: venda.nfce_protocolo,
+        erro: 'NFC-e já autorizada.',
+        chave: venda.nfce_chave,
+        protocolo: venda.nfce_protocolo,
       });
     }
 
     const filial = await buscarFilial(venda.filial_pk);
-    if (!filial)       return res.status(404).json({ erro: 'Filial não encontrada' });
-    if (!filial.cnpj)  return res.status(500).json({ erro: 'Filial sem CNPJ' });
+    if (!filial)      return res.status(404).json({ erro: 'Filial não encontrada' });
+    if (!filial.cnpj) return res.status(400).json({ erro: 'Filial sem CNPJ cadastrado' });
 
-    const prodPks      = itens.map(i => i.produto_pk).filter(Boolean);
-    const prodsFiscais = await buscarProdutosFiscais(prodPks);
+    const prodPks       = itens.map(i => i.produto_pk).filter(Boolean);
+    const prodsFiscais  = await buscarProdutosFiscais(prodPks);
     const prodsFiscalMap = {};
     prodsFiscais.forEach(p => { prodsFiscalMap[p.pk] = p; });
 
-    const payload   = montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfConsumidor: cpf_consumidor, tpAmb: process.env.NFCE_AMBIENTE || '2' });
-    console.log('[NFC-e payload]', JSON.stringify(payload, null, 2));
-    const resultado = await chamarBrasilNFe('/EnviarNotaFiscal', payload);
+    // ref único por venda — usado para cancelar/consultar depois
+    const ref     = `nfce-${venda_pk}-${Date.now()}`;
+    const payload = montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfConsumidor: cpf_consumidor });
 
-    // BrasilNFe pode devolver em ReturnNF ou na raiz
-    const retorno  = resultado.ReturnNF || {};
+    console.log('[Focus NFC-e payload]', JSON.stringify(payload, null, 2));
 
-    // Erro interno BrasilNFe (ReturnNF: null) — ex: certificado não configurado
-    if (!resultado.ReturnNF && resultado.Error) {
-      return res.json({ ok: false, erro: resultado.Error, cStat: '', xMotivo: resultado.Error, chave: null, protocolo: null, numero: null, danfe: null });
+    // 1. Envia para Focus NFe
+    const { status: httpStatus, data: envio } = await focusRequest(
+      'POST', `/v2/nfce?ref=${ref}`, payload
+    );
+
+    if (httpStatus >= 400 && envio.codigo !== 'nfe_cancelada') {
+      const msg = envio.mensagem || envio.erros?.map(e => e.mensagem).join('; ') || 'Erro ao enviar para Focus NFe';
+      return res.json({ ok: false, erro: msg, cStat: '', xMotivo: msg });
     }
 
-    const cStat    = retorno.CodStatusRespostaSefaz ?? retorno.cStat ?? retorno.Status ?? null;
-    const xMotivo  = retorno.DsStatusRespostaSefaz  ?? retorno.xMotivo ?? retorno.Mensagem ?? retorno.Message ?? '';
-    const autorizada = retorno.Ok === true || Number(cStat) === 100;
+    // 2. Aguarda processamento assíncrono
+    let resultado = envio;
+    if (resultado.status === 'processando_autorizacao') {
+      resultado = await aguardarAutorizacao(ref);
+    }
+
+    const autorizada = resultado.status === 'autorizado';
+    const cancelada  = resultado.status === 'cancelado';
 
     const update = {
-      nfce_chave:      retorno.ChaveNF || null,
-      nfce_protocolo:  retorno.Protocolo || (autorizada ? String(retorno.Numero) : null),
-      nfce_status:     cStat !== null ? String(cStat) : '',
-      nfce_motivo:     xMotivo,
-      nfce_numero:     retorno.Numero || null,
-      nfce_ambiente:   String(payload.TipoAmbiente),
+      nfce_ref:      ref,
+      nfce_chave:    resultado.chave_nfe    || null,
+      nfce_protocolo:resultado.protocolo    || null,
+      nfce_status:   resultado.status_sefaz || resultado.status || '',
+      nfce_motivo:   resultado.mensagem_sefaz || resultado.status || '',
+      nfce_numero:   resultado.numero        || null,
+      nfce_serie:    resultado.serie         || filial.nfce_serie || 1,
+      nfce_ambiente: String(process.env.NFCE_AMBIENTE || '2'),
       nfce_dh_emissao: new Date().toISOString(),
-      nfce_cpf_dest:   cpf_consumidor || null,
-      nfce_xml:        autorizada ? (resultado.Base64Xml || retorno.Xml || null) : null,
+      nfce_cpf_dest: cpf_consumidor || null,
+      nfce_xml:      autorizada ? (resultado.caminho_xml_nota_fiscal || null) : null,
+      nfce_qrcode:   resultado.qrcode_url || null,
+      nfce_danfe:    resultado.caminho_danfe ? focusBaseUrl() + resultado.caminho_danfe : null,
     };
 
     await salvarResultado(venda_pk, update);
-
-    const erroMsg = autorizada
-      ? null
-      : (update.nfce_motivo
-          ? `[${update.nfce_status}] ${update.nfce_motivo}`
-          : 'BrasilNFe retornou erro sem descrição. Verifique: token válido, CNPJ cadastrado no painel e plano ativo.');
 
     return res.json({
       ok:        autorizada,
@@ -208,8 +240,10 @@ router.post('/emitir', async (req, res) => {
       cStat:     update.nfce_status,
       xMotivo:   update.nfce_motivo,
       numero:    update.nfce_numero,
-      danfe:     resultado.Base64File || retorno.Base64File || null,
-      erro:      erroMsg,
+      danfe:     resultado.caminho_danfe ? focusBaseUrl() + resultado.caminho_danfe : null,
+      erro:      autorizada || cancelada
+        ? null
+        : `[${update.nfce_status}] ${update.nfce_motivo || 'Erro na autorização'}`,
     });
 
   } catch (err) {
@@ -225,7 +259,7 @@ router.post('/emitir', async (req, res) => {
 router.post('/cancelar', async (req, res) => {
   try {
     const { venda_pk, justificativa } = req.body;
-    if (!venda_pk)                          return res.status(400).json({ erro: 'venda_pk obrigatório' });
+    if (!venda_pk)                               return res.status(400).json({ erro: 'venda_pk obrigatório' });
     if (!justificativa || justificativa.length < 15) return res.status(400).json({ erro: 'Justificativa mínimo 15 caracteres' });
 
     const venda = await buscarVenda(venda_pk);
@@ -234,14 +268,14 @@ router.post('/cancelar', async (req, res) => {
 
     const diffMin = (Date.now() - new Date(venda.nfce_dh_emissao).getTime()) / 60000;
     if (diffMin > 30)
-      return res.status(400).json({ erro: `Prazo expirado (${Math.round(diffMin)} min após emissão — limite: 30 min)` });
+      return res.status(400).json({ erro: `Prazo expirado (${Math.round(diffMin)} min — limite: 30 min)` });
 
-    const resultado = await chamarBrasilNFe('/CancelarNotaFiscal', {
-      ChaveNF: venda.nfce_chave, Justificativa: justificativa,
-    });
+    const ref = venda.nfce_ref || `nfce-${venda_pk}`;
+    const { status: httpStatus, data: resultado } = await focusRequest(
+      'DELETE', `/v2/nfce/${ref}`, { justificativa }
+    );
 
-    const retorno   = resultado.ReturnNF || resultado;
-    const cancelado = retorno.Ok === true || retorno.CodStatusRespostaSefaz === 101;
+    const cancelado = resultado.status === 'cancelado' || httpStatus === 200;
 
     if (cancelado) {
       await salvarResultado(venda_pk, { nfce_status: '101', nfce_motivo: 'Cancelamento homologado' });
@@ -249,9 +283,9 @@ router.post('/cancelar', async (req, res) => {
 
     return res.json({
       ok:      cancelado,
-      cStat:   retorno.CodStatusRespostaSefaz,
-      xMotivo: retorno.DsStatusRespostaSefaz,
-      erro:    cancelado ? null : retorno.DsStatusRespostaSefaz,
+      cStat:   resultado.status_sefaz || (cancelado ? '101' : ''),
+      xMotivo: resultado.mensagem_sefaz || resultado.status || '',
+      erro:    cancelado ? null : (resultado.mensagem || 'Erro ao cancelar'),
     });
 
   } catch (err) {
@@ -262,22 +296,31 @@ router.post('/cancelar', async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════════
 // POST /api/nfce/consultar
-// Body: { chave }
+// Body: { chave } ou { venda_pk }
 // ══════════════════════════════════════════════════════════════════
 router.post('/consultar', async (req, res) => {
   try {
-    const { chave } = req.body;
-    if (!chave) return res.status(400).json({ erro: 'chave obrigatória' });
+    const { chave, venda_pk } = req.body;
 
-    const resultado = await chamarBrasilNFe('/ConsultarNotaFiscal', { ChaveNF: chave });
-    const retorno   = resultado.ReturnNF || resultado;
+    let ref = null;
+    if (venda_pk) {
+      const venda = await buscarVenda(venda_pk);
+      ref = venda.nfce_ref;
+    }
+    if (!ref && chave) ref = chave; // fallback: usa a chave como ref
+
+    if (!ref) return res.status(400).json({ erro: 'Informe venda_pk ou chave' });
+
+    const { data: resultado } = await focusRequest('GET', `/v2/nfce/${ref}`);
 
     return res.json({
-      ok:        retorno.Ok,
-      cStat:     retorno.CodStatusRespostaSefaz,
-      xMotivo:   retorno.DsStatusRespostaSefaz,
-      protocolo: retorno.Protocolo,
-      chave:     retorno.ChaveNF,
+      ok:        resultado.status === 'autorizado',
+      status:    resultado.status,
+      cStat:     resultado.status_sefaz,
+      xMotivo:   resultado.mensagem_sefaz,
+      protocolo: resultado.protocolo,
+      chave:     resultado.chave_nfe,
+      danfe:     resultado.caminho_danfe ? focusBaseUrl() + resultado.caminho_danfe : null,
     });
 
   } catch (err) {
@@ -287,13 +330,51 @@ router.post('/consultar', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════
+// GET /api/nfce/danfe-html?url=<url_completa>
+// Proxy: baixa o HTML do DANFE da Focus NFe e devolve ao frontend
+// para impressão via iframe (contorna CORS cross-origin).
+// ══════════════════════════════════════════════════════════════════
+router.get('/danfe-html', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ erro: 'url obrigatória' });
+
+    const base = focusBaseUrl();
+    if (!url.startsWith(base)) return res.status(400).json({ erro: 'URL não permitida' });
+
+    const resp = await fetch(url, {
+      headers: { Authorization: focusAuth() },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!resp.ok) return res.status(resp.status).json({ erro: 'Erro ao buscar DANFE' });
+
+    let html = await resp.text();
+
+    // Reescreve URLs relativas para absolutas apontando para a Focus NFe
+    html = html.replace(/(href|src)="(?!https?:\/\/)(\/?[^"]+)"/g, (_, attr, path) => {
+      const abs = path.startsWith('/') ? base + path : base + '/' + path;
+      return `${attr}="${abs}"`;
+    });
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    return res.send(html);
+  } catch (err) {
+    console.error('[NFC-e danfe-html]', err.message);
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
 // GET /api/nfce/check
 // ══════════════════════════════════════════════════════════════════
 router.get('/check', async (_req, res) => {
-  const token = process.env.BRASILNFE_TOKEN;
+  const token = process.env.FOCUSNFE_TOKEN;
   return res.json({
     configurado: !!token,
-    ambiente:    process.env.NFCE_AMBIENTE || '2',
+    provedor:    'Focus NFe',
+    ambiente:    Number(process.env.NFCE_AMBIENTE || 2) === 1 ? 'producao' : 'homologacao',
+    url_base:    focusBaseUrl(),
   });
 });
 

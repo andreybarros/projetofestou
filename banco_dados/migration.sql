@@ -798,6 +798,11 @@ UPDATE operadores SET acesso_fechamento_ponto = true WHERE acesso_funcionarios =
 
 
 
+-- Coluna para rastrear ref Focus NFe (cancelamento/consulta)
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS nfce_ref   text DEFAULT NULL;
+-- URL do DANFE gerado pela Focus NFe
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS nfce_danfe text DEFAULT NULL;
+
 -- ============================================================
 -- Função: ajuste atômico de saldo de produto (evita race condition)
 -- Usar via supabase.rpc('ajustar_saldo_produto', { p_pk, p_delta })
