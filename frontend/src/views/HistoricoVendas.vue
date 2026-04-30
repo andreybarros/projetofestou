@@ -394,9 +394,11 @@ async function abrirDetalheEImprimir(v) {
 function fecharDetalhe() { detalhe.value = null; }
 
 function reimprimirRecibo() {
-  const v    = detalhe.value;
-  const itens = detalheItens.value;
-  const pags  = detalhePagamentos.value;
+  const v          = detalhe.value;
+  const itens      = detalheItens.value;
+  const pags       = detalhePagamentos.value;
+  const totalQtd   = itens.reduce((s, i) => s + parseFloat(i.qtd || 1), 0);
+  const totalProds = itens.length;
   const fmtDt = (d) => new Date(d).toLocaleDateString('pt-BR') + ' ' + new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   const linhaItens = itens.map(it => {
@@ -432,6 +434,7 @@ function reimprimirRecibo() {
   td { padding: 4px 2px; vertical-align: top; font-size: 13px; font-weight: bold; }
   .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; }
   .sub-line   { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
+  .qtd-total  { font-size: 12px; font-weight: bold; text-align: right; border-top: 1px dotted #000; padding-top: 3px; margin-top: 4px; }
   .rodape { font-size: 11px; text-align: center; color: #000; font-weight: bold; margin-top: 10px; line-height: 1.7; }
   @media print { body { padding: 4px; } }
 </style>
@@ -449,6 +452,7 @@ ${v.cliente ? `<div class="sub-line"><span>Cliente</span><span>${v.cliente}</spa
 <div class="sub-line"><span>Vendedor</span><span>${v.vendedor || v.operador || '—'}</span></div>
 <hr class="sep"/>
 <table>${linhaItens}</table>
+<div class="qtd-total">Total: ${totalProds} produto${totalProds !== 1 ? 's' : ''} / ${totalQtd} un.</div>
 <hr class="sep"/>
 <div class="total-line"><span>TOTAL</span><span>${fmt(v.total)}</span></div>
 <hr class="sep"/>

@@ -1404,9 +1404,11 @@ async function finalizar() {
 
 // ── Recibo (Documento Não Fiscal) ────────────────────────────
 function imprimirRecibo() {
-  const cli   = clienteSel.value || {};
-  const itens = vendaStore.itens;
-  const agora = new Date();
+  const cli        = clienteSel.value || {};
+  const itens      = [...vendaStore.itens];
+  const totalQtd   = itens.reduce((s, i) => s + parseFloat(i.qtd || 1), 0);
+  const totalProds = itens.length;
+  const agora      = new Date();
   const fmtDt = (d) => d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   const linhaItens = itens.map(it => {
@@ -1454,6 +1456,7 @@ function imprimirRecibo() {
   td { padding: 3px 0; vertical-align: top; font-size: 12px; font-weight: bold; }
   .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 5px; }
   .sub-line   { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .qtd-total  { font-size: 12px; font-weight: bold; text-align: right; margin-top: 4px; border-top: 1px dotted #000; padding-top: 3px; }
   .disc-line  { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
   .troco-line { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
   .rodape { font-size: 11px; text-align: center; font-weight: bold; margin-top: 15px; line-height: 1.4; }
@@ -1477,7 +1480,7 @@ ${cli.nome ? `<div class="sub-line"><span>Cliente</span><span>${cli.nome}</span>
 <div class="sub-line"><span>Vendedor</span><span>${vendedorSel.value?.nome || '—'}</span></div>
 <hr class="sep"/>
 <table>${linhaItens}</table>
-<div class="sub-line"><span>Total de itens</span><span>${itens.reduce((s, i) => s + parseFloat(i.qtd || 1), 0)} un. (${itens.length} produto${itens.length !== 1 ? 's' : ''})</span></div>
+<div class="qtd-total"><span>Total: ${totalProds} produto${totalProds !== 1 ? 's' : ''} / ${totalQtd} un.</span></div>
 <hr class="sep"/>
 ${parseFloat(vendaStore.desconto) > 0 ? `
   <div class="sub-line"><span>Subtotal</span><span>${fmt(vendaStore.subtotal)}</span></div>
