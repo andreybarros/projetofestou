@@ -272,8 +272,8 @@
 
             <!-- CPF na nota -->
             <div class="cart-section">
-              <label class="section-label">CPF na nota <span class="opt">(opcional)</span></label>
-              <input v-model="cpf" type="text" class="cart-input" placeholder="000.000.000-00" maxlength="14" @input="maskCpf" />
+              <label class="section-label">CPF / CNPJ na nota <span class="opt">(opcional)</span></label>
+              <input v-model="cpf" type="text" class="cart-input" placeholder="CPF ou CNPJ" maxlength="18" @input="maskCpf" />
             </div>
           </div>
 
@@ -715,8 +715,17 @@ function fmt(v) {
 }
 
 function maskCpf() {
-  let v = cpf.value.replace(/\D/g, '').slice(0, 11);
-  v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  let v = cpf.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 11) {
+    v = v.replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else {
+    v = v.replace(/(\d{2})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1/$2')
+         .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
   cpf.value = v;
 }
 

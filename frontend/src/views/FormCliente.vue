@@ -12,7 +12,7 @@
     <form v-else @submit.prevent="salvar" class="form-card">
       <div class="form-grid">
         <div class="field full"><label>Nome *</label><input v-model="form.nome" type="text" required autofocus /></div>
-        <div class="field"><label>CPF</label><input v-model="form.cpf" type="text" placeholder="000.000.000-00" /></div>
+        <div class="field"><label>CPF / CNPJ</label><input v-model="form.cpf" type="text" placeholder="CPF ou CNPJ" maxlength="18" @input="maskDocumento" /></div>
         <div class="field"><label>Telefone</label><input v-model="form.telefone" type="text" placeholder="(92) 99999-9999" /></div>
         <div class="field full"><label>E-mail</label><input v-model="form.email" type="email" /></div>
 
@@ -73,6 +73,21 @@ onMounted(async () => {
   form.value = { ...data };
   carregando.value = false;
 });
+
+function maskDocumento(e) {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 11) {
+    v = v.replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else {
+    v = v.replace(/(\d{2})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1.$2')
+         .replace(/(\d{3})(\d)/, '$1/$2')
+         .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
+  form.value.cpf = v;
+}
 
 async function salvar() {
   if (!form.value.nome?.trim()) { erro.value = 'Nome obrigatório.'; return; }

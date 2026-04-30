@@ -157,10 +157,14 @@ function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfCo
   };
 
   if (cpfConsumidor) {
-    const cpf = String(cpfConsumidor).replace(/\D/g, '');
-    if (cpf.length === 11) {
-      payload.cpf_destinatario  = cpf;
+    const doc = String(cpfConsumidor).replace(/\D/g, '');
+    if (doc.length === 11) {
+      payload.cpf_destinatario  = doc;
       payload.nome_destinatario = venda.cliente || 'CONSUMIDOR';
+    } else if (doc.length === 14) {
+      payload.cnpj_destinatario = doc;
+      payload.nome_destinatario = venda.cliente || 'CONSUMIDOR';
+      payload.indicador_inscricao_estadual_destinatario = 9;
     }
   }
 
