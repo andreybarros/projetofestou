@@ -22,6 +22,9 @@
             <button class="btn-scan" @click="abrirScanner" title="Ler código de barras">
               <span class="material-symbols-outlined">barcode_scanner</span>
             </button>
+            <button class="btn-scan btn-lista-ia" @click="modalLista = true" title="Importar lista do cliente">
+              <span class="material-symbols-outlined">format_list_bulleted</span>
+            </button>
           </div>
 
           <div class="cat-scroll">
@@ -442,6 +445,83 @@
       <span class="fab-total" v-if="vendaStore.total > 0">{{ fmt(vendaStore.total) }}</span>
     </button>
 
+    <!-- ── MODAL LISTA IA ────────────────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="modalLista" class="modal-overlay" @click.self="fecharModalLista">
+        <div class="modal-box modal-lista-ia">
+          <div class="modal-header">
+            <h3>
+              <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle">auto_awesome</span>
+              Importar lista do cliente
+            </h3>
+            <button class="modal-close" @click="fecharModalLista">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- ETAPA 1: colar texto -->
+          <div v-if="!listaProcessada" class="modal-body">
+            <p class="lista-ia-hint">Cole aqui a mensagem do cliente (WhatsApp, texto livre — qualquer formato):</p>
+            <textarea v-model="listaTexto" class="lista-ia-textarea" rows="10"
+              placeholder="1 pct Rosa candy n12&#10;1 pct Amarelo candy n12&#10;2 pct un Dourado n05&#10;1 pct liga..."></textarea>
+            <div class="modal-footer">
+              <button class="btn-cancel" @click="fecharModalLista">Cancelar</button>
+              <button class="btn-processar-ia" @click="processarListaIA" :disabled="!listaTexto.trim() || processandoLista">
+                <span v-if="processandoLista" class="spin-sm"></span>
+                <span v-else class="material-symbols-outlined">auto_awesome</span>
+                {{ processandoLista ? 'Processando…' : 'Processar com IA' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- ETAPA 2: resultados -->
+          <div v-else class="modal-body lista-ia-resultados-wrap">
+            <div class="lista-ia-summary">
+              <span class="lista-ia-ok">{{ listaItens.filter(i => i.produto).length }} encontrados</span>
+              <span v-if="listaItens.filter(i => !i.produto).length" class="lista-ia-nok">
+                · {{ listaItens.filter(i => !i.produto).length }} não encontrados
+              </span>
+            </div>
+            <div class="lista-ia-resultados">
+              <label v-for="(item, i) in listaItens" :key="i"
+                class="lista-ia-item"
+                :class="item.produto ? 'li-ok' : 'li-nok'"
+              >
+                <input type="checkbox" v-model="item.selecionado"
+                  :disabled="!item.produto || (item.produto.saldo !== null && item.produto.saldo <= 0)" />
+                <div class="li-info">
+                  <span class="li-qty">{{ item.qty }}×</span>
+                  <span class="li-desc">{{ item.descricao }}</span>
+                  <span v-if="item.produto" class="li-match">
+                    <span class="material-symbols-outlined" style="font-size:13px">arrow_forward</span>
+                    {{ item.produto.descricao }}
+                    <span class="li-preco">{{ fmt(item.produto.valor_venda) }}</span>
+                    <span v-if="item.produto.saldo !== null && item.produto.saldo <= 0" class="li-sem-estoque">
+                      <span class="material-symbols-outlined" style="font-size:12px">warning</span>
+                      Sem estoque
+                    </span>
+                    <span v-else-if="item.produto.saldo !== null && item.produto.saldo < item.qty" class="li-estoque-baixo">
+                      <span class="material-symbols-outlined" style="font-size:12px">warning</span>
+                      Estoque: {{ item.produto.saldo }}
+                    </span>
+                  </span>
+                  <span v-else class="li-sem-match">Produto não encontrado no catálogo</span>
+                </div>
+              </label>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-cancel" @click="listaProcessada = false">Editar lista</button>
+              <button class="btn-add-lista-carrinho" @click="adicionarListaCarrinho"
+                :disabled="!listaItens.some(i => i.selecionado && i.produto)">
+                <span class="material-symbols-outlined">add_shopping_cart</span>
+                Adicionar ao carrinho
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ── TOAST ────────────────────────────────────────────────── -->
     <Transition name="toast">
       <div v-if="toastMsg" class="pdv-toast" :class="toastTipo">
@@ -502,6 +582,89 @@ const abrirSidebarFn  = inject('abrirSidebar', () => {});
 // ── Estado ────────────────────────────────────────────────────
 const busca          = ref('');
 const scannerAberto     = ref(false);
+
+// ── Lista IA ──────────────────────────────────────────────────────
+const modalLista       = ref(false);
+const listaTexto       = ref('');
+const listaItens       = ref([]);
+const listaProcessada  = ref(false);
+const processandoLista = ref(false);
+
+function fecharModalLista() {
+  modalLista.value      = false;
+  listaTexto.value      = '';
+  listaItens.value      = [];
+  listaProcessada.value = false;
+}
+
+function normalizarDesc(s) {
+  return String(s).toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\bn[°º.]?\s*(\d+)/g, '$1')
+    .replace(/numero\s*(\d+)/g, '$1')
+    .replace(/[^a-z\d\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function matchProduto(descricao) {
+  const palavras = normalizarDesc(descricao).split(' ').filter(w => w.length >= 2);
+  if (!palavras.length) return null;
+  let melhor = null, melhorScore = 0;
+  for (const p of todos.value) {
+    const nome  = normalizarDesc(p.descricao);
+    const score = palavras.filter(w => nome.includes(w)).length / palavras.length;
+    if (score > melhorScore) { melhorScore = score; melhor = p; }
+  }
+  return melhorScore >= 0.5 ? melhor : null;
+}
+
+async function processarListaIA() {
+  processandoLista.value = true;
+  try {
+    const { data } = await apiClient.post('/api/ia/parse-lista', { texto: listaTexto.value });
+    listaItens.value = (data.itens || []).map(it => {
+      const produto = matchProduto(it.descricao);
+      const semEstoque = produto && produto.saldo !== null && produto.saldo <= 0;
+      return {
+        qty:         parseInt(it.qty) || 1,
+        descricao:   it.descricao,
+        produto,
+        selecionado: !!produto && !semEstoque,
+      };
+    });
+    listaProcessada.value = true;
+  } catch (e) {
+    toast('Erro ao processar lista: ' + (e.response?.data?.erro || e.message), 'err');
+  } finally {
+    processandoLista.value = false;
+  }
+}
+
+function adicionarListaCarrinho() {
+  let adicionados = 0;
+  for (const item of listaItens.value) {
+    if (!item.selecionado || !item.produto) continue;
+    if (item.produto.saldo !== null && item.produto.saldo <= 0) continue;
+    const p     = item.produto;
+    const preco = getPrecoEfetivo(p);
+    vendaStore.adicionarItem({
+      produto_pk:     p.pk,
+      nome:           p.descricao,
+      codigo:         p.codigo,
+      categoria_pk:   p.categoria_pk,
+      preco_unitario: parseFloat(preco),
+      qtd:            item.qty,
+      preco_total:    parseFloat(preco) * item.qty,
+      desconto_val:   0,
+      saldo:          p.saldo,
+    });
+    adicionados++;
+  }
+  toast(`${adicionados} produto(s) adicionado(s) ao carrinho.`, 'ok');
+  fecharModalLista();
+  if (mobileView.value === 'catalog') mobileView.value = 'cart';
+}
 const scannerStatus     = ref('');
 const scannerStatusTipo = ref('');
 
@@ -1656,6 +1819,90 @@ async function emitirNFCe() {
 }
 .btn-scan:hover { background: rgba(99,102,241,.12); color: var(--primary); border-color: rgba(99,102,241,.4); }
 .btn-scan .material-symbols-outlined { font-size: 20px; }
+.btn-lista-ia:hover { background: rgba(16,185,129,.12) !important; color: #10b981 !important; border-color: rgba(16,185,129,.4) !important; }
+
+/* Modal base (usado pelo modal de lista IA) */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 4000; padding: 16px;
+}
+.modal-box {
+  background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 16px; width: 100%; max-width: 520px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; max-height: 90vh; overflow: hidden;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 14px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+.modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px; }
+.modal-close { background: none; border: none; color: var(--text2); cursor: pointer; display: flex; padding: 2px; }
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--line); flex-shrink: 0; }
+.btn-cancel { padding: 8px 16px; background: var(--bg3); border: 1px solid var(--line); border-radius: 8px; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-salvar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+.btn-salvar:hover:not(:disabled) { opacity: .88; }
+.btn-salvar:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-processar-ia {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 20px; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+  box-shadow: 0 2px 12px rgba(124,58,237,.4);
+}
+.btn-processar-ia:hover:not(:disabled) { opacity: .88; }
+.btn-processar-ia:disabled { opacity: .45; cursor: not-allowed; }
+.btn-processar-ia .material-symbols-outlined { font-size: 18px; }
+
+/* Modal Lista IA */
+.modal-lista-ia { max-width: 600px; }
+.lista-ia-hint { font-size: 13px; color: var(--text2); margin: 0 0 10px; }
+.lista-ia-textarea {
+  width: 100%; padding: 10px 12px; font-size: 13px; font-family: monospace;
+  background: var(--bg3); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); resize: vertical; outline: none; box-sizing: border-box;
+  line-height: 1.6;
+}
+.lista-ia-textarea:focus { border-color: rgba(99,102,241,.4); }
+.lista-ia-summary { font-size: 12px; font-weight: 600; margin-bottom: 10px; display: flex; gap: 8px; }
+.lista-ia-ok  { color: #10b981; }
+.lista-ia-nok { color: #f59e0b; }
+.lista-ia-resultados-wrap { display: flex; flex-direction: column; gap: 0; }
+.lista-ia-resultados { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.lista-ia-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px;
+  border-radius: 8px; border: 1px solid var(--line); cursor: pointer;
+  transition: background .12s;
+}
+.lista-ia-item:hover { background: var(--bg3); }
+.lista-ia-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+.li-ok  { border-color: rgba(16,185,129,.25); }
+.li-nok { border-color: rgba(239,68,68,.2); background: rgba(239,68,68,.04); opacity: .7; }
+.li-info { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.li-qty  { font-size: 12px; font-weight: 800; color: var(--accent2); flex-shrink: 0; }
+.li-desc { font-size: 13px; font-weight: 600; color: var(--text); }
+.li-match { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #10b981; flex-wrap: wrap; }
+.li-preco { font-family: var(--mono); font-size: 11px; background: rgba(16,185,129,.1); padding: 1px 6px; border-radius: 4px; }
+.li-sem-match { font-size: 11px; color: #f87171; font-style: italic; }
+.btn-add-lista-carrinho {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 20px; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+  box-shadow: 0 2px 12px rgba(16,185,129,.4);
+}
+.btn-add-lista-carrinho:hover:not(:disabled) { opacity: .88; }
+.btn-add-lista-carrinho:disabled { opacity: .45; cursor: not-allowed; }
+.btn-add-lista-carrinho .material-symbols-outlined { font-size: 18px; }
+
+.li-sem-estoque { display: flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; color: #f87171; background: rgba(239,68,68,.1); padding: 1px 6px; border-radius: 4px; }
+.li-estoque-baixo { display: flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; color: #f59e0b; background: rgba(245,158,11,.1); padding: 1px 6px; border-radius: 4px; }
 .search-ico {
   position: absolute;
   left: 11px;
