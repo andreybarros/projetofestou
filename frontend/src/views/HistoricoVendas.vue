@@ -282,11 +282,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useSessaoStore }  from "../stores/sessao";
-import { supabase }        from "../composables/useSupabase";
-import apiClient           from "../services/api";
+import { useSessaoStore }     from "../stores/sessao";
+import { useParametrosStore } from "../stores/parametros";
+import { supabase }           from "../composables/useSupabase";
+import apiClient              from "../services/api";
 
-const sessaoStore = useSessaoStore();
+const sessaoStore     = useSessaoStore();
+const parametrosStore = useParametrosStore();
 
 const vendas         = ref([]);
 const carregando     = ref(false);
@@ -470,7 +472,10 @@ async function emitirNFCeDetalhe() {
   const v = detalhe.value;
   emitindoPk.value = v.pk;
   try {
-    const resp = await apiClient.post("/api/nfce/emitir", { venda_pk: v.pk });
+    const resp = await apiClient.post("/api/nfce/emitir", {
+      venda_pk: v.pk,
+      ambiente: Number(parametrosStore.getParam('nfce_ambiente', 2)),
+    });
     if (resp.data.ok) {
       nfceResult.value = resp.data;
       detalhe.value = { ...v, nfce_chave: resp.data.chave || 'emitida', nfce_danfe: resp.data.danfe || null };

@@ -1488,8 +1488,9 @@ async function emitirNFCe() {
   resultNfce.value = null;
   try {
     const { data } = await apiClient.post('/api/nfce/emitir', {
-      venda_pk: vendaPk.value,
+      venda_pk:      vendaPk.value,
       cpf_consumidor: cpf.value.replace(/\D/g, '') || null,
+      ambiente:      Number(parametrosStore.getParam('nfce_ambiente', 2)),
     });
     resultNfce.value = data;
     if (data.ok && data.danfe) {

@@ -6,15 +6,23 @@ const supabase = require('../supabase');
 
 // Focus NFe — homologação: https://homologacao.focusnfe.com.br
 //            produção:    https://api.focusnfe.com.br
-function focusBaseUrl() {
-  return Number(process.env.NFCE_AMBIENTE || 2) === 1
+// ambiente: 1 = produção, 2 = homologação (vem do parâmetro do sistema)
+function focusBaseUrl(ambiente) {
+  return Number(ambiente || 2) === 1
     ? 'https://api.focusnfe.com.br'
     : 'https://homologacao.focusnfe.com.br';
 }
 
-function focusAuth() {
-  const token = process.env.FOCUSNFE_TOKEN;
-  if (!token) throw new Error('FOCUSNFE_TOKEN não configurado no .env');
+function focusAuth(ambiente) {
+  const isProd = Number(ambiente || 2) === 1;
+  const token  = isProd
+    ? process.env.FOCUSNFE_TOKEN_PROD
+    : process.env.FOCUSNFE_TOKEN_HOM;
+  if (!token) throw new Error(
+    isProd
+      ? 'FOCUSNFE_TOKEN_PROD não configurado no Vercel'
+      : 'FOCUSNFE_TOKEN_HOM não configurado no Vercel'
+  );
   return 'Basic ' + Buffer.from(token + ':').toString('base64');
 }
 
@@ -62,9 +70,9 @@ async function salvarResultado(venda_pk, update) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Chamar Focus NFe ─────────────────────────────────────────────
-async function focusRequest(method, path, body) {
-  const url  = focusBaseUrl() + path;
-  const auth = focusAuth();
+async function focusRequest(method, path, body, ambiente) {
+  const url  = focusBaseUrl(ambiente) + path;
+  const auth = focusAuth(ambiente);
 
   const opts = {
     method,
@@ -81,10 +89,10 @@ async function focusRequest(method, path, body) {
 }
 
 // Aguarda o processamento assíncrono da Focus NFe (máx ~28s)
-async function aguardarAutorizacao(ref, tentativas = 14, intervalo = 2000) {
+async function aguardarAutorizacao(ref, ambiente, tentativas = 14, intervalo = 2000) {
   for (let i = 0; i < tentativas; i++) {
     await sleep(intervalo);
-    const { data } = await focusRequest('GET', `/v2/nfce/${ref}`);
+    const { data } = await focusRequest('GET', `/v2/nfce/${ref}`, null, ambiente);
     if (data.status !== 'processando_autorizacao') return data;
   }
   return { status: 'timeout', mensagem_sefaz: 'Tempo limite aguardando resposta da SEFAZ' };
@@ -164,8 +172,9 @@ function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfCo
 // ══════════════════════════════════════════════════════════════════
 router.post('/emitir', async (req, res) => {
   try {
-    const { venda_pk, cpf_consumidor } = req.body;
+    const { venda_pk, cpf_consumidor, ambiente } = req.body;
     if (!venda_pk) return res.status(400).json({ erro: 'venda_pk obrigatório' });
+    const amb = Number(ambiente || 2);
 
     const [venda, itens, pagamentos] = await Promise.all([
       buscarVenda(venda_pk),
@@ -198,7 +207,7 @@ router.post('/emitir', async (req, res) => {
 
     // 1. Envia para Focus NFe
     const { status: httpStatus, data: envio } = await focusRequest(
-      'POST', `/v2/nfce?ref=${ref}`, payload
+      'POST', `/v2/nfce?ref=${ref}`, payload, amb
     );
 
     if (httpStatus >= 400 && envio.codigo !== 'nfe_cancelada') {
@@ -209,7 +218,7 @@ router.post('/emitir', async (req, res) => {
     // 2. Aguarda processamento assíncrono
     let resultado = envio;
     if (resultado.status === 'processando_autorizacao') {
-      resultado = await aguardarAutorizacao(ref);
+      resultado = await aguardarAutorizacao(ref, amb);
     }
 
     const autorizada = resultado.status === 'autorizado';
@@ -223,12 +232,12 @@ router.post('/emitir', async (req, res) => {
       nfce_motivo:   resultado.mensagem_sefaz || resultado.status || '',
       nfce_numero:   resultado.numero        || null,
       nfce_serie:    resultado.serie         || filial.nfce_serie || 1,
-      nfce_ambiente: String(process.env.NFCE_AMBIENTE || '2'),
+      nfce_ambiente: String(amb),
       nfce_dh_emissao: new Date().toISOString(),
       nfce_cpf_dest: cpf_consumidor || null,
       nfce_xml:      autorizada ? (resultado.caminho_xml_nota_fiscal || null) : null,
       nfce_qrcode:   resultado.qrcode_url || null,
-      nfce_danfe:    resultado.caminho_danfe ? focusBaseUrl() + resultado.caminho_danfe : null,
+      nfce_danfe:    resultado.caminho_danfe ? focusBaseUrl(amb) + resultado.caminho_danfe : null,
     };
 
     await salvarResultado(venda_pk, update);
@@ -240,7 +249,7 @@ router.post('/emitir', async (req, res) => {
       cStat:     update.nfce_status,
       xMotivo:   update.nfce_motivo,
       numero:    update.nfce_numero,
-      danfe:     resultado.caminho_danfe ? focusBaseUrl() + resultado.caminho_danfe : null,
+      danfe:     update.nfce_danfe,
       erro:      autorizada || cancelada
         ? null
         : `[${update.nfce_status}] ${update.nfce_motivo || 'Erro na autorização'}`,
@@ -271,8 +280,9 @@ router.post('/cancelar', async (req, res) => {
       return res.status(400).json({ erro: `Prazo expirado (${Math.round(diffMin)} min — limite: 30 min)` });
 
     const ref = venda.nfce_ref || `nfce-${venda_pk}`;
+    const amb = Number(venda.nfce_ambiente || 2);
     const { status: httpStatus, data: resultado } = await focusRequest(
-      'DELETE', `/v2/nfce/${ref}`, { justificativa }
+      'DELETE', `/v2/nfce/${ref}`, { justificativa }, amb
     );
 
     const cancelado = resultado.status === 'cancelado' || httpStatus === 200;
@@ -303,15 +313,17 @@ router.post('/consultar', async (req, res) => {
     const { chave, venda_pk } = req.body;
 
     let ref = null;
+    let amb = 2;
     if (venda_pk) {
       const venda = await buscarVenda(venda_pk);
       ref = venda.nfce_ref;
+      amb = Number(venda.nfce_ambiente || 2);
     }
-    if (!ref && chave) ref = chave; // fallback: usa a chave como ref
+    if (!ref && chave) ref = chave;
 
     if (!ref) return res.status(400).json({ erro: 'Informe venda_pk ou chave' });
 
-    const { data: resultado } = await focusRequest('GET', `/v2/nfce/${ref}`);
+    const { data: resultado } = await focusRequest('GET', `/v2/nfce/${ref}`, null, amb);
 
     return res.json({
       ok:        resultado.status === 'autorizado',
@@ -320,7 +332,7 @@ router.post('/consultar', async (req, res) => {
       xMotivo:   resultado.mensagem_sefaz,
       protocolo: resultado.protocolo,
       chave:     resultado.chave_nfe,
-      danfe:     resultado.caminho_danfe ? focusBaseUrl() + resultado.caminho_danfe : null,
+      danfe:     resultado.caminho_danfe ? focusBaseUrl(amb) + resultado.caminho_danfe : null,
     });
 
   } catch (err) {
@@ -339,11 +351,13 @@ router.get('/danfe-html', async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).json({ erro: 'url obrigatória' });
 
-    const base = focusBaseUrl();
-    if (!url.startsWith(base)) return res.status(400).json({ erro: 'URL não permitida' });
+    const allowedBases = ['https://api.focusnfe.com.br', 'https://homologacao.focusnfe.com.br'];
+    const base = allowedBases.find(b => url.startsWith(b));
+    if (!base) return res.status(400).json({ erro: 'URL não permitida' });
 
+    const amb = base.includes('homologacao') ? 2 : 1;
     const resp = await fetch(url, {
-      headers: { Authorization: focusAuth() },
+      headers: { Authorization: focusAuth(amb) },
       signal: AbortSignal.timeout(15000),
     });
     if (!resp.ok) return res.status(resp.status).json({ erro: 'Erro ao buscar DANFE' });
