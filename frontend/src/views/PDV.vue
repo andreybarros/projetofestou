@@ -325,12 +325,17 @@
             <!-- Forma de pagamento -->
             <div class="cart-section">
               <label class="section-label">Forma de pagamento</label>
-              <div class="pag-row">
-                <select v-model="formaPag" class="cart-select flex1">
-                  <option v-for="f in formasPagamento" :key="f.pk" :value="f.forma">{{ f.icone }} {{ f.label }}</option>
-                </select>
-                <input v-model.number="valorPag" type="number" min="0" step="0.01" placeholder="0,00" class="cart-input pag-val" />
-                <button class="pag-add" @click="addPag">+</button>
+              <select v-model="formaPag" class="cart-select pag-select-full">
+                <option v-for="f in formasPagamento" :key="f.pk" :value="f.forma">{{ f.icone }} {{ f.label }}</option>
+              </select>
+
+              <label class="section-label" style="margin-top:12px">Valor recebido</label>
+              <div class="pag-row-col">
+                <input v-model.number="valorPag" type="number" min="0" step="0.01" placeholder="0,00" class="pag-val-big" />
+                <button class="pag-add-full" @click="addPag">
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Adicionar
+                </button>
               </div>
               <div v-if="formaPag === 'crediario'" class="crediario-fields">
                 <div class="crediario-row">
@@ -1904,7 +1909,7 @@ async function emitirNFCe() {
 
 /* Total hero (aba pagamento) */
 .total-hero {
-  padding: 16px 16px 12px;
+  padding: 20px 16px 16px;
   background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(99,102,241,.04));
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
@@ -1912,24 +1917,25 @@ async function emitirNFCe() {
 }
 .total-hero-label {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--muted);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .total-hero-value {
   display: block;
   font-family: var(--mono);
-  font-size: 38px;
-  font-weight: 700;
+  font-size: 52px;
+  font-weight: 800;
   color: var(--accent2);
   line-height: 1;
+  letter-spacing: -1px;
 }
 .total-hero-disc {
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 6px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -2125,7 +2131,7 @@ async function emitirNFCe() {
 }
 .cart-input:focus { border-color: rgba(99,102,241,.4); }
 .cart-input.sm { font-size: 12px; }
-.cart-input.pag-val { width: 80px; flex-shrink: 0; }
+.cart-input.pag-val { width: 110px; flex-shrink: 0; font-size: 16px; font-weight: 700; text-align: right; padding: 10px 10px; height: 44px; }
 .cart-input.flex1 { flex: 1; width: auto; }
 .cart-select {
   width: 100%;
@@ -2165,24 +2171,56 @@ async function emitirNFCe() {
 .total-row.grand span:last-child { color: var(--accent2); font-size: 16px; }
 
 /* Pagamento */
-.pag-row { display: flex; gap: 6px; align-items: center; }
-.pag-add {
-  width: 34px; height: 34px;
+.pag-select-full {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--text);
+  font-family: var(--sans);
+  outline: none;
+  height: 46px;
+}
+.pag-row-col { display: flex; flex-direction: column; gap: 8px; }
+.pag-val-big {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: var(--mono);
+  text-align: right;
+  background: var(--bg3);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  color: var(--accent2);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+.pag-val-big:focus { border-color: rgba(99,102,241,.5); }
+.pag-val-big::placeholder { color: var(--muted); font-weight: 400; font-size: 18px; }
+.pag-add-full {
+  width: 100%;
+  height: 46px;
   background: var(--accent);
   border: none;
-  border-radius: 7px;
+  border-radius: 9px;
   color: #fff;
-  font-size: 20px;
-  font-weight: 300;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  gap: 6px;
   transition: opacity .15s;
 }
-.pag-add:hover { opacity: .85; }
+.pag-add-full .material-symbols-outlined { font-size: 20px; }
+.pag-add-full:hover { opacity: .87; }
+.pag-row { display: flex; gap: 6px; align-items: center; }
 
 .pag-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
 .pag-item { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: var(--bg3); border-radius: 6px; border: 1px solid var(--line); }
@@ -2619,9 +2657,11 @@ async function emitirNFCe() {
   .btn-finalizar { padding: 10px; font-size: 13.5px; height: 44px; }
   .btn-recibo, .btn-contrato, .btn-nfce { padding: 7px; font-size: 12px; height: 36px; }
 
-  .total-hero { padding: 8px 14px 4px; }
-  .total-hero-value { font-size: 30px; }
-  .total-hero-label { font-size: 9px; margin-bottom: 0; }
+  .total-hero { padding: 10px 14px 8px; }
+  .total-hero-value { font-size: 40px; }
+  .total-hero-label { font-size: 10px; margin-bottom: 2px; }
+  .psc-val { font-size: 17px; }
+  .cart-input.pag-val { width: 100px; font-size: 15px; }
 
   .cart-back-mobile {
     display: flex; align-items: center; gap: 8px;
@@ -2842,19 +2882,19 @@ async function emitirNFCe() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 14px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--line);
 }
 .psc-row:last-child { border-bottom: none; }
 .psc-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--muted);
 }
 .psc-val {
   font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--text);
 }
 .psc-pago .psc-val,
@@ -2870,9 +2910,9 @@ async function emitirNFCe() {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   color: var(--green);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   background: rgba(16,185,129,.08);
   border-top: 1px solid rgba(16,185,129,.15);
