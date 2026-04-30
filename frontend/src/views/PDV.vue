@@ -690,8 +690,8 @@ async function loadFormasPagamento() {
     .eq('filial_pk', fil)
     .eq('ativo', true)
     .order('ordem');
-  
-  const base = data?.length ? data : [
+
+  formasPagamento.value = data?.length ? data : [
     { pk: 'dinheiro',  forma: 'dinheiro',  label: 'Dinheiro',  icone: '💵', ordem: 1 },
     { pk: 'pix',       forma: 'pix',       label: 'PIX',       icone: '📱', ordem: 2 },
     { pk: 'debito',    forma: 'debito',    label: 'Débito',    icone: '💳', ordem: 3 },
@@ -699,14 +699,8 @@ async function loadFormasPagamento() {
     { pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 5 },
   ];
 
-  // Garante que crediário está sempre disponível
-  if (!base.some(f => f.forma === 'crediario')) {
-    base.push({ pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 99 });
-  }
-
-  formasPagamento.value = base;
-  if (!base.some(f => f.forma === formaPag.value)) {
-    formaPag.value = base[0].forma;
+  if (!formasPagamento.value.some(f => f.forma === formaPag.value)) {
+    formaPag.value = formasPagamento.value[0]?.forma || 'dinheiro';
   }
 }
 
@@ -974,7 +968,7 @@ function limpar() {
   dtVenc.value               = '';
   dtLocacao.value            = '';
   dtDevolucao.value          = '';
-  formaPag.value             = 'dinheiro';
+  formaPag.value             = formasPagamento.value[0]?.forma || 'dinheiro';
   valorPag.value             = 0;
   tipoVenda.value            = 'venda';
   canalVenda.value           = 'presencial';

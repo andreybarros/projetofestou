@@ -724,15 +724,15 @@ function showToast(msg, tipo = 'ok') {
 
 .cal-dow { text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text2); padding: 4px 0 8px; letter-spacing: .04em; }
 
-.cal-day { min-height: 80px; padding: 6px 6px 4px; border-radius: 8px; cursor: pointer; transition: background .12s; display: flex; flex-direction: column; gap: 3px; }
+.cal-day { min-height: 80px; padding: 6px 6px 4px; border-radius: 8px; cursor: pointer; transition: background .12s; display: flex; flex-direction: column; gap: 3px; overflow: hidden; min-width: 0; }
 .cal-day:hover { background: var(--bg3); }
 .cal-day.out-month { opacity: .3; cursor: default; }
 .cal-day.today .day-num { background: var(--accent); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 800; }
 .cal-day.selected { background: var(--bg3); outline: 1px solid var(--accent); }
 
 .day-num { font-size: 13px; font-weight: 600; color: var(--text); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
-.day-events { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-.day-ev-chip { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.day-events { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; overflow: hidden; }
+.day-ev-chip { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); max-width: 100%; display: block; }
 .day-ev-more { font-size: 10px; color: var(--text2); padding-left: 5px; }
 
 /* Legenda */

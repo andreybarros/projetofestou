@@ -187,8 +187,20 @@
                   <input v-model="formForma.label" type="text" placeholder="Vale" />
                 </div>
                 <div class="field">
-                  <label>Ícone (emoji)</label>
-                  <input v-model="formForma.icone" type="text" placeholder="🎟️" style="max-width: 80px" />
+                  <label>Ícone</label>
+                  <div class="emoji-preview-row">
+                    <span class="emoji-selected">{{ formForma.icone || '?' }}</span>
+                    <span class="emoji-hint">Selecione abaixo ou digite:</span>
+                    <input v-model="formForma.icone" type="text" class="emoji-input-text" maxlength="4" />
+                  </div>
+                  <div class="emoji-grid">
+                    <button
+                      v-for="e in emojisDisponiveis" :key="e"
+                      type="button"
+                      :class="['emoji-opt', { active: formForma.icone === e }]"
+                      @click="formForma.icone = e"
+                    >{{ e }}</button>
+                  </div>
                 </div>
               </div>
               <div class="modal-footer">
@@ -217,6 +229,13 @@ const tabAtiva = ref('contas');
 const contas = ref([]);
 const extrato = ref([]);
 const formas = ref([]);
+
+const emojisDisponiveis = [
+  '💵','💴','💶','💷','💰','🪙','💳','📱','🏧','🏦',
+  '💸','💱','🤑','💹','📲','🔄','🧾','📒','📝','✅',
+  '🤝','💼','🏷️','🎟️','🎫','🛒','📊','📈','🏪','🔑',
+];
+
 const carregandoContas = ref(false);
 const carregandoExtrato = ref(false);
 const carregandoFormas = ref(false);
@@ -538,4 +557,14 @@ function fmt(v) {
 .close-btn { background: none; border: none; color: var(--text2); font-size: 1.5rem; cursor: pointer; }
 
 .overflow-x { overflow-x: auto; }
+
+/* Seletor de emoji */
+.emoji-preview-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.emoji-selected { font-size: 28px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; }
+.emoji-hint { font-size: 12px; color: var(--text2); flex: 1; }
+.emoji-input-text { width: 60px; padding: 6px 8px; font-size: 18px; text-align: center; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); }
+.emoji-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 380px; }
+.emoji-opt { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; font-size: 18px; padding: 4px; cursor: pointer; transition: all .15s; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+.emoji-opt:hover { background: var(--bg); border-color: var(--primary); transform: scale(1.15); }
+.emoji-opt.active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 15%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); }
 </style>
