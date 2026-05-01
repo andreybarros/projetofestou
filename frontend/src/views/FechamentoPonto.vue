@@ -139,7 +139,8 @@
             </div>
             <div class="stat-box stat-box-destaque">
               <div class="stat-label">Saldo Acumulado (Final)</div>
-              <div class="stat-val">{{ saldoFinal.toFixed(2) }}h</div>
+              <div :class="['stat-val', saldoFinal < 0 ? 'neg' : '']">{{ saldoFinal.toFixed(2) }}h</div>
+              <div v-if="saldoFinal < 0" class="stat-zero-note">Será zerado ao finalizar (já descontado do salário)</div>
             </div>
           </div>
 
@@ -1006,7 +1007,8 @@ async function carregar() {
   const { data: fchAnt } = await supabase.from('fechamento_ponto')
     .select('saldo_acumulado').eq('funcionario_pk', func.pk)
     .eq('mes', antM).eq('ano', antA).eq('quinzena', antQ).maybeSingle();
-  summaries.value.saldoAnt = fchAnt?.saldo_acumulado ?? (func.saldo_inicial_banco || 0);
+  const saldoAntRaw = fchAnt?.saldo_acumulado ?? (func.saldo_inicial_banco || 0);
+  summaries.value.saldoAnt = Math.max(0, saldoAntRaw);
 
   // 3. Batidas e justificativas
   const [resP, resJ] = await Promise.all([
@@ -1088,7 +1090,7 @@ function processar(a1, m1, q1, dataIni, dataFim) {
     prevTot  += previsto;
     trabTot  += trabalhado;
 
-    const isPaidJust = just && (just.tipo === 'Abono' || just.tipo === 'Atestado Médico');
+    const isPaidJust = just && (just.tipo === 'Abono' || just.tipo === 'Atestado Médico' || just.tipo === 'Folga');
 
     // Horas extras
     if (isDomingo && trabalhado > 0) {
@@ -1269,7 +1271,7 @@ function buildPayload(saldoFinal, isBloqueado, espStatus, espObs, espAprovadoEm)
     horas_trabalhadas:   summaries.value.trabalhado / 3600,
     saldo_anterior:      summaries.value.saldoAnt,
     saldo_mes:           summaries.value.saldoMes,
-    saldo_acumulado:     saldoFinal,
+    saldo_acumulado:     isBloqueado ? Math.max(0, saldoFinal) : saldoFinal,
     valor_horas_extras:  totalOT.value,
     qtd_horas_pagas:     pagarHorasNormal.value + (pagarHorasDomingo.value * 2), // Total descontado do banco
     qtd_horas_extras_normais: pagarHorasNormal.value,
@@ -1421,6 +1423,7 @@ onMounted(carregarLista);
   border-radius: 10px; padding: 12px 14px;
 }
 .stat-box-destaque { border-color: #6366f1; }
+.stat-zero-note { font-size: .68rem; color: #f59e0b; margin-top: 4px; line-height: 1.3; }
 .stat-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text2); margin-bottom: 4px; }
 .stat-val   { font-size: 1.05rem; font-weight: 800; font-family: monospace; color: var(--text); }
 .pos { color: #10b981 !important; }

@@ -607,16 +607,39 @@ function normalizarDesc(s) {
     .trim();
 }
 
+// Normaliza números: n9 = n09 = nº9 = 9 → "09" (2 dígitos para comparação)
+function normalizarNumeros(s) {
+  return s.replace(/\b(\d)\b/g, '0$1');
+}
+
 function matchProduto(descricao) {
-  const palavras = normalizarDesc(descricao).split(' ').filter(w => w.length >= 2);
-  if (!palavras.length) return null;
+  if (!descricao) return null;
+  const alvo = normalizarNumeros(normalizarDesc(descricao));
+  const palavrasAlvo = alvo.split(' ').filter(w => w.length >= 2);
+  if (!palavrasAlvo.length) return null;
+
+  // 1. Match exato
+  const exato = todos.value.find(p => normalizarNumeros(normalizarDesc(p.descricao)) === alvo);
+  if (exato) return exato;
+
   let melhor = null, melhorScore = 0;
   for (const p of todos.value) {
-    const nome  = normalizarDesc(p.descricao);
-    const score = palavras.filter(w => nome.includes(w)).length / palavras.length;
+    const nome = normalizarNumeros(normalizarDesc(p.descricao));
+    const palavrasNome = nome.split(' ').filter(w => w.length >= 2);
+
+    // Quantas palavras do pedido estão no produto
+    const scoreAB = palavrasAlvo.filter(w => nome.includes(w)).length / palavrasAlvo.length;
+    // Quantas palavras do produto estão no pedido (evita match parcial errado)
+    const scoreBA = palavrasNome.length
+      ? palavrasNome.filter(w => alvo.includes(w)).length / palavrasNome.length
+      : 0;
+
+    // Bidirecional: média ponderada — pedido tem mais peso
+    const score = scoreAB * 0.65 + scoreBA * 0.35;
     if (score > melhorScore) { melhorScore = score; melhor = p; }
   }
-  return melhorScore >= 0.5 ? melhor : null;
+  // Threshold mais alto para evitar falsos positivos
+  return melhorScore >= 0.6 ? melhor : null;
 }
 
 async function processarListaIA() {
@@ -1249,13 +1272,13 @@ async function copiarOrcamento() {
     const disc = it.desconto_pct > 0 ? ` _(${it.desconto_pct}% desc)_` : '';
     return `• ${it.nome} × ${it.qtd} — *${fmt(it.preco_total)}*${disc}`;
   }).join('\n');
-  const partes = [`🎉 *Orçamento ${codigo} — FESTOU*`, `━━━━━━━━━━━━━━━━━━━━\n`];
+  const nomeCliente = clienteSel.value?.nome ? `👤 *${clienteSel.value.nome}*\n` : '';
+  const partes = [`🎉 *Orçamento ${codigo} — BarroStock*\n${nomeCliente}━━━━━━━━━━━━━━━━━━━━\n`];
   partes.push(`*Itens:*\n${linhas}`);
   if (parseFloat(vendaStore.desconto) > 0)
     partes.push(`\nSubtotal: ${fmt(vendaStore.subtotal)}\nDesconto: − ${fmt(vendaStore.desconto)}`);
   partes.push(`\n✅ *Total: ${fmt(vendaStore.total)}*`);
-  partes.push(`\n_Confirme para reservarmos os itens para você!_`);
-  partes.push(`📍 Alameda Cosme Ferreira 6893 — Manaus/AM\n📱 (92) 98612-5736`);
+  partes.push(`\n_Confira com atenção!_`);
   partes.push(`━━━━━━━━━━━━━━━━━━━━\nCódigo: ${codigo}`);
   const texto = partes.join('\n');
 
@@ -1263,7 +1286,7 @@ async function copiarOrcamento() {
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (isMobile && navigator.share) {
     try {
-      await navigator.share({ title: `Orçamento ${codigo} — FESTOU`, text: texto });
+      await navigator.share({ title: `Orçamento ${codigo} — BarroStock`, text: texto });
       orcCopiado.value = true;
       setTimeout(() => { orcCopiado.value = false; }, 2500);
       toast(`Orçamento ${codigo} gerado!`);
@@ -1893,6 +1916,7 @@ async function emitirNFCe() {
 .li-match { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #10b981; flex-wrap: wrap; }
 .li-preco { font-family: var(--mono); font-size: 11px; background: rgba(16,185,129,.1); padding: 1px 6px; border-radius: 4px; }
 .li-sem-match { font-size: 11px; color: #f87171; font-style: italic; }
+.li-ia-hint   { color: #fb923c; margin-left: 4px; }
 .btn-add-lista-carrinho {
   display: flex; align-items: center; gap: 8px;
   padding: 9px 20px; border: none; border-radius: 8px;
