@@ -253,6 +253,26 @@
       </div>
     </Teleport>
 
+    <!-- Modal Exclusão -->
+    <Teleport to="body">
+      <div v-if="vendaParaExcluir" class="modal-bg" @click.self="vendaParaExcluir = null">
+        <div class="modal excl-modal">
+          <div class="excl-icon-wrap">
+            <span class="material-symbols-outlined excl-icon">delete_forever</span>
+          </div>
+          <h3 class="excl-titulo">Excluir venda #{{ vendaParaExcluir.numero }}?</h3>
+          <p class="excl-msg">Esta ação retornará os produtos ao estoque e <strong>NÃO pode ser desfeita</strong>.</p>
+          <div class="dev-actions">
+            <button @click="vendaParaExcluir = null" class="det-btn-fechar" :disabled="carregando">Cancelar</button>
+            <button @click="executarExclusao" class="btn-confirmar-excl" :disabled="carregando">
+              <span v-if="carregando" class="spin-xs"></span>
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Modal Devolução -->
     <Teleport to="body">
       <div v-if="showModalDevolucao" class="modal-bg" @click.self="showModalDevolucao = false">
@@ -299,6 +319,7 @@ const detalhe        = ref(null);
 const detalheItens       = ref([]);
 const detalhePagamentos  = ref([]);
 const detalheCarregando  = ref(false);
+const vendaParaExcluir   = ref(null);
 const nfceResult     = ref(null);
 const toastMsg   = ref('');
 const toastTipo  = ref('ok');
@@ -354,12 +375,21 @@ function limparFiltros() {
   carregar(0);
 }
 
-async function confirmarExclusao(v) {
-  if (!confirm(`Deseja EXCLUIR a venda #${v.numero}? Esta ação retornará os produtos ao estoque e NÃO pode ser desfeita.`)) return;
+function confirmarExclusao(v) {
+  vendaParaExcluir.value = v;
+}
+
+async function executarExclusao() {
+  const v = vendaParaExcluir.value;
+  if (!v) return;
   carregando.value = true;
   try {
     const resp = await apiClient.delete(`/api/vendas/${v.pk}`);
-    if (resp.data.ok) { toast("Venda excluída e estoque estornado."); await carregar(paginaAtual.value); }
+    if (resp.data.ok) {
+      vendaParaExcluir.value = null;
+      toast("Venda excluída e estoque estornado.");
+      await carregar(paginaAtual.value);
+    }
   } catch (e) {
     toast("Erro ao excluir: " + (e.response?.data?.erro || e.message), 'err');
   } finally {
@@ -727,6 +757,15 @@ function statusCls(s) {
 .btn-confirmar-dev { padding: .6rem 1.4rem; border: none; background: #ef4444; color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; }
 .btn-confirmar-dev:hover { opacity: .88; }
 .btn-confirmar-dev:disabled { opacity: .5; cursor: not-allowed; }
+
+.excl-modal { padding: 2rem; text-align: center; max-width: 420px; }
+.excl-icon-wrap { width: 64px; height: 64px; border-radius: 50%; background: rgba(239,68,68,.12); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+.excl-icon { font-size: 32px; color: #ef4444; }
+.excl-titulo { font-size: 1.15rem; font-weight: 800; color: var(--text); margin: 0 0 .6rem; }
+.excl-msg { font-size: .88rem; color: var(--text2); margin: 0 0 1.5rem; line-height: 1.5; }
+.btn-confirmar-excl { display: inline-flex; align-items: center; gap: 6px; padding: .6rem 1.6rem; border: none; background: #ef4444; color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; }
+.btn-confirmar-excl:hover:not(:disabled) { opacity: .88; }
+.btn-confirmar-excl:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Toast */
 .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); padding: 1rem 2rem; border-radius: 14px; color: #fff; font-weight: 700; z-index: 10000; box-shadow: 0 10px 30px rgba(0,0,0,.2); white-space: nowrap; }

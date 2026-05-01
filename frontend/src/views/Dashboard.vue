@@ -35,6 +35,18 @@
       </div>
 
       <div class="kpi-card">
+        <div class="kpi-icon kpi-teal">
+          <span class="material-symbols-outlined">trending_up</span>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-label">Lucro Hoje</span>
+          <span :class="['kpi-value', carregando ? '' : lucroHoje >= 0 ? 'kpi-teal-text' : 'kpi-red-text']">
+            {{ carregando ? '—' : fmt(lucroHoje) }}
+          </span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
         <div class="kpi-icon kpi-amber">
           <span class="material-symbols-outlined">inventory_2</span>
         </div>
@@ -169,6 +181,7 @@ const carregando    = ref(true);
 const ultimasVendas = ref([]);
 const totalHoje         = ref(0);
 const faturamentoHoje   = ref(0);
+const lucroHoje         = ref(0);
 const totalProdutos     = ref(0);
 const semEstoque        = ref(0);
 
@@ -195,17 +208,46 @@ async function verificarCaixa() {
 
 async function carregarVendas() {
   const hoje = new Date().toLocaleDateString('en-CA');
-  let q = supabase
+
+  // Query 1: últimas 10 para exibição
+  let qDisplay = supabase
     .from("vendas")
     .select("pk, numero, cliente, operador, vendedor, total, status, criado_em")
     .order("criado_em", { ascending: false })
     .limit(10);
-  if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
-  const { data } = await q;
-  ultimasVendas.value = data || [];
-  const hoje_vendas = (data || []).filter(v => v.criado_em?.startsWith(hoje) && v.status === "finalizada");
-  totalHoje.value       = hoje_vendas.length;
-  faturamentoHoje.value = hoje_vendas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
+  if (sessaoStore.filial?.pk) qDisplay = qDisplay.eq("filial_pk", sessaoStore.filial.pk);
+  const { data: recentes } = await qDisplay;
+  ultimasVendas.value = recentes || [];
+
+  // Query 2: todas as finalizadas de hoje para KPIs
+  let qHoje = supabase
+    .from("vendas")
+    .select("pk, total")
+    .eq("status", "finalizada")
+    .gte("criado_em", hoje + "T00:00:00")
+    .lte("criado_em", hoje + "T23:59:59");
+  if (sessaoStore.filial?.pk) qHoje = qHoje.eq("filial_pk", sessaoStore.filial.pk);
+  const { data: hojeVendas } = await qHoje;
+  const vendasHoje = hojeVendas || [];
+
+  totalHoje.value       = vendasHoje.length;
+  faturamentoHoje.value = vendasHoje.reduce((s, v) => s + parseFloat(v.total || 0), 0);
+
+  // Query 3: itens das vendas de hoje com custo do produto para calcular lucro
+  if (vendasHoje.length > 0) {
+    const pks = vendasHoje.map(v => v.pk);
+    const { data: itens } = await supabase
+      .from("itens_venda")
+      .select("qtd, total_item, produto:produto_pk(preco_custo)")
+      .in("venda_pk", pks);
+    lucroHoje.value = (itens || []).reduce((sum, it) => {
+      const custo   = parseFloat(it.produto?.preco_custo || 0) * parseFloat(it.qtd || 0);
+      const receita = parseFloat(it.total_item || 0);
+      return sum + (receita - custo);
+    }, 0);
+  } else {
+    lucroHoje.value = 0;
+  }
 }
 
 async function carregarProdutos() {
@@ -262,6 +304,7 @@ function statusCls(s) {
 .kpi-icon .material-symbols-outlined { font-size: 26px; }
 .kpi-indigo { background: rgba(99,102,241,.12); color: var(--primary); }
 .kpi-green  { background: rgba(16,185,129,.12); color: #10b981; }
+.kpi-teal   { background: rgba(20,184,166,.12); color: #14b8a6; }
 .kpi-amber  { background: rgba(245,158,11,.12); color: #f59e0b; }
 .kpi-red    { background: rgba(239,68,68,.12);  color: #ef4444; }
 
@@ -269,6 +312,7 @@ function statusCls(s) {
 .kpi-label  { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
 .kpi-value  { font-size: 1.55rem; font-weight: 800; color: var(--text); line-height: 1.1; }
 .kpi-green-text { color: #10b981; }
+.kpi-teal-text  { color: #14b8a6; }
 .kpi-red-text   { color: #ef4444; }
 
 /* ── Painéis ────────────────────────────────── */

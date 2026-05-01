@@ -98,21 +98,26 @@
 
         <!-- Tabs -->
         <div class="cart-tabs">
-          <button :class="['cart-tab', { active: cartTab === 0 }]" @click="cartTab = 0">
+          <button :class="['cart-tab', { active: cartTab === 0 }]" @click="cartTab = 0" :disabled="vendaFinalizada">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             Itens
             <span v-if="vendaStore.itens.length" class="tab-badge">{{ vendaStore.itens.reduce((s,i) => s + parseFloat(i.qtd||1), 0) }}</span>
           </button>
-          <button :class="['cart-tab', { active: cartTab === 1 }]" @click="cartTab = 1" :disabled="!vendaStore.itens.length">
+          <button :class="['cart-tab', { active: cartTab === 1 }]" @click="cartTab = 1" :disabled="!vendaStore.itens.length || vendaFinalizada">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Detalhes
           </button>
-          <button :class="['cart-tab', { active: cartTab === 2 }]" @click="cartTab = 2" :disabled="!vendaStore.itens.length">
+          <button :class="['cart-tab', { active: cartTab === 2 }]" @click="cartTab = 2" :disabled="!vendaStore.itens.length || vendaFinalizada">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
             Pagamento
             <span v-if="parseFloat(vendaStore.faltaPagar) <= 0.009 && vendaStore.pagamentos.length" class="tab-badge ok">✓</span>
           </button>
-          <button v-if="vendaStore.itens.length" class="cart-clear-btn" @click="limpar" title="Limpar carrinho">
+          <button :class="['cart-tab', 'tab-impressao', { active: cartTab === 3 }]" @click="cartTab = 3" :disabled="!vendaFinalizada">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Impressão
+            <span v-if="vendaFinalizada" class="tab-badge ok">✓</span>
+          </button>
+          <button v-if="vendaStore.itens.length && !vendaFinalizada" class="cart-clear-btn" @click="limpar" title="Limpar carrinho">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
           </button>
         </div>
@@ -338,7 +343,14 @@
 
               <label class="section-label" style="margin-top:12px">Valor recebido</label>
               <div class="pag-row-col">
-                <input v-model.number="valorPag" type="number" min="0" step="0.01" placeholder="0,00" class="pag-val-big" />
+                <input
+                  :value="valorPagDisplay"
+                  @input="onValorPagInput"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="0,00"
+                  class="pag-val-big"
+                />
                 <button class="pag-add-full" @click="addPag">
                   <span class="material-symbols-outlined">add_circle</span>
                   Adicionar
@@ -377,56 +389,58 @@
               <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               {{ processando ? 'Processando…' : 'Finalizar Venda' }}
             </button>
+          </div>
 
-            <!-- Botão de Recibo após finalizar -->
-            <button v-if="vendaFinalizada" class="btn-recibo-pos" @click="imprimirRecibo">
+        </div><!-- /tab 2 -->
+
+        <!-- ── ABA 3: Impressão (pós-venda) ──────────────────── -->
+        <div v-show="cartTab === 3" class="tab-panel tab-impressao-panel">
+          <div class="impressao-venda-ok">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div class="impressao-titulo">Venda finalizada!</div>
+            <div class="impressao-num">#{{ vendaNumero }}</div>
+          </div>
+
+          <div class="impressao-acoes">
+            <button class="btn-imp-acao btn-recibo" @click="imprimirRecibo">
               <span class="material-symbols-outlined">print</span>
               Imprimir Recibo
             </button>
 
-            <!-- Botão de Contrato (apenas locação) -->
-            <button v-if="vendaFinalizada && tipoVenda === 'locacao'" class="btn-contrato-pos" @click="imprimirContrato">
+            <button v-if="tipoVenda === 'locacao'" class="btn-imp-acao btn-contrato" @click="imprimirContrato">
               <span class="material-symbols-outlined">description</span>
               Imprimir Contrato
             </button>
 
-            <!-- Botão NFC-e após finalizar -->
             <button
-              v-if="vendaFinalizada"
-              class="btn-nfce"
+              class="btn-imp-acao btn-nfce"
               :disabled="emitindo || (resultNfce && resultNfce.ok)"
               @click="emitirNFCe"
             >
               <span v-if="emitindo" class="spin-sm"></span>
               <span v-else class="material-symbols-outlined">receipt_long</span>
-              {{ emitindo ? 'Emitindo…' : (resultNfce && resultNfce.ok ? 'NFC-e Emitida' : 'Emitir NFC-e') }}
+              {{ emitindo ? 'Emitindo…' : (resultNfce && resultNfce.ok ? 'NFC-e Emitida ✓' : 'Emitir NFC-e') }}
             </button>
 
-            <!-- Resultado NFC-e -->
             <div v-if="resultNfce" class="nfce-result" :class="resultNfce.ok ? 'ok' : 'err'">
               <div v-if="resultNfce.ok">
                 <strong>NFC-e autorizada</strong><br>
                 <span class="mono">{{ resultNfce.chave }}</span>
               </div>
               <div v-else>{{ resultNfce.erro }}</div>
-              <button
-                v-if="resultNfce.danfe"
-                class="btn-danfe"
-                @click="abrirDanfe"
-              >
+              <button v-if="resultNfce.danfe" class="btn-danfe" @click="abrirDanfe">
                 <span class="material-symbols-outlined">print</span>
                 Imprimir DANFE
               </button>
             </div>
 
-            <!-- Botão de Limpar/Nova Venda após finalizar -->
-            <button v-if="vendaFinalizada" type="button" class="btn-limpar-pos" @click="limpar">
-              <span class="material-symbols-outlined">delete_sweep</span>
+            <button class="btn-imp-acao btn-nova-venda" @click="limpar">
+              <span class="material-symbols-outlined">add_shopping_cart</span>
               Nova Venda
+              <kbd class="hotkey-badge">F1</kbd>
             </button>
           </div>
-
-        </div><!-- /tab 2 -->
+        </div><!-- /tab 3 -->
 
 
       </aside>
@@ -483,31 +497,64 @@
               </span>
             </div>
             <div class="lista-ia-resultados">
-              <label v-for="(item, i) in listaItens" :key="i"
+              <div v-for="(item, i) in listaItens" :key="i"
                 class="lista-ia-item"
                 :class="item.produto ? 'li-ok' : 'li-nok'"
               >
-                <input type="checkbox" v-model="item.selecionado"
-                  :disabled="!item.produto || (item.produto.saldo !== null && item.produto.saldo <= 0)" />
-                <div class="li-info">
-                  <span class="li-qty">{{ item.qty }}×</span>
-                  <span class="li-desc">{{ item.descricao }}</span>
-                  <span v-if="item.produto" class="li-match">
-                    <span class="material-symbols-outlined" style="font-size:13px">arrow_forward</span>
-                    {{ item.produto.descricao }}
-                    <span class="li-preco">{{ fmt(item.produto.valor_venda) }}</span>
-                    <span v-if="item.produto.saldo !== null && item.produto.saldo <= 0" class="li-sem-estoque">
-                      <span class="material-symbols-outlined" style="font-size:12px">warning</span>
-                      Sem estoque
+                <!-- Linha principal -->
+                <div class="li-main-row">
+                  <input type="checkbox" v-model="item.selecionado"
+                    :disabled="!item.produto || (item.produto.saldo !== null && item.produto.saldo <= 0)" />
+                  <div class="li-info">
+                    <span class="li-qty">{{ item.qty }}×</span>
+                    <span class="li-desc">{{ item.descricao }}</span>
+                    <span v-if="item.produto" class="li-match">
+                      <span class="material-symbols-outlined" style="font-size:13px">arrow_forward</span>
+                      {{ item.produto.descricao }}
+                      <span class="li-preco">{{ fmt(item.produto.valor_venda) }}</span>
+                      <span v-if="item.produto.saldo !== null && item.produto.saldo <= 0" class="li-sem-estoque">
+                        <span class="material-symbols-outlined" style="font-size:12px">warning</span>
+                        Sem estoque
+                      </span>
+                      <span v-else-if="item.produto.saldo !== null && item.produto.saldo < item.qty" class="li-estoque-baixo">
+                        <span class="material-symbols-outlined" style="font-size:12px">warning</span>
+                        Estoque: {{ item.produto.saldo }}
+                      </span>
                     </span>
-                    <span v-else-if="item.produto.saldo !== null && item.produto.saldo < item.qty" class="li-estoque-baixo">
-                      <span class="material-symbols-outlined" style="font-size:12px">warning</span>
-                      Estoque: {{ item.produto.saldo }}
-                    </span>
-                  </span>
-                  <span v-else class="li-sem-match">Produto não encontrado no catálogo</span>
+                    <span v-else class="li-sem-match">Não encontrado no catálogo</span>
+                  </div>
+                  <button class="li-btn-edit" @click.prevent="abrirCorrecao(i)"
+                    :class="{ active: editandoIdx === i }"
+                    title="Corrigir produto">
+                    <span class="material-symbols-outlined" style="font-size:15px">edit</span>
+                  </button>
                 </div>
-              </label>
+
+                <!-- Busca de correção inline -->
+                <div v-if="editandoIdx === i" class="li-correcao">
+                  <input
+                    v-model="buscaCorrecao"
+                    type="text"
+                    placeholder="Buscar produto no catálogo…"
+                    class="li-correcao-input"
+                    autofocus
+                  />
+                  <div class="li-correcao-drop">
+                    <button
+                      v-for="p in correcaoResultados"
+                      :key="p.pk"
+                      class="li-correcao-item"
+                      :class="{ 'li-sem-est': p.saldo !== null && p.saldo <= 0 }"
+                      @mousedown.prevent="selecionarCorrecao(i, p)"
+                    >
+                      <span class="li-cor-nome">{{ p.descricao }}</span>
+                      <span class="li-cor-preco">{{ fmt(p.valor_venda) }}</span>
+                      <span v-if="p.saldo !== null && p.saldo <= 0" class="li-cor-est-zero">sem estoque</span>
+                    </button>
+                    <div v-if="correcaoResultados.length === 0" class="li-correcao-vazio">Nenhum produto encontrado</div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="modal-footer">
               <button class="btn-cancel" @click="listaProcessada = false">Editar lista</button>
@@ -563,7 +610,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch, inject } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch, inject } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useVendaStore }      from '../stores/venda';
 import { useCaixaStore }      from '../stores/caixa';
@@ -590,11 +637,39 @@ const listaItens       = ref([]);
 const listaProcessada  = ref(false);
 const processandoLista = ref(false);
 
+// Correção manual de produto
+const editandoIdx      = ref(null);
+const buscaCorrecao    = ref('');
+
+const correcaoResultados = computed(() => {
+  const q = buscaCorrecao.value.trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (!q) return todos.value.slice(0, 40);
+  return todos.value
+    .filter(p => p.descricao.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q))
+    .slice(0, 40);
+});
+
+function abrirCorrecao(i) {
+  editandoIdx.value   = editandoIdx.value === i ? null : i;
+  buscaCorrecao.value = '';
+}
+
+function selecionarCorrecao(i, produto) {
+  const semEstoque = produto.saldo !== null && produto.saldo <= 0;
+  listaItens.value[i].produto    = produto;
+  listaItens.value[i].selecionado = !semEstoque;
+  editandoIdx.value   = null;
+  buscaCorrecao.value = '';
+}
+
 function fecharModalLista() {
   modalLista.value      = false;
   listaTexto.value      = '';
   listaItens.value      = [];
   listaProcessada.value = false;
+  editandoIdx.value     = null;
+  buscaCorrecao.value   = '';
 }
 
 function normalizarDesc(s) {
@@ -717,6 +792,7 @@ const dtVenc      = ref('');
 const formaPag    = ref('dinheiro');
 const formasPagamento = ref([]);
 const valorPag    = ref(0);
+const valorPagDisplay = ref('');
 const processando = ref(false);
 const emitindo    = ref(false);
 const vendaFinalizada = ref(false);
@@ -820,12 +896,30 @@ const troco = computed(() =>
 watch(vendedorSel, v  => vendaStore.setVendedor(v));
 watch(clienteSel,  c  => vendaStore.setCliente(c));
 
+// Preenche valor recebido com o total restante sempre que o total da venda muda
+watch(() => vendaStore.faltaPagar, (val) => {
+  if (vendaStore.pagamentos.length === 0) {
+    preencherValorPag(parseFloat(val) || 0);
+  }
+}, { immediate: false });
+
 // ── Mount ─────────────────────────────────────────────────────
+function onHotkey(e) {
+  if (e.key === 'F1') {
+    e.preventDefault();
+    limpar();
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', onHotkey);
   await checkCaixa();
   await Promise.all([loadProdutos(), loadCategorias(), loadVendedores(), loadFormasPagamento()]);
-  // Restaura cliente (objeto completo) diretamente
   if (vendaStore.cliente) clienteSel.value = vendaStore.cliente;
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onHotkey);
 });
 
 async function loadProdutos() {
@@ -1170,6 +1264,30 @@ function incrementarItem(idx, it) {
   vendaStore.atualizarQuantidade(idx, it.qtd + 1);
 }
 
+function preencherValorPag(v) {
+  const cents = Math.round(parseFloat(v || 0) * 100);
+  valorPag.value = cents / 100;
+  valorPagDisplay.value = cents > 0
+    ? (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '';
+}
+
+function onValorPagInput(e) {
+  const digits = e.target.value.replace(/\D/g, '');
+  if (!digits || digits === '0') {
+    valorPag.value = 0;
+    valorPagDisplay.value = '';
+    e.target.value = '';
+    return;
+  }
+  const cents = parseInt(digits, 10);
+  valorPag.value = cents / 100;
+  const fmt2 = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  valorPagDisplay.value = fmt2;
+  // Preserva cursor no fim
+  e.target.value = fmt2;
+}
+
 function addPag() {
   if (valorPag.value > 0) {
     vendaStore.adicionarPagamento({
@@ -1179,7 +1297,9 @@ function addPag() {
         ? Math.max(0, valorPag.value - parseFloat(vendaStore.faltaPagar))
         : 0,
     });
-    valorPag.value = 0;
+    // Após adicionar, preenche com o saldo restante
+    const resta = parseFloat(vendaStore.faltaPagar) || 0;
+    preencherValorPag(resta > 0 ? resta : 0);
   }
 }
 
@@ -1195,6 +1315,7 @@ function limpar() {
   dtDevolucao.value          = '';
   formaPag.value             = formasPagamento.value[0]?.forma || 'dinheiro';
   valorPag.value             = 0;
+  valorPagDisplay.value      = '';
   tipoVenda.value            = 'venda';
   canalVenda.value           = 'presencial';
   vendedorSel.value          = null;
@@ -1273,7 +1394,7 @@ async function copiarOrcamento() {
     return `• ${it.nome} × ${it.qtd} — *${fmt(it.preco_total)}*${disc}`;
   }).join('\n');
   const nomeCliente = clienteSel.value?.nome ? `👤 *${clienteSel.value.nome}*\n` : '';
-  const partes = [`🎉 *Orçamento ${codigo} — BarroStock*\n${nomeCliente}━━━━━━━━━━━━━━━━━━━━\n`];
+  const partes = [`🎉 *Orçamento — Festouu*\n${nomeCliente}━━━━━━━━━━━━━━━━━━━━\n`];
   partes.push(`*Itens:*\n${linhas}`);
   if (parseFloat(vendaStore.desconto) > 0)
     partes.push(`\nSubtotal: ${fmt(vendaStore.subtotal)}\nDesconto: − ${fmt(vendaStore.desconto)}`);
@@ -1412,8 +1533,9 @@ async function finalizar() {
     vendaPk.value         = data.venda_pk;
     vendaNumero.value     = data.numero;
     vendaFinalizada.value = true;
+    cartTab.value         = 3;
     toast(`Venda #${data.numero} finalizada com sucesso!`);
-    
+
     // Impressão automática
     setTimeout(() => {
       imprimirRecibo();
@@ -1902,14 +2024,18 @@ async function emitirNFCe() {
 .lista-ia-resultados-wrap { display: flex; flex-direction: column; gap: 0; }
 .lista-ia-resultados { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
 .lista-ia-item {
-  display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px;
-  border-radius: 8px; border: 1px solid var(--line); cursor: pointer;
-  transition: background .12s;
+  display: flex; flex-direction: column; gap: 0;
+  border-radius: 8px; border: 1px solid var(--line);
+  transition: background .12s; overflow: hidden;
 }
-.lista-ia-item:hover { background: var(--bg3); }
+.li-main-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; cursor: pointer;
+}
+.li-main-row:hover { background: var(--bg3); }
 .lista-ia-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
 .li-ok  { border-color: rgba(16,185,129,.25); }
-.li-nok { border-color: rgba(239,68,68,.2); background: rgba(239,68,68,.04); opacity: .7; }
+.li-nok { border-color: rgba(239,68,68,.2); background: rgba(239,68,68,.04); }
 .li-info { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
 .li-qty  { font-size: 12px; font-weight: 800; color: var(--accent2); flex-shrink: 0; }
 .li-desc { font-size: 13px; font-weight: 600; color: var(--text); }
@@ -1917,6 +2043,42 @@ async function emitirNFCe() {
 .li-preco { font-family: var(--mono); font-size: 11px; background: rgba(16,185,129,.1); padding: 1px 6px; border-radius: 4px; }
 .li-sem-match { font-size: 11px; color: #f87171; font-style: italic; }
 .li-ia-hint   { color: #fb923c; margin-left: 4px; }
+
+/* Botão editar produto */
+.li-btn-edit {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text2); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; transition: all .15s; margin-left: auto;
+}
+.li-btn-edit:hover, .li-btn-edit.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+
+/* Dropdown de correção inline */
+.li-correcao {
+  border-top: 1px solid var(--border); padding: 8px 10px;
+  background: var(--bg2); display: flex; flex-direction: column; gap: 6px;
+}
+.li-correcao-input {
+  width: 100%; padding: 7px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text); font-size: 13px;
+}
+.li-correcao-input:focus { outline: none; border-color: #6366f1; }
+.li-correcao-drop {
+  max-height: 180px; overflow-y: auto; display: flex; flex-direction: column;
+  gap: 2px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg3);
+}
+.li-correcao-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  background: none; border: none; text-align: left; cursor: pointer;
+  font-size: 12px; color: var(--text); transition: background .1s; width: 100%;
+}
+.li-correcao-item:hover { background: var(--bg4); }
+.li-correcao-item.li-sem-est { opacity: .55; }
+.li-cor-nome  { flex: 1; font-weight: 600; }
+.li-cor-preco { font-family: var(--mono); font-size: 11px; color: #10b981; flex-shrink: 0; }
+.li-cor-est-zero { font-size: 10px; color: #f87171; background: rgba(239,68,68,.1); padding: 1px 5px; border-radius: 4px; }
+.li-correcao-vazio { padding: 10px; font-size: 12px; color: var(--text2); text-align: center; }
 .btn-add-lista-carrinho {
   display: flex; align-items: center; gap: 8px;
   padding: 9px 20px; border: none; border-radius: 8px;
@@ -3246,6 +3408,57 @@ async function emitirNFCe() {
 [data-theme="light"] .psc-row        { border-bottom-color: rgba(0,0,0,.08); }
 [data-theme="light"] .psc-label      { color: #374151; }
 [data-theme="light"] .psc-val        { color: #0f172a; }
+
+/* ── Aba Impressão ──────────────────────────────────────── */
+.tab-impressao { color: #10b981; }
+.tab-impressao.active { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.35); color: #10b981; }
+.tab-impressao:disabled { opacity: .35; }
+
+.tab-impressao-panel { display: flex; flex-direction: column; gap: 20px; padding: 20px; height: 100%; justify-content: center; }
+
+.impressao-venda-ok {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 24px 0 8px;
+}
+.impressao-titulo { font-size: 1.2rem; font-weight: 800; color: #10b981; }
+.impressao-num    { font-size: .95rem; color: var(--text2); font-weight: 600; }
+
+.impressao-acoes {
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.btn-imp-acao {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 16px; border-radius: 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  border: none; transition: opacity .15s, transform .1s;
+}
+.btn-imp-acao:active { transform: scale(.98); }
+.btn-imp-acao:disabled { opacity: .4; cursor: not-allowed; }
+.btn-imp-acao .material-symbols-outlined { font-size: 20px; }
+
+.btn-recibo  { background: var(--bg3); border: 1px solid var(--border); color: var(--text); }
+.btn-recibo:hover:not(:disabled) { background: var(--bg4, var(--bg2)); }
+
+.btn-contrato { background: var(--bg3); border: 1px solid var(--border); color: var(--text); }
+.btn-contrato:hover:not(:disabled) { background: var(--bg4, var(--bg2)); }
+
+.btn-imp-acao.btn-nfce {
+  background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); color: var(--primary);
+}
+.btn-imp-acao.btn-nfce:hover:not(:disabled) { background: rgba(99,102,241,.18); }
+
+.btn-nova-venda {
+  background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff;
+  box-shadow: 0 4px 16px rgba(99,102,241,.35); margin-top: 4px;
+}
+.btn-nova-venda:hover { opacity: .88; }
+
+.hotkey-badge {
+  margin-left: auto; font-size: 10px; font-weight: 700; font-family: var(--mono, monospace);
+  background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3);
+  border-radius: 4px; padding: 1px 5px; letter-spacing: .5px;
+}
 
 .btn-recibo-pos {
   display: flex;
