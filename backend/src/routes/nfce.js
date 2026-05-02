@@ -108,8 +108,13 @@ function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfCo
 
   const itensFocus = itens.map((item, idx) => {
     const fiscal = prodsFiscalMap[item.produto_pk] || {};
-    const ncm    = (fiscal.ncm || '00000000').replace(/\D/g, '').padStart(8, '0');
-    const vlBruto = Number(item.total_item || 0) + Number(item.desconto_val || 0);
+    const ncm      = (fiscal.ncm || '00000000').replace(/\D/g, '').padStart(8, '0');
+    const qtd      = Number(item.qtd || 1);
+    const precoUnit = Number(item.preco_unit || 0);
+    // valor_bruto deve ser sempre preco_unit × qtd (SEFAZ rejeita se divergir)
+    const vlBruto   = Math.round(precoUnit * qtd * 100) / 100;
+    const vlTotal   = Number(item.total_item || vlBruto);
+    const vlDesconto = Math.round((vlBruto - vlTotal) * 100) / 100;
 
     const obj = {
       numero_item:               idx + 1,
@@ -117,11 +122,11 @@ function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfCo
       descricao:                 item.descricao || `PRODUTO ${idx + 1}`,
       cfop:                      String(fiscal.cfop || '5102'),
       unidade_comercial:         fiscal.unidade_comercial || 'UN',
-      quantidade_comercial:      Number(item.qtd || 1),
-      valor_unitario_comercial:  Number(item.preco_unit || 0),
-      valor_unitario_tributavel: Number(item.preco_unit || 0),
+      quantidade_comercial:      qtd,
+      valor_unitario_comercial:  precoUnit,
+      valor_unitario_tributavel: precoUnit,
       unidade_tributavel:        fiscal.unidade_comercial || 'UN',
-      quantidade_tributavel:     Number(item.qtd || 1),
+      quantidade_tributavel:     qtd,
       valor_bruto:               vlBruto,
       codigo_ncm:                ncm,
       icms_situacao_tributaria:  fiscal.csosn || '400',
@@ -130,8 +135,8 @@ function montarPayload({ filial, venda, itens, pagamentos, prodsFiscalMap, cpfCo
       cofins_situacao_tributaria:'07',
     };
 
-    if (Number(item.desconto_val || 0) > 0) {
-      obj.valor_desconto = Number(item.desconto_val);
+    if (vlDesconto > 0.009) {
+      obj.valor_desconto = vlDesconto;
     }
 
     return obj;
