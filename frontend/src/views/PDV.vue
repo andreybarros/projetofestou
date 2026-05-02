@@ -55,7 +55,7 @@
           <div v-else-if="!filtrados.length" class="state-msg muted">
             Nenhum produto encontrado
           </div>
-          <div v-else class="products-grid">
+          <div v-else class="products-list">
             <button
               v-for="p in filtrados"
               :key="p.pk"
@@ -63,15 +63,19 @@
               :class="{ 'no-stock': p.saldo !== null && p.saldo <= 0 }"
               @click="add(p)"
             >
-              <div class="prod-img">
-                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" loading="lazy" width="90" height="90" />
-                <span v-else class="prod-img-icon">{{ (p.descricao||'?')[0].toUpperCase() }}</span>
+              <div class="prod-avatar">
+                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" loading="lazy" />
+                <span v-else>{{ (p.descricao||'?')[0].toUpperCase() }}</span>
               </div>
               <div class="prod-info">
                 <span class="prod-name">{{ p.descricao }}</span>
-                <span class="prod-code">{{ p.codigo || '' }}</span>
+                <div class="prod-meta">
+                  <span v-if="categoriasMap[p.categoria_pk]" class="prod-cat">{{ categoriasMap[p.categoria_pk] }}</span>
+                  <span v-if="p.codigo_barras" class="prod-barras">{{ p.codigo_barras }}</span>
+                  <span v-else-if="p.codigo" class="prod-barras">{{ p.codigo }}</span>
+                </div>
               </div>
-              <div class="prod-bottom">
+              <div class="prod-right">
                 <div class="prod-price-wrap">
                   <span v-if="getPromoAtiva(p)" class="prod-price-original">{{ fmt(p.valor_venda) }}</span>
                   <span :class="['prod-price', { 'prod-price-promo': getPromoAtiva(p) }]">{{ fmt(getPrecoEfetivo(p)) }}</span>
@@ -79,9 +83,8 @@
                 <span :class="['prod-stock', p.saldo <= 0 ? 'zero' : p.saldo <= 5 ? 'low' : '']">
                   {{ p.saldo !== null ? p.saldo : '∞' }}
                 </span>
+                <div v-if="getPromoAtiva(p)" class="prod-promo-badge">PROMO</div>
               </div>
-              <div v-if="getPromoAtiva(p)" class="prod-promo-badge">PROMO</div>
-              <div v-else class="prod-add-badge">+</div>
             </button>
           </div>
         </div>
@@ -117,9 +120,6 @@
             Impressão
             <span v-if="vendaFinalizada" class="tab-badge ok">✓</span>
           </button>
-          <button v-if="vendaStore.itens.length && !vendaFinalizada" class="cart-clear-btn" @click="limpar" title="Limpar carrinho">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-          </button>
         </div>
 
         <!-- ── ABA 0: Itens ──────────────────────────────────── -->
@@ -143,7 +143,15 @@
                 <div class="ci-row ci-bottom">
                   <div class="item-controls">
                     <button class="qty-btn" @click="vendaStore.atualizarQuantidade(i, it.qtd - 1)" :disabled="it.qtd <= 1">−</button>
-                    <span class="qty-val">{{ it.qtd }}</span>
+                    <input
+                      type="number"
+                      class="qty-input"
+                      :value="it.qtd"
+                      min="1"
+                      :max="!permitirEstoqueNegativo && it.saldo !== null ? it.saldo : undefined"
+                      @change="setQtdItem(i, $event.target.value, it)"
+                      @focus="$event.target.select()"
+                    />
                     <button class="qty-btn" @click="incrementarItem(i, it)" :disabled="!permitirEstoqueNegativo && it.saldo !== null && it.qtd >= it.saldo">+</button>
                   </div>
                   <div class="item-desc-inline">
@@ -905,10 +913,10 @@ watch(() => vendaStore.faltaPagar, (val) => {
 
 // ── Mount ─────────────────────────────────────────────────────
 function onHotkey(e) {
-  if (e.key === 'F1') {
-    e.preventDefault();
-    limpar();
-  }
+  if (e.key === 'F1') { e.preventDefault(); limpar(); }
+  if (e.key === 'F2' && !vendaFinalizada.value) { e.preventDefault(); cartTab.value = 0; }
+  if (e.key === 'F3' && !vendaFinalizada.value && vendaStore.itens.length) { e.preventDefault(); cartTab.value = 1; }
+  if (e.key === 'F4' && !vendaFinalizada.value && vendaStore.itens.length) { e.preventDefault(); cartTab.value = 2; }
 }
 
 onMounted(async () => {
@@ -955,6 +963,12 @@ async function loadCategorias() {
   const { data } = await q;
   categorias.value = data || [];
 }
+
+const categoriasMap = computed(() => {
+  const m = {};
+  categorias.value.forEach(c => { m[c.pk] = c.nome; });
+  return m;
+});
 
 // Categorias decorador que têm itens no carrinho
 const catsDecorador = computed(() => {
@@ -1262,6 +1276,17 @@ function incrementarItem(idx, it) {
     toast(`Estoque insuficiente. Máximo: ${it.saldo}`, 'err'); return;
   }
   vendaStore.atualizarQuantidade(idx, it.qtd + 1);
+}
+
+function setQtdItem(idx, val, it) {
+  const n = parseFloat(String(val).replace(',', '.'));
+  if (!n || n < 0.01) return;
+  if (!permitirEstoqueNegativo.value && it.saldo !== null && n > it.saldo) {
+    toast(`Estoque insuficiente. Máximo: ${it.saldo}`, 'err');
+    vendaStore.atualizarQuantidade(idx, it.saldo);
+    return;
+  }
+  vendaStore.atualizarQuantidade(idx, n);
 }
 
 function preencherValorPag(v) {
@@ -2188,123 +2213,129 @@ async function emitirNFCe() {
 }
 .state-msg.muted { color: var(--muted); }
 
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 10px;
+.products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .prod-card {
   position: relative;
   background: var(--bg2);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0;
+  border-radius: 14px;
+  padding: 18px 20px;
   cursor: pointer;
-  transition: transform .1s, border-color .15s, box-shadow .15s;
+  transition: border-color .15s, background .15s;
   text-align: left;
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
 }
 .prod-card:hover {
   border-color: rgba(99,102,241,.4);
-  box-shadow: 0 0 0 1px rgba(99,102,241,.15), 0 4px 16px rgba(0,0,0,.3);
-  transform: translateY(-1px);
-}
-.prod-card:active { transform: scale(.97); }
-.prod-card.no-stock { opacity: .45; }
-
-.prod-img {
-  width: 100%;
-  aspect-ratio: 1;
   background: var(--bg3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+.prod-card:active { opacity: .85; }
+.prod-card.no-stock { opacity: .55; border-color: rgba(239,68,68,.25); }
+
+.prod-avatar {
+  width: 58px; height: 58px; flex-shrink: 0;
+  border-radius: 12px; background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
-.prod-img img { width: 100%; height: 100%; object-fit: cover; }
-.prod-img-icon {
-  font-family: var(--mono);
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--muted);
-  opacity: .5;
-}
+.prod-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.prod-avatar span { font-size: 24px; font-weight: 700; color: var(--muted); }
 
 .prod-info {
-  padding: 8px 10px 4px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
 }
 .prod-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text);
   line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: normal;
 }
-.prod-code { font-size: 10px; color: var(--muted); font-family: var(--mono); }
-
-.prod-bottom {
+.prod-code { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.prod-meta {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px 8px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+.prod-cat {
+  font-size: 12px;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-weight: 600;
+}
+.prod-barras {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: var(--mono);
+  background: var(--bg3);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+
+.prod-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 .prod-price {
   font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--accent2);
 }
 .prod-stock {
   font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(16,185,129,.1);
+  font-size: 14px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 7px;
+  background: rgba(16,185,129,.12);
   color: var(--green);
-  border: 1px solid rgba(16,185,129,.2);
+  border: 1px solid rgba(16,185,129,.25);
+  letter-spacing: .3px;
 }
-.prod-stock.low  { background: rgba(245,158,11,.1); color: var(--amber); border-color: rgba(245,158,11,.2); }
-.prod-stock.zero { background: rgba(239,68,68,.1); color: var(--red);   border-color: rgba(239,68,68,.2); }
-
-.prod-add-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 22px;
-  height: 22px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 300;
-  opacity: 0;
-  transition: opacity .15s;
-  line-height: 1;
+.prod-stock.low {
+  font-size: 15px;
+  padding: 5px 13px;
+  background: rgba(245,158,11,.18);
+  color: #f59e0b;
+  border-color: rgba(245,158,11,.45);
+  box-shadow: 0 0 8px rgba(245,158,11,.25);
 }
-.prod-card:hover .prod-add-badge { opacity: 1; }
+.prod-stock.zero {
+  font-size: 15px;
+  padding: 5px 13px;
+  background: rgba(239,68,68,.18);
+  color: #f87171;
+  border-color: rgba(239,68,68,.5);
+  box-shadow: 0 0 10px rgba(239,68,68,.3);
+  animation: pulse-stock .25s ease-in-out;
+}
 
-.prod-price-wrap { display: flex; flex-direction: column; gap: 1px; }
-.prod-price-original { font-size: 10px; color: var(--text2); text-decoration: line-through; font-family: var(--mono); }
+.prod-price-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.prod-price-original { font-size: 11px; color: var(--text2); text-decoration: line-through; font-family: var(--mono); }
 .prod-price-promo { color: #ef4444 !important; }
 .prod-promo-badge {
-  position: absolute; top: 6px; right: 6px;
-  background: #ef4444; color: #fff;
   font-size: 9px; font-weight: 800; letter-spacing: .6px;
-  padding: 2px 6px; border-radius: 4px; line-height: 1.4;
+  background: #ef4444; color: #fff;
+  padding: 1px 5px; border-radius: 4px; line-height: 1.4;
 }
 
 /* ══ CARRINHO ════════════════════════════════════════════════════ */
@@ -2320,22 +2351,24 @@ async function emitirNFCe() {
 .cart-tabs {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 8px 10px 0;
+  gap: 0;
+  padding: 8px 0 0;
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
   background: var(--bg1);
 }
 .cart-tab {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 10px 4px;
   border: none;
   background: none;
   color: var(--muted);
   font-family: var(--sans);
-  font-size: 12.5px;
+  font-size: 16.5px;
   font-weight: 600;
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -2552,7 +2585,16 @@ async function emitirNFCe() {
 }
 .qty-btn:hover:not(:disabled) { background: rgba(255,255,255,.1); }
 .qty-btn:disabled { opacity: .3; cursor: not-allowed; }
-.qty-val { font-family: var(--mono); font-size: 13px; font-weight: 600; min-width: 24px; text-align: center; }
+.qty-input {
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  width: 42px; text-align: center; background: var(--bg2);
+  border: 1px solid var(--line); border-radius: 5px; color: var(--text);
+  padding: 2px 4px; height: 26px;
+  -moz-appearance: textfield;
+}
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+.qty-input:focus { outline: none; border-color: var(--primary); }
 
 .item-total { font-family: var(--mono); font-size: 14.5px; font-weight: 700; color: var(--accent2); margin-left: auto; text-align: right; }
 .item-del { 
@@ -2937,6 +2979,11 @@ async function emitirNFCe() {
   flex-shrink: 0;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-stock {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
 
 /* Botão Orçamento */
 .btn-orcamento {
@@ -2961,29 +3008,40 @@ async function emitirNFCe() {
 /* ── Toast ──────────────────────────────────────────────────── */
 .pdv-toast {
   position: fixed;
-  bottom: 2px;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 16px 28px;
+  border-radius: 14px;
   font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
   white-space: nowrap;
   pointer-events: none;
+  min-width: 280px;
+  justify-content: center;
 }
-.pdv-toast.ok  { background: #052e16; color: #6ee7b7; border: 1px solid rgba(16,185,129,.3); }
-.pdv-toast.err { background: #1f0707; color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+.pdv-toast svg { width: 20px; height: 20px; flex-shrink: 0; }
+.pdv-toast.ok  {
+  background: #052e16; color: #6ee7b7;
+  border: 1px solid rgba(16,185,129,.4);
+  box-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(16,185,129,.15);
+}
+.pdv-toast.err {
+  background: #2d0707; color: #fca5a5;
+  border: 1px solid rgba(239,68,68,.45);
+  box-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 20px rgba(239,68,68,.2);
+}
 
-.toast-enter-active { transition: all .25s ease; }
-.toast-leave-active { transition: all .3s ease; }
-.toast-enter-from   { opacity: 0; transform: translateX(-50%) translateY(12px); }
-.toast-leave-to     { opacity: 0; transform: translateX(-50%) translateY(12px); }
+.toast-enter-active { transition: all .2s cubic-bezier(.34,1.56,.64,1); }
+.toast-leave-active { transition: all .25s ease; }
+.toast-enter-from   { opacity: 0; transform: translateX(-50%) translateY(20px) scale(.9); }
+.toast-leave-to     { opacity: 0; transform: translateX(-50%) translateY(20px) scale(.95); }
 
 /* Mobile */
 @media (max-width: 900px) {
@@ -3079,8 +3137,8 @@ async function emitirNFCe() {
 [data-theme="light"] .item-disc-badge { background: rgba(180,83,9,.1); border-color: rgba(180,83,9,.25); color: #92400e; }
 [data-theme="light"] .nfce-result.ok  { background: rgba(5,150,105,.08); border-color: rgba(5,150,105,.25); color: #065f46; }
 [data-theme="light"] .nfce-result.err { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.25); color: #991b1b; }
-[data-theme="light"] .pdv-toast.ok   { background: #ecfdf5; color: #065f46; border-color: rgba(5,150,105,.3); }
-[data-theme="light"] .pdv-toast.err  { background: #fef2f2; color: #991b1b; border-color: rgba(220,38,38,.3); }
+[data-theme="light"] .pdv-toast.ok  { background: #065f46; color: #d1fae5; border-color: rgba(5,150,105,.4); }
+[data-theme="light"] .pdv-toast.err { background: #7f1d1d; color: #fee2e2; border-color: rgba(220,38,38,.4); box-shadow: 0 12px 40px rgba(0,0,0,.3), 0 0 20px rgba(239,68,68,.15); }
 [data-theme="light"] .products-area  { scrollbar-color: rgba(0,0,0,.15) transparent; }
 [data-theme="light"] .pag-scroll,
 [data-theme="light"] .cart-items     { scrollbar-color: rgba(0,0,0,.12) transparent; }

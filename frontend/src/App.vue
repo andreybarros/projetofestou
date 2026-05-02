@@ -112,6 +112,12 @@
               <span class="material-symbols-outlined">menu</span>
             </button>
           </div>
+          <div v-if="route.name === 'PDV'" class="topbar-shortcuts sm-hide">
+            <span class="shortcut-chip"><kbd>F1</kbd> Limpar</span>
+            <span class="shortcut-chip"><kbd>F2</kbd> Itens</span>
+            <span class="shortcut-chip"><kbd>F3</kbd> Detalhes</span>
+            <span class="shortcut-chip"><kbd>F4</kbd> Pagamento</span>
+          </div>
           <div class="topbar-right">
             <!-- Badge de filial + toggle tema -->
             <div class="filial-area" v-if="sessao.filial">
@@ -533,11 +539,39 @@ body {
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
-  flex-shrink: 0; z-index: 40;
+  flex-shrink: 0; z-index: 40; position: relative;
 }
 .topbar-left   { display: flex; align-items: center; gap: 12px; }
 .topbar-right  { display: flex; align-items: center; gap: 10px; }
 .topbar-logo   { max-height: 36px; max-width: 120px; object-fit: contain; }
+.topbar-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.shortcut-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text2);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+.shortcut-chip kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
 .hamburger     { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; border-radius: 10px; }
 .hamburger:hover { background: rgba(255,255,255,.06); color: var(--text); }
 
