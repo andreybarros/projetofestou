@@ -163,7 +163,7 @@
                   <div class="udrop-divider"></div>
                   <button class="udrop-item udrop-sair" @click="doLogout">
                     <span class="material-symbols-outlined">logout</span>
-                    Sair
+                    Sair do Sistema
                   </button>
                 </div>
               </Transition>
@@ -589,46 +589,46 @@ body {
 /* ── Banner de atualização ─────────────────────────────────── */
 .update-banner {
   position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg2);
-  border: 1px solid rgba(99,102,241,.5);
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border: 1px solid #6366f1;
   border-radius: 14px;
-  padding: 14px 20px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   gap: 12px;
   z-index: 9999;
-  box-shadow: 0 8px 32px rgba(0,0,0,.4), 0 0 0 1px rgba(99,102,241,.2);
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 20px rgba(99,102,241,.4);
   white-space: nowrap;
 }
-.update-banner-icon { color: #a5b4fc; font-size: 22px; }
-.update-banner-msg { font-size: 14px; font-weight: 600; color: var(--text); }
+.update-banner-icon { color: #c7d2fe; font-size: 24px; }
+.update-banner-msg { font-size: 14px; font-weight: 700; color: #e0e7ff; }
 .update-btn-ok {
-  padding: 7px 16px;
-  background: var(--primary);
+  padding: 8px 18px;
+  background: #6366f1;
   color: #fff;
   border: none;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 0 12px rgba(99,102,241,.6);
 }
-.update-btn-ok:hover { opacity: .88; }
+.update-btn-ok:hover { background: #4f46e5; }
 .update-btn-later {
-  padding: 7px 14px;
-  background: var(--bg3);
-  color: var(--text2);
-  border: 1px solid var(--border);
+  padding: 8px 14px;
+  background: rgba(255,255,255,.08);
+  color: #a5b4fc;
+  border: 1px solid rgba(255,255,255,.15);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.update-btn-later:hover { color: var(--text); background: var(--bg4); }
+.update-btn-later:hover { background: rgba(255,255,255,.14); color: #e0e7ff; }
 .update-banner-enter-active, .update-banner-leave-active { transition: opacity .3s, transform .3s; }
-.update-banner-enter-from, .update-banner-leave-to { opacity: 0; transform: translateX(-50%) translateY(16px); }
+.update-banner-enter-from, .update-banner-leave-to { opacity: 0; transform: translateY(16px); }
 
 .topbar-shortcuts {
   display: flex;
