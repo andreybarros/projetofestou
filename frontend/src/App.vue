@@ -163,7 +163,7 @@
                   <div class="udrop-divider"></div>
                   <button class="udrop-item udrop-sair" @click="doLogout">
                     <span class="material-symbols-outlined">logout</span>
-                    Sair do Sistema
+                    Sair
                   </button>
                 </div>
               </Transition>
