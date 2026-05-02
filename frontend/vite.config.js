@@ -1,9 +1,17 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import mkcert from 'vite-plugin-mkcert';
+import { writeFileSync } from 'fs';
+
+const versionJsonPlugin = {
+  name: 'version-json',
+  buildStart() {
+    writeFileSync('public/version.json', JSON.stringify({ v: Date.now() }));
+  },
+};
 
 export default defineConfig({
-  plugins: [vue(), mkcert()],
+  plugins: [vue(), mkcert(), versionJsonPlugin],
   server: {
     port: 5173,
     https: true,

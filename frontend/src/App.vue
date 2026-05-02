@@ -191,6 +191,16 @@
     <div id="toast" :class="['toast', { show: toast.visible, success: toast.tipo === 'success', error: toast.tipo === 'error' }]">
       {{ toast.tipo === 'success' ? '✅' : '❌' }} {{ toast.msg }}
     </div>
+
+    <!-- Banner de atualização -->
+    <Transition name="update-banner">
+      <div v-if="updateDisponivel" class="update-banner">
+        <span class="material-symbols-outlined update-banner-icon">system_update_alt</span>
+        <span class="update-banner-msg">Nova atualização disponível!</span>
+        <button class="update-btn-ok" @click="atualizarAgora">Atualizar</button>
+        <button class="update-btn-later" @click="lembrarDepois">Lembrar em 1h</button>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -283,8 +293,14 @@ onMounted(async () => {
       } catch(e) { console.error('Erro ao recarregar modulos', e); }
     }
   }
+  checarVersao();
+  _updatePollInterval = setInterval(checarVersao, 5 * 60 * 1000);
 });
-onUnmounted(() => document.removeEventListener('click', fecharMenus, true));
+onUnmounted(() => {
+  document.removeEventListener('click', fecharMenus, true);
+  clearInterval(_updatePollInterval);
+  clearTimeout(_updateSnoozeTimer);
+});
 
 watch(() => sessao.isAutenticado, (ok) => { if (ok) carregarFiliais(); });
 
@@ -366,6 +382,32 @@ function showToast(msg, tipo = 'success') {
 }
 provide('showToast', showToast);
 provide('abrirSidebar', abrirSidebar);
+
+// Verificação de atualização
+const updateDisponivel = ref(false);
+let _versaoAtual = null;
+let _updateSnoozeTimer = null;
+let _updatePollInterval = null;
+
+async function checarVersao() {
+  try {
+    const r = await fetch('/version.json?t=' + Date.now());
+    if (!r.ok) return;
+    const { v } = await r.json();
+    if (_versaoAtual === null) { _versaoAtual = v; return; }
+    if (v !== _versaoAtual) updateDisponivel.value = true;
+  } catch {}
+}
+
+function atualizarAgora() {
+  window.location.reload();
+}
+
+function lembrarDepois() {
+  updateDisponivel.value = false;
+  clearTimeout(_updateSnoozeTimer);
+  _updateSnoozeTimer = setTimeout(() => { updateDisponivel.value = true; }, 60 * 60 * 1000);
+}
 
 // Login callback
 function onLoginOk({ filial, operador, modulos }) {
@@ -544,6 +586,50 @@ body {
 .topbar-left   { display: flex; align-items: center; gap: 12px; }
 .topbar-right  { display: flex; align-items: center; gap: 10px; }
 .topbar-logo   { max-height: 36px; max-width: 120px; object-fit: contain; }
+/* ── Banner de atualização ─────────────────────────────────── */
+.update-banner {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg2);
+  border: 1px solid rgba(99,102,241,.5);
+  border-radius: 14px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4), 0 0 0 1px rgba(99,102,241,.2);
+  white-space: nowrap;
+}
+.update-banner-icon { color: #a5b4fc; font-size: 22px; }
+.update-banner-msg { font-size: 14px; font-weight: 600; color: var(--text); }
+.update-btn-ok {
+  padding: 7px 16px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.update-btn-ok:hover { opacity: .88; }
+.update-btn-later {
+  padding: 7px 14px;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.update-btn-later:hover { color: var(--text); background: var(--bg4); }
+.update-banner-enter-active, .update-banner-leave-active { transition: opacity .3s, transform .3s; }
+.update-banner-enter-from, .update-banner-leave-to { opacity: 0; transform: translateX(-50%) translateY(16px); }
+
 .topbar-shortcuts {
   display: flex;
   align-items: center;
