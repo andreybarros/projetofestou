@@ -1188,6 +1188,24 @@ function onClienteBlur() {
   setTimeout(() => { showClienteDrop.value = false; }, 150);
 }
 
+function categoriaRestritoDecorador(categoria_pk) {
+  const cat = categorias.value.find(c => c.pk === categoria_pk);
+  return !!cat?.desconto_somente_decorador;
+}
+
+function validarDescontoCategoria(categoria_pk, pct) {
+  if (!parametrosStore.getParam('pdv_desconto_decorador_balao', false)) return true;
+  if (!categoriaRestritoDecorador(categoria_pk)) return true;
+  if (!clienteSel.value?.decorador) {
+    const nomeCat = categoriasMap.value[categoria_pk] || 'categoria restrita';
+    toast(`Desconto em "${nomeCat}" é exclusivo para clientes decoradores.`, 'err'); return false;
+  }
+  if (pct > 10) {
+    toast('Desconto máximo para decoradores nesta categoria: 10%.', 'err'); return false;
+  }
+  return true;
+}
+
 function aplicarDescCat(cd) {
   if (!parametrosStore.getParam('venda_permite_desconto_sem_aprovacao', true)) {
     toast('Descontos desabilitados pelo administrador.', 'err'); return;
@@ -1196,6 +1214,7 @@ function aplicarDescCat(cd) {
   if (descontoMax > 0 && 10 > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
   }
+  if (!validarDescontoCategoria(cd.pk, 10)) return;
   vendaStore.aplicarDescontoCategoria(cd.pk, 10);
 }
 
@@ -1222,6 +1241,13 @@ function aplicarDescontoItem(i) {
   if (descontoMax > 0 && itemDescTipo.value === 'pct' && itemDescVal.value > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
   }
+  const item = vendaStore.itens[i];
+  let pct = itemDescVal.value;
+  if (itemDescTipo.value === 'val') {
+    const bruto = Number(item.qtd || 1) * Number(item.preco_unitario || 0);
+    pct = bruto > 0 ? (pct / bruto) * 100 : 0;
+  }
+  if (!validarDescontoCategoria(item.categoria_pk, pct)) return;
   vendaStore.atualizarDescontoItem(i, itemDescVal.value, itemDescTipo.value);
   itemDescAberto.value = null;
 }

@@ -691,6 +691,7 @@ INSERT INTO parametros (filial_pk, chave, valor) VALUES
   (null, 'pdv_exigir_vendedor',                  'false'),
   (null, 'pdv_permitir_estoque_negativo',        'false'),
   (null, 'pdv_desconto_maximo',                  '0'),
+  (null, 'pdv_desconto_decorador_balao',          'false'),
   -- Ponto Eletrônico
   (null, 'ponto_exigir_gps',                     'true'),
   (null, 'ponto_tolerancia_minutos',             '15'),
