@@ -180,6 +180,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useSessaoStore } from "../stores/sessao";
 import { supabase } from "../composables/useSupabase";
+import * as XLSX from "xlsx";
 
 const router      = useRouter();
 const sessaoStore = useSessaoStore();
@@ -276,6 +277,23 @@ async function carregarCategorias() {
   } catch (err) {
     console.error("Erro carregar categorias:", err);
   }
+}
+
+function exportarProdutos() {
+  if (!produtos.value.length) return;
+  const rows = produtos.value.map(p => ({
+    'Código':       p.codigo || '',
+    'Descrição':    p.descricao || '',
+    'Qtd Estoque':  parseFloat(p.saldo || 0),
+    'Preço Venda':  parseFloat(p.valor_venda || 0),
+    'Preço Custo':  parseFloat(p.preco_custo || 0),
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+  const data = new Date().toLocaleDateString('en-CA');
+  XLSX.writeFile(wb, `produtos_${data}.xlsx`);
+  showAcoes.value = false;
 }
 
 function fmt(v) {

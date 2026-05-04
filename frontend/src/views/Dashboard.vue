@@ -347,7 +347,7 @@ function statusCls(s) {
 
 .kpi-body   { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .kpi-label  { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
-.kpi-value  { font-size: 1.55rem; font-weight: 800; color: var(--text); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kpi-value  { font-size: clamp(1.05rem, 2vw, 1.55rem); font-weight: 800; color: var(--text); line-height: 1.2; word-break: break-word; }
 .kpi-green-text { color: #10b981; }
 .kpi-teal-text  { color: #14b8a6; }
 .kpi-red-text   { color: #ef4444; }
