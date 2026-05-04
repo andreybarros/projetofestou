@@ -567,7 +567,9 @@ function fmtDataHora(d) {
 
 function locacaoVencida(v) {
   if (!v?.data_devolucao_prevista) return false;
-  return new Date(v.data_devolucao_prevista) < new Date();
+  const prevista = new Date(v.data_devolucao_prevista).toLocaleDateString('en-CA');
+  const hoje     = new Date().toLocaleDateString('en-CA');
+  return prevista < hoje;
 }
 
 function confirmarDevolucaoLocacao() {
