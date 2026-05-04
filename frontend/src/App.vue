@@ -42,6 +42,7 @@
             <RouterLink v-if="pode('clientes')"     to="/clientes"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#c084fc">group</span><span class="nav-label">Clientes</span></RouterLink>
             <RouterLink v-if="pode('fornecedores')" to="/fornecedores" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f59e0b">handshake</span><span class="nav-label">Fornecedores</span></RouterLink>
             <RouterLink v-if="pode('armazens')"     to="/armazens"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#22d3ee">warehouse</span><span class="nav-label">Armazéns</span></RouterLink>
+            <RouterLink v-if="pode('entrada_nfe')" to="/entrada-nfe"  class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">move_to_inbox</span><span class="nav-label">Entrada de NF-e</span></RouterLink>
           </div>
 
           <!-- Agenda -->
@@ -322,6 +323,7 @@ function pode(modulo) {
     dashboard: 'pdv', fornecedores: 'clientes',
     espelho: 'ponto', gestao_ponto: 'ponto', fech_ponto: 'funcionarios',
     criar_ordem: 'separacao', vales: 'funcionarios',
+    entrada_nfe: 'produtos',
   };
 
   // 1. FILIAL: bloqueia se a filial não tem o módulo (mesmo para admin)
@@ -360,6 +362,7 @@ function pode(modulo) {
     fech_ponto:   o.acesso_fechamento_ponto || o.acesso_funcionarios,
     rel_vendas:   o.acesso_relatorio_vendas || o.acesso_historico || o.acesso_pdv,
     vales:        o.acesso_vales,
+    entrada_nfe:  o.acesso_entrada_nfe,
   };
   return !!mapa[modulo];
 }

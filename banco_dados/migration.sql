@@ -842,6 +842,57 @@ END;
 $$;
 
 -- ============================================================
+-- SEÇÃO 13 — ENTRADA DE NF-e (Recebimento de mercadoria)
+-- ============================================================
+
+-- De-Para: código do fornecedor → produto interno
+CREATE TABLE IF NOT EXISTS mapeamento_produtos_fornecedor (
+  pk                bigserial PRIMARY KEY,
+  filial_pk         bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  fornecedor_cnpj   text NOT NULL,
+  codigo_fornecedor text NOT NULL,
+  produto_pk        bigint REFERENCES produtos(pk) ON DELETE CASCADE,
+  criado_em         timestamptz DEFAULT now(),
+  UNIQUE (filial_pk, fornecedor_cnpj, codigo_fornecedor)
+);
+
+-- Cabeçalho da entrada
+CREATE TABLE IF NOT EXISTS entradas_estoque (
+  pk              bigserial PRIMARY KEY,
+  filial_pk       bigint REFERENCES filiais(pk),
+  fornecedor_cnpj text,
+  fornecedor_nome text,
+  numero_nf       text,
+  chave_nfe       text,
+  data_emissao    date,
+  total_nf        numeric(12,2),
+  criado_em       timestamptz DEFAULT now(),
+  operador_pk     bigint
+);
+
+-- Itens da entrada
+CREATE TABLE IF NOT EXISTS itens_entrada_estoque (
+  pk                   bigserial PRIMARY KEY,
+  entrada_pk           bigint REFERENCES entradas_estoque(pk) ON DELETE CASCADE,
+  produto_pk           bigint REFERENCES produtos(pk),
+  codigo_fornecedor    text,
+  descricao_fornecedor text,
+  qtd                  numeric(12,4),
+  preco_custo          numeric(12,2),
+  total_item           numeric(12,2)
+);
+
+-- Permissão de operador para entrada de NF-e
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_entrada_nfe boolean DEFAULT false;
+
+ALTER TABLE mapeamento_produtos_fornecedor ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entradas_estoque               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE itens_entrada_estoque          ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all_mapeamento_fornecedor" ON mapeamento_produtos_fornecedor FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_entradas_estoque"      ON entradas_estoque               FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_itens_entrada"         ON itens_entrada_estoque          FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

@@ -11,6 +11,8 @@ const rotasPermissoes = {
   'POST /api/vendas/finalizar': 'acesso_pdv',
   'PUT /api/vendas/:pk': 'acesso_historico',
   'GET /api/estoque': 'acesso_produtos',
+  'POST /api/estoque/entrada-nf/preview':   'acesso_entrada_nfe',
+  'POST /api/estoque/entrada-nf/confirmar': 'acesso_entrada_nfe',
   'POST /api/nfce/autorizar': 'acesso_pdv',
   'POST /api/nfce/cancelar': 'acesso_pdv',
   'GET /api/relatorios/vendas/:filial_pk': 'acesso_relatorio_vendas',

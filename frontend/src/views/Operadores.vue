@@ -188,6 +188,7 @@ const modalAberto = ref(false);
 
 const ROTINAS = [
   { id: 'produtos',     icon: '📦', label: 'Produtos / Estoque',                campo: 'acesso_produtos' },
+  { id: 'entrada_nfe',  icon: '📥', label: 'Entrada de NF-e (Recebimento)',     campo: 'acesso_entrada_nfe' },
   { id: 'categorias',   icon: '🏷️', label: 'Categorias',                        campo: 'acesso_categorias' },
   { id: 'armazens',     icon: '🏭', label: 'Armazéns',                           campo: 'acesso_armazens' },
   { id: 'clientes',     icon: '👥', label: 'Clientes',                          campo: 'acesso_clientes' },
@@ -247,6 +248,7 @@ const f = reactive({
   acesso_fechamento_ponto: false,
   acesso_relatorio_vendas: false,
   acesso_vales:            false,
+  acesso_entrada_nfe:      false,
 });
 
 onMounted(async () => {

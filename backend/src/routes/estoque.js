@@ -87,4 +87,107 @@ router.get('/saldo/:produto_pk', async (req, res) => {
   }
 });
 
+// ── Entrada de NF-e ──────────────────────────────────────────────────────────
+
+// Preview: cruza itens do XML com mapeamentos salvos
+router.post('/entrada-nf/preview', async (req, res) => {
+  try {
+    const { filial_pk, fornecedor_cnpj, itens } = req.body;
+    if (!filial_pk || !fornecedor_cnpj || !Array.isArray(itens) || !itens.length)
+      return res.status(400).json({ erro: 'Dados inválidos.' });
+
+    const codigos = itens.map(i => i.codigo_fornecedor);
+
+    const { data: mapeamentos } = await supabase
+      .from('mapeamento_produtos_fornecedor')
+      .select('codigo_fornecedor, produto_pk, produtos(pk, descricao, saldo)')
+      .eq('filial_pk', filial_pk)
+      .eq('fornecedor_cnpj', fornecedor_cnpj)
+      .in('codigo_fornecedor', codigos);
+
+    const mapaDeParas = {};
+    (mapeamentos || []).forEach(m => {
+      mapaDeParas[m.codigo_fornecedor] = { produto_pk: m.produto_pk, produto_descricao: m.produtos?.descricao, saldo_atual: m.produtos?.saldo };
+    });
+
+    const itensComMatch = itens.map(it => ({
+      ...it,
+      produto_pk:         mapaDeParas[it.codigo_fornecedor]?.produto_pk || null,
+      produto_descricao:  mapaDeParas[it.codigo_fornecedor]?.produto_descricao || null,
+      saldo_atual:        mapaDeParas[it.codigo_fornecedor]?.saldo_atual ?? null,
+      matched:            !!mapaDeParas[it.codigo_fornecedor],
+    }));
+
+    res.json({ ok: true, itens: itensComMatch });
+  } catch (err) {
+    console.error('[Estoque/EntradaNF/Preview] Erro:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Confirmar: salva mapeamentos, cria entrada e atualiza saldo
+router.post('/entrada-nf/confirmar', async (req, res) => {
+  try {
+    const { filial_pk, fornecedor_cnpj, fornecedor_nome, numero_nf, chave_nfe, data_emissao, total_nf, itens } = req.body;
+    if (!filial_pk || !Array.isArray(itens) || !itens.length)
+      return res.status(400).json({ erro: 'Dados inválidos.' });
+
+    // 1. Salva/atualiza mapeamentos de-para
+    const mapeamentos = itens
+      .filter(it => it.produto_pk)
+      .map(it => ({
+        filial_pk,
+        fornecedor_cnpj,
+        codigo_fornecedor: it.codigo_fornecedor,
+        produto_pk: it.produto_pk,
+      }));
+
+    if (mapeamentos.length > 0) {
+      const { error: errMap } = await supabase
+        .from('mapeamento_produtos_fornecedor')
+        .upsert(mapeamentos, { onConflict: 'filial_pk,fornecedor_cnpj,codigo_fornecedor' });
+      if (errMap) throw errMap;
+    }
+
+    // 2. Cria cabeçalho da entrada
+    const { data: entrada, error: errEnt } = await supabase
+      .from('entradas_estoque')
+      .insert([{ filial_pk, fornecedor_cnpj, fornecedor_nome, numero_nf, chave_nfe, data_emissao, total_nf }])
+      .select().single();
+    if (errEnt) throw errEnt;
+
+    // 3. Insere itens
+    const itensBD = itens.filter(it => it.produto_pk).map(it => ({
+      entrada_pk:           entrada.pk,
+      produto_pk:           it.produto_pk,
+      codigo_fornecedor:    it.codigo_fornecedor,
+      descricao_fornecedor: it.descricao_fornecedor,
+      qtd:                  parseFloat(it.qtd || 0),
+      preco_custo:          parseFloat(it.preco_custo || 0),
+      total_item:           parseFloat(it.total_item || 0),
+    }));
+
+    const { error: errItens } = await supabase.from('itens_entrada_estoque').insert(itensBD);
+    if (errItens) throw errItens;
+
+    // 4. Atualiza saldo dos produtos usando RPC atômica
+    for (const it of itensBD) {
+      await supabase.rpc('ajustar_saldo_produto', {
+        p_pk: it.produto_pk,
+        p_delta: it.qtd,
+        p_permitir_negativo: true,
+      });
+      // Também atualiza preco_custo se informado
+      if (it.preco_custo > 0) {
+        await supabase.from('produtos').update({ preco_custo: it.preco_custo }).eq('pk', it.produto_pk);
+      }
+    }
+
+    res.json({ ok: true, entrada_pk: entrada.pk, itens_atualizados: itensBD.length });
+  } catch (err) {
+    console.error('[Estoque/EntradaNF/Confirmar] Erro:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 module.exports = router;
