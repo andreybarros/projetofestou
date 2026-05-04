@@ -40,6 +40,10 @@
                 <span class="material-symbols-outlined">payments</span>
                 Reajuste em Massa
               </button>
+              <button class="drop-item" @click="exportarProdutos">
+                <span class="material-symbols-outlined">download</span>
+                Exportar Excel
+              </button>
             </div>
           </Transition>
         </div>
