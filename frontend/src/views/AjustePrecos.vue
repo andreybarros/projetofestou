@@ -54,14 +54,20 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in produtosPaginados" :key="p.pk" :class="{ 'row-selected': estaSelecionado(p.pk) }" @click="toggleProduto(p.pk)">
+          <tr v-for="p in produtosPaginados" :key="p.pk" :class="{ 'row-selected': estaSelecionado(p.pk), 'row-em-promo': estaEmPromo(p) }" @click="toggleProduto(p.pk)">
             <td>
-              <input type="checkbox" :checked="estaSelecionado(p.pk)" @click.stop />
+              <input type="checkbox" :checked="estaSelecionado(p.pk)" @click.stop="toggleProduto(p.pk)" />
             </td>
             <td>
               <div class="prod-info">
-                <span class="prod-desc">{{ p.descricao }}</span>
+                <div class="prod-desc-row">
+                  <span class="prod-desc">{{ p.descricao }}</span>
+                  <span v-if="estaEmPromo(p)" class="chip-promo">PROMO ATIVA</span>
+                </div>
                 <span class="prod-cod">{{ p.codigo || '—' }}</span>
+                <span v-if="estaEmPromo(p)" class="prod-promo-detalhe">
+                  Promo: {{ fmt(p.preco_promo) }} · até {{ new Date(p.promo_fim).toLocaleDateString('pt-BR') }}
+                </span>
               </div>
             </td>
             <td>{{ p.categoria_nome || '—' }}</td>
@@ -510,9 +516,17 @@ function getMargemClass(p) {
 .ajuste-table tr:hover { background: rgba(99,102,241, 0.05); }
 .ajuste-table tr.row-selected { background: rgba(99,102,241, 0.08); }
 
-.prod-info { display: flex; flex-direction: column; }
+.prod-info { display: flex; flex-direction: column; gap: 1px; }
+.prod-desc-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .prod-desc { font-weight: 700; color: var(--text); }
 .prod-cod { font-size: 0.75rem; color: var(--text2); font-family: monospace; }
+.prod-promo-detalhe { font-size: 0.7rem; color: #f59e0b; font-weight: 600; }
+
+.chip-promo { font-size: 0.6rem; font-weight: 800; background: rgba(245,158,11,.18); color: #d97706; border: 1px solid rgba(245,158,11,.4); padding: 2px 7px; border-radius: 20px; white-space: nowrap; text-transform: uppercase; letter-spacing: .4px; }
+
+.ajuste-table tr.row-em-promo { background: rgba(245,158,11,.04); }
+.ajuste-table tr.row-em-promo:hover { background: rgba(245,158,11,.09); }
+.ajuste-table tr.row-selected.row-em-promo { background: rgba(99,102,241,.08); }
 .text-right { text-align: right; }
 .mono { font-family: monospace; }
 .bold { font-weight: 800; color: var(--primary); }
