@@ -411,8 +411,8 @@ function fmtVal(v) {
               </select>
             </div>
           </div>
-          <div v-if="tipoVenda === 'locacao'" class="ev-row2" style="margin-top:12px">
-            <div class="ev-field">
+          <template v-if="tipoVenda === 'locacao'">
+            <div class="ev-field" style="margin-top:4px">
               <label class="ev-label">Retirada</label>
               <input v-model="dataLocacao" type="datetime-local" class="ev-input" />
             </div>
@@ -420,7 +420,7 @@ function fmtVal(v) {
               <label class="ev-label">Devolução prevista</label>
               <input v-model="dataDevolucao" type="datetime-local" class="ev-input" />
             </div>
-          </div>
+          </template>
         </div>
 
         <!-- Pagamentos -->
@@ -550,12 +550,13 @@ function fmtVal(v) {
 .ev-tag-clear:hover { color: #f87171; }
 
 /* Fields */
-.ev-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ev-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
+.ev-row2 .ev-field { min-width: 0; overflow: hidden; }
 .ev-field { display: flex; flex-direction: column; gap: 4px; }
 .ev-label { font-size: .75rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
 .ev-select { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: .9rem; outline: none; width: 100%; }
 .ev-select:focus { border-color: var(--primary); }
-.ev-input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: .9rem; outline: none; width: 100%; box-sizing: border-box; }
+.ev-input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: .9rem; outline: none; width: 100%; box-sizing: border-box; min-width: 0; }
 .ev-input:focus { border-color: var(--primary); }
 
 /* Payments */

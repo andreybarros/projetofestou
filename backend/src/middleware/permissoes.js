@@ -9,7 +9,7 @@ const rotasPermissoes = {
   'GET /api/caixa/status': 'acesso_pdv',
   'POST /api/vendas/validar': 'acesso_pdv',
   'POST /api/vendas/finalizar': 'acesso_pdv',
-  'PUT /api/vendas/:pk': 'acesso_historico_vendas',
+  'PUT /api/vendas/:pk': 'acesso_historico',
   'GET /api/estoque': 'acesso_produtos',
   'POST /api/nfce/autorizar': 'acesso_pdv',
   'POST /api/nfce/cancelar': 'acesso_pdv',
