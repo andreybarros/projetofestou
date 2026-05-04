@@ -598,10 +598,10 @@ function fmt(v) {
 .status-chip { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: var(--border); color: var(--text2); }
 .status-chip.active { background: #d1fae5; color: #065f46; }
 .btn-toggle { background: var(--bg2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--text); }
-.del-ico { background: none; border: none; cursor: pointer; opacity: 0.3; }
-.del-ico:hover { opacity: 1; }
-.btn-edit-ico { background: none; border: none; cursor: pointer; opacity: 0.4; font-size: 14px; }
-.btn-edit-ico:hover { opacity: 1; }
+.del-ico { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 4px 7px; cursor: pointer; font-size: 13px; transition: background .15s, border-color .15s; }
+.del-ico:hover { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.4); }
+.btn-edit-ico { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 4px 7px; cursor: pointer; font-size: 13px; transition: background .15s, border-color .15s; }
+.btn-edit-ico:hover { background: rgba(99,102,241,.15); border-color: rgba(99,102,241,.4); }
 
 .vazio-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; color: var(--text2); gap: 1rem; }
 .vazio-state .large { font-size: 3rem; opacity: 0.3; }

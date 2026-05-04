@@ -11,8 +11,9 @@ const rotasPermissoes = {
   'POST /api/vendas/finalizar': 'acesso_pdv',
   'PUT /api/vendas/:pk': 'acesso_historico',
   'GET /api/estoque': 'acesso_produtos',
-  'POST /api/estoque/entrada-nf/preview':   'acesso_entrada_nfe',
-  'POST /api/estoque/entrada-nf/confirmar': 'acesso_entrada_nfe',
+  'POST /api/estoque/entrada-nf/preview':              'acesso_entrada_nfe',
+  'POST /api/estoque/entrada-nf/confirmar':            'acesso_entrada_nfe',
+  'GET /api/estoque/entrada-nf/historico/:filial_pk':  'acesso_entrada_nfe',
   'POST /api/nfce/autorizar': 'acesso_pdv',
   'POST /api/nfce/cancelar': 'acesso_pdv',
   'GET /api/relatorios/vendas/:filial_pk': 'acesso_relatorio_vendas',
@@ -38,6 +39,9 @@ async function permissoesMiddleware(req, res, next) {
   }
   if (rotaKey.match(/^PUT \/api\/vendas\/\d+$/)) {
     rotaKey = 'PUT /api/vendas/:pk';
+  }
+  if (rotaKey.match(/^GET \/api\/estoque\/entrada-nf\/historico\/\d+$/)) {
+    rotaKey = 'GET /api/estoque/entrada-nf/historico/:filial_pk';
   }
   if (rotaKey.match(/^PATCH \/api\/vales\/\d+\/(aprovar|rejeitar|pagar|descontar|desconto-parcial)$/)) {
     const acao = rotaKey.split('/').pop();

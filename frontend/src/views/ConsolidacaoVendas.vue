@@ -26,7 +26,7 @@
         <label>Forma</label>
         <select v-model="filtro.forma" class="f-input">
           <option value="">Todas</option>
-          <option v-for="f in formas" :key="f.val" :value="f.val">{{ f.label }}</option>
+          <option v-for="f in formas" :key="f.pk" :value="f.forma">{{ f.label }}</option>
         </select>
       </div>
       <button class="btn-buscar" @click="carregar" :disabled="carregando">
@@ -68,7 +68,7 @@
                 <span class="pend-num">#{{ p.venda_numero }}</span>
                 <span class="pend-cliente">{{ p.venda_cliente || 'Sem cliente' }}</span>
               </div>
-              <span class="badge-forma" :style="{ background: bgForma(p.forma), color: corForma(p.forma) }">
+              <span :class="['badge-forma', `bf-${normForma(p.forma)}`]">
                 {{ labelForma(p.forma) }}
               </span>
               <strong class="pend-valor">{{ fmt(p.valor) }}</strong>
@@ -140,7 +140,7 @@
               <label>Forma</label>
               <select v-model="manual.forma" class="cf-input">
                 <option value="">Selecionar…</option>
-                <option v-for="f in formas" :key="f.val" :value="f.val">{{ f.label }}</option>
+                <option v-for="f in formas" :key="f.pk" :value="f.forma">{{ f.label }}</option>
               </select>
             </div>
             <div class="mf-group">
@@ -186,7 +186,7 @@
               <span v-else class="badge-manual">Avulso</span>
               <span class="rec-desc">{{ r.descricao || r.venda_cliente || '—' }}</span>
             </div>
-            <span class="badge-forma sm" :style="{ background: bgForma(r.forma), color: corForma(r.forma) }">
+            <span :class="['badge-forma sm', `bf-${normForma(r.forma)}`]">
               {{ labelForma(r.forma) }}
             </span>
             <strong class="rec-valor">{{ fmt(r.valor) }}</strong>
@@ -273,13 +273,7 @@ const toastMsg  = ref('');
 const toastTipo = ref('ok');
 let toastTimer  = null;
 
-const formas = [
-  { val: 'dinheiro',  label: 'Dinheiro'  },
-  { val: 'pix',       label: 'PIX'       },
-  { val: 'debito',    label: 'Débito'    },
-  { val: 'credito',   label: 'Crédito'   },
-  { val: 'crediario', label: 'Crediário' },
-];
+const formas = ref([]);
 
 const totalRec = computed(() =>
   listaRec.value.reduce((s, r) => s + parseFloat(r.valor || 0), 0)
@@ -295,12 +289,13 @@ onMounted(() => {
 });
 
 async function carregarContas() {
-  const { data } = await supabase
-    .from('contas_bancarias')
-    .select('pk, nome')
-    .eq('filial_pk', sessaoStore.filial?.pk)
-    .order('nome');
-  contas.value = data || [];
+  const fil = sessaoStore.filial?.pk;
+  const [{ data: contasData }, { data: formasData }] = await Promise.all([
+    supabase.from('contas_bancarias').select('pk, nome').eq('filial_pk', fil).order('nome'),
+    supabase.from('formas_pagamento').select('pk, forma, label').eq('filial_pk', fil).eq('ativo', true).order('ordem'),
+  ]);
+  contas.value = contasData || [];
+  formas.value = formasData || [];
 }
 
 async function carregar() {
@@ -494,17 +489,17 @@ function proximoDiaUtil(base, dias) {
   return d;
 }
 
+const FORMAS_SLUG = ['dinheiro', 'pix', 'debito', 'credito', 'crediario'];
+function normForma(f) {
+  const slug = (f || '').toLowerCase().replace(/\s+/g, '-');
+  return FORMAS_SLUG.includes(slug) ? slug : 'outro';
+}
 function labelForma(f) {
-  const m = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', crediario: 'Crediário' };
-  return m[f?.toLowerCase()] || f || '—';
-}
-function corForma(f) {
-  const m = { dinheiro: '#4ade80', pix: '#60a5fa', debito: '#f59e0b', credito: '#c084fc', crediario: '#f87171' };
-  return m[f?.toLowerCase()] || '#94a3b8';
-}
-function bgForma(f) {
-  const m = { dinheiro: 'rgba(74,222,128,.12)', pix: 'rgba(96,165,250,.12)', debito: 'rgba(245,158,11,.12)', credito: 'rgba(192,132,252,.12)', crediario: 'rgba(248,113,113,.12)' };
-  return m[f?.toLowerCase()] || 'rgba(148,163,184,.1)';
+  if (!f) return '—';
+  const found = formas.value.find(x => x.forma === f);
+  if (found) return found.label || found.forma;
+  const fallback = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', crediario: 'Crediário' };
+  return fallback[f.toLowerCase()] || f;
 }
 function fmt(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -535,8 +530,8 @@ function showToast(msg, tipo = 'ok') {
 .filter-group { display: flex; flex-direction: column; gap: 5px; }
 .filter-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; }
 .f-input { padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; min-width: 120px; }
-.f-input:focus { outline: none; border-color: var(--accent); }
-.btn-buscar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; height: 35px; align-self: flex-end; }
+.f-input:focus { outline: none; border-color: var(--primary); }
+.btn-buscar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--primary); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; height: 35px; align-self: flex-end; }
 .btn-buscar:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Layout duas colunas */
@@ -547,22 +542,38 @@ function showToast(msg, tipo = 'ok') {
 .col-ico { font-size: 26px; flex-shrink: 0; }
 .col-title { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 2px; }
 .col-sub { font-size: 12px; color: var(--text2); margin: 0; }
-.col-badge { background: var(--accent); color: #fff; border-radius: 12px; font-size: 11px; font-weight: 700; padding: 2px 9px; margin-left: auto; }
+.col-badge { background: var(--primary); color: #fff; border-radius: 12px; font-size: 11px; font-weight: 700; padding: 2px 9px; margin-left: auto; }
 
 /* ══ LISTA PENDENTES ══ */
 .pend-lista { display: flex; flex-direction: column; gap: 4px; }
 .pend-row { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color .15s; }
-.pend-row.expanded { border-color: var(--accent); }
+.pend-row.expanded { border-color: var(--primary); }
 .pend-main { display: grid; grid-template-columns: 70px 1fr 90px 90px 80px 24px; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; }
 .pend-main:hover { background: var(--bg3); }
 
 .pend-data { display: flex; flex-direction: column; font-size: 12px; font-weight: 600; color: var(--text); }
 .pend-hora { font-size: 11px; color: var(--text2); font-weight: 400; }
 .pend-info { display: flex; flex-direction: column; min-width: 0; }
-.pend-num { font-size: 11px; font-weight: 700; color: var(--accent); }
+.pend-num { font-size: 11px; font-weight: 700; color: var(--primary); }
 .pend-cliente { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge-forma { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .badge-forma.sm { font-size: 10px; padding: 2px 7px; }
+
+/* Badges dark mode (padrão) */
+.bf-dinheiro  { background: rgba(74,222,128,.12);  color: #4ade80; }
+.bf-pix       { background: rgba(96,165,250,.12);  color: #60a5fa; }
+.bf-debito    { background: rgba(245,158,11,.12);  color: #f59e0b; }
+.bf-credito   { background: rgba(192,132,252,.12); color: #c084fc; }
+.bf-crediario { background: rgba(248,113,113,.12); color: #f87171; }
+.bf-outro     { background: rgba(148,163,184,.1);  color: #94a3b8; }
+
+/* Badges light mode — texto mais escuro para contraste */
+[data-theme="light"] .bf-dinheiro  { background: rgba(22,163,74,.12);  color: #15803d; }
+[data-theme="light"] .bf-pix       { background: rgba(37,99,235,.12);  color: #1d4ed8; }
+[data-theme="light"] .bf-debito    { background: rgba(180,83,9,.12);   color: #92400e; }
+[data-theme="light"] .bf-credito   { background: rgba(126,34,206,.12); color: #7e22ce; }
+[data-theme="light"] .bf-crediario { background: rgba(185,28,28,.12);  color: #b91c1c; }
+[data-theme="light"] .bf-outro     { background: rgba(100,116,139,.12);color: #475569; }
 .pend-valor { font-size: 14px; font-weight: 800; color: var(--text); font-family: var(--mono, monospace); text-align: right; }
 .pend-prev { display: flex; flex-direction: column; font-size: 11px; color: var(--text2); }
 .prev-label { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; opacity: .6; }
@@ -575,7 +586,7 @@ function showToast(msg, tipo = 'ok') {
 .cf-obs { flex: 1; min-width: 140px; }
 .cf-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; }
 .cf-input { padding: 7px 10px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; min-width: 130px; }
-.cf-input:focus { outline: none; border-color: var(--accent); }
+.cf-input:focus { outline: none; border-color: var(--primary); }
 .confirm-actions { display: flex; justify-content: flex-end; }
 .btn-confirmar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: #16a34a; border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .btn-confirmar:disabled { opacity: .5; cursor: not-allowed; }
@@ -589,8 +600,8 @@ function showToast(msg, tipo = 'ok') {
 .mf-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px; }
 .mf-full { flex: unset; }
 .mf-group label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; }
-.obrig { color: var(--accent); }
-.btn-lancar { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: var(--accent); border: none; border-radius: 9px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; }
+.obrig { color: var(--primary); }
+.btn-lancar { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: var(--primary); border: none; border-radius: 9px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; width: 100%; }
 .btn-lancar:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Lista recebimentos lançados */
@@ -599,8 +610,9 @@ function showToast(msg, tipo = 'ok') {
 .rec-row:last-of-type { border-bottom: none; }
 .rec-data { font-size: 12px; font-weight: 600; color: var(--text); }
 .rec-info { display: flex; flex-direction: column; min-width: 0; }
-.rec-venda { font-size: 11px; font-weight: 700; color: var(--accent); }
+.rec-venda { font-size: 11px; font-weight: 700; color: var(--primary); }
 .badge-manual { font-size: 10px; font-weight: 700; color: #60a5fa; background: rgba(96,165,250,.1); padding: 2px 6px; border-radius: 8px; display: inline-block; width: fit-content; }
+[data-theme="light"] .badge-manual { color: #1d4ed8; background: rgba(37,99,235,.1); }
 .rec-desc { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec-valor { font-size: 13px; font-weight: 800; color: var(--text); font-family: var(--mono, monospace); text-align: right; }
 .rec-actions { display: flex; justify-content: flex-end; }
@@ -632,7 +644,7 @@ function showToast(msg, tipo = 'ok') {
 
 .state-center { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 48px 20px; color: var(--text2); font-size: 13px; }
 .muted { opacity: .6; }
-.spin { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+.spin { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
 .spin-sm { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

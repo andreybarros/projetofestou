@@ -190,4 +190,27 @@ router.post('/entrada-nf/confirmar', async (req, res) => {
   }
 });
 
+// Histórico de entradas
+router.get('/entrada-nf/historico/:filial_pk', async (req, res) => {
+  try {
+    const filial_pk = parseInt(req.params.filial_pk, 10);
+    const { data, error } = await supabase
+      .from('entradas_estoque')
+      .select('pk, fornecedor_cnpj, fornecedor_nome, numero_nf, chave_nfe, data_emissao, total_nf, criado_em, itens_entrada_estoque(pk)')
+      .eq('filial_pk', filial_pk)
+      .order('criado_em', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    const entradas = (data || []).map(e => ({
+      ...e,
+      qtd_itens: e.itens_entrada_estoque?.length || 0,
+      itens_entrada_estoque: undefined,
+    }));
+    res.json({ ok: true, entradas });
+  } catch (err) {
+    console.error('[Estoque/Historico] Erro:', err);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 module.exports = router;

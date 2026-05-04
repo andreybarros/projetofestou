@@ -12,6 +12,31 @@
       </div>
     </header>
 
+    <!-- Notificações -->
+    <div v-if="avisos.length > 0" class="avisos-wrap">
+      <div class="avisos-titulo">
+        <span class="material-symbols-outlined">notifications_active</span>
+        Avisos do dia
+        <span class="avisos-badge">{{ avisos.length }}</span>
+      </div>
+      <div class="avisos-lista">
+        <RouterLink
+          v-for="(a, i) in avisos"
+          :key="i"
+          :to="a.rota"
+          :class="['aviso-item', a.tipo]"
+        >
+          <span class="material-symbols-outlined aviso-ico">{{ a.icone }}</span>
+          <div class="aviso-body">
+            <span class="aviso-msg">{{ a.msg }}</span>
+            <span class="aviso-detalhe">{{ a.detalhe }}</span>
+          </div>
+          <span class="aviso-tag">{{ a.tag }}</span>
+          <span class="material-symbols-outlined aviso-seta">chevron_right</span>
+        </RouterLink>
+      </div>
+    </div>
+
     <!-- Hero cards -->
     <div class="hero-grid">
       <RouterLink v-if="pode('pdv')" to="/pdv" class="hero-card hero-pdv">
@@ -154,11 +179,97 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
+import { supabase } from '../composables/useSupabase';
 
 const sessao = useSessaoStore();
 const op     = computed(() => sessao.operador);
+
+const avisos = ref([]);
+
+onMounted(carregarAvisos);
+
+async function carregarAvisos() {
+  const fil = sessao.filial?.pk;
+  if (!fil) return;
+
+  const hoje   = new Date().toLocaleDateString('en-CA');
+  const limite = new Date(Date.now() + 2 * 86400000).toLocaleDateString('en-CA');
+  const lista  = [];
+
+  // Crediários vencidos ou vencendo em até 2 dias
+  const { data: crediarios } = await supabase
+    .from('vendas')
+    .select('pk, numero, cliente, data_vencimento_crediario, status_crediario')
+    .eq('filial_pk', fil)
+    .not('data_vencimento_crediario', 'is', null)
+    .lte('data_vencimento_crediario', limite)
+    .order('data_vencimento_crediario');
+
+  const CREDIARIO_DONE = ['pago', 'quitado', 'cancelado'];
+  for (const v of crediarios || []) {
+    if (CREDIARIO_DONE.includes(v.status_crediario)) continue;
+    const venc  = v.data_vencimento_crediario;
+    const dias  = diffDias(venc, hoje);
+    const atras  = venc < hoje;
+    const diasFut = diffDias(hoje, venc);
+    lista.push({
+      tipo:    atras ? 'aviso-vermelho' : 'aviso-amarelo',
+      icone:   atras ? 'warning' : 'schedule',
+      msg:     v.cliente || 'Consumidor Final',
+      detalhe: atras
+        ? `Crediário vencido há ${dias} dia${dias !== 1 ? 's' : ''} — NF #${v.numero}`
+        : diasFut === 0
+          ? `Crediário vencendo hoje — NF #${v.numero}`
+          : `Crediário vence em ${diasFut} dia${diasFut !== 1 ? 's' : ''} — NF #${v.numero}`,
+      tag:     atras ? 'Vencido' : diasFut === 0 ? 'Hoje' : `Em ${diasFut}d`,
+      rota:    `/historico-vendas/${v.pk}/editar`,
+    });
+  }
+
+  // Locações com devolução atrasada ou prevista nos próximos 2 dias
+  const { data: locacoes } = await supabase
+    .from('vendas')
+    .select('pk, numero, cliente, data_devolucao_prevista, status_locacao')
+    .eq('filial_pk', fil)
+    .eq('tipo_venda', 'locacao')
+    .not('data_devolucao_prevista', 'is', null)
+    .lte('data_devolucao_prevista', limite + 'T23:59:59')
+    .order('data_devolucao_prevista');
+
+  const LOCACAO_DONE = ['devolvida', 'devolvido', 'concluida', 'cancelada', 'cancelado'];
+  for (const v of locacoes || []) {
+    if (LOCACAO_DONE.includes(v.status_locacao)) continue;
+    const dataStr = v.data_devolucao_prevista?.split('T')[0];
+    const atras   = dataStr < hoje;
+    const dias    = diffDias(dataStr, hoje);
+    const diasFut = diffDias(hoje, dataStr);
+    lista.push({
+      tipo:    atras ? 'aviso-vermelho' : 'aviso-azul',
+      icone:   atras ? 'assignment_late' : 'event_available',
+      msg:     v.cliente || 'Consumidor Final',
+      detalhe: atras
+        ? `Devolução de locação atrasada há ${dias} dia${dias !== 1 ? 's' : ''} — NF #${v.numero}`
+        : diasFut === 0
+          ? `Devolução de locação prevista para hoje — NF #${v.numero}`
+          : `Devolução de locação em ${diasFut} dia${diasFut !== 1 ? 's' : ''} — NF #${v.numero}`,
+      tag:     atras ? 'Atrasada' : diasFut === 0 ? 'Hoje' : `Em ${diasFut}d`,
+      rota:    `/historico-vendas/${v.pk}/editar`,
+    });
+  }
+
+  // Atrasados primeiro, depois hoje; dentro de cada grupo mantém ordem da query
+  avisos.value = lista.sort((a, b) => {
+    const ordem = { 'aviso-vermelho': 0, 'aviso-amarelo': 1, 'aviso-azul': 2 };
+    return (ordem[a.tipo] ?? 9) - (ordem[b.tipo] ?? 9);
+  });
+}
+
+function diffDias(de, ate) {
+  const ms = new Date(ate) - new Date(de);
+  return Math.max(0, Math.round(ms / 86400000));
+}
 
 function pode(modulo) {
   const o = op.value;
@@ -282,4 +393,44 @@ const podeRH      = computed(() => {
 .sc-icon  { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; font-variation-settings:'FILL' 1,'wght' 400; }
 .sc-name  { font-size:13px; font-weight:600; color:var(--text); line-height:1.3; }
 .sc-desc  { font-size:11px; color:var(--text2); line-height:1.4; }
+
+/* Avisos */
+.avisos-wrap { margin-bottom: 20px; }
+.avisos-titulo {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text2); margin-bottom: 8px;
+}
+.avisos-titulo .material-symbols-outlined { font-size: 16px; color: #f59e0b; }
+.avisos-badge {
+  background: #ef4444; color: #fff; border-radius: 20px;
+  font-size: 10px; font-weight: 800; padding: 1px 7px; line-height: 1.6;
+}
+.avisos-lista { display: flex; flex-direction: column; gap: 6px; }
+
+.aviso-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 12px; border: 1px solid;
+  text-decoration: none; cursor: pointer; transition: filter .15s;
+}
+.aviso-item:hover { filter: brightness(1.08); }
+.aviso-ico { font-size: 20px; flex-shrink: 0; font-variation-settings: 'FILL' 1; }
+.aviso-body { flex: 1; min-width: 0; }
+.aviso-msg  { display: block; font-size: .88rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aviso-detalhe { display: block; font-size: .75rem; opacity: .75; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aviso-tag  { font-size: .68rem; font-weight: 800; padding: 2px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+.aviso-seta { font-size: 18px; flex-shrink: 0; opacity: .5; }
+
+.aviso-vermelho { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.3); color: #ef4444; }
+.aviso-vermelho .aviso-tag { background: rgba(239,68,68,.15); color: #ef4444; }
+
+.aviso-amarelo { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.3); color: #d97706; }
+.aviso-amarelo .aviso-tag { background: rgba(245,158,11,.15); color: #d97706; }
+
+.aviso-azul { background: rgba(59,130,246,.08); border-color: rgba(59,130,246,.3); color: #3b82f6; }
+.aviso-azul .aviso-tag { background: rgba(59,130,246,.15); color: #3b82f6; }
+
+@media(max-width:480px) {
+  .aviso-detalhe { display: none; }
+}
 </style>

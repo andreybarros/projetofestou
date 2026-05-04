@@ -12,199 +12,259 @@
           <p class="en-sub">Importe o XML da nota fiscal para dar entrada no estoque automaticamente</p>
         </div>
       </div>
-      <!-- Steps -->
-      <div class="en-steps">
+      <!-- Abas -->
+      <div class="en-tabs">
+        <button :class="['tab-btn', { active: aba === 'nova' }]" @click="aba = 'nova'">
+          <span class="material-symbols-outlined">add_circle</span>
+          Nova Entrada
+        </button>
+        <button :class="['tab-btn', { active: aba === 'historico' }]" @click="abrirHistorico">
+          <span class="material-symbols-outlined">history</span>
+          Histórico
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── ABA: NOVA ENTRADA ─── -->
+    <template v-if="aba === 'nova'">
+
+      <!-- Steps indicator -->
+      <div class="en-steps-bar">
         <div v-for="(s, i) in steps" :key="i" :class="['step-item', { active: step === i + 1, done: step > i + 1 }]">
           <div class="step-circle">
             <span v-if="step > i + 1" class="material-symbols-outlined" style="font-size:16px">check</span>
             <span v-else>{{ i + 1 }}</span>
           </div>
           <span class="step-label">{{ s }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 1: Upload do XML -->
-    <div v-if="step === 1" class="en-card animate-fade">
-      <div
-        class="upload-area"
-        :class="{ 'drag-over': isDragging }"
-        @dragover.prevent="isDragging = true"
-        @dragleave.prevent="isDragging = false"
-        @drop.prevent="onDrop"
-        @click="$refs.fileInput.click()"
-      >
-        <input ref="fileInput" type="file" accept=".xml" @change="onFile" hidden />
-        <span class="material-symbols-outlined upload-icon">upload_file</span>
-        <p class="upload-title">Arraste o XML da NF-e aqui</p>
-        <p class="upload-sub">ou clique para selecionar o arquivo (.xml)</p>
-      </div>
-
-      <div v-if="erroXml" class="en-alert err">
-        <span class="material-symbols-outlined">error</span>
-        {{ erroXml }}
-      </div>
-
-      <div v-if="parseando" class="en-info">
-        <div class="spin-sm"></div>
-        Lendo XML...
-      </div>
-    </div>
-
-    <!-- STEP 2: Conferência de itens -->
-    <div v-if="step === 2" class="animate-fade">
-
-      <!-- Info da NF -->
-      <div class="nf-info-card en-card">
-        <div class="nf-info-grid">
-          <div class="nf-info-item">
-            <span class="nf-info-label">Fornecedor</span>
-            <span class="nf-info-val">{{ nf.fornecedor_nome || '—' }}</span>
-          </div>
-          <div class="nf-info-item">
-            <span class="nf-info-label">CNPJ</span>
-            <span class="nf-info-val mono">{{ fmtCnpj(nf.fornecedor_cnpj) }}</span>
-          </div>
-          <div class="nf-info-item">
-            <span class="nf-info-label">Número NF</span>
-            <span class="nf-info-val mono">{{ nf.numero_nf || '—' }}</span>
-          </div>
-          <div class="nf-info-item">
-            <span class="nf-info-label">Data Emissão</span>
-            <span class="nf-info-val">{{ fmtData(nf.data_emissao) }}</span>
-          </div>
-          <div class="nf-info-item">
-            <span class="nf-info-label">Total NF</span>
-            <span class="nf-info-val bold green">{{ fmt(nf.total_nf) }}</span>
-          </div>
-          <div class="nf-info-item">
-            <span class="nf-info-label">Itens</span>
-            <span class="nf-info-val">{{ itens.length }}</span>
-          </div>
+          <div v-if="i < steps.length - 1" class="step-line"></div>
         </div>
       </div>
 
-      <!-- Contador de vínculos -->
-      <div class="en-progress-bar">
-        <div class="prog-item green">
-          <span class="material-symbols-outlined">check_circle</span>
-          {{ itensVinculados }} vinculados
+      <!-- STEP 1: Upload XML -->
+      <div v-if="step === 1" class="animate-fade">
+        <div
+          class="upload-zone"
+          :class="{ 'drag-over': isDragging }"
+          @dragover.prevent="isDragging = true"
+          @dragleave.prevent="isDragging = false"
+          @drop.prevent="onDrop"
+          @click="$refs.fileInput.click()"
+        >
+          <input ref="fileInput" type="file" accept=".xml" @change="onFile" hidden />
+          <span class="material-symbols-outlined upload-ico">upload_file</span>
+          <p class="upload-title">Arraste o XML aqui ou clique para selecionar</p>
+          <p class="upload-sub">Arquivo .xml da NF-e enviado pelo fornecedor</p>
         </div>
-        <div class="prog-item amber">
-          <span class="material-symbols-outlined">link_off</span>
-          {{ itensPendentes }} sem vínculo
+
+        <div v-if="erroXml" class="en-alert err" style="margin-top:1rem">
+          <span class="material-symbols-outlined">error</span>
+          {{ erroXml }}
         </div>
-        <div v-if="itensPendentes > 0" class="prog-hint">
-          Selecione o produto correspondente para os itens pendentes
+
+        <div v-if="parseando" class="en-info" style="margin-top:1rem">
+          <div class="spin-sm"></div>
+          Lendo XML...
         </div>
       </div>
 
-      <!-- Tabela de itens -->
-      <div class="en-card table-card">
+      <!-- STEP 2: Conferência de itens -->
+      <div v-if="step === 2" class="animate-fade">
+
+        <!-- Info da NF -->
+        <div class="nf-info-card en-card">
+          <div class="nf-info-grid">
+            <div class="nf-info-item">
+              <span class="nf-info-label">Fornecedor</span>
+              <span class="nf-info-val">{{ nf.fornecedor_nome || '—' }}</span>
+            </div>
+            <div class="nf-info-item">
+              <span class="nf-info-label">CNPJ</span>
+              <span class="nf-info-val mono">{{ fmtCnpj(nf.fornecedor_cnpj) }}</span>
+            </div>
+            <div class="nf-info-item">
+              <span class="nf-info-label">Número NF</span>
+              <span class="nf-info-val mono">{{ nf.numero_nf || '—' }}</span>
+            </div>
+            <div class="nf-info-item">
+              <span class="nf-info-label">Data Emissão</span>
+              <span class="nf-info-val">{{ fmtData(nf.data_emissao) }}</span>
+            </div>
+            <div class="nf-info-item">
+              <span class="nf-info-label">Total NF</span>
+              <span class="nf-info-val bold green">{{ fmt(nf.total_nf) }}</span>
+            </div>
+            <div class="nf-info-item">
+              <span class="nf-info-label">Itens</span>
+              <span class="nf-info-val">{{ itens.length }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contador de vínculos -->
+        <div class="en-progress-bar">
+          <div class="prog-item green">
+            <span class="material-symbols-outlined">check_circle</span>
+            {{ itensVinculados }} vinculados
+          </div>
+          <div class="prog-item amber">
+            <span class="material-symbols-outlined">link_off</span>
+            {{ itensPendentes }} sem vínculo
+          </div>
+          <div v-if="itensPendentes > 0" class="prog-hint">
+            Selecione o produto correspondente para os itens pendentes
+          </div>
+        </div>
+
+        <!-- Tabela de itens -->
+        <div class="en-card table-card">
+          <table class="en-table">
+            <thead>
+              <tr>
+                <th>Cód. Fornecedor</th>
+                <th>Descrição na NF</th>
+                <th class="text-right">Qtd</th>
+                <th class="text-right">Preço Unit.</th>
+                <th>Produto no Sistema</th>
+                <th class="text-right">Saldo Atual</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(it, idx) in itens" :key="idx" :class="it.produto_pk ? 'row-ok' : 'row-pendente'">
+                <td class="mono td-cod">{{ it.codigo_fornecedor }}</td>
+                <td class="td-desc">{{ it.descricao_fornecedor }}</td>
+                <td class="text-right mono bold">{{ it.qtd }}</td>
+                <td class="text-right mono">{{ fmt(it.preco_unit) }}</td>
+                <td class="td-produto">
+                  <div v-if="it.produto_pk" class="prod-vinculado">
+                    <span class="material-symbols-outlined check-icon">check_circle</span>
+                    <span class="prod-nome">{{ it.produto_descricao }}</span>
+                    <button class="btn-desvincular" @click="desvincular(idx)" title="Trocar produto">
+                      <span class="material-symbols-outlined">swap_horiz</span>
+                    </button>
+                  </div>
+                  <div v-else class="prod-busca">
+                    <input
+                      v-model="it._busca"
+                      type="text"
+                      placeholder="Buscar produto..."
+                      class="busca-prod"
+                      @input="filtrarProdutos(idx)"
+                      @focus="it._dropOpen = true"
+                      @blur="fecharDrop(idx)"
+                    />
+                    <div v-if="it._dropOpen && it._resultados?.length" class="prod-drop">
+                      <button
+                        v-for="p in it._resultados"
+                        :key="p.pk"
+                        class="prod-drop-item"
+                        @mousedown.prevent="vincular(idx, p)"
+                      >
+                        <span class="drop-desc">{{ p.descricao }}</span>
+                        <span class="drop-cod">{{ p.codigo || '—' }}</span>
+                        <span class="drop-saldo">Saldo: {{ p.saldo }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-right">
+                  <span v-if="it.produto_pk !== null" :class="['saldo-chip', (it.saldo_atual || 0) <= 0 ? 'zero' : 'ok']">
+                    {{ it.saldo_atual ?? '—' }}
+                  </span>
+                  <span v-else class="text-muted">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Ações -->
+        <div class="en-actions">
+          <button class="btn-ghost" @click="step = 1">Voltar</button>
+          <button
+            class="btn-primary"
+            :disabled="itensVinculados === 0 || confirmando"
+            @click="confirmar"
+          >
+            <span v-if="confirmando" class="spin-sm"></span>
+            <span v-else class="material-symbols-outlined">inventory</span>
+            Confirmar Entrada ({{ itensVinculados }} {{ itensVinculados === 1 ? 'item' : 'itens' }})
+          </button>
+        </div>
+
+        <div v-if="itensPendentes > 0" class="en-alert warn">
+          <span class="material-symbols-outlined">warning</span>
+          {{ itensPendentes }} {{ itensPendentes === 1 ? 'item não vinculado será ignorado' : 'itens não vinculados serão ignorados' }} na entrada.
+        </div>
+      </div>
+
+      <!-- STEP 3: Sucesso -->
+      <div v-if="step === 3" class="en-card en-sucesso animate-fade">
+        <span class="material-symbols-outlined sucesso-icon">check_circle</span>
+        <h2>Entrada registrada!</h2>
+        <p>O estoque foi atualizado com sucesso.</p>
+        <div class="sucesso-stats">
+          <div class="stat-box">
+            <span class="stat-val">{{ resultado.itens_atualizados }}</span>
+            <span class="stat-label">Produtos atualizados</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val">{{ nf.numero_nf || '—' }}</span>
+            <span class="stat-label">Número da NF</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val green">{{ fmt(nf.total_nf) }}</span>
+            <span class="stat-label">Total da NF</span>
+          </div>
+        </div>
+        <div class="sucesso-actions">
+          <button class="btn-ghost" @click="abrirHistorico">Ver Histórico</button>
+          <button class="btn-primary" @click="reiniciar">Nova Entrada</button>
+        </div>
+      </div>
+
+    </template>
+
+    <!-- ─── ABA: HISTÓRICO ─── -->
+    <template v-if="aba === 'historico'">
+      <div v-if="carregandoHist" class="en-info" style="margin-top:2rem; justify-content:center">
+        <div class="spin-sm" style="border-top-color:var(--primary)"></div>
+        Carregando histórico...
+      </div>
+
+      <div v-else-if="historico.length === 0" class="en-card" style="text-align:center;padding:3rem;color:var(--text2)">
+        <span class="material-symbols-outlined" style="font-size:3rem;opacity:.3;display:block;margin-bottom:.75rem">inbox</span>
+        <p>Nenhuma entrada registrada ainda.</p>
+      </div>
+
+      <div v-else class="en-card table-card animate-fade">
         <table class="en-table">
           <thead>
             <tr>
-              <th>Cód. Fornecedor</th>
-              <th>Descrição na NF</th>
-              <th class="text-right">Qtd</th>
-              <th class="text-right">Preço Unit.</th>
-              <th>Produto no Sistema</th>
-              <th class="text-right">Saldo Atual</th>
+              <th>Data</th>
+              <th>Fornecedor</th>
+              <th>CNPJ</th>
+              <th>NF</th>
+              <th class="text-right">Itens</th>
+              <th class="text-right">Total NF</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(it, idx) in itens" :key="idx" :class="it.produto_pk ? 'row-ok' : 'row-pendente'">
-              <td class="mono td-cod">{{ it.codigo_fornecedor }}</td>
-              <td class="td-desc">{{ it.descricao_fornecedor }}</td>
-              <td class="text-right mono bold">{{ it.qtd }}</td>
-              <td class="text-right mono">{{ fmt(it.preco_unit) }}</td>
-              <td class="td-produto">
-                <div v-if="it.produto_pk" class="prod-vinculado">
-                  <span class="material-symbols-outlined check-icon">check_circle</span>
-                  <span class="prod-nome">{{ it.produto_descricao }}</span>
-                  <button class="btn-desvincular" @click="desvincular(idx)" title="Trocar produto">
-                    <span class="material-symbols-outlined">swap_horiz</span>
-                  </button>
-                </div>
-                <div v-else class="prod-busca">
-                  <input
-                    v-model="it._busca"
-                    type="text"
-                    placeholder="Buscar produto..."
-                    class="busca-prod"
-                    @input="filtrarProdutos(idx)"
-                    @focus="it._dropOpen = true"
-                    @blur="fecharDrop(idx)"
-                  />
-                  <div v-if="it._dropOpen && it._resultados?.length" class="prod-drop">
-                    <button
-                      v-for="p in it._resultados"
-                      :key="p.pk"
-                      class="prod-drop-item"
-                      @mousedown.prevent="vincular(idx, p)"
-                    >
-                      <span class="drop-desc">{{ p.descricao }}</span>
-                      <span class="drop-cod">{{ p.codigo || '—' }}</span>
-                      <span class="drop-saldo">Saldo: {{ p.saldo }}</span>
-                    </button>
-                  </div>
-                </div>
+            <tr v-for="e in historico" :key="e.pk">
+              <td class="mono" style="white-space:nowrap">{{ fmtDataHora(e.criado_em) }}</td>
+              <td>
+                <span class="fornec-nome">{{ e.fornecedor_nome || '—' }}</span>
               </td>
+              <td class="mono td-cod">{{ fmtCnpj(e.fornecedor_cnpj) }}</td>
+              <td class="mono">{{ e.numero_nf || '—' }}</td>
               <td class="text-right">
-                <span v-if="it.produto_pk !== null" :class="['saldo-chip', (it.saldo_atual || 0) <= 0 ? 'zero' : 'ok']">
-                  {{ it.saldo_atual ?? '—' }}
-                </span>
-                <span v-else class="text-muted">—</span>
+                <span class="badge-itens">{{ e.qtd_itens }}</span>
               </td>
+              <td class="text-right mono bold green">{{ fmt(e.total_nf) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      <!-- Ações -->
-      <div class="en-actions">
-        <button class="btn-ghost" @click="step = 1">Voltar</button>
-        <button
-          class="btn-primary"
-          :disabled="itensVinculados === 0 || confirmando"
-          @click="confirmar"
-        >
-          <span v-if="confirmando" class="spin-sm"></span>
-          <span v-else class="material-symbols-outlined">inventory</span>
-          Confirmar Entrada ({{ itensVinculados }} {{ itensVinculados === 1 ? 'item' : 'itens' }})
-        </button>
-      </div>
-
-      <div v-if="itensPendentes > 0" class="en-alert warn">
-        <span class="material-symbols-outlined">warning</span>
-        {{ itensPendentes }} {{ itensPendentes === 1 ? 'item não vinculado será ignorado' : 'itens não vinculados serão ignorados' }} na entrada.
-      </div>
-    </div>
-
-    <!-- STEP 3: Sucesso -->
-    <div v-if="step === 3" class="en-card en-sucesso animate-fade">
-      <span class="material-symbols-outlined sucesso-icon">check_circle</span>
-      <h2>Entrada registrada!</h2>
-      <p>O estoque foi atualizado com sucesso.</p>
-      <div class="sucesso-stats">
-        <div class="stat-box">
-          <span class="stat-val">{{ resultado.itens_atualizados }}</span>
-          <span class="stat-label">Produtos atualizados</span>
-        </div>
-        <div class="stat-box">
-          <span class="stat-val">{{ nf.numero_nf || '—' }}</span>
-          <span class="stat-label">Número da NF</span>
-        </div>
-        <div class="stat-box">
-          <span class="stat-val green">{{ fmt(nf.total_nf) }}</span>
-          <span class="stat-label">Total da NF</span>
-        </div>
-      </div>
-      <div class="sucesso-actions">
-        <button class="btn-ghost" @click="$router.push('/produtos')">Ver Produtos</button>
-        <button class="btn-primary" @click="reiniciar">Nova Entrada</button>
-      </div>
-    </div>
+    </template>
 
     <!-- Toast -->
     <Transition name="toast">
@@ -224,6 +284,7 @@ import api from '../services/api';
 const router      = useRouter();
 const sessao      = useSessaoStore();
 
+const aba         = ref('nova');
 const step        = ref(1);
 const isDragging  = ref(false);
 const parseando   = ref(false);
@@ -232,6 +293,9 @@ const erroXml     = ref('');
 const toastMsg    = ref('');
 const toastTipo   = ref('ok');
 let   toastTimer  = null;
+
+const carregandoHist = ref(false);
+const historico      = ref([]);
 
 const steps = ['Upload XML', 'Conferência', 'Concluído'];
 
@@ -262,6 +326,19 @@ async function carregarProdutos() {
     .eq('filial_pk', fil)
     .order('descricao');
   todosProdos.value = data || [];
+}
+
+async function abrirHistorico() {
+  aba.value = 'historico';
+  carregandoHist.value = true;
+  try {
+    const { data } = await api.get(`/api/estoque/entrada-nf/historico/${sessao.filial.pk}`);
+    historico.value = data.entradas || [];
+  } catch (err) {
+    toast('Erro ao carregar histórico: ' + (err.response?.data?.erro || err.message), 'err');
+  } finally {
+    carregandoHist.value = false;
+  }
 }
 
 function toast(msg, tipo = 'ok', dur = 4000) {
@@ -461,6 +538,12 @@ function fmtData(d) {
   if (!d) return '—';
   return d.split('-').reverse().join('/');
 }
+
+function fmtDataHora(dt) {
+  if (!dt) return '—';
+  const d = new Date(dt);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
 </script>
 
 <style scoped>
@@ -474,10 +557,17 @@ function fmtData(d) {
 .en-title { margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--text); }
 .en-sub   { margin: 3px 0 0; font-size: .85rem; color: var(--text2); }
 
+/* Abas */
+.en-tabs { display: flex; gap: .5rem; }
+.tab-btn { display: flex; align-items: center; gap: 6px; padding: .55rem 1.1rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); font-size: .85rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+.tab-btn .material-symbols-outlined { font-size: 18px; }
+.tab-btn:hover { background: var(--bg3); color: var(--text); }
+.tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
 /* Steps */
-.en-steps { display: flex; align-items: center; gap: 0; }
-.step-item { display: flex; align-items: center; gap: 8px; }
-.step-item:not(:last-child)::after { content: ''; display: block; width: 32px; height: 2px; background: var(--border); margin: 0 8px; }
+.en-steps-bar { display: flex; align-items: center; gap: 0; }
+.step-item { display: flex; align-items: center; gap: 8px; position: relative; }
+.step-line { width: 40px; height: 2px; background: var(--border); margin: 0 4px; }
 .step-circle { width: 28px; height: 28px; border-radius: 50%; background: var(--bg3); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 800; color: var(--text2); flex-shrink: 0; }
 .step-item.active .step-circle { background: var(--primary); border-color: var(--primary); color: #fff; }
 .step-item.done .step-circle { background: #10b981; border-color: #10b981; color: #fff; }
@@ -487,12 +577,12 @@ function fmtData(d) {
 /* Card base */
 .en-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
 
-/* Upload */
-.upload-area { border: 2px dashed var(--border); border-radius: 14px; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; transition: all .2s; }
-.upload-area:hover, .upload-area.drag-over { border-color: var(--primary); background: rgba(99,102,241,.04); }
-.upload-icon { font-size: 3rem; color: var(--primary); opacity: .6; }
+/* Upload zone */
+.upload-zone { background: var(--bg2); border: 2px dashed var(--border); border-radius: 16px; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; transition: all .2s; text-align: center; }
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: rgba(99,102,241,.04); }
+.upload-ico { font-size: 3.5rem; color: var(--primary); opacity: .7; }
 .upload-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0; }
-.upload-sub   { font-size: .85rem; color: var(--text2); margin: 0; }
+.upload-sub   { font-size: .82rem; color: var(--text2); margin: 0; }
 
 /* NF info */
 .nf-info-card { padding: 1.25rem 1.5rem; }
@@ -516,6 +606,7 @@ function fmtData(d) {
 .en-table th { padding: .75rem 1rem; background: var(--bg3); font-size: .7rem; text-transform: uppercase; font-weight: 700; letter-spacing: .4px; color: var(--text2); border-bottom: 2px solid var(--border); text-align: left; }
 .en-table td { padding: .7rem 1rem; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
 .en-table tr:last-child td { border-bottom: none; }
+.en-table tbody tr:hover td { background: var(--bg3); }
 .row-ok      { background: rgba(16,185,129,.04); }
 .row-pendente { background: rgba(245,158,11,.04); }
 
@@ -548,6 +639,10 @@ function fmtData(d) {
 .saldo-chip.ok   { background: rgba(16,185,129,.12); color: #10b981; }
 .saldo-chip.zero { background: rgba(239,68,68,.12); color: #ef4444; }
 
+/* Histórico */
+.fornec-nome { font-weight: 600; color: var(--text); font-size: .85rem; }
+.badge-itens { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: .75rem; font-weight: 700; color: var(--text2); }
+
 /* Ações */
 .en-actions { display: flex; justify-content: flex-end; gap: 1rem; }
 
@@ -557,7 +652,7 @@ function fmtData(d) {
 .en-alert.err  { background: rgba(239,68,68,.1); color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
 .en-alert.warn { background: rgba(245,158,11,.1); color: #d97706; border: 1px solid rgba(245,158,11,.25); }
 
-.en-info { display: flex; align-items: center; gap: 10px; color: var(--text2); font-size: .85rem; margin-top: 1rem; }
+.en-info { display: flex; align-items: center; gap: 10px; color: var(--text2); font-size: .85rem; }
 
 /* Sucesso */
 .en-sucesso { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 3rem 2rem; text-align: center; }
@@ -599,8 +694,8 @@ function fmtData(d) {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 768px) {
-  .en-steps { display: none; }
+  .en-steps-bar { display: none; }
   .nf-info-grid { grid-template-columns: 1fr 1fr; }
-  .en-table th:nth-child(4), .en-table td:nth-child(4) { display: none; }
+  .en-table th:nth-child(3), .en-table td:nth-child(3) { display: none; }
 }
 </style>
