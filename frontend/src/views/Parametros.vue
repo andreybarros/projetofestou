@@ -147,6 +147,14 @@
                   <span class="toggle-label">{{ isTrue(p.chave) ? '.T.' : '.F.' }}</span>
                 </button>
               </template>
+              <template v-else-if="p.tipo === 'number'">
+                <input
+                  type="number" class="param-number"
+                  :min="p.min ?? 0" :max="p.max ?? 9999"
+                  :value="vals[p.chave]"
+                  @change="e => salvar(p.chave, e.target.value)"
+                />
+              </template>
             </div>
           </div>
         </div>
@@ -222,6 +230,7 @@ const grupos = {
     { chave: 'pdv_desconto_maximo',            tipo: 'number',  label: 'Desconto máximo sem aprovação (%)',   desc: 'Limite de desconto que o operador pode aplicar livremente. 0 = sem limite.', min: 0, max: 100 },
     { chave: 'pdv_desconto_decorador_balao',  tipo: 'boolean', label: 'Desconto em balões só para decoradores', desc: 'Quando ativo, apenas clientes marcados como decorador podem receber desconto em balões (máximo 10%).' },
     { chave: 'crediario_exige_cliente',           tipo: 'boolean', label: 'Crediário exige cliente selecionado',       desc: 'Quando ativo, não permite finalizar venda em crediário sem selecionar um cliente.' },
+    { chave: 'locacao_exige_cliente',             tipo: 'boolean', label: 'Locação exige cliente selecionado',          desc: 'Quando ativo, não permite finalizar uma venda do tipo Locação sem selecionar um cliente.' },
     { chave: 'crediario_bloqueia_inadimplente',   tipo: 'boolean', label: 'Bloquear crediário com boletos vencidos',    desc: 'Impede nova venda em crediário para clientes com parcelas em atraso.' },
   ],
   ponto: [
@@ -239,6 +248,7 @@ const grupos = {
   vendas: [
     { chave: 'venda_permite_desconto_sem_aprovacao', tipo: 'boolean', label: 'Desconto sem aprovação de supervisor', desc: 'Quando ativo, qualquer operador pode aplicar descontos sem autorização prévia.' },
     { chave: 'venda_imprime_cupom',                  tipo: 'boolean', label: 'Imprimir cupom ao finalizar venda',    desc: 'Abre automaticamente o diálogo de impressão após confirmar a venda no PDV.' },
+    { chave: 'locacao_taxa_realocacao',              tipo: 'number',  label: 'Taxa de realocação (R$)',               desc: 'Valor cobrado quando o cliente não devolve o material na data prevista.', min: 0 },
   ],
 };
 
@@ -250,6 +260,7 @@ const vals = reactive({
   pdv_desconto_maximo:                  '0',
   pdv_desconto_decorador_balao:         'false',
   crediario_exige_cliente:              'true',
+  locacao_exige_cliente:                'true',
   crediario_bloqueia_inadimplente:      'true',
   ponto_exigir_gps:                     'true',
   ponto_tolerancia_minutos:             '15',
@@ -260,6 +271,7 @@ const vals = reactive({
   nfce_ambiente:                        '2',
   venda_permite_desconto_sem_aprovacao: 'true',
   venda_imprime_cupom:                  'false',
+  locacao_taxa_realocacao:              '0',
   vale_gestor_pk:                       '',
 });
 

@@ -152,6 +152,33 @@
               <span class="det-meta-label">Tipo</span>
               <span class="det-meta-val">{{ detalhe.tipo_venda === 'locacao' ? 'Locação' : 'Venda' }}</span>
             </div>
+            <template v-if="detalhe.tipo_venda === 'locacao'">
+              <div class="det-meta-item">
+                <span class="det-meta-label">Retirada</span>
+                <span class="det-meta-val">{{ fmtDataHora(detalhe.data_locacao) }}</span>
+              </div>
+              <div class="det-meta-item">
+                <span class="det-meta-label">Devolução prevista</span>
+                <span :class="['det-meta-val', locacaoVencida(detalhe) && detalhe.status_locacao !== 'devolvida' ? 'loc-vencida' : '']">
+                  {{ fmtDataHora(detalhe.data_devolucao_prevista) }}
+                  <span v-if="locacaoVencida(detalhe) && detalhe.status_locacao !== 'devolvida'" class="loc-atrasada-badge">Atrasada</span>
+                </span>
+              </div>
+              <div v-if="detalhe.data_devolucao_real" class="det-meta-item">
+                <span class="det-meta-label">Devolvido em</span>
+                <span class="det-meta-val" style="color:#34d399">{{ fmtDataHora(detalhe.data_devolucao_real) }}</span>
+              </div>
+              <div class="det-meta-item">
+                <span class="det-meta-label">Status locação</span>
+                <span :class="['det-meta-val', 'loc-status-' + (detalhe.status_locacao || 'pendente')]">
+                  {{ { pendente: 'Pendente', devolvida: 'Devolvida', taxa_cobrada: 'Taxa cobrada' }[detalhe.status_locacao] || detalhe.status_locacao || 'Pendente' }}
+                </span>
+              </div>
+              <div v-if="detalhe.status_locacao === 'taxa_cobrada' && detalhe.taxa_realocacao_cobrada != null" class="det-meta-item">
+                <span class="det-meta-label">Taxa de realocação</span>
+                <span class="det-meta-val" style="color:#a78bfa;font-weight:800">R$ {{ fmtVal(detalhe.taxa_realocacao_cobrada) }}</span>
+              </div>
+            </template>
             <div v-if="detalhe.nfce_chave" class="det-meta-item">
               <span class="det-meta-label">NFC-e</span>
               <span class="det-meta-val" style="color:#059669;font-weight:800">Autorizada</span>
@@ -212,6 +239,34 @@
 
           <div class="det-actions">
             <button @click="fecharDetalhe" class="det-btn-fechar">Fechar</button>
+            <button
+              v-if="detalhe.status === 'finalizada'"
+              @click="router.push('/historico-vendas/' + detalhe.pk + '/editar')"
+              class="det-btn-editar"
+            >
+              <span class="material-symbols-outlined">edit</span>
+              Editar Venda
+            </button>
+            <template v-if="detalhe.tipo_venda === 'locacao'">
+              <button
+                v-if="detalhe.status_locacao !== 'devolvida'"
+                @click="confirmarDevolucaoLocacao"
+                class="det-btn-loc-dev"
+                :disabled="salvandoLocacao"
+              >
+                <span class="material-symbols-outlined">inventory</span>
+                {{ salvandoLocacao ? 'Salvando...' : 'Confirmar Devolução' }}
+              </button>
+              <button
+                v-if="detalhe.status_locacao !== 'devolvida' && detalhe.status_locacao !== 'taxa_cobrada'"
+                @click="cobrarTaxaRealocacao"
+                class="det-btn-loc-taxa"
+                :disabled="salvandoLocacao"
+              >
+                <span class="material-symbols-outlined">payments</span>
+                Cobrar Taxa de Realocação
+              </button>
+            </template>
             <button v-if="detalhe.tipo_venda !== 'locacao'" @click="reimprimirRecibo" class="det-btn-print" :disabled="detalheCarregando">
               <span class="material-symbols-outlined">print</span>
               Reimprimir Recibo
@@ -294,6 +349,65 @@
       </div>
     </Teleport>
 
+    <!-- Modal confirmação devolução locação -->
+    <Teleport to="body">
+      <div v-if="modalLocacao.show" class="modal-bg" @click.self="modalLocacao.show = false">
+        <div class="modal modal-loc">
+          <div class="modal-header">
+            <h3>{{ modalLocacao.forcaTaxa ? 'Cobrar Taxa de Realocação' : 'Confirmar Devolução' }} — Locação #{{ detalhe?.numero }}</h3>
+          </div>
+          <div class="modal-body">
+            <div v-if="modalLocacao.diasAtraso > 0 || modalLocacao.forcaTaxa" class="loc-atraso-box">
+              <div class="loc-atraso-top">
+                <span class="material-symbols-outlined" style="color:#f59e0b;font-size:22px;flex-shrink:0">warning</span>
+                <p class="loc-atraso-titulo">{{ modalLocacao.diasAtraso > 0 ? 'Material devolvido com atraso' : 'Cobrar taxa de realocação' }}</p>
+              </div>
+              <p v-if="modalLocacao.diasAtraso > 0" class="loc-atraso-info">
+                <strong>{{ modalLocacao.diasAtraso }} dia{{ modalLocacao.diasAtraso > 1 ? 's' : '' }}</strong> de atraso ·
+                Taxa por dia: <strong>R$ {{ fmtVal(modalLocacao.taxaDiaria) }}</strong>
+              </p>
+              <div class="loc-taxa-row">
+                <label class="loc-taxa-label">Taxa total a cobrar (editável)</label>
+                <div class="loc-taxa-edit-wrap">
+                  <span class="loc-taxa-prefix">R$</span>
+                  <input
+                    v-model.number="modalLocacao.taxaTotal"
+                    type="number" min="0" step="0.01"
+                    class="loc-taxa-input"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+            </div>
+            <div v-else class="loc-ok-box">
+              <span class="material-symbols-outlined" style="color:#34d399;font-size:28px">check_circle</span>
+              <p>Material devolvido dentro do prazo.</p>
+            </div>
+          </div>
+          <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
+            <button class="det-btn-fechar" @click="modalLocacao.show = false">Cancelar</button>
+            <button
+              v-if="!modalLocacao.forcaTaxa && modalLocacao.diasAtraso > 0"
+              class="det-btn-loc-dev"
+              :disabled="salvandoLocacao"
+              @click="executarDevolucaoLocacao(false)"
+            >
+              <span class="material-symbols-outlined">inventory</span>
+              Só confirmar recebimento
+            </button>
+            <button
+              class="det-btn-loc-taxa"
+              :disabled="salvandoLocacao"
+              @click="executarDevolucaoLocacao(true)"
+            >
+              <span class="material-symbols-outlined">payments</span>
+              {{ (modalLocacao.diasAtraso > 0 || modalLocacao.forcaTaxa) ? `Cobrar R$ ${fmtVal(modalLocacao.taxaTotal)}` : 'Confirmar recebimento' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <Transition name="toast">
       <div v-if="toastShow" :class="['toast', toastTipo]">{{ toastMsg }}</div>
     </Transition>
@@ -302,11 +416,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useSessaoStore }     from "../stores/sessao";
 import { useParametrosStore } from "../stores/parametros";
 import { supabase }           from "../composables/useSupabase";
 import apiClient              from "../services/api";
 
+const route           = useRoute();
+const router          = useRouter();
 const sessaoStore     = useSessaoStore();
 const parametrosStore = useParametrosStore();
 
@@ -344,7 +461,27 @@ function toast(msg, tipo = 'ok', ms = 4000) {
   toastTimer = setTimeout(() => { toastShow.value = false; }, ms);
 }
 
-onMounted(() => carregar(0));
+const salvandoLocacao = ref(false);
+const modalLocacao    = ref({ show: false, diasAtraso: 0, taxaDiaria: 0, taxaTotal: 0 });
+
+function fmtVal(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+
+onMounted(async () => {
+  await carregar(0);
+  const abrirPk = route.query.abrir ? parseInt(route.query.abrir) : null;
+  if (abrirPk) {
+    let v = vendas.value.find(x => x.pk === abrirPk);
+    if (!v) {
+      const { data } = await supabase
+        .from('vendas')
+        .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe')
+        .eq('pk', abrirPk)
+        .single();
+      v = data;
+    }
+    if (v) abrirDetalhe(v);
+  }
+});
 
 async function carregar(pagina = 0) {
   carregando.value = true;
@@ -422,6 +559,76 @@ async function abrirDetalheEImprimir(v) {
 }
 
 function fecharDetalhe() { detalhe.value = null; }
+
+function fmtDataHora(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('pt-BR') + ' ' + new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function locacaoVencida(v) {
+  if (!v?.data_devolucao_prevista) return false;
+  return new Date(v.data_devolucao_prevista) < new Date();
+}
+
+function confirmarDevolucaoLocacao() {
+  const v = detalhe.value;
+  if (!v) return;
+  const taxaDiaria  = parseFloat(parametrosStore.getParam('locacao_taxa_realocacao', 0));
+  const prevista    = v.data_devolucao_prevista ? new Date(v.data_devolucao_prevista) : null;
+  const agora       = new Date();
+  const diasAtraso  = prevista && agora > prevista
+    ? Math.ceil((agora - prevista) / (1000 * 60 * 60 * 24))
+    : 0;
+  modalLocacao.value = {
+    show: true,
+    diasAtraso,
+    taxaDiaria,
+    taxaTotal: diasAtraso * taxaDiaria,
+  };
+}
+
+async function executarDevolucaoLocacao(cobrarTaxa) {
+  const v = detalhe.value;
+  if (!v) return;
+  salvandoLocacao.value = true;
+  try {
+    const acao = (cobrarTaxa && (modalLocacao.value.diasAtraso > 0 || modalLocacao.value.forcaTaxa)) ? 'taxa_cobrada' : 'devolvida';
+    const taxaValor = acao === 'taxa_cobrada' ? (modalLocacao.value.taxaTotal || 0) : null;
+    const body = { acao };
+    if (taxaValor !== null) body.taxa_cobrada_valor = taxaValor;
+    await apiClient.patch(`/api/vendas/${v.pk}/locacao`, body);
+    const agora = new Date().toISOString();
+    detalhe.value = { ...v, status_locacao: acao, data_devolucao_real: agora, taxa_realocacao_cobrada: taxaValor };
+    const idx = vendas.value.findIndex(x => x.pk === v.pk);
+    if (idx >= 0) vendas.value[idx] = { ...vendas.value[idx], status_locacao: acao };
+    modalLocacao.value.show = false;
+    toast(acao === 'taxa_cobrada'
+      ? `Devolução confirmada e taxa de R$ ${fmtVal(modalLocacao.value.taxaTotal)} registrada.`
+      : 'Devolução confirmada com sucesso.');
+  } catch (e) {
+    toast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
+  } finally {
+    salvandoLocacao.value = false;
+  }
+}
+
+function cobrarTaxaRealocacao() {
+  const v = detalhe.value;
+  if (!v) return;
+  const taxaDiaria = parseFloat(parametrosStore.getParam('locacao_taxa_realocacao', 0));
+  const prevista   = v.data_devolucao_prevista ? new Date(v.data_devolucao_prevista) : null;
+  const agora      = new Date();
+  const diasAtraso = prevista && agora > prevista
+    ? Math.ceil((agora - prevista) / (1000 * 60 * 60 * 24))
+    : 0;
+  modalLocacao.value = {
+    show: true,
+    forcaTaxa: true,
+    diasAtraso,
+    taxaDiaria,
+    taxaTotal: diasAtraso * taxaDiaria || taxaDiaria,
+  };
+}
 
 function reimprimirRecibo() {
   const v          = detalhe.value;
@@ -686,6 +893,10 @@ function statusCls(s) {
 /* ── Modal Detalhe ─────────────────────────── */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem; }
 .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 600px; box-shadow: 0 24px 60px rgba(0,0,0,.4); overflow: hidden; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 14px; border-bottom: 1px solid var(--border); }
+.modal-header h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0; }
+.modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--border); flex-wrap: wrap; }
 
 .det-modal { max-width: 640px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
 
@@ -728,6 +939,29 @@ function statusCls(s) {
 .det-actions { display: flex; gap: .75rem; padding: 1rem 1.5rem; background: var(--bg3); flex-shrink: 0; flex-wrap: wrap; }
 .det-btn-fechar { padding: .6rem 1.2rem; border: 1px solid var(--border); background: var(--bg2); color: var(--text); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
 .det-btn-fechar:hover { background: var(--bg3); }
+.det-btn-editar { display: flex; align-items: center; gap: 6px; padding: .6rem 1.2rem; background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.4); color: var(--primary); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
+.det-btn-editar:hover { background: rgba(99,102,241,.25); }
+.det-btn-loc-dev { display: flex; align-items: center; gap: 6px; padding: .6rem 1.2rem; background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.4); color: #34d399; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
+.det-btn-loc-dev:hover:not(:disabled) { background: rgba(16,185,129,.25); }
+.det-btn-loc-taxa { display: flex; align-items: center; gap: 6px; padding: .6rem 1.2rem; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.4); color: #f59e0b; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
+.det-btn-loc-taxa:hover:not(:disabled) { background: rgba(245,158,11,.25); }
+.det-btn-loc-dev:disabled, .det-btn-loc-taxa:disabled { opacity: .5; cursor: not-allowed; }
+.loc-vencida { color: #f87171 !important; }
+.loc-atrasada-badge { display: inline-block; margin-left: 6px; font-size: .7rem; background: rgba(239,68,68,.2); color: #f87171; border-radius: 4px; padding: 1px 6px; font-weight: 700; }
+.loc-status-pendente   { color: #f59e0b; font-weight: 700; }
+.loc-status-devolvida  { color: #34d399; font-weight: 700; }
+.loc-status-taxa_cobrada { color: #a78bfa; font-weight: 700; }
+.modal-loc { max-width: 460px; }
+.loc-atraso-box { display: flex; flex-direction: column; gap: 10px; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.3); border-radius: 12px; padding: 16px 18px; width: 100%; box-sizing: border-box; }
+.loc-atraso-top { display: flex; align-items: center; gap: 8px; }
+.loc-atraso-titulo { font-weight: 700; color: #f59e0b; font-size: .95rem; margin: 0; }
+.loc-atraso-info { font-size: .86rem; color: var(--text2); margin: 0; }
+.loc-taxa-row { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid rgba(245,158,11,.2); }
+.loc-taxa-label { font-size: .75rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+.loc-taxa-edit-wrap { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 2px solid rgba(245,158,11,.5); border-radius: 10px; padding: 4px 12px 4px 14px; width: 100%; box-sizing: border-box; }
+.loc-taxa-prefix { font-size: 1rem; font-weight: 700; color: #f59e0b; flex-shrink: 0; }
+.loc-taxa-input { flex: 1; padding: 8px 0; border: none; background: transparent; color: var(--text); font-size: 1.3rem; font-weight: 800; text-align: right; min-width: 0; outline: none; width: 100%; }
+.loc-ok-box { display: flex; align-items: center; gap: 12px; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); border-radius: 12px; padding: 16px 18px; font-size: .9rem; color: var(--text); }
 .det-btn-print { display: flex; align-items: center; gap: .4rem; padding: .6rem 1.2rem; border: none; background: var(--primary); color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: opacity .15s; }
 .det-btn-print:hover:not(:disabled) { opacity: .88; }
 .det-btn-print:disabled { opacity: .5; cursor: not-allowed; }

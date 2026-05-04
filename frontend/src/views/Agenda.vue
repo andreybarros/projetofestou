@@ -326,6 +326,10 @@
                   <span class="material-symbols-outlined" style="font-size:14px">open_in_new</span>
                   Ver detalhes
                 </button>
+                <button class="btn-ver-venda-det btn-historico" @click="router.push('/historico-vendas?abrir=' + eventoDetalhe.venda_pk); eventoDetalhe = null">
+                  <span class="material-symbols-outlined" style="font-size:14px">history</span>
+                  Abrir no Histórico
+                </button>
               </div>
             </div>
           </div>
@@ -378,10 +382,12 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
 
 const sessaoStore = useSessaoStore();
+const router      = useRouter();
 
 // ── Estado ────────────────────────────────────────────────────
 const hoje       = new Date();
@@ -896,8 +902,9 @@ function showToast(msg, tipo = 'ok') {
 .ev-det-venda-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ev-det-venda-num { font-size: 15px; font-weight: 800; color: var(--accent); }
 .ev-det-venda-cliente { font-size: 13px; color: var(--text); font-weight: 600; }
-.btn-ver-venda-det { display: flex; align-items: center; gap: 4px; padding: 5px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--accent); font-size: 12px; font-weight: 700; cursor: pointer; margin-left: auto; transition: background .15s; }
+.btn-ver-venda-det { display: flex; align-items: center; gap: 4px; padding: 5px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--accent); font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s; }
 .btn-ver-venda-det:hover { background: var(--bg2); }
+.btn-historico { color: #a78bfa; border-color: rgba(167,139,250,.3); }
 .btn-icon-action { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
 .btn-icon-action.del { background: rgba(239,68,68,.12); color: #f87171; }
 .btn-icon-action.del:hover { background: rgba(239,68,68,.22); }

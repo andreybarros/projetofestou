@@ -309,7 +309,7 @@ router.get('/', async (req, res) => {
     
     let q = supabase
       .from('vendas')
-      .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' });
+      .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' });
 
     if (filial_pk && filial_pk !== 'undefined' && filial_pk !== 'null' && filial_pk !== '') {
       q = q.eq('filial_pk', parseInt(filial_pk));
@@ -350,6 +350,115 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.put('/:pk', async (req, res) => {
+  try {
+    const { pk } = req.params;
+    const {
+      cliente, cliente_pk, vendedor, vendedor_pk,
+      itens, pagamentos, subtotal, desconto_total, total,
+      tipo_venda, canal_venda,
+      data_locacao, data_devolucao_prevista, data_vencimento_crediario,
+    } = req.body;
+
+    if (!Array.isArray(itens) || !Array.isArray(pagamentos) || total === undefined) {
+      return res.status(400).json({ erro: 'itens, pagamentos e total são obrigatórios' });
+    }
+
+    const { data: venda } = await supabase.from('vendas').select('*').eq('pk', pk).single();
+    if (!venda) return res.status(404).json({ erro: 'Venda não encontrada' });
+
+    const { data: itensAtuais } = await supabase.from('itens_venda').select('*').eq('venda_pk', pk);
+    for (const item of itensAtuais || []) {
+      if (!item.produto_pk) continue;
+      await supabase.rpc('ajustar_saldo_produto', {
+        p_pk: item.produto_pk,
+        p_delta: parseFloat(item.qtd || 0),
+        p_permitir_negativo: true,
+      });
+    }
+
+    await supabase.from('itens_venda').delete().eq('venda_pk', pk);
+    await supabase.from('pagamentos_venda').delete().eq('venda_pk', pk);
+
+    const payloadVenda = {
+      cliente:       cliente      || null,
+      cliente_pk:    cliente_pk   || null,
+      vendedor:      vendedor     || null,
+      vendedor_pk:   vendedor_pk  || null,
+      subtotal:      parseFloat(subtotal      || 0),
+      desconto_total: parseFloat(desconto_total || 0),
+      total:         parseFloat(total),
+      tipo_venda:    tipo_venda   || 'venda',
+      canal_venda:   canal_venda  || 'presencial',
+    };
+
+    if (tipo_venda === 'locacao') {
+      payloadVenda.data_locacao = data_locacao ? new Date(data_locacao).toISOString() : null;
+      payloadVenda.data_devolucao_prevista = data_devolucao_prevista ? new Date(data_devolucao_prevista).toISOString() : null;
+    }
+
+    const temCrediario = pagamentos.some(p => String(p.forma).toLowerCase() === 'crediario');
+    if (temCrediario && data_vencimento_crediario) {
+      payloadVenda.data_vencimento_crediario = data_vencimento_crediario;
+      payloadVenda.status_crediario = 'pendente';
+    }
+
+    const { error: errUpd } = await supabase.from('vendas').update(payloadVenda).eq('pk', pk);
+    if (errUpd) throw errUpd;
+
+    const itensPayload = itens.map(item => ({
+      venda_pk:     parseInt(pk),
+      produto_pk:   item.produto_pk   || null,
+      descricao:    item.descricao    || '',
+      codigo:       item.codigo       || null,
+      qtd:          parseFloat(item.qtd          || 1),
+      preco_unit:   parseFloat(item.preco_unit   || 0),
+      total_item:   parseFloat(item.total_item   || 0),
+      desconto_val: parseFloat(item.desconto_val || 0),
+    }));
+    const { error: errItens } = await supabase.from('itens_venda').insert(itensPayload);
+    if (errItens) throw errItens;
+
+    const pagamentosPayload = pagamentos.map(p => ({
+      venda_pk: parseInt(pk),
+      forma:    String(p.forma || 'dinheiro'),
+      valor:    parseFloat(p.valor || 0),
+    }));
+    const { error: errPag } = await supabase.from('pagamentos_venda').insert(pagamentosPayload);
+    if (errPag) throw errPag;
+
+    const { data: paramEstoque } = await supabase
+      .from('parametros')
+      .select('valor')
+      .eq('chave', 'pdv_permitir_estoque_negativo')
+      .or(`filial_pk.eq.${venda.filial_pk || 0},filial_pk.is.null`)
+      .order('filial_pk', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
+
+    for (const item of itens) {
+      if (!item.produto_pk) continue;
+      const { data: ok } = await supabase.rpc('ajustar_saldo_produto', {
+        p_pk: item.produto_pk,
+        p_delta: -parseFloat(item.qtd || 0),
+        p_permitir_negativo: permitirNegativo,
+      });
+      if (ok === false) {
+        return res.status(400).json({
+          erro: `Estoque insuficiente para o produto ${item.descricao || item.produto_pk}.`,
+          produto_pk: item.produto_pk,
+        });
+      }
+    }
+
+    res.json({ ok: true, venda_pk: parseInt(pk) });
+  } catch (err) {
+    console.error('[Vendas/Editar] Erro:', err);
+    res.status(500).json({ erro: err.message || 'Erro ao editar venda' });
+  }
+});
+
 router.delete('/:pk', async (req, res) => {
   try {
     const { pk } = req.params;
@@ -382,6 +491,39 @@ router.delete('/:pk', async (req, res) => {
   } catch (err) {
     console.error('[Vendas/Excluir] Erro:', err);
     res.status(500).json({ erro: err.message });
+  }
+});
+
+// PATCH /api/vendas/:pk/locacao — confirmar devolução ou cobrar taxa de realocação
+router.patch('/:pk/locacao', async (req, res) => {
+  const { pk } = req.params;
+  const { acao, taxa_cobrada_valor } = req.body; // 'devolvida' | 'taxa_cobrada'
+
+  if (!['devolvida', 'taxa_cobrada'].includes(acao)) {
+    return res.status(400).json({ erro: 'Ação inválida. Use devolvida ou taxa_cobrada.' });
+  }
+
+  try {
+    const { data: venda, error: errBusca } = await supabase
+      .from('vendas').select('pk, tipo_venda, status_locacao').eq('pk', pk).single();
+    if (errBusca || !venda) return res.status(404).json({ erro: 'Venda não encontrada.' });
+    if (venda.tipo_venda !== 'locacao') return res.status(400).json({ erro: 'Venda não é uma locação.' });
+
+    const update = { status_locacao: acao };
+    if (acao === 'devolvida') {
+      update.data_devolucao_real = new Date().toISOString();
+    }
+    if (acao === 'taxa_cobrada' && taxa_cobrada_valor !== undefined) {
+      update.taxa_realocacao_cobrada = parseFloat(taxa_cobrada_valor) || 0;
+    }
+
+    const { error } = await supabase.from('vendas').update(update).eq('pk', pk);
+    if (error) throw error;
+
+    return res.json({ ok: true, status_locacao: acao });
+  } catch (e) {
+    console.error('[Vendas/locacao]', e.message);
+    return res.status(500).json({ erro: e.message });
   }
 });
 

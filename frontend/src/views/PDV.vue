@@ -376,6 +376,10 @@
                   Selecione um cliente para usar o crediário
                 </div>
               </div>
+              <div v-if="tipoVenda === 'locacao' && locacaoExigeCliente && !clienteSel" class="crediario-warn" style="margin-top:6px">
+                <span class="material-symbols-outlined">warning</span>
+                Selecione um cliente para finalizar a locação
+              </div>
               <div v-if="temCrediario && clienteInadimplente && crediarioBloqueiainadimpl" class="crediario-warn inadimpl" style="margin-top:6px">
                 <span class="material-symbols-outlined">block</span>
                 <span>Cliente possui <b>{{ inadimplenteQtd }} boleto(s) em atraso</b>. Crediário disponível somente após quitar as dívidas.</span>
@@ -855,6 +859,7 @@ const filtrados = computed(() => {
 
 const bloqueiarSemCaixa         = computed(() => parametrosStore.getParam('pdv_bloquear_sem_caixa', true));
 const crediarioExigeCliente     = computed(() => parametrosStore.getParam('crediario_exige_cliente', true));
+const locacaoExigeCliente       = computed(() => parametrosStore.getParam('locacao_exige_cliente', true));
 const crediarioBloqueiainadimpl = computed(() => parametrosStore.getParam('crediario_bloqueia_inadimplente', true));
 const exigeVendedor             = computed(() => parametrosStore.getParam('pdv_exigir_vendedor', false));
 const permitirEstoqueNegativo   = computed(() => parametrosStore.getParam('pdv_permitir_estoque_negativo', false));
@@ -893,7 +898,8 @@ const podeFinalizar = computed(() =>
   (!bloqueiarSemCaixa.value || !!caixaStore.caixaAberto) &&
   (!temCrediario.value || !!dtVenc.value) &&
   (!temCrediario.value || !crediarioExigeCliente.value || !!clienteSel.value) &&
-  (!temCrediario.value || !crediarioBloqueiainadimpl.value || !clienteInadimplente.value)
+  (!temCrediario.value || !crediarioBloqueiainadimpl.value || !clienteInadimplente.value) &&
+  (tipoVenda.value !== 'locacao' || !locacaoExigeCliente.value || !!clienteSel.value)
 );
 
 const troco = computed(() =>

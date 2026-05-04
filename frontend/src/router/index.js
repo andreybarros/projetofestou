@@ -21,6 +21,7 @@ const FormVendedor    = () => import('../views/FormVendedor.vue');
 const ContasReceber   = () => import('../views/ContasReceber.vue');
 const Receitas        = () => import('../views/Receitas.vue');
 const HistoricoVendas = () => import('../views/HistoricoVendas.vue');
+const EditarVenda     = () => import('../views/EditarVenda.vue');
 const Funcionarios    = () => import('../views/Funcionarios.vue');
 const Ponto           = () => import('../views/Ponto.vue');
 const AjusteBatidas   = () => import('../views/AjusteBatidas.vue');
@@ -70,7 +71,8 @@ const routes = [
   { path: '/vendedores/:pk/editar',   name: 'EditarVendedor',   component: FormVendedor,    meta: { requiresAuth: true } },
   { path: '/contas-receber',          name: 'ContasReceber',    component: ContasReceber,   meta: { requiresAuth: true } },
   { path: '/receitas',          name: 'Receitas',         component: Receitas,        meta: { requiresAuth: true } },
-  { path: '/historico-vendas',  name: 'HistoricoVendas',  component: HistoricoVendas, meta: { requiresAuth: true } },
+  { path: '/historico-vendas',           name: 'HistoricoVendas', component: HistoricoVendas, meta: { requiresAuth: true } },
+  { path: '/historico-vendas/:pk/editar', name: 'EditarVenda',     component: EditarVenda,     meta: { requiresAuth: true } },
   { path: '/funcionarios',      name: 'Funcionarios',     component: Funcionarios,    meta: { requiresAuth: true } },
   { path: '/ponto',             name: 'Ponto',            component: Ponto,           meta: { requiresAuth: true } },
   { path: '/ajuste-batidas',    name: 'AjusteBatidas',    component: AjusteBatidas,   meta: { requiresAuth: true } },

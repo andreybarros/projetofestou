@@ -146,7 +146,9 @@ ALTER TABLE vendas
   ADD COLUMN IF NOT EXISTS tipo_venda                text    DEFAULT 'venda',
   ADD COLUMN IF NOT EXISTS data_locacao              timestamp without time zone,
   ADD COLUMN IF NOT EXISTS data_devolucao_prevista   timestamp without time zone,
+  ADD COLUMN IF NOT EXISTS data_devolucao_real       timestamp without time zone,
   ADD COLUMN IF NOT EXISTS status_locacao            text,
+  ADD COLUMN IF NOT EXISTS taxa_realocacao_cobrada   numeric(12,2),
   ADD COLUMN IF NOT EXISTS canal_venda               text    DEFAULT 'presencial',
   ADD COLUMN IF NOT EXISTS data_vencimento_crediario date,
   ADD COLUMN IF NOT EXISTS status_crediario          text;
@@ -552,6 +554,9 @@ $$ LANGUAGE plpgsql;
 GRANT EXECUTE ON FUNCTION next_nfce_numero(bigint, integer) TO service_role;
 GRANT ALL ON TABLE nfce_sequencia TO service_role;
 
+ALTER TABLE nfce_sequencia ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all_nfce_sequencia" ON nfce_sequencia FOR ALL TO anon USING (true) WITH CHECK (true);
+
 -- 5.6 Inicializar sequências para filiais existentes
 INSERT INTO nfce_sequencia (filial_pk, serie, ultimo_num)
 SELECT
@@ -596,6 +601,11 @@ CREATE TABLE IF NOT EXISTS itens_orcamento (
 );
 
 CREATE INDEX IF NOT EXISTS idx_orcamentos_codigo ON orcamentos(codigo);
+
+ALTER TABLE orcamentos     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE itens_orcamento ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all_orcamentos"      ON orcamentos      FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_itens_orcamento" ON itens_orcamento FOR ALL TO anon USING (true) WITH CHECK (true);
 
 
 
@@ -704,8 +714,10 @@ INSERT INTO parametros (filial_pk, chave, valor) VALUES
   -- Vendas
   (null, 'venda_permite_desconto_sem_aprovacao', 'true'),
   (null, 'venda_imprime_cupom',                  'false'),
+  (null, 'locacao_taxa_realocacao',              '0'),
   -- Crediário
   (null, 'crediario_exige_cliente',              'true'),
+  (null, 'locacao_exige_cliente',               'true'),
   (null, 'crediario_bloqueia_inadimplente',      'true'),
   -- Vales
   (null, 'vale_gestor_pk',                       '')
