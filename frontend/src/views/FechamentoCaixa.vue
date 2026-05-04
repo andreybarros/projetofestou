@@ -220,7 +220,7 @@ async function gerar() {
     let pagamentos = [];
     if (vPks.length > 0) {
       const { data: pags, error: ep } = await supabase.from('pagamentos_venda')
-        .select('*, contas_bancarias(nome)')
+        .select('*')
         .in('venda_pk', vPks);
       if (ep) throw ep;
       pagamentos = pags || [];
@@ -254,10 +254,7 @@ function processarRelatorio(vendas, despesas, pagamentos) {
   const list = [
     ...vendas.map(v => {
       const pags = pagamentos.filter(p => p.venda_pk === v.pk);
-      const descPags = pags.map(p => {
-        const l = FORMA_LABELS[p.forma] || p.forma;
-        return p.contas_bancarias ? `${l} (${p.contas_bancarias.nome})` : l;
-      }).join(', ');
+      const descPags = pags.map(p => FORMA_LABELS[p.forma] || p.forma).join(', ');
       
       const canal = v.canal_venda === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial';
       
