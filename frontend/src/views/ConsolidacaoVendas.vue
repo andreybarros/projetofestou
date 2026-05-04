@@ -87,10 +87,10 @@
                   <input type="date" v-model="formPend[p.pk].data_recebimento" class="cf-input" />
                 </div>
                 <div class="cf-group">
-                  <label>Conta</label>
-                  <select v-model="formPend[p.pk].conta_pk" class="cf-input">
-                    <option :value="null">Selecionar…</option>
-                    <option v-for="c in contas" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
+                  <label>Forma de Pagamento</label>
+                  <select v-model="formPend[p.pk].forma" class="cf-input">
+                    <option value="">Selecionar…</option>
+                    <option v-for="f in formas" :key="f.pk" :value="f.forma">{{ f.label }}</option>
                   </select>
                 </div>
                 <div class="cf-group cf-obs">
@@ -359,7 +359,7 @@ async function carregarPendentes() {
     if (!formPend[p.pk]) {
       formPend[p.pk] = {
         data_recebimento: dataPrevisao(p.forma, new Date()),
-        conta_pk: null,
+        forma: p.forma || '',
         descricao: '',
       };
     }
@@ -410,10 +410,9 @@ async function confirmarPendente(p) {
       filial_pk:        sessaoStore.filial?.pk,
       pagamento_pk:     p.pk,
       venda_pk:         p.venda_pk,
-      conta_pk:         f.conta_pk || null,
       data_recebimento: f.data_recebimento,
       valor:            p.valor,
-      forma:            p.forma,
+      forma:            f.forma || p.forma,
       descricao:        f.descricao || null,
     });
     if (error) throw error;
@@ -462,7 +461,7 @@ async function confirmarExclusao() {
     if (error) throw error;
     showToast('Excluído.', 'ok');
     excluindo.value = null;
-    await carregarRecebimentos();
+    await carregar();
   } catch (e) {
     showToast('Erro: ' + e.message, 'err');
   } finally {
