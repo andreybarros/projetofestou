@@ -165,9 +165,52 @@
                <button @click="toggleForma(f)" class="btn-toggle">
                  {{ f.ativo ? 'Desativar' : 'Ativar' }}
                </button>
+               <button @click="abrirEditarForma(f)" class="btn-edit-ico" title="Editar">✏️</button>
                <button @click="excluirForma(f)" class="del-ico">🗑️</button>
             </div>
           </div>
+        </div>
+
+        <!-- MODAL EDITAR FORMA -->
+        <div v-if="mostrandoEditForma" class="modal-overlay" @click.self="mostrandoEditForma = false">
+           <div class="modal-card mini animate-slide-up">
+              <div class="modal-header">
+                <h3>Editar Forma de Pagamento</h3>
+                <button @click="mostrandoEditForma = false" class="close-btn">×</button>
+              </div>
+              <div class="modal-body">
+                <div class="field mb-3">
+                  <label>Identificador Interno (sem espaços)</label>
+                  <input v-model="formEditar.forma" type="text" placeholder="pix" />
+                </div>
+                <div class="field mb-3">
+                  <label>Nome Exibido</label>
+                  <input v-model="formEditar.label" type="text" placeholder="Pix" />
+                </div>
+                <div class="field">
+                  <label>Ícone</label>
+                  <div class="emoji-preview-row">
+                    <span class="emoji-selected">{{ formEditar.icone || '?' }}</span>
+                    <span class="emoji-hint">Selecione abaixo ou digite:</span>
+                    <input v-model="formEditar.icone" type="text" class="emoji-input-text" maxlength="4" />
+                  </div>
+                  <div class="emoji-grid">
+                    <button
+                      v-for="e in emojisDisponiveis" :key="e"
+                      type="button"
+                      :class="['emoji-opt', { active: formEditar.icone === e }]"
+                      @click="formEditar.icone = e"
+                    >{{ e }}</button>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button @click="mostrandoEditForma = false" class="btn-ghost">Cancelar</button>
+                <button @click="salvarEdicaoForma" class="btn-primary" :disabled="!formEditar.forma || !formEditar.label || processando">
+                  Salvar Alterações
+                </button>
+              </div>
+           </div>
         </div>
 
         <!-- FORM NOVA FORMA -->
@@ -255,6 +298,9 @@ const formForma = reactive({
   icone: '💳'
 });
 const mostrandoNovaForma = ref(false);
+
+const formEditar = reactive({ pk: null, forma: '', label: '', icone: '💳' });
+const mostrandoEditForma = ref(false);
 
 onMounted(() => {
   carregarContas();
@@ -383,6 +429,35 @@ async function excluirForma(f) {
     formas.value = formas.value.filter(item => item.pk !== f.pk);
   } catch (e) {
     showToast('Erro ao excluir: ' + e.message, 'error');
+  }
+}
+
+function abrirEditarForma(f) {
+  formEditar.pk = f.pk;
+  formEditar.forma = f.forma;
+  formEditar.label = f.label;
+  formEditar.icone = f.icone;
+  mostrandoEditForma.value = true;
+}
+
+async function salvarEdicaoForma() {
+  processando.value = true;
+  try {
+    const formaId = formEditar.forma.trim().toLowerCase().replace(/\s+/g, '_');
+    const { error } = await supabase.from('formas_pagamento').update({
+      forma: formaId,
+      label: formEditar.label,
+      icone: formEditar.icone
+    }).eq('pk', formEditar.pk);
+    if (error) throw error;
+    const f = formas.value.find(x => x.pk === formEditar.pk);
+    if (f) { f.forma = formaId; f.label = formEditar.label; f.icone = formEditar.icone; }
+    mostrandoEditForma.value = false;
+    showToast('Forma de pagamento atualizada!');
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error');
+  } finally {
+    processando.value = false;
   }
 }
 
@@ -525,6 +600,8 @@ function fmt(v) {
 .btn-toggle { background: var(--bg2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--text); }
 .del-ico { background: none; border: none; cursor: pointer; opacity: 0.3; }
 .del-ico:hover { opacity: 1; }
+.btn-edit-ico { background: none; border: none; cursor: pointer; opacity: 0.4; font-size: 14px; }
+.btn-edit-ico:hover { opacity: 1; }
 
 .vazio-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; color: var(--text2); gap: 1rem; }
 .vazio-state .large { font-size: 3rem; opacity: 0.3; }

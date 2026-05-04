@@ -330,6 +330,24 @@ function showToast(msg, tipo = 'ok') {
 
 .params-body { display: flex; flex-direction: column; gap: 20px; }
 
+/* Formas de Pagamento */
+.fp-list { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
+.fp-row  { display: flex; align-items: center; gap: 8px; }
+.fp-input { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 10px; font-size: .88rem; outline: none; }
+.fp-input:focus { border-color: var(--primary); }
+.fp-icone { width: 52px; text-align: center; flex-shrink: 0; }
+.fp-label { flex: 1; }
+.fp-forma { width: 130px; flex-shrink: 0; font-family: monospace; font-size: .82rem; }
+.fp-toggle { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); font-size: .78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: all .15s; }
+.fp-toggle.fp-ativo { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.4); color: #34d399; }
+.fp-btn-save { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; background: rgba(99,102,241,.12); border-radius: 8px; color: var(--primary); cursor: pointer; flex-shrink: 0; transition: all .15s; }
+.fp-btn-save:hover { background: rgba(99,102,241,.22); }
+.fp-btn-del  { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; background: transparent; border-radius: 8px; color: var(--text2); cursor: pointer; flex-shrink: 0; transition: all .15s; }
+.fp-btn-del:hover  { background: rgba(239,68,68,.12); color: #f87171; }
+.fp-btn-add  { display: flex; align-items: center; gap: 6px; margin: 0 20px 16px; padding: 8px 14px; border: 1px dashed var(--border); background: transparent; color: var(--text2); border-radius: 10px; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .15s; }
+.fp-btn-add:hover { border-color: var(--primary); color: var(--primary); }
+.fp-empty { color: var(--text2); font-size: .88rem; padding: 8px 0; }
+
 .param-group {
   background: var(--bg2);
   border: 1px solid var(--border);

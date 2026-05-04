@@ -73,7 +73,7 @@
             </thead>
             <tbody>
               <tr v-for="(val, forma) in resumo.formas" :key="forma">
-                <td>{{ FORMA_LABELS[forma] || forma }}</td>
+                <td>{{ labelForma(forma) }}</td>
                 <td class="text-right mono">{{ fmt(val) }}</td>
               </tr>
               <tr v-if="Object.keys(resumo.formas).length === 0">
@@ -162,22 +162,36 @@ const resumo = reactive({
 
 const movimentos = ref([]);
 
-const FORMA_LABELS = {
-  dinheiro: '💵 Dinheiro',
-  pix: '📱 PIX',
-  debito: '💳 Débito',
-  credito: '💳 Crédito',
-  crediario: '📒 Crediário',
-  vale: '🎟️ Vale'
-};
+const FORMA_LABELS = ref({
+  dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito',
+  credito: 'Crédito', crediario: 'Crediário', vale: 'Vale'
+});
+
+function labelForma(forma) {
+  return FORMA_LABELS.value[forma] || forma;
+}
 
 onMounted(async () => {
-  await carregarOperadores();
+  await Promise.all([carregarOperadores(), carregarFormas()]);
 });
 
 async function carregarOperadores() {
   const { data } = await supabase.from('operadores').select('pk, nome').order('nome');
   operadores.value = data || [];
+}
+
+async function carregarFormas() {
+  const filial_pk = sessaoStore.filial?.pk;
+  if (!filial_pk) return;
+  const { data } = await supabase.from('formas_pagamento')
+    .select('forma, label, icone')
+    .eq('filial_pk', filial_pk)
+    .eq('ativo', true);
+  if (data?.length) {
+    const mapa = {};
+    data.forEach(f => { mapa[f.forma] = `${f.icone || ''} ${f.label}`.trim(); });
+    FORMA_LABELS.value = { ...FORMA_LABELS.value, ...mapa };
+  }
 }
 
 async function gerar() {
@@ -254,7 +268,7 @@ function processarRelatorio(vendas, despesas, pagamentos) {
   const list = [
     ...vendas.map(v => {
       const pags = pagamentos.filter(p => p.venda_pk === v.pk);
-      const descPags = pags.map(p => FORMA_LABELS[p.forma] || p.forma).join(', ');
+      const descPags = pags.map(p => labelForma(p.forma)).join(', ');
       
       const canal = v.canal_venda === 'whatsapp' ? '💬 WhatsApp' : '🏪 Presencial';
       
@@ -303,7 +317,7 @@ function exportar() {
     ['Qtd Vendas', resumo.qtdVendas],
     [''],
     ['POR FORMA DE PAGAMENTO'],
-    ...Object.entries(resumo.formas).map(([f, v]) => [FORMA_LABELS[f] || f, v])
+    ...Object.entries(resumo.formas).map(([f, v]) => [labelForma(f), v])
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resData), "Resumo");
 

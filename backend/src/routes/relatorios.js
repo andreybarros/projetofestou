@@ -60,7 +60,7 @@ router.get('/vendas/:filial_pk', async (req, res) => {
     vendasPeriodo.forEach(v => {
       const valor = parseFloat(v.total || 0);
       const dataV = v.criado_em.split('T')[0];
-      const hora = new Date(v.criado_em).getHours();
+      const hora = parseInt(new Date(v.criado_em).toLocaleString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', hour12: false }), 10);
       
       fatMes += valor;
       if (v.criado_em >= hoje) fatDia += valor;

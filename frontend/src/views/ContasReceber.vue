@@ -149,13 +149,16 @@
           <div class="modal-field">
             <label class="modal-field-label">Forma de recebimento</label>
             <div class="forma-grid">
+              <div v-if="!formas.length" style="color:var(--text2);font-size:.85rem;padding:8px">
+                Nenhuma forma de pagamento cadastrada.
+              </div>
               <button
                 v-for="f in formas"
                 :key="f.val"
                 :class="['forma-btn', { active: formaRecebimento === f.val }]"
                 @click="formaRecebimento = f.val"
               >
-                <span class="forma-ico">{{ f.ico }}</span>
+                <span v-if="f.ico" class="forma-ico">{{ f.ico }}</span>
                 {{ f.label }}
               </button>
             </div>
@@ -208,13 +211,7 @@ const toastMsg       = ref('');
 const toastTipo      = ref('ok');
 let   _toastTimer    = null;
 
-const formas = [
-  { val: 'dinheiro', label: 'Dinheiro', ico: '💵' },
-  { val: 'pix',      label: 'PIX',      ico: '📲' },
-  { val: 'credito',  label: 'Crédito',  ico: '💳' },
-  { val: 'debito',   label: 'Débito',   ico: '🏧' },
-  { val: 'vale',     label: 'Vale',     ico: '🎫' },
-];
+const formas = ref([]);
 
 const hoje = new Date().toISOString().slice(0, 10);
 
@@ -270,6 +267,13 @@ async function carregar() {
       lista.value = resultado.data || [];
       temFormaRecebimento.value = true;
     }
+    const { data: fp } = await supabase
+      .from('formas_pagamento')
+      .select('pk, forma, label, icone')
+      .eq('filial_pk', sessaoStore.filial.pk)
+      .eq('ativo', true)
+      .order('ordem');
+    formas.value = (fp || []).map(f => ({ val: f.forma, label: f.label, ico: f.icone }));
   } catch (e) {
     toast('Erro ao carregar: ' + e.message, 'err');
   } finally {

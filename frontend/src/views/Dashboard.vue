@@ -56,13 +56,21 @@
         </div>
       </div>
 
-      <div class="kpi-card" :class="{ 'kpi-card-alert': semEstoque > 0 }">
+      <div
+        class="kpi-card"
+        :class="{ 'kpi-card-alert': semEstoque > 0, 'kpi-card-clickable': semEstoque > 0 }"
+        @click="semEstoque > 0 && exportarEstoqueZerado()"
+        :title="semEstoque > 0 ? 'Clique para exportar lista em Excel' : ''"
+      >
         <div class="kpi-icon kpi-red">
-          <span class="material-symbols-outlined">warning</span>
+          <span class="material-symbols-outlined" :style="exportandoEstoque ? 'animation:spin 1s linear infinite' : ''">
+            {{ exportandoEstoque ? 'sync' : 'warning' }}
+          </span>
         </div>
         <div class="kpi-body">
           <span class="kpi-label">Estoque Zerado</span>
           <span class="kpi-value kpi-red-text">{{ carregando ? '—' : semEstoque }}</span>
+          <span v-if="semEstoque > 0" class="kpi-hint">Clique para exportar Excel</span>
         </div>
       </div>
     </div>
@@ -174,6 +182,7 @@ import { ref, computed, onMounted } from "vue";
 import { useSessaoStore } from "../stores/sessao";
 import { useCaixaStore }  from "../stores/caixa";
 import { supabase }       from "../composables/useSupabase";
+import * as XLSX from "xlsx";
 
 const sessaoStore   = useSessaoStore();
 const caixaStore    = useCaixaStore();
@@ -184,6 +193,8 @@ const faturamentoHoje   = ref(0);
 const lucroHoje         = ref(0);
 const totalProdutos     = ref(0);
 const semEstoque        = ref(0);
+const produtosZerados   = ref([]);
+const exportandoEstoque = ref(false);
 
 const agora = new Date();
 const saudacao = computed(() => {
@@ -251,11 +262,34 @@ async function carregarVendas() {
 }
 
 async function carregarProdutos() {
-  let q = supabase.from("produtos").select("pk, saldo", { count: "exact" });
+  let q = supabase.from("produtos").select("pk, descricao, codigo, saldo, preco_custo, valor_venda", { count: "exact" });
   if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
   const { data, count } = await q;
   totalProdutos.value = count || 0;
-  semEstoque.value    = (data || []).filter(p => parseFloat(p.saldo || 0) <= 0).length;
+  const zerados = (data || []).filter(p => parseFloat(p.saldo || 0) <= 0);
+  semEstoque.value    = zerados.length;
+  produtosZerados.value = zerados;
+}
+
+async function exportarEstoqueZerado() {
+  if (!produtosZerados.value.length) return;
+  exportandoEstoque.value = true;
+  try {
+    const rows = produtosZerados.value.map(p => ({
+      'Código':        p.codigo || '—',
+      'Produto':       p.descricao || '—',
+      'Saldo':         parseFloat(p.saldo || 0),
+      'Preço Custo':   parseFloat(p.preco_custo || 0),
+      'Preço Venda':   parseFloat(p.valor_venda || 0),
+    }));
+    const ws  = XLSX.utils.json_to_sheet(rows);
+    const wb  = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Estoque Zerado');
+    const data = new Date().toLocaleDateString('en-CA');
+    XLSX.writeFile(wb, `estoque_zerado_${data}.xlsx`);
+  } finally {
+    exportandoEstoque.value = false;
+  }
 }
 
 function fmt(v) {
@@ -299,6 +333,9 @@ function statusCls(s) {
 }
 .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,.12); }
 .kpi-card-alert { border-color: rgba(239,68,68,.3); }
+.kpi-card-clickable { cursor: pointer; }
+.kpi-card-clickable:hover { border-color: rgba(239,68,68,.6); background: rgba(239,68,68,.04); }
+.kpi-hint { font-size: .7rem; color: #f87171; font-weight: 600; margin-top: 2px; }
 
 .kpi-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .kpi-icon .material-symbols-outlined { font-size: 26px; }
@@ -310,7 +347,7 @@ function statusCls(s) {
 
 .kpi-body   { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .kpi-label  { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
-.kpi-value  { font-size: 1.55rem; font-weight: 800; color: var(--text); line-height: 1.1; }
+.kpi-value  { font-size: 1.55rem; font-weight: 800; color: var(--text); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kpi-green-text { color: #10b981; }
 .kpi-teal-text  { color: #14b8a6; }
 .kpi-red-text   { color: #ef4444; }
