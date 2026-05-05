@@ -21,6 +21,9 @@
       <button :class="['tab-btn', { active: tabAtiva === 'formas' }]" @click="mudarTab('formas')">
         <span class="material-symbols-outlined">payments</span> 💳 Formas de Pagamento
       </button>
+      <button :class="['tab-btn', { active: tabAtiva === 'categorias' }]" @click="mudarTab('categorias')">
+        <span class="material-symbols-outlined">label</span> 🏷️ Cat. Despesa
+      </button>
     </div>
 
     <!-- CONTEÚDO DAS ABAS -->
@@ -49,6 +52,7 @@
                 <span class="conta-nome">{{ c.nome }}</span>
                 <span class="conta-tipo">{{ c.tipo.toUpperCase() }}</span>
               </div>
+              <button @click="abrirEditSaldo(c)" class="del-btn" title="Editar saldo">✏️</button>
               <button @click="excluirConta(c)" class="del-btn" title="Excluir conta">🗑️</button>
             </div>
             <div class="conta-footer">
@@ -256,7 +260,54 @@
         </div>
       </div>
 
+      <!-- ABA: CATEGORIAS DE DESPESA -->
+      <div v-if="tabAtiva === 'categorias'" class="animate-fade">
+        <div class="tab-header align-start mb-4">
+          <div>
+            <h3>Categorias de Despesa</h3>
+            <p class="muted sm">Organize suas despesas por categoria.</p>
+          </div>
+        </div>
+
+        <div class="cat-add-row mb-4">
+          <input v-model="novaCategoria" type="text" placeholder="Nome da categoria (ex: Energia, Aluguel)" class="cat-input" @keydown.enter="salvarCategoria" />
+          <button class="btn-primary sm" @click="salvarCategoria" :disabled="!novaCategoria.trim() || processando">+ Adicionar</button>
+        </div>
+
+        <div v-if="carregandoCats" class="vazio">⏳ Carregando...</div>
+        <div v-else-if="categorias.length === 0" class="vazio">Nenhuma categoria cadastrada.</div>
+        <div v-else class="cats-lista">
+          <div v-for="c in categorias" :key="c.pk" class="cat-row">
+            <span class="cat-nome">{{ c.nome }}</span>
+            <button class="del-ico" @click="excluirCategoria(c)" title="Excluir">🗑️</button>
+          </div>
+        </div>
+      </div>
+
     </div>
+
+    <!-- MODAL: EDITAR SALDO -->
+    <Teleport to="body">
+      <div v-if="modalEditSaldo" class="modal-overlay" @click.self="modalEditSaldo = false">
+        <div class="modal-card mini animate-slide-up">
+          <div class="modal-header">
+            <h3>Editar Saldo — {{ contaEditando?.nome }}</h3>
+            <button @click="modalEditSaldo = false" class="close-btn">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="field">
+              <label>Novo Saldo (R$)</label>
+              <input v-model.number="novoSaldo" type="number" step="0.01" class="input-saldo" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="modalEditSaldo = false" class="btn-ghost">Cancelar</button>
+            <button @click="salvarSaldo" class="btn-primary" :disabled="processando">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -282,7 +333,17 @@ const emojisDisponiveis = [
 const carregandoContas = ref(false);
 const carregandoExtrato = ref(false);
 const carregandoFormas = ref(false);
+const carregandoCats   = ref(false);
 const processando = ref(false);
+
+// Categorias de despesa
+const categorias          = ref([]);
+const novaCategoria = ref('');
+
+// Editar saldo
+const modalEditSaldo  = ref(false);
+const contaEditando   = ref(null);
+const novoSaldo       = ref(0);
 
 const filtroContaPk = ref(null);
 
@@ -311,6 +372,7 @@ function mudarTab(tab) {
   if (tab === 'contas') carregarContas();
   if (tab === 'extrato') carregarExtrato();
   if (tab === 'formas') carregarFormas();
+  if (tab === 'categorias') carregarCategorias();
 }
 
 async function carregarContas() {
@@ -492,6 +554,75 @@ async function salvarNovaForma() {
   }
 }
 
+function abrirEditSaldo(c) {
+  contaEditando.value = c;
+  novoSaldo.value = c.saldo;
+  modalEditSaldo.value = true;
+}
+
+async function salvarSaldo() {
+  processando.value = true;
+  try {
+    const { error } = await supabase
+      .from('contas_bancarias')
+      .update({ saldo: novoSaldo.value })
+      .eq('pk', contaEditando.value.pk);
+    if (error) throw error;
+    contaEditando.value.saldo = novoSaldo.value;
+    modalEditSaldo.value = false;
+    showToast('Saldo atualizado!');
+  } catch (e) {
+    showToast('Erro ao salvar: ' + e.message, 'error');
+  } finally {
+    processando.value = false;
+  }
+}
+
+async function carregarCategorias() {
+  const fil = sessaoStore.filial?.pk;
+  if (!fil) return;
+  carregandoCats.value = true;
+  try {
+    const { data, error } = await supabase.from('categorias_despesa').select('*').eq('filial_pk', fil).order('nome');
+    if (error) throw error;
+    categorias.value = data || [];
+  } catch (e) {
+    showToast('Erro ao carregar categorias: ' + e.message, 'error');
+  } finally {
+    carregandoCats.value = false;
+  }
+}
+
+async function salvarCategoria() {
+  const fil = sessaoStore.filial?.pk;
+  const nome = novaCategoria.value.trim();
+  if (!nome || !fil) return;
+  processando.value = true;
+  try {
+    const { error } = await supabase.from('categorias_despesa').insert([{ filial_pk: fil, nome }]);
+    if (error) throw error;
+    novaCategoria.value = '';
+    await carregarCategorias();
+    showToast('Categoria adicionada!');
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    processando.value = false;
+  }
+}
+
+async function excluirCategoria(c) {
+  if (!confirm(`Excluir categoria "${c.nome}"?`)) return;
+  try {
+    const { error } = await supabase.from('categorias_despesa').delete().eq('pk', c.pk);
+    if (error) throw error;
+    categorias.value = categorias.value.filter(x => x.pk !== c.pk);
+    showToast('Categoria excluída.');
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
 async function excluirConta(c) {
   if (!confirm(`Deseja realmente excluir a conta "${c.nome}"? Movimentações antigas não serão apagadas.`)) return;
   try {
@@ -644,4 +775,21 @@ function fmt(v) {
 .emoji-opt { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; font-size: 18px; padding: 4px; cursor: pointer; transition: all .15s; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
 .emoji-opt:hover { background: var(--bg); border-color: var(--primary); transform: scale(1.15); }
 .emoji-opt.active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 15%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); }
+
+/* Categorias de despesa */
+.cat-add-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cat-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-size: 13px; outline: none; }
+.cat-input:focus { border-color: var(--primary); }
+.cats-lista { display: flex; flex-direction: column; gap: 6px; max-width: 500px; }
+.cat-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; }
+.cat-nome { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+
+/* Editar saldo */
+.input-saldo { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-size: 16px; font-weight: 700; width: 100%; outline: none; }
+.input-saldo:focus { border-color: var(--primary); }
+
+/* btn-primary usa --primary */
+.btn-primary { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-primary.sm { padding: 0.4rem 1rem; font-size: 0.8rem; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

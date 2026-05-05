@@ -893,6 +893,32 @@ CREATE POLICY "anon_all_entradas_estoque"      ON entradas_estoque              
 CREATE POLICY "anon_all_itens_entrada"         ON itens_entrada_estoque          FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ============================================================
+-- SEÇÃO 14 — CATEGORIAS DE DESPESA
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS categorias_despesa (
+  pk        bigserial PRIMARY KEY,
+  filial_pk bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  nome      text NOT NULL,
+  criado_em timestamptz DEFAULT now(),
+  UNIQUE(filial_pk, nome)
+);
+ALTER TABLE categorias_despesa ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='categorias_despesa' AND policyname='anon_all_cats_despesa') THEN
+    CREATE POLICY "anon_all_cats_despesa" ON categorias_despesa FOR ALL TO anon USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- RPC: ajustar saldo de conta bancária atomicamente (positivo = entrada, negativo = saída)
+CREATE OR REPLACE FUNCTION ajustar_saldo_conta(p_conta_pk bigint, p_delta numeric)
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  UPDATE contas_bancarias SET saldo = saldo + p_delta WHERE pk = p_conta_pk;
+END;
+$$;
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

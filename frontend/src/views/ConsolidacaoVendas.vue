@@ -87,10 +87,10 @@
                   <input type="date" v-model="formPend[p.pk].data_recebimento" class="cf-input" />
                 </div>
                 <div class="cf-group">
-                  <label>Forma de Pagamento</label>
-                  <select v-model="formPend[p.pk].forma" class="cf-input">
-                    <option value="">Selecionar…</option>
-                    <option v-for="f in formas" :key="f.pk" :value="f.forma">{{ f.label }}</option>
+                  <label>Conta</label>
+                  <select v-model="formPend[p.pk].conta_pk" class="cf-input">
+                    <option :value="null">Selecionar…</option>
+                    <option v-for="c in contas" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
                   </select>
                 </div>
                 <div class="cf-group cf-obs">
@@ -359,7 +359,7 @@ async function carregarPendentes() {
     if (!formPend[p.pk]) {
       formPend[p.pk] = {
         data_recebimento: dataPrevisao(p.forma, new Date()),
-        forma: p.forma || '',
+        conta_pk: null,
         descricao: '',
       };
     }
@@ -410,12 +410,16 @@ async function confirmarPendente(p) {
       filial_pk:        sessaoStore.filial?.pk,
       pagamento_pk:     p.pk,
       venda_pk:         p.venda_pk,
+      conta_pk:         f.conta_pk || null,
       data_recebimento: f.data_recebimento,
       valor:            p.valor,
-      forma:            f.forma || p.forma,
+      forma:            p.forma,
       descricao:        f.descricao || null,
     });
     if (error) throw error;
+    if (f.conta_pk) {
+      await supabase.rpc('ajustar_saldo_conta', { p_conta_pk: f.conta_pk, p_delta: p.valor });
+    }
     showToast('Recebimento confirmado!', 'ok');
     expandido.value = null;
     await carregar();
@@ -457,8 +461,12 @@ function excluirRec(r) { excluindo.value = r; }
 async function confirmarExclusao() {
   removendo.value = true;
   try {
-    const { error } = await supabase.from('recebimentos').delete().eq('pk', excluindo.value.pk);
+    const rec = excluindo.value;
+    const { error } = await supabase.from('recebimentos').delete().eq('pk', rec.pk);
     if (error) throw error;
+    if (rec.conta_pk) {
+      await supabase.rpc('ajustar_saldo_conta', { p_conta_pk: rec.conta_pk, p_delta: -rec.valor });
+    }
     showToast('Excluído.', 'ok');
     excluindo.value = null;
     await carregar();

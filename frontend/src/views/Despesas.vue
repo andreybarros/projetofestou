@@ -119,15 +119,10 @@
 
           <div class="field mb-3">
             <label>Categoria</label>
-            <input v-model="f.categoria" type="text" list="cats-list" placeholder="Ex: Energia, Aluguel, Compras" />
-            <datalist id="cats-list">
-              <option value="Energia" />
-              <option value="Aluguel" />
-              <option value="Internet" />
-              <option value="Salários" />
-              <option value="Marketing" />
-              <option value="Manutenção" />
-            </datalist>
+            <select v-model="f.categoria">
+              <option value="">— Sem categoria —</option>
+              <option v-for="c in categoriasDespesa" :key="c.pk" :value="c.nome">{{ c.nome }}</option>
+            </select>
           </div>
 
           <template v-if="!f.pk">
@@ -207,8 +202,9 @@ const salvando = ref(false);
 const modalAberto = ref(false);
 const modalBaixar = ref(false);
 
-const fornecedores = ref([]);
-const contas = ref([]);
+const fornecedores  = ref([]);
+const contas        = ref([]);
+const categoriasDespesa = ref([]);
 
 const filtros = reactive({
   ini: '',
@@ -244,12 +240,15 @@ onMounted(async () => {
 
 async function carregarAuxiliares() {
   const filial_pk = sessaoStore.filial?.pk;
-  
-  const { data: forn } = await supabase.from('fornecedores').select('pk, nome').eq('ativo', true).order('nome');
-  fornecedores.value = forn || [];
 
-  const { data: ct } = await supabase.from('contas_bancarias').select('pk, nome').eq('ativo', true).order('nome');
-  contas.value = ct || [];
+  const [{ data: forn }, { data: ct }, { data: cats }] = await Promise.all([
+    supabase.from('fornecedores').select('pk, nome').eq('ativo', true).order('nome'),
+    supabase.from('contas_bancarias').select('pk, nome').eq('ativo', true).order('nome'),
+    supabase.from('categorias_despesa').select('pk, nome, cor').eq('filial_pk', filial_pk).order('nome'),
+  ]);
+  fornecedores.value  = forn  || [];
+  contas.value        = ct    || [];
+  categoriasDespesa.value = cats || [];
 }
 
 async function carregar() {
