@@ -219,9 +219,9 @@ async function carregarAvisos() {
       icone:   atras ? 'warning' : 'schedule',
       msg:     v.cliente || 'Consumidor Final',
       detalhe: atras
-        ? `Crediário vencido há ${dias} dia${dias !== 1 ? 's' : ''} — NF #${v.numero}`
+        ? `Crediário vencido há ${dias} dia${dias !== 1 ? 's' : ''} — Venda #${v.numero}`
         : diasFut === 0
-          ? `Crediário vencendo hoje — NF #${v.numero}`
+          ? `Crediário vencendo hoje — Venda #${v.numero}`
           : `Crediário vence em ${diasFut} dia${diasFut !== 1 ? 's' : ''} — NF #${v.numero}`,
       tag:     atras ? 'Vencido' : diasFut === 0 ? 'Hoje' : `Em ${diasFut}d`,
       rota:    `/historico-vendas/${v.pk}/editar`,
@@ -252,10 +252,10 @@ async function carregarAvisos() {
       detalhe: atras
         ? `Devolução de locação atrasada há ${dias} dia${dias !== 1 ? 's' : ''} — NF #${v.numero}`
         : diasFut === 0
-          ? `Devolução de locação prevista para hoje — NF #${v.numero}`
-          : `Devolução de locação em ${diasFut} dia${diasFut !== 1 ? 's' : ''} — NF #${v.numero}`,
+          ? `Devolução de locação prevista para hoje — Venda #${v.numero}`
+          : `Devolução de locação em ${diasFut} dia${diasFut !== 1 ? 's' : ''} — Venda #${v.numero}`,
       tag:     atras ? 'Atrasada' : diasFut === 0 ? 'Hoje' : `Em ${diasFut}d`,
-      rota:    `/historico-vendas/${v.pk}/editar`,
+      rota:    '/agenda',
     });
   }
 
