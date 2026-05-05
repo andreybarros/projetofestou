@@ -519,22 +519,17 @@
                   <input type="checkbox" v-model="item.selecionado"
                     :disabled="!item.produto || (item.produto.saldo !== null && item.produto.saldo <= 0)" />
                   <div class="li-info">
-                    <span class="li-qty">{{ item.qty }}×</span>
-                    <span class="li-desc">{{ item.descricao }}</span>
-                    <span v-if="item.produto" class="li-match">
-                      <span class="material-symbols-outlined" style="font-size:13px">arrow_forward</span>
-                      {{ item.produto.descricao }}
+                    <p class="li-linha1">
+                      <strong class="li-qty">{{ item.qty }}×</strong>
+                      {{ item.descricao }}
+                    </p>
+                    <p v-if="item.produto" class="li-linha2">
+                      ↳ {{ item.produto.descricao }}
                       <span class="li-preco">{{ fmt(item.produto.valor_venda) }}</span>
-                      <span v-if="item.produto.saldo !== null && item.produto.saldo <= 0" class="li-sem-estoque">
-                        <span class="material-symbols-outlined" style="font-size:12px">warning</span>
-                        Sem estoque
-                      </span>
-                      <span v-else-if="item.produto.saldo !== null && item.produto.saldo < item.qty" class="li-estoque-baixo">
-                        <span class="material-symbols-outlined" style="font-size:12px">warning</span>
-                        Estoque: {{ item.produto.saldo }}
-                      </span>
-                    </span>
-                    <span v-else class="li-sem-match">Não encontrado no catálogo</span>
+                      <span v-if="item.produto.saldo !== null && item.produto.saldo <= 0" class="li-sem-estoque">· Sem estoque</span>
+                      <span v-else-if="item.produto.saldo !== null && item.produto.saldo < item.qty" class="li-estoque-baixo">· Estoque: {{ item.produto.saldo }}</span>
+                    </p>
+                    <p v-else class="li-linha2 li-sem-match">Não encontrado no catálogo</p>
                   </div>
                   <button class="li-btn-edit" @click.prevent="abrirCorrecao(i)"
                     :class="{ active: editandoIdx === i }"
@@ -2063,7 +2058,7 @@ async function emitirNFCe() {
 .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px; }
 .modal-close { background: none; border: none; color: var(--text2); cursor: pointer; display: flex; padding: 2px; }
 .modal-close:hover { color: var(--text); }
-.modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1; min-height: 0; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--line); flex-shrink: 0; }
 .btn-cancel { padding: 8px 16px; background: var(--bg3); border: 1px solid var(--line); border-radius: 8px; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; }
 .btn-salvar { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
@@ -2083,7 +2078,7 @@ async function emitirNFCe() {
 .btn-processar-ia .material-symbols-outlined { font-size: 18px; }
 
 /* Modal Lista IA */
-.modal-lista-ia { max-width: 600px; }
+.modal-lista-ia { max-width: 680px; width: 100%; max-height: 88vh; }
 .lista-ia-hint { font-size: 13px; color: var(--text2); margin: 0 0 10px; }
 .lista-ia-textarea {
   width: 100%; padding: 10px 12px; font-size: 13px; font-family: monospace;
@@ -2096,27 +2091,20 @@ async function emitirNFCe() {
 .lista-ia-ok  { color: #10b981; }
 .lista-ia-nok { color: #f59e0b; }
 .lista-ia-resultados-wrap { display: flex; flex-direction: column; gap: 0; }
-.lista-ia-resultados { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; padding-right: 4px; }
-.lista-ia-item {
-  display: flex; flex-direction: column; gap: 0;
-  border-radius: 8px; border: 1px solid var(--line);
-  transition: background .12s; overflow: hidden;
-}
-.li-main-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 8px 10px; cursor: pointer;
-}
+.lista-ia-resultados { display: flex; flex-direction: column; gap: 5px; }
+.lista-ia-item { border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+.li-ok  { border-color: rgba(16,185,129,.35); }
+.li-nok { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.04); }
+.li-main-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; }
 .li-main-row:hover { background: var(--bg3); }
-.lista-ia-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
-.li-ok  { border-color: rgba(16,185,129,.25); }
-.li-nok { border-color: rgba(239,68,68,.2); background: rgba(239,68,68,.04); }
-.li-info { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
-.li-qty  { font-size: 12px; font-weight: 800; color: var(--accent2); flex-shrink: 0; }
-.li-desc { font-size: 13px; font-weight: 600; color: var(--text); }
-.li-match { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #10b981; flex-wrap: wrap; }
-.li-preco { font-family: var(--mono); font-size: 11px; background: rgba(16,185,129,.1); padding: 1px 6px; border-radius: 4px; }
-.li-sem-match { font-size: 11px; color: #f87171; font-style: italic; }
-.li-ia-hint   { color: #fb923c; margin-left: 4px; }
+.lista-ia-item input[type=checkbox] { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+.li-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.li-linha1 { margin: 0; font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.5; }
+.li-qty { font-size: 14px; font-weight: 800; color: #818cf8; }
+.li-linha2 { margin: 0; font-size: 12px; font-weight: 500; color: #34d399; line-height: 1.5; }
+.li-preco { display: inline-block; font-family: monospace; font-size: 11px; background: rgba(52,211,153,.15); color: #34d399; padding: 0 6px; border-radius: 4px; font-weight: 700; margin-left: 4px; }
+.li-sem-match { color: #f87171 !important; font-style: italic; }
+.li-ia-hint { color: #fb923c; margin-left: 4px; }
 
 /* Botão editar produto */
 .li-btn-edit {
