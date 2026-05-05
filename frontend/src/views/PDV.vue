@@ -32,8 +32,9 @@
               v-for="cat in [{pk: null, nome: 'Todos'},...categorias]"
               :key="String(cat.pk)"
               :class="['cat-pill', { active: catSel === cat.pk }]"
-              @click="catSel = cat.pk"
+              @click="catSel = cat.pk; somentePromo = false"
             >{{ cat.nome }}</button>
+            <button :class="['cat-pill', 'cat-pill-promo', { active: somentePromo }]" @click="somentePromo = !somentePromo; catSel = null">🏷️ Promoção</button>
           </div>
         </div>
 
@@ -779,6 +780,7 @@ const scannerStatus     = ref('');
 const scannerStatusTipo = ref('');
 
 const catSel         = ref(null);
+const somentePromo   = ref(false);
 const carregando     = ref(true);
 const caixaVerificado = ref(false);
 const todos          = ref([]);
@@ -843,6 +845,8 @@ const filtrados = computed(() => {
   let l = todos.value;
   if (catSel.value !== null)
     l = l.filter(p => p.categoria_pk === catSel.value);
+  if (somentePromo.value)
+    l = l.filter(p => getPromoAtiva(p));
   const q = termoBusca.value;
   if (q) {
     const palavras = q.split(/\s+/).filter(Boolean);
@@ -1397,6 +1401,7 @@ function limpar() {
   itemDescAberto.value       = null;
   busca.value                = '';
   catSel.value               = null;
+  somentePromo.value         = false;
   cartTab.value              = 0;
 }
 
@@ -2236,6 +2241,10 @@ async function emitirNFCe() {
   border-color: var(--accent);
   color: #fff;
 }
+.cat-pill-promo { border-color: #f59e0b; color: #f59e0b; }
+.cat-pill-promo.active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+[data-theme="light"] .cat-pill-promo { border-color: #d97706; color: #d97706; }
+[data-theme="light"] .cat-pill-promo.active { background: #d97706; border-color: #d97706; color: #fff; }
 
 /* Products area */
 .products-area {

@@ -126,165 +126,184 @@
       <div v-if="detalhe" class="modal-bg" @click.self="fecharDetalhe">
         <div class="modal det-modal">
 
+          <!-- ── CABEÇALHO ── -->
           <div class="det-modal-header">
-            <div>
-              <h3 class="det-title">Venda #{{ detalhe.numero }}</h3>
-              <p class="det-sub">{{ fmtDate(detalhe.criado_em) }}</p>
+            <div class="det-header-left">
+              <div class="det-venda-num">Venda #{{ detalhe.numero }}</div>
+              <div class="det-header-meta">
+                <span class="det-sub-item">
+                  <span class="material-symbols-outlined">calendar_today</span>
+                  {{ fmtDate(detalhe.criado_em) }}
+                </span>
+                <span class="det-sub-item">
+                  <span class="material-symbols-outlined">person</span>
+                  {{ detalhe.cliente || 'Consumidor Final' }}
+                </span>
+                <span v-if="detalhe.vendedor || detalhe.operador" class="det-sub-item">
+                  <span class="material-symbols-outlined">badge</span>
+                  {{ detalhe.vendedor || detalhe.operador }}
+                </span>
+              </div>
             </div>
             <div class="det-header-right">
-              <span :class="['status-badge', statusCls(detalhe.status)]">{{ detalhe.status }}</span>
+              <span :class="['status-badge lg', statusCls(detalhe.status)]">{{ detalhe.status }}</span>
+              <span :class="['type-pill', detalhe.tipo_venda === 'locacao' ? 'loc' : 'vnd']">
+                {{ detalhe.tipo_venda === 'locacao' ? 'Locação' : 'Venda' }}
+              </span>
               <button @click="fecharDetalhe" class="btn-close-x">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
           </div>
 
-          <div class="det-meta-grid">
-            <div class="det-meta-item">
-              <span class="det-meta-label">Cliente</span>
-              <span class="det-meta-val">{{ detalhe.cliente || 'Consumidor Final' }}</span>
+          <!-- ── INFORMAÇÕES DA LOCAÇÃO ── -->
+          <div v-if="detalhe.tipo_venda === 'locacao'" class="det-loc-bar">
+            <div class="det-loc-item">
+              <span class="det-loc-label">Retirada</span>
+              <span class="det-loc-val">{{ fmtDataHora(detalhe.data_locacao) }}</span>
             </div>
-            <div class="det-meta-item">
-              <span class="det-meta-label">Vendedor</span>
-              <span class="det-meta-val">{{ detalhe.vendedor || detalhe.operador || '—' }}</span>
+            <span class="det-loc-arrow material-symbols-outlined">arrow_forward</span>
+            <div class="det-loc-item">
+              <span class="det-loc-label">Devolução prevista</span>
+              <span :class="['det-loc-val', locacaoVencida(detalhe) && detalhe.status_locacao !== 'devolvida' ? 'loc-vencida' : '']">
+                {{ fmtDataHora(detalhe.data_devolucao_prevista) }}
+                <span v-if="locacaoVencida(detalhe) && detalhe.status_locacao !== 'devolvida'" class="loc-atrasada-badge">Atrasada</span>
+              </span>
             </div>
-            <div class="det-meta-item">
-              <span class="det-meta-label">Tipo</span>
-              <span class="det-meta-val">{{ detalhe.tipo_venda === 'locacao' ? 'Locação' : 'Venda' }}</span>
+            <div v-if="detalhe.data_devolucao_real" class="det-loc-item">
+              <span class="det-loc-label">Devolvido em</span>
+              <span class="det-loc-val" style="color:#34d399">{{ fmtDataHora(detalhe.data_devolucao_real) }}</span>
             </div>
-            <template v-if="detalhe.tipo_venda === 'locacao'">
-              <div class="det-meta-item">
-                <span class="det-meta-label">Retirada</span>
-                <span class="det-meta-val">{{ fmtDataHora(detalhe.data_locacao) }}</span>
-              </div>
-              <div class="det-meta-item">
-                <span class="det-meta-label">Devolução prevista</span>
-                <span :class="['det-meta-val', locacaoVencida(detalhe) && detalhe.status_locacao !== 'devolvida' ? 'loc-vencida' : '']">
-                  {{ fmtDataHora(detalhe.data_devolucao_prevista) }}
-                  <span v-if="locacaoVencida(detalhe) && detalhe.status_locacao !== 'devolvida'" class="loc-atrasada-badge">Atrasada</span>
-                </span>
-              </div>
-              <div v-if="detalhe.data_devolucao_real" class="det-meta-item">
-                <span class="det-meta-label">Devolvido em</span>
-                <span class="det-meta-val" style="color:#34d399">{{ fmtDataHora(detalhe.data_devolucao_real) }}</span>
-              </div>
-              <div class="det-meta-item">
-                <span class="det-meta-label">Status locação</span>
-                <span :class="['det-meta-val', 'loc-status-' + (detalhe.status_locacao || 'pendente')]">
-                  {{ { pendente: 'Pendente', devolvida: 'Devolvida', taxa_cobrada: 'Taxa cobrada' }[detalhe.status_locacao] || detalhe.status_locacao || 'Pendente' }}
-                </span>
-              </div>
-              <div v-if="detalhe.status_locacao === 'taxa_cobrada' && detalhe.taxa_realocacao_cobrada != null" class="det-meta-item">
-                <span class="det-meta-label">Taxa de realocação</span>
-                <span class="det-meta-val" style="color:#a78bfa;font-weight:800">R$ {{ fmtVal(detalhe.taxa_realocacao_cobrada) }}</span>
-              </div>
-            </template>
-            <div v-if="detalhe.nfce_chave" class="det-meta-item">
-              <span class="det-meta-label">NFC-e</span>
-              <span class="det-meta-val" style="color:#059669;font-weight:800">Autorizada</span>
+            <div class="det-loc-item">
+              <span class="det-loc-label">Status</span>
+              <span :class="['det-loc-val', 'loc-status-' + (detalhe.status_locacao || 'pendente')]">
+                {{ { pendente: 'Pendente', devolvida: 'Devolvida', taxa_cobrada: 'Taxa cobrada' }[detalhe.status_locacao] || 'Pendente' }}
+              </span>
+            </div>
+            <div v-if="detalhe.status_locacao === 'taxa_cobrada' && detalhe.taxa_realocacao_cobrada != null" class="det-loc-item">
+              <span class="det-loc-label">Taxa cobrada</span>
+              <span class="det-loc-val" style="color:#a78bfa">R$ {{ fmtVal(detalhe.taxa_realocacao_cobrada) }}</span>
+            </div>
+            <div v-if="detalhe.nfce_chave" class="det-loc-item">
+              <span class="det-loc-label">NFC-e</span>
+              <span class="det-loc-val" style="color:#059669">Autorizada</span>
             </div>
           </div>
-
-          <div v-if="detalheCarregando" class="det-loading">
-            <div class="spinner-sm"></div>
-            <span>Carregando itens...</span>
+          <div v-else-if="detalhe.nfce_chave" class="det-nfce-bar">
+            <span class="material-symbols-outlined" style="color:#059669;font-size:18px">verified</span>
+            NFC-e Autorizada
           </div>
 
-          <template v-else>
-            <div class="det-section">
-              <h4 class="det-section-title">
+          <!-- ── CORPO ROLÁVEL ── -->
+          <div class="det-body">
+
+            <!-- Itens -->
+            <div class="det-section-block">
+              <div class="det-section-hd">
                 <span class="material-symbols-outlined">shopping_bag</span>
-                Itens ({{ detalheItens.length }})
-              </h4>
-              <table class="det-table">
+                <span>Itens</span>
+                <span class="det-section-count">{{ detalheItens.length }}</span>
+              </div>
+              <div v-if="detalheCarregando" class="det-loading">
+                <div class="spinner-sm"></div> Carregando...
+              </div>
+              <table v-else class="det-table">
                 <thead>
                   <tr>
                     <th>Produto</th>
                     <th class="tr">Qtd</th>
                     <th class="tr">Unit.</th>
+                    <th class="tr">Desconto</th>
                     <th class="tr">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="it in detalheItens" :key="it.pk">
-                    <td>
-                      <span class="det-item-nome">{{ it.descricao }}</span>
-                      <span v-if="it.desconto_val > 0" class="det-disc">− {{ fmt(it.desconto_val) }}</span>
-                    </td>
+                    <td><span class="det-item-nome">{{ it.descricao }}</span></td>
                     <td class="tr mono">{{ it.qtd }}</td>
                     <td class="tr mono">{{ fmt(it.preco_unit) }}</td>
+                    <td class="tr mono det-disc-cell">{{ it.desconto_val > 0 ? '− ' + fmt(it.desconto_val) : '—' }}</td>
                     <td class="tr mono bold">{{ fmt(it.total_item) }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div class="det-section">
-              <h4 class="det-section-title">
+            <!-- Pagamentos -->
+            <div v-if="!detalheCarregando" class="det-section-block det-pag-block">
+              <div class="det-section-hd">
                 <span class="material-symbols-outlined">payments</span>
-                Pagamentos
-              </h4>
-              <div class="det-pags">
+                <span>Pagamentos</span>
+              </div>
+              <div class="det-pag-lista">
                 <div v-for="p in detalhePagamentos" :key="p.pk" class="det-pag-row">
-                  <span class="det-pag-forma">{{ p.forma }}</span>
+                  <span class="det-pag-forma">
+                    <span class="material-symbols-outlined det-pag-ico">credit_card</span>
+                    {{ formasMap[p.forma] || p.forma }}
+                  </span>
                   <span class="det-pag-val">{{ fmt(p.valor) }}</span>
                 </div>
               </div>
               <div class="det-total-row">
-                <span>TOTAL</span>
-                <span>{{ fmt(detalhe.total) }}</span>
+                <span>TOTAL DA VENDA</span>
+                <span class="det-total-val">{{ fmt(detalhe.total) }}</span>
               </div>
             </div>
-          </template>
 
+          </div>
+
+          <!-- ── AÇÕES ── -->
           <div class="det-actions">
             <button @click="fecharDetalhe" class="det-btn-fechar">Fechar</button>
-            <button
-              v-if="detalhe.status === 'finalizada'"
-              @click="router.push('/historico-vendas/' + detalhe.pk + '/editar')"
-              class="det-btn-editar"
-            >
-              <span class="material-symbols-outlined">edit</span>
-              Editar Venda
-            </button>
-            <template v-if="detalhe.tipo_venda === 'locacao'">
+            <div class="det-actions-right">
               <button
-                v-if="detalhe.status_locacao !== 'devolvida'"
-                @click="confirmarDevolucaoLocacao"
-                class="det-btn-loc-dev"
-                :disabled="salvandoLocacao"
+                v-if="detalhe.status === 'finalizada'"
+                @click="router.push('/historico-vendas/' + detalhe.pk + '/editar')"
+                class="det-btn-editar"
               >
-                <span class="material-symbols-outlined">inventory</span>
-                {{ salvandoLocacao ? 'Salvando...' : 'Confirmar Devolução' }}
+                <span class="material-symbols-outlined">edit</span>
+                Editar
               </button>
-              <button
-                v-if="detalhe.status_locacao !== 'devolvida' && detalhe.status_locacao !== 'taxa_cobrada'"
-                @click="cobrarTaxaRealocacao"
-                class="det-btn-loc-taxa"
-                :disabled="salvandoLocacao"
-              >
-                <span class="material-symbols-outlined">payments</span>
-                Cobrar Taxa de Realocação
+              <template v-if="detalhe.tipo_venda === 'locacao'">
+                <button
+                  v-if="detalhe.status_locacao !== 'devolvida'"
+                  @click="confirmarDevolucaoLocacao"
+                  class="det-btn-loc-dev"
+                  :disabled="salvandoLocacao"
+                >
+                  <span class="material-symbols-outlined">inventory</span>
+                  {{ salvandoLocacao ? 'Salvando...' : 'Confirmar Devolução' }}
+                </button>
+                <button
+                  v-if="detalhe.status_locacao !== 'devolvida' && detalhe.status_locacao !== 'taxa_cobrada'"
+                  @click="cobrarTaxaRealocacao"
+                  class="det-btn-loc-taxa"
+                  :disabled="salvandoLocacao"
+                >
+                  <span class="material-symbols-outlined">payments</span>
+                  Cobrar Taxa
+                </button>
+              </template>
+              <button v-if="detalhe.tipo_venda !== 'locacao'" @click="reimprimirRecibo" class="det-btn-print" :disabled="detalheCarregando">
+                <span class="material-symbols-outlined">print</span>
+                Reimprimir
               </button>
-            </template>
-            <button v-if="detalhe.tipo_venda !== 'locacao'" @click="reimprimirRecibo" class="det-btn-print" :disabled="detalheCarregando">
-              <span class="material-symbols-outlined">print</span>
-              Reimprimir Recibo
-            </button>
-            <button v-if="!detalhe.nfce_chave && detalhe.status === 'finalizada'"
-              @click="emitirNFCeDetalhe" class="det-btn-nfce" :disabled="emitindoPk === detalhe.pk">
-              <span class="material-symbols-outlined" :style="emitindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
-                {{ emitindoPk === detalhe.pk ? 'sync' : 'receipt_long' }}
-              </span>
-              {{ emitindoPk === detalhe.pk ? 'Emitindo...' : 'Emitir NFC-e' }}
-            </button>
-            <button v-if="detalhe.nfce_chave" @click="reimprimirNFCe" class="det-btn-nfce" :disabled="reimprimindoPk === detalhe.pk">
-              <span class="material-symbols-outlined" :style="reimprimindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
-                {{ reimprimindoPk === detalhe.pk ? 'sync' : 'print' }}
-              </span>
-              {{ reimprimindoPk === detalhe.pk ? 'Buscando...' : 'Reimprimir NFC-e' }}
-            </button>
+              <button v-if="!detalhe.nfce_chave && detalhe.status === 'finalizada'"
+                @click="emitirNFCeDetalhe" class="det-btn-nfce" :disabled="emitindoPk === detalhe.pk">
+                <span class="material-symbols-outlined" :style="emitindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
+                  {{ emitindoPk === detalhe.pk ? 'sync' : 'receipt_long' }}
+                </span>
+                {{ emitindoPk === detalhe.pk ? 'Emitindo...' : 'Emitir NFC-e' }}
+              </button>
+              <button v-if="detalhe.nfce_chave" @click="reimprimirNFCe" class="det-btn-nfce" :disabled="reimprimindoPk === detalhe.pk">
+                <span class="material-symbols-outlined" :style="reimprimindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
+                  {{ reimprimindoPk === detalhe.pk ? 'sync' : 'print' }}
+                </span>
+                {{ reimprimindoPk === detalhe.pk ? 'Buscando...' : 'Reimprimir NFC-e' }}
+              </button>
+            </div>
           </div>
+
         </div>
       </div>
     </Teleport>
@@ -429,6 +448,7 @@ const parametrosStore = useParametrosStore();
 
 const vendas         = ref([]);
 const carregando     = ref(false);
+const formasMap      = ref({});
 const busca          = ref("");
 const filtroStatus   = ref("");
 const emitindoPk     = ref(null);
@@ -467,6 +487,11 @@ const modalLocacao    = ref({ show: false, diasAtraso: 0, taxaDiaria: 0, taxaTot
 function fmtVal(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
 
 onMounted(async () => {
+  const fil = sessaoStore.filial?.pk;
+  if (fil) {
+    const { data: formas } = await supabase.from('formas_pagamento').select('forma, label').eq('filial_pk', fil);
+    if (formas) formas.forEach(f => { formasMap.value[f.forma] = f.label; });
+  }
   await carregar(0);
   const abrirPk = route.query.abrir ? parseInt(route.query.abrir) : null;
   if (abrirPk) {
@@ -900,53 +925,73 @@ function statusCls(s) {
 .modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--border); flex-wrap: wrap; }
 
-.det-modal { max-width: 640px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+/* Det modal — maior e estruturado */
+.det-modal { max-width: 860px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
 
-.det-modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 1.5rem 1.5rem 1rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.det-title { margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--text); }
-.det-sub   { margin: 3px 0 0; font-size: .82rem; color: var(--text2); }
-.det-header-right { display: flex; align-items: center; gap: .75rem; }
-.btn-close-x { width: 32px; height: 32px; border: 1px solid var(--border); background: var(--bg3); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); transition: all .15s; }
+/* Cabeçalho */
+.det-modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 1.5rem 1.75rem 1.25rem; border-bottom: 2px solid var(--border); flex-shrink: 0; background: var(--bg2); gap: 1rem; }
+.det-header-left { display: flex; flex-direction: column; gap: .5rem; }
+.det-venda-num { font-size: 1.6rem; font-weight: 900; color: var(--text); letter-spacing: -1px; }
+.det-header-meta { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+.det-sub-item { display: flex; align-items: center; gap: 4px; font-size: .82rem; color: var(--text2); font-weight: 600; }
+.det-sub-item .material-symbols-outlined { font-size: 15px; }
+.det-header-right { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.status-badge.lg { font-size: .8rem; padding: .45rem 1rem; }
+.btn-close-x { width: 36px; height: 36px; border: 1px solid var(--border); background: var(--bg3); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); transition: all .15s; }
 .btn-close-x:hover { background: #fee2e2; color: #ef4444; border-color: #ef4444; }
 .btn-close-x .material-symbols-outlined { font-size: 18px; }
 
-.det-meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .75rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.det-meta-item { display: flex; flex-direction: column; gap: 2px; }
-.det-meta-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
-.det-meta-val   { font-size: .9rem; font-weight: 700; color: var(--text); }
+/* Barra de locação */
+.det-loc-bar { display: flex; align-items: center; gap: 1.5rem; padding: .9rem 1.75rem; background: rgba(245,158,11,.07); border-bottom: 1px solid rgba(245,158,11,.2); flex-shrink: 0; flex-wrap: wrap; }
+.det-loc-item { display: flex; flex-direction: column; gap: 2px; }
+.det-loc-label { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #d97706; }
+.det-loc-val { font-size: .88rem; font-weight: 700; color: var(--text); }
+.det-loc-arrow { font-size: 18px; color: rgba(245,158,11,.5); }
+.det-nfce-bar { display: flex; align-items: center; gap: 6px; padding: .65rem 1.75rem; background: rgba(5,150,105,.07); border-bottom: 1px solid rgba(5,150,105,.2); font-size: .82rem; font-weight: 700; color: #059669; flex-shrink: 0; }
 
-.det-loading { display: flex; align-items: center; gap: .75rem; padding: 2rem 1.5rem; color: var(--text2); font-size: .9rem; }
+/* Corpo com duas colunas — itens rolam, pagamentos ficam fixos */
+.det-body { flex: 1; display: grid; grid-template-columns: 1fr 300px; min-height: 0; overflow: hidden; }
+.det-section-block { padding: 1.25rem 1.75rem; display: flex; flex-direction: column; gap: .75rem; overflow-y: auto; }
+.det-section-block + .det-section-block { border-left: 1px solid var(--border); overflow-y: visible; }
+.det-pag-block { background: var(--bg3); overflow-y: visible; }
+
+.det-section-hd { display: flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--text2); padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+.det-section-hd .material-symbols-outlined { font-size: 16px; color: var(--primary); }
+.det-section-count { margin-left: auto; background: var(--primary); color: #fff; font-size: .7rem; font-weight: 800; padding: 1px 7px; border-radius: 20px; }
+
+.det-loading { display: flex; align-items: center; gap: .75rem; padding: 1.5rem 0; color: var(--text2); font-size: .9rem; }
 .spinner-sm  { width: 20px; height: 20px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s infinite linear; flex-shrink: 0; }
 
-.det-section { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); overflow-y: auto; }
-.det-section-title { display: flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); margin-bottom: .75rem; }
-.det-section-title .material-symbols-outlined { font-size: 16px; }
-
-.det-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.det-table th { padding: .4rem .5rem; text-align: left; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); border-bottom: 1px solid var(--border); }
-.det-table td { padding: .6rem .5rem; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+.det-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.det-table th { padding: .4rem .5rem; text-align: left; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); border-bottom: 1px solid var(--border); }
+.det-table td { padding: .65rem .5rem; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
 .det-table tr:last-child td { border-bottom: none; }
+.det-table tr:hover td { background: var(--bg3); }
 .det-item-nome { font-weight: 700; display: block; }
-.det-disc { font-size: .75rem; color: #ef4444; font-weight: 700; margin-left: .25rem; }
+.det-disc-cell { color: #f87171; font-weight: 700; }
 .tr   { text-align: right; }
 .mono { font-family: monospace; font-size: .85rem; }
 .bold { font-weight: 800; }
 
-.det-pags { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .75rem; }
-.det-pag-row  { display: flex; justify-content: space-between; font-size: .9rem; }
-.det-pag-forma { text-transform: capitalize; color: var(--text); font-weight: 600; }
-.det-pag-val   { font-weight: 700; color: var(--text); font-family: monospace; }
-.det-total-row { display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 800; color: var(--text); padding-top: .6rem; border-top: 2px solid var(--border); }
+.det-pag-lista { display: flex; flex-direction: column; gap: .5rem; flex: 1; }
+.det-pag-row  { display: flex; justify-content: space-between; align-items: center; padding: .6rem .75rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; }
+.det-pag-forma { display: flex; align-items: center; gap: 6px; text-transform: capitalize; color: var(--text); font-weight: 700; font-size: .88rem; }
+.det-pag-ico { font-size: 15px; color: var(--primary); }
+.det-pag-val  { font-weight: 800; color: #10b981; font-family: monospace; font-size: .95rem; }
+.det-total-row { display: flex; justify-content: space-between; align-items: center; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); padding-top: .75rem; border-top: 2px solid var(--border); margin-top: auto; }
+.det-total-val { font-size: 1.3rem; font-weight: 900; color: var(--text); font-family: monospace; letter-spacing: -1px; }
 
-.det-actions { display: flex; gap: .75rem; padding: 1rem 1.5rem; background: var(--bg3); flex-shrink: 0; flex-wrap: wrap; }
-.det-btn-fechar { padding: .6rem 1.2rem; border: 1px solid var(--border); background: var(--bg2); color: var(--text); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
+/* Ações */
+.det-actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 1rem 1.75rem; background: var(--bg3); border-top: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+.det-actions-right { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.det-btn-fechar { padding: .6rem 1.2rem; border: 1px solid var(--border); background: var(--bg2); color: var(--text); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .85rem; transition: all .15s; }
 .det-btn-fechar:hover { background: var(--bg3); }
-.det-btn-editar { display: flex; align-items: center; gap: 6px; padding: .6rem 1.2rem; background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.4); color: var(--primary); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
-.det-btn-editar:hover { background: rgba(99,102,241,.25); }
-.det-btn-loc-dev { display: flex; align-items: center; gap: 6px; padding: .6rem 1.2rem; background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.4); color: #34d399; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
-.det-btn-loc-dev:hover:not(:disabled) { background: rgba(16,185,129,.25); }
-.det-btn-loc-taxa { display: flex; align-items: center; gap: 6px; padding: .6rem 1.2rem; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.4); color: #f59e0b; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .88rem; transition: all .15s; }
-.det-btn-loc-taxa:hover:not(:disabled) { background: rgba(245,158,11,.25); }
+.det-btn-editar { display: flex; align-items: center; gap: 5px; padding: .6rem 1.1rem; background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.35); color: var(--primary); border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .85rem; transition: all .15s; }
+.det-btn-editar:hover { background: rgba(99,102,241,.22); }
+.det-btn-loc-dev { display: flex; align-items: center; gap: 5px; padding: .6rem 1.1rem; background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.35); color: #34d399; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .85rem; transition: all .15s; }
+.det-btn-loc-dev:hover:not(:disabled) { background: rgba(16,185,129,.22); }
+.det-btn-loc-taxa { display: flex; align-items: center; gap: 5px; padding: .6rem 1.1rem; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.35); color: #f59e0b; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .85rem; transition: all .15s; }
+.det-btn-loc-taxa:hover:not(:disabled) { background: rgba(245,158,11,.22); }
 .det-btn-loc-dev:disabled, .det-btn-loc-taxa:disabled { opacity: .5; cursor: not-allowed; }
 .loc-vencida { color: #f87171 !important; }
 .loc-atrasada-badge { display: inline-block; margin-left: 6px; font-size: .7rem; background: rgba(239,68,68,.2); color: #f87171; border-radius: 4px; padding: 1px 6px; font-weight: 700; }
