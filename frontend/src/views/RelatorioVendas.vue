@@ -280,6 +280,58 @@
             </div>
           </div>
         </div>
+
+        <!-- Menor Margem — linha completa -->
+        <div class="content-card low-margin-card">
+          <div class="card-header">
+            <span class="material-symbols-outlined">trending_down</span>
+            <h3>Produtos com Menor Margem de Lucro</h3>
+          </div>
+          <p class="card-sub">Analise o preço de venda destes produtos — ordenados do menor para o maior lucro no período</p>
+          <div class="lm-table-wrap">
+            <table class="modern-table lm-table">
+              <thead>
+                <tr>
+                  <th class="text-center">#</th>
+                  <th>Produto</th>
+                  <th class="text-center">Qtd Vendida</th>
+                  <th class="text-center">Faturamento</th>
+                  <th class="text-center">Custo Total</th>
+                  <th class="text-center">Lucro</th>
+                  <th class="text-center">Margem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(p, idx) in lmPaginados" :key="idx">
+                  <td class="text-center lm-rank">{{ (lmPagina - 1) * 10 + idx + 1 }}º</td>
+                  <td class="prod-nome-cell">{{ p.nome }}</td>
+                  <td class="text-center">{{ p.qtd }}</td>
+                  <td class="text-center">{{ formatMoeda(p.fat) }}</td>
+                  <td class="text-center text-rose-400">{{ formatMoeda(p.custo) }}</td>
+                  <td class="text-center font-bold" :class="p.lucro < 0 ? 'text-rose-400' : 'text-green'">{{ formatMoeda(p.lucro) }}</td>
+                  <td class="text-center">
+                    <span :class="['margem-badge', margemClass(p.margem)]">
+                      {{ p.margem.toFixed(1) }}%
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="!data.produtosMenorMargem.length">
+                  <td colspan="7" class="text-center py-4 opacity-50">Cadastre o preço de custo nos produtos para ver a análise de margem</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="lmTotal > 1" class="lm-paginacao">
+            <button class="lm-pg-btn" :disabled="lmPagina === 1" @click="lmPagina--">&#8592;</button>
+            <button
+              v-for="n in lmTotal" :key="n"
+              :class="['lm-pg-btn', { active: lmPagina === n }]"
+              @click="lmPagina = n"
+            >{{ n }}</button>
+            <button class="lm-pg-btn" :disabled="lmPagina === lmTotal" @click="lmPagina++">&#8594;</button>
+            <span class="lm-pg-info">{{ (lmPagina - 1) * 10 + 1 }}–{{ Math.min(lmPagina * 10, data.produtosMenorMargem.length) }} de {{ data.produtosMenorMargem.length }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -298,8 +350,8 @@ const data = ref({
   fatDia: 0, fatSemana: 0, fatMes: 0, fatAnterior: 0,
   totalVendas: 0, totalVendasAnterior: 0, totalDespesas: 0, lucroMes: 0, margemLucro: 0,
   melhoresClientes: [], maioresDespesas: [], produtosMaisVendidos: [],
-  vendasPorVendedor: [], produtosRepor: [], datasComemorativas: [],
-  vendasPorDia: [], sazonalidadeHora: []
+  vendasPorVendedor: [], produtosRepor: [], produtosMenorMargem: [],
+  datasComemorativas: [], vendasPorDia: [], sazonalidadeHora: []
 });
 
 const getPrimeiroDiaMes = () => {
@@ -316,6 +368,14 @@ const dataFim    = ref(getHoje());
 
 const maxVenda = computed(() => Math.max(...data.value.vendasPorDia.map(d => d.total), 1));
 const maxHora  = computed(() => Math.max(...(data.value.sazonalidadeHora || []), 1));
+
+const lmPagina     = ref(1);
+const LM_POR_PAG   = 10;
+const lmTotal      = computed(() => Math.ceil((data.value.produtosMenorMargem?.length || 0) / LM_POR_PAG));
+const lmPaginados  = computed(() => {
+  const ini = (lmPagina.value - 1) * LM_POR_PAG;
+  return (data.value.produtosMenorMargem || []).slice(ini, ini + LM_POR_PAG);
+});
 
 const formatMoeda = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
@@ -336,6 +396,13 @@ const formatDataSimples = (iso) => {
   return `${d[2]}/${d[1]}`;
 };
 
+const margemClass = (m) => {
+  if (m < 0)   return 'margem-negativa';
+  if (m < 10)  return 'margem-critica';
+  if (m < 25)  return 'margem-baixa';
+  return 'margem-ok';
+};
+
 const getMesAbrev = (m) => {
   const meses = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return meses[parseInt(m)];
@@ -349,6 +416,7 @@ const fetchRelatorio = async () => {
       params: { inicio: dataInicio.value, fim: dataFim.value }
     });
     data.value = res.data;
+    lmPagina.value = 1;
   } catch (err) {
     console.error('Relatorio:', err);
     const msg = err.response?.data?.erro || 'Erro desconhecido ao carregar dados.';
@@ -841,4 +909,37 @@ onMounted(fetchRelatorio);
   color: var(--text2);
   opacity: 0.6;
 }
+
+/* Menor margem */
+.low-margin-card { border-left: 4px solid #f59e0b; }
+.card-sub { font-size: 0.75rem; color: var(--text2); margin: -0.5rem 0 1rem; }
+.lm-table-wrap { overflow-x: auto; }
+.lm-table { table-layout: fixed; width: 100%; }
+.lm-table th:nth-child(1), .lm-table td:nth-child(1) { width: 4%;  text-align: center; }
+.lm-table th:nth-child(2), .lm-table td:nth-child(2) { width: 28%; }
+.lm-table th:nth-child(3), .lm-table td:nth-child(3) { width: 10%; text-align: center; }
+.lm-table th:nth-child(4), .lm-table td:nth-child(4) { width: 14%; text-align: center; }
+.lm-table th:nth-child(5), .lm-table td:nth-child(5) { width: 14%; text-align: center; }
+.lm-table th:nth-child(6), .lm-table td:nth-child(6) { width: 14%; text-align: center; }
+.lm-table th:nth-child(7), .lm-table td:nth-child(7) { width: 16%; text-align: center; }
+.lm-rank { font-size: 11px; font-weight: 700; color: var(--text2); }
+.prod-nome-cell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.text-green { color: #10b981; }
+.margem-badge { font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; white-space: nowrap; display: inline-block; }
+.margem-negativa { background: rgba(239,68,68,.15); color: #ef4444; }
+.margem-critica  { background: rgba(239,68,68,.1);  color: #f87171; }
+.margem-baixa    { background: rgba(245,158,11,.12); color: #f59e0b; }
+.margem-ok       { background: rgba(16,185,129,.12); color: #10b981; }
+[data-theme="light"] .margem-negativa { background: rgba(220,38,38,.1);  color: #b91c1c; }
+[data-theme="light"] .margem-critica  { background: rgba(220,38,38,.08); color: #dc2626; }
+[data-theme="light"] .margem-baixa    { background: rgba(217,119,6,.1);  color: #b45309; }
+[data-theme="light"] .margem-ok       { background: rgba(5,150,105,.1);  color: #047857; }
+
+/* Paginação menor margem */
+.lm-paginacao { display: flex; align-items: center; gap: 4px; margin-top: 1rem; flex-wrap: wrap; }
+.lm-pg-btn { min-width: 32px; height: 32px; padding: 0 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.lm-pg-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.lm-pg-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.lm-pg-btn:disabled { opacity: .35; cursor: not-allowed; }
+.lm-pg-info { margin-left: 8px; font-size: 12px; color: var(--text2); }
 </style>

@@ -89,23 +89,52 @@ router.get('/vendas/:filial_pk', async (req, res) => {
     // 2. Lucro no Período
     const vendaPks = vendasPeriodo.map(v => v.pk);
     let custoTotalMes = 0;
+    let produtosMenorMargem = [];
     if (vendaPks.length > 0) {
       const { data: itens, error: errItens } = await supabase
         .from('itens_venda')
-        .select('qtd, produto_pk')
+        .select('qtd, produto_pk, descricao, preco_unit, total_item')
         .in('venda_pk', vendaPks);
-      
+
       if (!errItens && itens && itens.length > 0) {
         const prodPks = [...new Set(itens.map(i => i.produto_pk).filter(Boolean))];
-        const { data: prods } = await supabase.from('produtos').select('pk, preco_custo').in('pk', prodPks);
-        
-        const custosMap = {};
-        prods?.forEach(p => custosMap[p.pk] = parseFloat(p.preco_custo || 0));
+        const { data: prods } = await supabase.from('produtos').select('pk, preco_custo, descricao').in('pk', prodPks);
 
-        itens.forEach(i => {
-          const custoProd = custosMap[i.produto_pk] || 0;
-          custoTotalMes += (custoProd * parseFloat(i.qtd || 0));
+        const custosMap = {};
+        const nomesMap = {};
+        prods?.forEach(p => {
+          custosMap[p.pk] = parseFloat(p.preco_custo || 0);
+          nomesMap[p.pk] = p.descricao;
         });
+
+        // Agrupa por produto: faturamento total e custo total vendidos
+        const margemMap = {};
+        itens.forEach(i => {
+          const pk = i.produto_pk;
+          if (!pk) return;
+          const custo = custosMap[pk] || 0;
+          const qtd   = parseFloat(i.qtd || 0);
+          const fat   = parseFloat(i.total_item || 0);
+          custoTotalMes += custo * qtd;
+          if (!margemMap[pk]) margemMap[pk] = { pk, nome: nomesMap[pk] || i.descricao, fat: 0, custo: 0, qtd: 0 };
+          margemMap[pk].fat   += fat;
+          margemMap[pk].custo += custo * qtd;
+          margemMap[pk].qtd   += qtd;
+        });
+
+        // Calcula margem % e ordena do menor para o maior (só produtos com custo cadastrado)
+        produtosMenorMargem = Object.values(margemMap)
+          .filter(p => p.custo > 0)
+          .map(p => ({
+            nome:   p.nome,
+            qtd:    p.qtd,
+            fat:    p.fat,
+            custo:  p.custo,
+            lucro:  p.fat - p.custo,
+            margem: p.fat > 0 ? ((p.fat - p.custo) / p.fat) * 100 : 0,
+          }))
+          .sort((a, b) => a.margem - b.margem)
+          .slice(0, 50);
       }
     }
 
@@ -182,6 +211,7 @@ router.get('/vendas/:filial_pk', async (req, res) => {
       totalDespesas, lucroMes, margemLucro,
       melhoresClientes, maioresDespesas, produtosMaisVendidos,
       vendasPorVendedor, produtosRepor: produtosRepor || [],
+      produtosMenorMargem,
       datasComemorativas, vendasPorDia: diasGrafico,
       sazonalidadeHora
     });
