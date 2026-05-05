@@ -273,11 +273,11 @@
             <div v-if="tipoVenda === 'locacao'" class="cart-section two-col">
               <div>
                 <label class="section-label">Retirada</label>
-                <input v-model="dtLocacao" type="datetime-local" class="cart-input sm" />
+                <input v-model="dtLocacao" type="date" class="cart-input sm" />
               </div>
               <div>
                 <label class="section-label">Devolução</label>
-                <input v-model="dtDevolucao" type="datetime-local" class="cart-input sm" />
+                <input v-model="dtDevolucao" type="date" class="cart-input sm" />
               </div>
             </div>
 
@@ -925,15 +925,27 @@ function onHotkey(e) {
   if (e.key === 'F4' && !vendaFinalizada.value && vendaStore.itens.length) { e.preventDefault(); cartTab.value = 2; }
 }
 
+let _realtimeChannel = null;
+
 onMounted(async () => {
   window.addEventListener('keydown', onHotkey);
   await checkCaixa();
   await Promise.all([loadProdutos(), loadCategorias(), loadVendedores(), loadFormasPagamento()]);
   if (vendaStore.cliente) clienteSel.value = vendaStore.cliente;
+
+  _realtimeChannel = supabase
+    .channel('pdv-produtos-saldo')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'produtos' }, (payload) => {
+      const updated = payload.new;
+      const idx = todos.value.findIndex(p => p.pk === updated.pk);
+      if (idx !== -1) todos.value[idx].saldo = updated.saldo;
+    })
+    .subscribe();
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onHotkey);
+  if (_realtimeChannel) supabase.removeChannel(_realtimeChannel);
 });
 
 async function loadProdutos() {
