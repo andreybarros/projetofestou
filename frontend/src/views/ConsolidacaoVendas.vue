@@ -446,6 +446,9 @@ async function salvarManual() {
       descricao:        m.descricao || null,
     });
     if (error) throw error;
+    if (m.conta_pk) {
+      await supabase.rpc('ajustar_saldo_conta', { p_conta_pk: m.conta_pk, p_delta: parseFloat(m.valor) });
+    }
     showToast('Recebimento lançado!', 'ok');
     manual.value = { data_recebimento: hoje, valor: '', forma: '', conta_pk: null, descricao: '' };
     await carregarRecebimentos();
