@@ -72,7 +72,7 @@
       <div class="section-label">Vendas &amp; Financeiro</div>
       <div class="small-grid">
         <RouterLink v-if="pode('pdv') && op?.acesso_dashboard" to="/dashboard" class="small-card">
-          <div class="sc-icon" style="background:rgba(251,113,133,.12);color:#fb7185"><span class="material-symbols-outlined">bar_chart</span></div>
+          <div class="sc-icon" style="background:rgba(250,113,133,.12);color:#fb7185"><span class="material-symbols-outlined">bar_chart</span></div>
           <div><div class="sc-name">Dashboard</div><div class="sc-desc">Resumo de vendas</div></div>
         </RouterLink>
         <RouterLink v-if="pode('historico') || pode('pdv')" to="/historico-vendas" class="small-card">
@@ -86,6 +86,20 @@
         <RouterLink v-if="op?.admin && pode('fechamento')" to="/fechamento-caixa" class="small-card">
           <div class="sc-icon" style="background:rgba(234,179,8,.12);color:#FBBF24"><span class="material-symbols-outlined">local_atm</span></div>
           <div><div class="sc-name">Fech. de Caixa</div><div class="sc-desc">Fechamento diário</div></div>
+        </RouterLink>
+
+        <RouterLink v-if="op?.admin && pode('despesas')" to="//despesas" class="small-card">
+          <div class="sc-icon" style="background:rgba(234,179,8,.12);color:#F87171"><span class="material-symbols-outlined">money_off</span></div>
+          <div><div class="sc-name">Contas a Pagar</div><div class="sc-desc">Contas a pagar</div></div>
+        </RouterLink>
+
+        <RouterLink v-if="pode('financeiro')" to="/financeiro" class="small-card">
+          <div class="sc-icon" style="background:rgba(163,230,53,.12);color:#a3e635"><span class="material-symbols-outlined">account_balance_wallet</span></div>
+          <div><div class="sc-name">Financeiro</div><div class="sc-desc">Contas e extratos</div></div>
+        </RouterLink>
+        <RouterLink v-if="pode('despesas')" to="/despesas" class="small-card">
+          <div class="sc-icon" style="background:rgba(239,68,68,.12);color:#F87171"><span class="material-symbols-outlined">trending_down</span></div>
+          <div><div class="sc-name">Despesas</div><div class="sc-desc">Contas a pagar</div></div>
         </RouterLink>
       </div>
     </template>
@@ -113,6 +127,11 @@
         <RouterLink v-if="pode('clientes')" to="/fornecedores" class="small-card">
           <div class="sc-icon" style="background:rgba(20,184,166,.12);color:#2DD4BF"><span class="material-symbols-outlined">handshake</span></div>
           <div><div class="sc-name">Fornecedores</div><div class="sc-desc">Empresas parceiras</div></div>
+        </RouterLink>
+
+        <RouterLink v-if="pode('entrada_nfe')" to="/entrada-nfe" class="small-card">
+          <div class="sc-icon" style="background:rgba(20,184,166,.12);color:#2DD4BF"><span class="material-symbols-outlined">move_to_inbox</span></div>
+          <div><div class="sc-name">Entrada de NF's</div><div class="sc-desc">Importação de XML</div></div>
         </RouterLink>
       </div>
     </template>
@@ -156,14 +175,8 @@
     <template v-if="podeAdmin">
       <div class="section-label">Administração</div>
       <div class="small-grid">
-        <RouterLink v-if="pode('financeiro')" to="/financeiro" class="small-card">
-          <div class="sc-icon" style="background:rgba(163,230,53,.12);color:#a3e635"><span class="material-symbols-outlined">account_balance_wallet</span></div>
-          <div><div class="sc-name">Financeiro</div><div class="sc-desc">Contas e extratos</div></div>
-        </RouterLink>
-        <RouterLink v-if="pode('despesas')" to="/despesas" class="small-card">
-          <div class="sc-icon" style="background:rgba(239,68,68,.12);color:#F87171"><span class="material-symbols-outlined">trending_down</span></div>
-          <div><div class="sc-name">Despesas</div><div class="sc-desc">Contas a pagar</div></div>
-        </RouterLink>
+        
+        
         <RouterLink v-if="op?.admin" to="/filiais" class="small-card">
           <div class="sc-icon" style="background:rgba(239,68,68,.12);color:#FCA5A5"><span class="material-symbols-outlined">corporate_fare</span></div>
           <div><div class="sc-name">Filiais</div><div class="sc-desc">Unidades da empresa</div></div>
@@ -390,9 +403,12 @@ const podeRH      = computed(() => {
 }
 .small-card:hover { transform:translateY(-2px); border-color:#3B82F6; box-shadow:0 4px 16px rgba(59,130,246,.15); }
 
+[data-theme="light"] .small-card { background: #fff; border-color: #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+[data-theme="light"] .small-card:hover { border-color: #3B82F6; box-shadow: 0 4px 16px rgba(59,130,246,.15); }
+
 .sc-icon  { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; font-variation-settings:'FILL' 1,'wght' 400; }
-.sc-name  { font-size:13px; font-weight:600; color:var(--text); line-height:1.3; }
-.sc-desc  { font-size:11px; color:var(--text2); line-height:1.4; }
+.sc-name  { font-size:16px; font-weight:600; color:var(--text); line-height:1.3; }
+.sc-desc  { font-size:13px; color:var(--text2); line-height:1.4; }
 
 /* Avisos */
 .avisos-wrap { margin-bottom: 20px; }
@@ -411,10 +427,10 @@ const podeRH      = computed(() => {
 .aviso-item {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 14px; border-radius: 12px; border: 1px solid;
-  text-decoration: none; cursor: pointer; transition: filter .15s;
+  text-decoration: none; cursor: pointer; transition: filter .12s;
 }
 .aviso-item:hover { filter: brightness(1.08); }
-.aviso-ico { font-size: 20px; flex-shrink: 0; font-variation-settings: 'FILL' 1; }
+.aviso-ico { font-size: 25px; flex-shrink: 0; font-variation-settings: 'FILL' 1; }
 .aviso-body { flex: 1; min-width: 0; }
 .aviso-msg  { display: block; font-size: .88rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .aviso-detalhe { display: block; font-size: .75rem; opacity: .75; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
