@@ -54,12 +54,19 @@
           <!-- Vendas -->
           <div v-if="podeVendas" class="nav-section">
             <p class="section-title">Vendas</p>
-            <RouterLink v-if="pode('caixa')"                         to="/caixa"            class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#10b981">payments</span><span class="nav-label">Caixa (Operação)</span></RouterLink>
-            <RouterLink v-if="pode('pdv') && op?.acesso_dashboard"  to="/dashboard"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">bar_chart</span><span class="nav-label">Dashboard</span></RouterLink>
+
             <RouterLink v-if="pode('pdv')"                          to="/pdv"              class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">point_of_sale</span><span class="nav-label">Ponto de Venda</span></RouterLink>
             <RouterLink v-if="pode('vendedores')"                   to="/vendedores"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#818cf8">person</span><span class="nav-label">Vendedores</span></RouterLink>
-            <RouterLink v-if="pode('receitas')"                     to="/contas-receber"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">receipt_long</span><span class="nav-label">Contas a Receber</span></RouterLink>
             <RouterLink v-if="pode('historico')"                    to="/historico-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">history</span><span class="nav-label">Histórico de Vendas</span></RouterLink>
+          </div>
+
+          <div v-if="podeVendas" class="nav-section">
+            <p class="section-title">Financeiro</p>
+            <RouterLink v-if="pode('caixa')"                         to="/caixa"            class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#10b981">payments</span><span class="nav-label">Caixa (Operação)</span></RouterLink>
+            <RouterLink v-if="pode('pdv') && op?.acesso_dashboard"  to="/dashboard"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">bar_chart</span><span class="nav-label">Dashboard</span></RouterLink>
+            <RouterLink v-if="pode('receitas')"                     to="/contas-receber"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">receipt_long</span><span class="nav-label">Contas a Receber</span></RouterLink>
+            <RouterLink v-if="pode('despesas')"   to="/despesas"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Contas a Pagar</span></RouterLink>
+            <RouterLink v-if="pode('financeiro')" to="/financeiro"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Cadastro de Contas</span></RouterLink>
           </div>
 
           <!-- RH -->
@@ -74,21 +81,17 @@
             <RouterLink v-if="pode('vales')" to="/vales" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">request_quote</span><span class="nav-label">Vales</span></RouterLink>
           </div>
 
+
+
           <!-- Operação -->
           <div v-if="pode('separacao')" class="nav-section">
             <p class="section-title">Operação</p>
             <RouterLink to="/separacao" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fdba74">inventory</span><span class="nav-label">Separação</span></RouterLink>
           </div>
 
-          <!-- Admin -->
-          <div v-if="podeAdmin" class="nav-section">
-            <p class="section-title">Administração</p>
-            <RouterLink v-if="op?.admin"           to="/parametros"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">tune</span><span class="nav-label">Parâmetros</span></RouterLink>
-            <RouterLink v-if="pode('despesas')"   to="/despesas"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Despesas</span></RouterLink>
-            <RouterLink v-if="pode('financeiro')" to="/financeiro"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Financeiro</span></RouterLink>
-            <RouterLink v-if="op?.admin"           to="/filiais"           class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">corporate_fare</span><span class="nav-label">Filiais</span></RouterLink>
-            <RouterLink v-if="op?.admin"           to="/operadores"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a5b4fc">manage_accounts</span><span class="nav-label">Operadores</span></RouterLink>
-          </div>
+          
+
+  
 
           <!-- Relatórios -->
           <div v-if="op?.admin || pode('fechamento') || pode('rel_vendas') || pode('rel_caixa') || pode('financeiro')" class="nav-section">
@@ -98,6 +101,15 @@
             <RouterLink v-if="pode('rel_caixa')" to="/relatorio-caixa"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">summarize</span><span class="nav-label">Relatório de Caixa</span></RouterLink>
             <RouterLink v-if="pode('fechamento')" to="/fechamento-caixa"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fde047">lock</span><span class="nav-label">Fechamento de Caixa</span></RouterLink>
           </div>
+
+          <!-- Administração -->
+          <div v-if="op?.admin" class="nav-section">
+            <p class="section-title">Administração</p>
+            <RouterLink to="/parametros" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">tune</span><span class="nav-label">Parâmetros</span></RouterLink>
+            <RouterLink to="/filiais"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">corporate_fare</span><span class="nav-label">Filiais</span></RouterLink>
+            <RouterLink to="/operadores" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a5b4fc">manage_accounts</span><span class="nav-label">Operadores</span></RouterLink>
+          </div>
+          
         </nav>
 
         <!-- Drawer footer vazio (logout/manual movidos para o topbar) -->
@@ -368,7 +380,7 @@ function pode(modulo) {
 }
 
 const podeVendas = computed(() => pode('pdv') || pode('receitas') || pode('historico') || pode('despesas') || pode('financeiro'));
-const podeAdmin  = computed(() => op.value?.admin || pode('despesas') || pode('financeiro'));
+const podeAdmin  = computed(() => !!op.value?.admin);
 const podeRH     = computed(() => {
   const temRHnaFilial = sessao.temModulo('ponto') || sessao.temModulo('funcionarios');
   if (!temRHnaFilial) return false;
@@ -513,7 +525,7 @@ body {
 }
 .drawer-close:hover, .drawer-collapse:hover { background: rgba(255,255,255,.06); color: var(--text); }
 
-.drawer-nav   { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.drawer-nav   { flex: 1; overflow-y: auto; padding: 12px 12px 25px; display: flex; flex-direction: column; gap: 4px; }
 .nav-section  { margin-top: 16px; }
 .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a8abb5; padding: 0 8px 6px; }
 

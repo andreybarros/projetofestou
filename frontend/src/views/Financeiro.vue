@@ -686,8 +686,8 @@ function fmt(v) {
 .conta-nome { font-weight: 700; color: var(--text); font-size: 1rem; }
 .conta-tipo { font-size: 0.7rem; color: var(--text2); letter-spacing: 0.5px; }
 
-.del-btn { background: none; border: none; font-size: 14px; cursor: pointer; opacity: 0.3; transition: opacity 0.2s; }
-.del-btn:hover { opacity: 1; }
+.del-btn { background: none; border: none; font-size: 16px; cursor: pointer; opacity: 1; transition: opacity 0.2s; }
+.del-btn:hover { opacity: 0.7; }
 
 .conta-footer { display: flex; flex-direction: column; gap: 2px; }
 .conta-footer .label { font-size: 0.75rem; color: var(--text2); }
@@ -792,4 +792,7 @@ function fmt(v) {
 .btn-primary { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .btn-primary.sm { padding: 0.4rem 1rem; font-size: 0.8rem; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+[data-theme="light"] .conta-card { background: #fff; border-color: #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+[data-theme="light"] .conta-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); border-color: #6366f1; }
 </style>

@@ -501,4 +501,9 @@ function fmt(v) {
 .bold { font-weight: 700; }
 .mono { font-family: monospace; }
 .muted { color: var(--text2); }
+
+[data-theme="light"] .filters-card .field input,
+[data-theme="light"] .filters-card .field select { background: #fff; border-color: #d1d5db; color: #111827; }
+[data-theme="light"] .filters-card .field input:focus,
+[data-theme="light"] .filters-card .field select:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
 </style>

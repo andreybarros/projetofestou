@@ -100,4 +100,7 @@ async function excluir(v) {
 .resumo       { font-size: .82rem; color: var(--text2); padding: .5rem .8rem; text-align: right; }
 .loading, .vazio { color: var(--text2); text-align: center; padding: 3rem; }
 .btn-primary  { padding: .5rem 1.1rem; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .9rem; }
+
+[data-theme="light"] .busca-input { background: #fff; border-color: #d1d5db; }
+[data-theme="light"] .busca-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
 </style>

@@ -144,4 +144,7 @@ async function excluir(f) {
 .field input  { padding: .5rem; border: 1px solid var(--border); border-radius: 5px; font-size: .9rem; background: var(--bg3); color: var(--text); }
 .modal-btns   { display: flex; justify-content: flex-end; gap: .75rem; }
 .erro         { color: #f87171; font-size: .85rem; background: rgba(220,38,38,.1); padding: .5rem; border-radius: 5px; }
+
+[data-theme="light"] .busca-input { background: #fff; border-color: #d1d5db; }
+[data-theme="light"] .busca-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
 </style>

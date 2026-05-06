@@ -1054,4 +1054,11 @@ function statusCls(s) {
 .toast.err { background: #ef4444; }
 .toast-enter-active, .toast-leave-active { transition: all .3s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(12px); }
+
+[data-theme="light"] .busca-input-v2,
+[data-theme="light"] .date-range-group,
+[data-theme="light"] .sel-input-v2 { background: #fff; border-color: #d1d5db; }
+[data-theme="light"] .busca-input-v2:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+[data-theme="light"] .sel-input-v2:focus { border-color: #6366f1; }
+[data-theme="light"] .date-input-v2 { color: #111827; }
 </style>
