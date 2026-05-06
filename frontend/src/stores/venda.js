@@ -1,12 +1,29 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+
+const STORAGE_KEY = 'pdv_carrinho';
+
+function salvarStorage(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+function carregarStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
 
 export const useVendaStore = defineStore('venda', () => {
-  const itens      = ref([]);
-  const desconto   = ref(0);
-  const pagamentos = ref([]);
-  const vendedor   = ref(null);
-  const cliente    = ref(null);
+  const _salvo = carregarStorage();
+
+  const itens      = ref(_salvo?.itens      || []);
+  const desconto   = ref(_salvo?.desconto   || 0);
+  const pagamentos = ref(_salvo?.pagamentos || []);
+  const vendedor   = ref(_salvo?.vendedor   || null);
+  const cliente    = ref(_salvo?.cliente    || null);
 
   const subtotal = computed(() => {
     return itens.value.reduce((sum, item) => {
@@ -28,6 +45,19 @@ export const useVendaStore = defineStore('venda', () => {
   const faltaPagar = computed(() => {
     return Math.max(0, parseFloat(total.value) - parseFloat(totalPago.value)).toFixed(2);
   });
+
+  // Persiste qualquer mudança no localStorage
+  watch(
+    [itens, desconto, pagamentos, vendedor, cliente],
+    () => salvarStorage({
+      itens:      itens.value,
+      desconto:   desconto.value,
+      pagamentos: pagamentos.value,
+      vendedor:   vendedor.value,
+      cliente:    cliente.value,
+    }),
+    { deep: true }
+  );
 
   function adicionarItem(item) {
     const existente = itens.value.find(i => i.produto_pk === item.produto_pk);
@@ -120,6 +150,7 @@ export const useVendaStore = defineStore('venda', () => {
     pagamentos.value = [];
     vendedor.value   = null;
     cliente.value    = null;
+    localStorage.removeItem(STORAGE_KEY);
   }
 
   return {

@@ -387,7 +387,7 @@
               </div>
               <div v-if="vendaStore.pagamentos.length" class="pag-list">
                 <div v-for="(p, i) in vendaStore.pagamentos" :key="i" class="pag-item">
-                  <span class="pag-forma">{{ p.forma }}</span>
+                  <span class="pag-forma">{{ p.label || p.forma }}</span>
                   <span class="pag-valor">{{ fmt(p.valor) }}</span>
                   <button class="pag-del" @click="vendaStore.removerPagamento(i)">×</button>
                 </div>
@@ -1361,8 +1361,10 @@ function onValorPagInput(e) {
 
 function addPag() {
   if (valorPag.value > 0) {
+    const fp = formasPagamento.value.find(f => f.forma === formaPag.value);
     vendaStore.adicionarPagamento({
       forma: formaPag.value,
+      label: fp ? `${fp.icone} ${fp.label}` : formaPag.value,
       valor: valorPag.value,
       troco: formaPag.value === 'dinheiro'
         ? Math.max(0, valorPag.value - parseFloat(vendaStore.faltaPagar))
@@ -1638,7 +1640,7 @@ function imprimirRecibo() {
   }).join('');
 
   const linhaPags = vendaStore.pagamentos.map(p =>
-    `<tr><td style="text-transform:capitalize">${p.forma}</td><td style="text-align:right">${fmt(p.valor)}</td></tr>`
+    `<tr><td>${p.label || p.forma}</td><td style="text-align:right">${fmt(p.valor)}</td></tr>`
   ).join('');
 
   const html = `<!DOCTYPE html>
