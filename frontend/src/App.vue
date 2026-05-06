@@ -158,6 +158,9 @@
               <button class="tema-toggle" @click="toggleTema" :title="tema === 'dark' ? 'Mudar para Light' : 'Mudar para Dark'">
                 <span class="material-symbols-outlined">{{ tema === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
               </button>
+              <button v-if="updateDisponivel" class="update-topbar-btn" @click="atualizarAgora" title="Nova atualização disponível — clique para atualizar">
+                <span class="material-symbols-outlined">system_update_alt</span>
+              </button>
             </div>
 
             <!-- Menu do usuário -->
@@ -205,15 +208,6 @@
       {{ toast.tipo === 'success' ? '✅' : '❌' }} {{ toast.msg }}
     </div>
 
-    <!-- Banner de atualização -->
-    <Transition name="update-banner">
-      <div v-if="updateDisponivel" class="update-banner">
-        <span class="material-symbols-outlined update-banner-icon">system_update_alt</span>
-        <span class="update-banner-msg">Nova atualização disponível!</span>
-        <button class="update-btn-ok" @click="atualizarAgora">Atualizar</button>
-        <button class="update-btn-later" @click="lembrarDepois">Lembrar em 1h</button>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -222,11 +216,13 @@ import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSessaoStore } from './stores/sessao';
 import { useParametrosStore } from './stores/parametros';
+import { useVendaStore } from './stores/venda';
 import apiClient from './services/api';
 import LoginView from './views/Login.vue';
 
 const sessao      = useSessaoStore();
 const parametros  = useParametrosStore();
+const vendaStore  = useVendaStore();
 const router      = useRouter();
 const route       = useRoute();
 const isPDV       = computed(() => route.name === 'PDV');
@@ -312,7 +308,6 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', fecharMenus, true);
   clearInterval(_updatePollInterval);
-  clearTimeout(_updateSnoozeTimer);
 });
 
 watch(() => sessao.isAutenticado, (ok) => { if (ok) carregarFiliais(); });
@@ -401,7 +396,6 @@ provide('abrirSidebar', abrirSidebar);
 // Verificação de atualização
 const updateDisponivel = ref(false);
 let _versaoAtual = null;
-let _updateSnoozeTimer = null;
 let _updatePollInterval = null;
 
 async function checarVersao() {
@@ -416,12 +410,6 @@ async function checarVersao() {
 
 function atualizarAgora() {
   window.location.reload();
-}
-
-function lembrarDepois() {
-  updateDisponivel.value = false;
-  clearTimeout(_updateSnoozeTimer);
-  _updateSnoozeTimer = setTimeout(() => { updateDisponivel.value = true; }, 60 * 60 * 1000);
 }
 
 // Login callback
@@ -601,49 +589,20 @@ body {
 .topbar-left   { display: flex; align-items: center; gap: 12px; }
 .topbar-right  { display: flex; align-items: center; gap: 10px; }
 .topbar-logo   { max-height: 36px; max-width: 120px; object-fit: contain; }
-/* ── Banner de atualização ─────────────────────────────────── */
-.update-banner {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: linear-gradient(135deg, #1e1b4b, #312e81);
-  border: 1px solid #6366f1;
-  border-radius: 14px;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 9999;
-  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 20px rgba(99,102,241,.4);
-  white-space: nowrap;
+/* ── Botão de atualização na topbar ─────────────────────────── */
+.update-topbar-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(99,102,241,.15); border: 1px solid #6366f1;
+  border-radius: 8px; color: #a5b4fc; cursor: pointer;
+  padding: 4px 7px; transition: all .15s;
+  animation: update-pulse 2s ease-in-out infinite;
 }
-.update-banner-icon { color: #c7d2fe; font-size: 24px; }
-.update-banner-msg { font-size: 14px; font-weight: 700; color: #e0e7ff; }
-.update-btn-ok {
-  padding: 8px 18px;
-  background: #6366f1;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 0 12px rgba(99,102,241,.6);
+.update-topbar-btn:hover { background: #6366f1; color: #fff; }
+.update-topbar-btn .material-symbols-outlined { font-size: 18px; }
+@keyframes update-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(99,102,241,0); }
 }
-.update-btn-ok:hover { background: #4f46e5; }
-.update-btn-later {
-  padding: 8px 14px;
-  background: rgba(255,255,255,.08);
-  color: #a5b4fc;
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.update-btn-later:hover { background: rgba(255,255,255,.14); color: #e0e7ff; }
-.update-banner-enter-active, .update-banner-leave-active { transition: opacity .3s, transform .3s; }
-.update-banner-enter-from, .update-banner-leave-to { opacity: 0; transform: translateY(16px); }
 
 .topbar-shortcuts {
   display: flex;

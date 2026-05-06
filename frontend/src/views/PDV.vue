@@ -938,6 +938,9 @@ onMounted(async () => {
       const updated = payload.new;
       const idx = todos.value.findIndex(p => p.pk === updated.pk);
       if (idx !== -1) todos.value[idx].saldo = updated.saldo;
+      vendaStore.itens.forEach(item => {
+        if (item.produto_pk === updated.pk) item.saldo = updated.saldo;
+      });
     })
     .subscribe();
 });
