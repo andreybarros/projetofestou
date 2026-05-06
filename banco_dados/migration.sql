@@ -919,6 +919,38 @@ END;
 $$;
 
 -- ============================================================
+-- SEÇÃO 15 — CÓDIGO ÚNICO POR FILIAL EM PRODUTOS
+-- ============================================================
+
+-- Constraint para garantir que dois produtos da mesma filial não tenham o mesmo código interno
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'produtos_filial_pk_codigo_key'
+  ) THEN
+    ALTER TABLE produtos ADD CONSTRAINT produtos_filial_pk_codigo_key UNIQUE (filial_pk, codigo);
+  END IF;
+END $$;
+
+-- Função atômica que retorna o próximo código sequencial disponível para a filial
+CREATE OR REPLACE FUNCTION proximo_codigo_produto(p_filial_pk bigint)
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  v_max integer;
+  v_proximo integer;
+BEGIN
+  SELECT COALESCE(MAX(codigo::integer), 0)
+    INTO v_max
+    FROM produtos
+   WHERE filial_pk = p_filial_pk
+     AND codigo ~ '^\d{1,5}$';
+
+  v_proximo := v_max + 1;
+  RETURN LPAD(v_proximo::text, 4, '0');
+END;
+$$;
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

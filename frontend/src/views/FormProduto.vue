@@ -322,18 +322,11 @@ onMounted(async () => {
   const { data: ends } = await supabase.from('endereco_armazem').select('pk, armazem_pk, codigo, descricao').order('codigo');
   todosEnderecos.value = ends || [];
 
-  // Auto-gera código interno para novo produto (maior código sequencial + 1)
+  // Auto-gera código interno via função atômica do banco (evita corrida entre usuários)
   if (!pk) {
-    let q = supabase.from('produtos').select('codigo').not('codigo', 'is', null).order('pk', { ascending: false });
-    if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-    const { data: todos } = await q;
-    // Considera apenas códigos puramente numéricos com até 6 dígitos (exclui barcodes e códigos externos)
-    const nums = (todos || [])
-      .map(p => p.codigo?.trim())
-      .filter(c => c && /^\d{1,5}$/.test(c))
-      .map(c => parseInt(c, 10));
-    const maiorSequencial = nums.length ? Math.max(...nums) : 0;
-    form.value.codigo = String(maiorSequencial + 1).padStart(4, '0');
+    const filialPk = sessaoStore.filial?.pk || null;
+    const { data: cod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
+    form.value.codigo = cod || '0001';
   }
 
   // Carrega produto se edição
@@ -394,6 +387,14 @@ async function salvar() {
       ({ error } = await supabase.from('produtos').update(payload).eq('pk', Number(pk)));
     } else {
       ({ error } = await supabase.from('produtos').insert(payload));
+      // Conflito de código: outro usuário cadastrou ao mesmo tempo — busca próximo e tenta de novo
+      if (error?.code === '23505' && error.message.includes('codigo')) {
+        const filialPk = sessaoStore.filial?.pk || null;
+        const { data: novoCod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
+        payload.codigo = novoCod || payload.codigo;
+        form.value.codigo = payload.codigo;
+        ({ error } = await supabase.from('produtos').insert(payload));
+      }
     }
     if (error) throw error;
     router.push('/produtos');
