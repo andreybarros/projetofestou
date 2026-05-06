@@ -299,7 +299,7 @@ function fmtVal(v) {
                   <input v-model="item.descricao" class="ev-td-input" placeholder="Descrição" />
                 </td>
                 <td>
-                  <input v-model.number="item.qtd" @input="recalcularItem(item)" type="number" min="0.01" step="0.01" class="ev-td-input ev-td-num" />
+                  <input v-model.number="item.qtd" @input="recalcularItem(item)" type="number" min="1" step="1" class="ev-td-input ev-td-num" />
                 </td>
                 <td>
                   <input v-model.number="item.preco_unit" @input="recalcularItem(item)" type="number" min="0" step="0.01" class="ev-td-input ev-td-num" />

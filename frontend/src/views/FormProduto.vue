@@ -16,7 +16,7 @@
       <span>Carregando...</span>
     </div>
 
-    <form v-else @submit.prevent="salvar" class="form-body">
+    <form v-else @submit.prevent="salvar" @keydown.enter.prevent="focusProximo" class="form-body">
 
       <!-- ── Seção: Identificação ────────────────────────────── -->
       <div class="form-section">
@@ -27,7 +27,7 @@
         <div class="form-grid">
           <div class="field">
             <label>Código Interno</label>
-            <input v-model="form.codigo" type="text" placeholder="Ex: PROD001" />
+            <input v-model="form.codigo" type="text" :readonly="!pk" :style="!pk ? 'opacity:.6;cursor:not-allowed;' : ''" />
           </div>
           <div class="field">
             <label>Código de Barras (EAN)</label>
@@ -60,11 +60,11 @@
         <div class="form-grid">
           <div class="field">
             <label>Preço de Venda (R$)</label>
-            <input v-model.number="form.valor_venda" type="number" step="0.01" min="0" />
+            <input :value="valorVendaDisplay" @input="mascaraPreco($event, 'valor_venda')" type="text" inputmode="numeric" placeholder="0,00" />
           </div>
           <div class="field">
             <label>Preço de Custo (R$)</label>
-            <input v-model.number="form.preco_custo" type="number" step="0.01" min="0" />
+            <input :value="precoCustoDisplay" @input="mascaraPreco($event, 'preco_custo')" type="text" inputmode="numeric" placeholder="0,00" />
           </div>
           <div class="field">
             <label>Saldo em Estoque</label>
@@ -91,7 +91,7 @@
         <div class="form-grid">
           <div class="field">
             <label>Preço Promocional (R$)</label>
-            <input v-model.number="form.preco_promo" type="number" step="0.01" min="0" placeholder="0.00" />
+            <input :value="precoPromoDisplay" @input="mascaraPreco($event, 'preco_promo')" type="text" inputmode="numeric" placeholder="0,00" />
           </div>
           <div class="field">
             <label>Início da Promoção</label>
@@ -173,6 +173,26 @@
         </div>
       </div>
 
+      <!-- ── NCMs padrão da loja ────────────────────────────── -->
+      <div class="form-section">
+        <div class="section-header">
+          <span class="material-symbols-outlined section-icon" style="color:#818cf8">receipt</span>
+          <h3 class="section-title">NCMs padrão da loja</h3>
+        </div>
+        <table class="ncm-ref-table">
+          <thead>
+            <tr><th>NCM</th><th>Descrição</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="n in ncmsPadrao" :key="n.ncm">
+              <td class="ncm-cod">{{ n.ncm }}</td>
+              <td class="ncm-desc">{{ n.descricao }}</td>
+              <td class="ncm-acao"><button type="button" class="ncm-usar" @click="usarNcm(n)">Usar</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div v-if="erro" class="erro">{{ erro }}</div>
 
       <div class="form-actions">
@@ -206,6 +226,43 @@ const erro       = ref('');
 const categorias = ref([]);
 const armazens   = ref([]);
 const todosEnderecos = ref([]);
+
+const ncmsPadrao = [
+  { ncm: '95059000', descricao: 'Artigos para festas, carnaval e diversões (balões, decorações)' },
+  { ncm: '95030000', descricao: 'Brinquedos e jogos' },
+  { ncm: '62114200', descricao: 'Fantasias e roupas especiais (fibras sintéticas)' },
+  { ncm: '61149000', descricao: 'Fantasias e artigos de malha' },
+  { ncm: '39269090', descricao: 'Artigos de plástico (acessórios, bijuterias plásticas)' },
+  { ncm: '63079000', descricao: 'Outros artefatos têxteis (tiaras, laços, fitas)' },
+  { ncm: '71179000', descricao: 'Bijuterias e adereços' },
+  { ncm: '48192090', descricao: 'Embalagens de papel e papelão' },
+  { ncm: '96170000', descricao: 'Garrafas térmicas e vasilhas para bebidas' },
+];
+
+function usarNcm(n) {
+  form.value.ncm = n.ncm;
+}
+
+const valorVendaDisplay = ref('');
+const precoCustoDisplay = ref('');
+const precoPromoDisplay = ref('');
+
+function mascaraPreco(e, campo) {
+  const digits = e.target.value.replace(/\D/g, '');
+  const cents = parseInt(digits || '0', 10);
+  const valor = cents / 100;
+  form.value[campo] = valor;
+  const display = valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (campo === 'valor_venda') valorVendaDisplay.value = display;
+  else if (campo === 'preco_custo') precoCustoDisplay.value = display;
+  else if (campo === 'preco_promo') precoPromoDisplay.value = display;
+}
+
+function focusProximo(e) {
+  const campos = Array.from(document.querySelectorAll('input:not([readonly]):not([disabled]), select, textarea'));
+  const idx = campos.indexOf(e.target);
+  if (idx >= 0 && idx < campos.length - 1) campos[idx + 1].focus();
+}
 
 const form = ref({
   codigo: '', codigo_barras: '', descricao: '',
@@ -265,6 +322,20 @@ onMounted(async () => {
   const { data: ends } = await supabase.from('endereco_armazem').select('pk, armazem_pk, codigo, descricao').order('codigo');
   todosEnderecos.value = ends || [];
 
+  // Auto-gera código interno para novo produto (maior código sequencial + 1)
+  if (!pk) {
+    let q = supabase.from('produtos').select('codigo').not('codigo', 'is', null).order('pk', { ascending: false });
+    if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
+    const { data: todos } = await q;
+    // Considera apenas códigos puramente numéricos com até 6 dígitos (exclui barcodes e códigos externos)
+    const nums = (todos || [])
+      .map(p => p.codigo?.trim())
+      .filter(c => c && /^\d{1,5}$/.test(c))
+      .map(c => parseInt(c, 10));
+    const maiorSequencial = nums.length ? Math.max(...nums) : 0;
+    form.value.codigo = String(maiorSequencial + 1).padStart(4, '0');
+  }
+
   // Carrega produto se edição
   if (pk) {
     const { data, error } = await supabase.from('produtos').select('*').eq('pk', Number(pk)).single();
@@ -277,6 +348,10 @@ onMounted(async () => {
       promo_inicio:        isoParaDT(data.promo_inicio),
       promo_fim:           isoParaDT(data.promo_fim),
     };
+    const fmtBRL = v => parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    valorVendaDisplay.value = fmtBRL(data.valor_venda);
+    precoCustoDisplay.value = fmtBRL(data.preco_custo);
+    if (data.preco_promo) precoPromoDisplay.value = fmtBRL(data.preco_promo);
   }
   carregando.value = false;
 });
@@ -399,4 +474,19 @@ async function salvar() {
   .form-grid { grid-template-columns: 1fr; }
   .field.full { grid-column: 1; }
 }
+
+/* NCMs padrão */
+.ncm-ref-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ncm-ref-table th { padding: 7px 10px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; background: var(--bg3); border-bottom: 1px solid var(--border); }
+.ncm-ref-table td { padding: 8px 10px; border-top: 1px solid var(--border); color: var(--text); }
+.ncm-ref-table tr:hover td { background: var(--bg3); }
+.ncm-cod { font-family: monospace; font-weight: 700; color: #818cf8; white-space: nowrap; width: 110px; }
+.ncm-desc { color: var(--text2); }
+.ncm-acao { text-align: right; width: 70px; }
+.ncm-usar {
+  padding: 3px 12px; background: rgba(129,140,248,.12); border: 1px solid rgba(129,140,248,.3);
+  border-radius: 6px; color: #818cf8; font-size: 12px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: all .15s;
+}
+.ncm-usar:hover { background: #818cf8; color: #fff; }
 </style>
