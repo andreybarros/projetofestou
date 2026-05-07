@@ -237,7 +237,7 @@ async function carregarAvisos() {
           ? `Crediário vencendo hoje — Venda #${v.numero}`
           : `Crediário vence em ${diasFut} dia${diasFut !== 1 ? 's' : ''} — NF #${v.numero}`,
       tag:     atras ? 'Vencido' : diasFut === 0 ? 'Hoje' : `Em ${diasFut}d`,
-      rota:    `/historico-vendas/${v.pk}/editar`,
+      rota:    '/contas-receber',
     });
   }
 

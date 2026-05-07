@@ -208,6 +208,7 @@
                 <svg v-if="!orcCopiado" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 {{ orcCopiado ? 'Copiado!' : 'Gerar Orçamento' }}
+                <kbd class="hotkey-badge">F1</kbd>
               </button>
             </div>
           </template>
@@ -450,7 +451,7 @@
             <button class="btn-imp-acao btn-nova-venda" @click="limpar">
               <span class="material-symbols-outlined">add_shopping_cart</span>
               Nova Venda
-              <kbd class="hotkey-badge">F1</kbd>
+              <kbd class="hotkey-badge">Esc</kbd>
             </button>
           </div>
         </div><!-- /tab 3 -->
@@ -918,7 +919,8 @@ watch(() => vendaStore.faltaPagar, (val) => {
 
 // ── Mount ─────────────────────────────────────────────────────
 function onHotkey(e) {
-  if (e.key === 'F1') { e.preventDefault(); limpar(); }
+  if (e.key === 'Escape') { e.preventDefault(); limpar(); }
+  if (e.key === 'F1' && vendaStore.itens.length) { e.preventDefault(); copiarOrcamento(); }
   if (e.key === 'F2' && !vendaFinalizada.value) { e.preventDefault(); cartTab.value = 0; }
   if (e.key === 'F3' && !vendaFinalizada.value && vendaStore.itens.length) { e.preventDefault(); cartTab.value = 1; }
   if (e.key === 'F4' && !vendaFinalizada.value && vendaStore.itens.length) { e.preventDefault(); cartTab.value = 2; }
@@ -1931,7 +1933,7 @@ async function emitirNFCe() {
   --bg0:     #08090c;
   --bg1:     #0e1016;
   --bg2:     #141720;
-  --bg3:     #1c2030;
+  --bg3:     #000000;
   --line:    rgba(255,255,255,.07);
   --text:    #e8eaf2;
   --muted:   #6b7280;
@@ -2028,8 +2030,8 @@ async function emitirNFCe() {
 }
 .btn-scan {
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 45px;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--bg3);
@@ -2040,6 +2042,10 @@ async function emitirNFCe() {
   justify-content: center;
   transition: all .15s;
 }
+
+[data-theme="light"] .btn-scan { background: #fff; }
+
+
 .btn-scan:hover { background: rgba(99,102,241,.12); color: var(--primary); border-color: rgba(99,102,241,.4); }
 .btn-scan .material-symbols-outlined { font-size: 20px; }
 .btn-lista-ia:hover { background: rgba(16,185,129,.12) !important; color: #10b981 !important; border-color: rgba(16,185,129,.4) !important; }
@@ -2169,13 +2175,13 @@ async function emitirNFCe() {
 }
 .search-input {
   width: 100%;
-  padding: 9px 36px;
+  padding: 11px 40px;
   background: var(--bg3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--sans);
-  font-size: 13.5px;
+  font-size: 16.5px;
   outline: none;
   transition: border-color .15s;
 }
@@ -3049,6 +3055,7 @@ async function emitirNFCe() {
   transition: background .15s, border-color .15s, color .15s;
 }
 .btn-orcamento:hover { background: rgba(99,102,241,.1); border-color: var(--accent); }
+.btn-orcamento .hotkey-badge { margin-left: 0; }
 .btn-orcamento.copiado { color: var(--green); border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.08); }
 
 /* ── Toast ──────────────────────────────────────────────────── */

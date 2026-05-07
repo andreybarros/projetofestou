@@ -126,7 +126,8 @@
             </button>
           </div>
           <div v-if="route.name === 'PDV'" class="topbar-shortcuts sm-hide">
-            <span class="shortcut-chip"><kbd>F1</kbd> Limpar</span>
+            <span class="shortcut-chip"><kbd>Esc</kbd> Limpar</span>
+            <span class="shortcut-chip"><kbd>F1</kbd> Orçamento</span>
             <span class="shortcut-chip"><kbd>F2</kbd> Itens</span>
             <span class="shortcut-chip"><kbd>F3</kbd> Detalhes</span>
             <span class="shortcut-chip"><kbd>F4</kbd> Pagamento</span>
