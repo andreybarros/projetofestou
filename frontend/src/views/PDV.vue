@@ -22,9 +22,7 @@
             <button class="btn-scan" @click="abrirScanner" title="Ler código de barras">
               <span class="material-symbols-outlined">barcode_scanner</span>
             </button>
-            <button class="btn-scan btn-lista-ia" @click="modalLista = true" title="Importar lista do cliente">
-              <span class="material-symbols-outlined">format_list_bulleted</span>
-            </button>
+            
           </div>
 
           <div class="cat-scroll">
@@ -2580,7 +2578,7 @@ async function emitirNFCe() {
   border: none;
   border-radius: var(--radius);
   font-family: var(--sans);
-  font-size: 13.5px;
+  font-size: 15.5px;
   font-weight: 700;
   cursor: pointer;
   transition: opacity .15s;
@@ -2637,8 +2635,8 @@ async function emitirNFCe() {
 .ci-bottom { justify-content: space-between; gap: 8px; }
 
 .item-name-wrap { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.item-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
-.item-unit-price { font-size: 11.5px; color: var(--muted); font-family: var(--sans); }
+.item-name { font-size: 19px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.item-unit-price { font-size: 14.5px; color: var(--muted); font-family: var(--sans); }
 
 .item-desc-btn {
   background: none; border: 1px solid var(--line); border-radius: 4px;
@@ -2683,14 +2681,14 @@ async function emitirNFCe() {
 .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
 .qty-input:focus { outline: none; border-color: var(--primary); }
 
-.item-total { font-family: var(--mono); font-size: 14.5px; font-weight: 700; color: var(--accent2); margin-left: auto; text-align: right; }
+.item-total { font-family: var(--mono); font-size: 22.5px; font-weight: 700; color: var(--accent2); margin-left: auto; text-align: right; }
 .item-del { 
   background: rgba(239, 68, 68, 0.1); 
   border: 1px solid rgba(239, 68, 68, 0.2); 
   border-radius: 6px; 
   color: #ef4444; 
   cursor: pointer; 
-  width: 28px; 
+  width: 40px; 
   height: 28px; 
   display: flex; 
   align-items: center; 
