@@ -232,6 +232,19 @@
                 </div>
                 <button class="cliente-chip-del" @click="removerCliente">×</button>
               </div>
+              <div v-if="clienteSel && clienteStats" class="cliente-stats">
+                <span class="cs-item" :class="clienteStats.contasAberto > 0 ? 'cs-danger' : 'cs-ok'">
+                  <span class="cs-val">{{ fmt(clienteStats.contasAberto) }}</span>
+                  <span class="cs-label">Em aberto</span>
+                </span>
+                <span class="cs-sep">·</span>
+                <span class="cs-item">
+                  <span class="cs-val">{{ fmt(clienteStats.ticketMedio) }}</span>
+                  <span class="cs-label">Ticket médio</span>
+                </span>
+                <span v-if="clienteStats.inadimplente" class="cs-sep">·</span>
+                <span v-if="clienteStats.inadimplente" class="cs-badge-inadimpl">Inadimplente</span>
+              </div>
               <div v-else class="cliente-search-wrap">
                 <svg class="search-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
                 <input v-model="clienteBusca" type="text" class="cart-input cliente-input" placeholder="Nome, CPF ou telefone…" @input="buscarClientes" @focus="showClienteDrop = true" @blur="onClienteBlur" autocomplete="off" />
@@ -871,6 +884,28 @@ const temCrediario = computed(() =>
 
 const clienteInadimplente  = ref(false);
 const inadimplenteQtd      = ref(0);
+
+const clienteStats = ref(null);
+
+watch(clienteSel, async (cli) => {
+  if (!cli?.pk) { clienteStats.value = null; return; }
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { data: vendas } = await supabase
+    .from('vendas')
+    .select('total, status_crediario, data_vencimento_crediario')
+    .eq('cliente_pk', cli.pk)
+    .not('status', 'eq', 'cancelada');
+  if (!vendas) return;
+  const contasAberto = vendas
+    .filter(v => v.status_crediario === 'pendente' || (v.data_vencimento_crediario && v.status_crediario !== 'recebido'))
+    .reduce((s, v) => s + parseFloat(v.total || 0), 0);
+  const ticketMedio = vendas.length ? vendas.reduce((s, v) => s + parseFloat(v.total || 0), 0) / vendas.length : 0;
+  const inadimplente = vendas.some(v =>
+    v.data_vencimento_crediario && v.data_vencimento_crediario < hoje &&
+    (v.status_crediario === 'pendente' || !v.status_crediario)
+  );
+  clienteStats.value = { contasAberto, ticketMedio, inadimplente };
+}, { immediate: false });
 
 watch([clienteSel, temCrediario, crediarioBloqueiainadimpl], async ([cli, temCred, bloqueiaInadimpl]) => {
   if (!cli?.pk || !temCred || !bloqueiaInadimpl) {
@@ -2930,6 +2965,15 @@ async function emitirNFCe() {
 .cliente-chip-del:hover { color: var(--red); }
 
 .badge-dec { padding: 1px 6px; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.25); border-radius: 4px; color: var(--amber); font-size: 10px; font-weight: 600; }
+
+.cliente-stats { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--bg3); border-radius: 7px; flex-wrap: wrap; margin-top: 6px; }
+.cs-item { display: flex; align-items: baseline; gap: 4px; }
+.cs-val   { font-size: 11.5px; font-weight: 700; color: var(--text); }
+.cs-label { font-size: 15px; color: var(--text2); }
+.cs-sep   { font-size: 10px; color: var(--text2); }
+.cs-ok    .cs-val { color: var(--green); }
+.cs-danger .cs-val { color: #f43f5e; }
+.cs-badge-inadimpl { font-size: 10px; font-weight: 700; padding: 1px 6px; background: rgba(244,63,94,.15); border: 1px solid rgba(244,63,94,.3); border-radius: 4px; color: #f43f5e; }
 
 .cliente-drop {
   position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
