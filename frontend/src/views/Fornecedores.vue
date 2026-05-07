@@ -111,9 +111,9 @@ async function excluir(f) {
 <style scoped>
 .page-wrap    { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; margin-bottom: 3rem; }
 .page-header  { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
-.page-title   { margin: 0; font-size: 1.3rem; color: var(--text); }
+.page-title   { margin: 0; font-size: 1.9rem; color: var(--text); }
 .header-actions { display: flex; gap: .75rem; align-items: center; }
-.busca-input  { padding: .5rem .9rem; border: 1px solid var(--border); border-radius: 6px; min-width: 300px; font-size: .9rem; background: var(--bg3); color: var(--text); }
+.busca-input  { padding: .9rem .9rem; border: 1px solid var(--border); border-radius: 6px; min-width: 400px; font-size: .9rem; background: var(--bg3); color: var(--text); }
 .tabela-wrap  { overflow-x: auto; background: var(--bg2); border-radius: 10px; border: 1px solid var(--border); }
 .tabela       { width: 100%; border-collapse: collapse; font-size: .87rem; color: var(--text); }
 .tabela th    { background: var(--bg3); padding: .6rem .8rem; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); color: var(--text2); }
@@ -126,7 +126,7 @@ async function excluir(f) {
 .btn-del:hover  { background: rgba(220,38,38,.15); }
 .resumo       { font-size: .82rem; color: var(--text2); padding: .5rem .8rem; text-align: right; }
 .loading, .vazio { color: var(--text2); text-align: center; padding: 3rem; }
-.btn-primary  { padding: .5rem 1.1rem; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .9rem; }
+.btn-primary  { padding: .9rem 1.1rem; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .9rem; }
 
 /* Paginação */
 .paginacao-inline { display: inline-flex; align-items: center; gap: .35rem; }

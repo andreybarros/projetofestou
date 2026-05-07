@@ -152,7 +152,7 @@ router.get('/vendas/:filial_pk', async (req, res) => {
     if (errD) throw errD;
     const totalDespesas = despesas.reduce((sum, d) => sum + parseFloat(d.valor || 0), 0);
 
-    const lucroMes = fatMes - custoTotalMes - totalDespesas;
+    const lucroMes = fatMes - custoTotalMes;
     const margemLucro = fatMes > 0 ? (lucroMes / fatMes) * 100 : 0;
 
     // 3. Rankings e Listas

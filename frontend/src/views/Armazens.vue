@@ -7,8 +7,7 @@
       </div>
       <div class="header-actions">
         <div class="search-box">
-          <span class="material-symbols-outlined search-icon">search</span>
-          <input v-model="busca" type="text" placeholder="Buscar armazém..." class="busca-input" />
+          <input v-model="busca" type="text" placeholder="🔍 Buscar armazém..." class="busca-input" />
         </div>
         <button @click="$router.push('/armazens/novo')" class="btn-primary">
           <span class="material-symbols-outlined">add</span>
@@ -233,10 +232,10 @@ async function confirmarExclusao() {
 .header-actions { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
 .search-box     { position: relative; display: flex; align-items: center; }
 .search-icon    { position: absolute; left: 10px; font-size: 20px; color: var(--text2); pointer-events: none; }
-.busca-input    { padding: .55rem .9rem .55rem 2.4rem; border: 1px solid var(--border); border-radius: 10px; width: 260px; background: var(--bg2); color: var(--text); font-size: .9rem; outline: none; transition: border-color .2s; }
+.busca-input    { padding: .9rem .9rem ; border: 1px solid var(--border); border-radius: 10px; width: 360px; background: var(--bg2); color: var(--text); font-size: .9rem; outline: none; transition: border-color .2s; }
 .busca-input:focus { border-color: #6366f1; }
 
-.btn-primary { display: flex; align-items: center; gap: 5px; padding: .55rem 1.1rem; background: #6366f1; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .9rem; white-space: nowrap; transition: opacity .15s; }
+.btn-primary { display: flex; align-items: center; gap: 5px; padding: .65rem 1.1rem; background: #6366f1; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .9rem; white-space: nowrap; transition: opacity .15s; }
 .btn-primary:hover { opacity: .88; }
 
 /* Cards grid */
