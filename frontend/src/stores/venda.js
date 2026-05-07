@@ -5,13 +5,13 @@ const STORAGE_KEY = 'pdv_carrinho';
 
 function salvarStorage(state) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {}
 }
 
 function carregarStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
@@ -21,6 +21,7 @@ export const useVendaStore = defineStore('venda', () => {
 
   const itens      = ref(_salvo?.itens      || []);
   const desconto   = ref(_salvo?.desconto   || 0);
+  const acrescimo  = ref(_salvo?.acrescimo  || 0);
   const pagamentos = ref(_salvo?.pagamentos || []);
   const vendedor   = ref(_salvo?.vendedor   || null);
   const cliente    = ref(_salvo?.cliente    || null);
@@ -33,7 +34,7 @@ export const useVendaStore = defineStore('venda', () => {
   });
 
   const total = computed(() => {
-    return Math.max(0, subtotal.value - parseFloat(desconto.value || 0)).toFixed(2);
+    return Math.max(0, subtotal.value - parseFloat(desconto.value || 0) + parseFloat(acrescimo.value || 0)).toFixed(2);
   });
 
   const totalPago = computed(() => {
@@ -46,12 +47,12 @@ export const useVendaStore = defineStore('venda', () => {
     return Math.max(0, parseFloat(total.value) - parseFloat(totalPago.value)).toFixed(2);
   });
 
-  // Persiste qualquer mudança no localStorage
   watch(
-    [itens, desconto, pagamentos, vendedor, cliente],
+    [itens, desconto, acrescimo, pagamentos, vendedor, cliente],
     () => salvarStorage({
       itens:      itens.value,
       desconto:   desconto.value,
+      acrescimo:  acrescimo.value,
       pagamentos: pagamentos.value,
       vendedor:   vendedor.value,
       cliente:    cliente.value,
@@ -133,6 +134,10 @@ export const useVendaStore = defineStore('venda', () => {
     desconto.value = Math.max(0, parseFloat(novoDesconto || 0));
   }
 
+  function setAcrescimo(novoAcrescimo) {
+    acrescimo.value = Math.max(0, parseFloat(novoAcrescimo || 0));
+  }
+
   function adicionarPagamento(pagamento) {
     pagamentos.value.push(pagamento);
   }
@@ -147,15 +152,17 @@ export const useVendaStore = defineStore('venda', () => {
   function resetar() {
     itens.value      = [];
     desconto.value   = 0;
+    acrescimo.value  = 0;
     pagamentos.value = [];
     vendedor.value   = null;
     cliente.value    = null;
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
   }
 
   return {
     itens,
     desconto,
+    acrescimo,
     pagamentos,
     vendedor,
     cliente,
@@ -170,6 +177,7 @@ export const useVendaStore = defineStore('venda', () => {
     aplicarDescontoCategoria,
     removerDescontoCategoria,
     setDesconto,
+    setAcrescimo,
     adicionarPagamento,
     removerPagamento,
     setVendedor,

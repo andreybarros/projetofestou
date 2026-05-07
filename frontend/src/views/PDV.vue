@@ -1,5 +1,5 @@
 <template>
-  <div class="pdv">
+  <div class="pdv" :class="{ 'pdv-modal-open': modalNovoCliente }">
 
     <!-- PDV Topo agora via App.vue (topbar) -->
 
@@ -192,6 +192,9 @@
               <div v-if="parseFloat(vendaStore.desconto) > 0" class="summary-row disc">
                 <span>Desconto</span><span>− {{ fmt(vendaStore.desconto) }}</span>
               </div>
+              <div v-if="parseFloat(vendaStore.acrescimo) > 0" class="summary-row acrescimo">
+                <span>Acréscimo</span><span>+ {{ fmt(vendaStore.acrescimo) }}</span>
+              </div>
               <div class="summary-total">
                 <span>Total</span><span>{{ fmt(vendaStore.total) }}</span>
               </div>
@@ -243,10 +246,15 @@
                 <span v-if="clienteStats.inadimplente" class="cs-sep">·</span>
                 <span v-if="clienteStats.inadimplente" class="cs-badge-inadimpl">Inadimplente</span>
               </div>
-              <div v-else class="cliente-search-wrap">
-                <svg class="search-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-                <input v-model="clienteBusca" type="text" class="cart-input cliente-input" placeholder="Nome, CPF ou telefone…" @input="buscarClientes" @focus="showClienteDrop = true" @blur="onClienteBlur" autocomplete="off" />
-                <span v-if="buscandoCliente" class="spin-xs"></span>
+              <div v-if="!clienteSel" class="cliente-search-row">
+                <div class="cliente-search-wrap">
+                  <svg class="search-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input v-model="clienteBusca" type="text" class="cart-input cliente-input" placeholder="Nome, CPF ou telefone…" @input="buscarClientes" @focus="showClienteDrop = true" @blur="onClienteBlur" autocomplete="off" />
+                  <span v-if="buscandoCliente" class="spin-xs"></span>
+                </div>
+                <button type="button" class="btn-novo-cliente" @mousedown.prevent @click.stop="abrirModalNovoCliente" title="Cadastrar novo cliente">
+                  <span class="material-symbols-outlined">person_add</span>
+                </button>
               </div>
               <div v-if="showClienteDrop && clienteResultados.length" class="cliente-drop">
                 <button v-for="c in clienteResultados" :key="c.pk" class="cliente-drop-item" @mousedown.prevent="selecionarCliente(c)">
@@ -402,6 +410,30 @@
                   <span class="pag-forma">{{ p.label || p.forma }}</span>
                   <span class="pag-valor">{{ fmt(p.valor) }}</span>
                   <button class="pag-del" @click="vendaStore.removerPagamento(i)">×</button>
+                </div>
+              </div>
+
+              <!-- Acréscimo -->
+              <div class="cart-section acrescimo-section">
+                <label class="section-label">Acréscimo (R$)</label>
+                <div class="pag-row-col">
+                  <input
+                    :value="acrescimoDisplay"
+                    @input="onAcrescimoInput"
+                    @keydown.enter.stop.prevent="confirmarAcrescimo"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="0,00"
+                    class="pag-val-big"
+                  />
+                  <button type="button" class="pag-add-full acrescimo-add-btn" @click.stop.prevent="confirmarAcrescimo">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    Aplicar
+                  </button>
+                </div>
+                <div v-if="acrescimoConfirmado" class="acrescimo-ok">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Acréscimo de {{ fmt(vendaStore.acrescimo) }} aplicado ao total
                 </div>
               </div>
             </div>
@@ -627,6 +659,98 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- ── Modal Novo Cliente ─────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="modalNovoCliente" class="ncli-overlay" @click.self="modalNovoCliente = false">
+      <div class="ncli-modal">
+        <!-- Header -->
+        <div class="ncli-header-bar">
+          <div class="ncli-header-icon">
+            <span class="material-symbols-outlined">person_add</span>
+          </div>
+          <div class="ncli-header-text">
+            <h3>Cadastrar Novo Cliente</h3>
+            <p>Preencha os dados e selecione automaticamente na venda</p>
+          </div>
+          <button type="button" class="ncli-close-btn" @click="modalNovoCliente = false">×</button>
+        </div>
+
+        <!-- Body -->
+        <div class="ncli-body" ref="ncliBodyRef">
+          <div class="ncli-form">
+            <div class="ncli-grid">
+              <div class="ncli-field full">
+                <label>Nome *</label>
+                <input v-model="ncli.nome" type="text" class="ncli-input" placeholder="Nome completo" autofocus @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>CPF / CNPJ</label>
+                <input v-model="ncli.cpf" type="text" class="ncli-input" placeholder="000.000.000-00" maxlength="18" @input="ncliMaskDoc" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>Telefone</label>
+                <input v-model="ncli.telefone" type="text" class="ncli-input" placeholder="(92) 99999-9999" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field full">
+                <label>E-mail</label>
+                <input v-model="ncli.email" type="email" class="ncli-input" placeholder="email@exemplo.com" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>CEP</label>
+                <div class="ncli-cep-wrap">
+                  <input v-model="ncli.cep" type="text" class="ncli-input" placeholder="00000-000" maxlength="9" @input="ncliOnCepInput" @blur="ncliBuscarCep" @keydown.enter.prevent="ncliBuscarCep" />
+                  <span v-if="ncliBuscandoCep" class="ncli-spin"></span>
+                </div>
+              </div>
+              <div class="ncli-field full">
+                <label>Endereço</label>
+                <input v-model="ncli.logradouro" type="text" class="ncli-input" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>Número</label>
+                <input v-model="ncli.numero" type="text" class="ncli-input" @change="ncliAtualizarMapa" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>Bairro</label>
+                <input v-model="ncli.bairro" type="text" class="ncli-input" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>Cidade</label>
+                <input v-model="ncli.cidade" type="text" class="ncli-input" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>UF</label>
+                <input v-model="ncli.uf" type="text" class="ncli-input" maxlength="2" placeholder="AM" @keydown.enter.prevent="ncliSalvar" />
+              </div>
+              <div class="ncli-field full">
+                <label class="ncli-check-label">
+                  <input type="checkbox" v-model="ncli.decorador" />
+                  É decorador (recebe desconto especial)
+                </label>
+              </div>
+            </div>
+
+            <div v-if="ncliMapUrl" class="ncli-map-wrap">
+              <iframe :src="ncliMapUrl" class="ncli-map" frameborder="0" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+
+            <div v-if="ncliErro" class="ncli-erro">{{ ncliErro }}</div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="ncli-footer">
+          <button type="button" class="ncli-btn-cancel" @click="modalNovoCliente = false">Cancelar</button>
+          <button type="button" class="ncli-btn-save" :disabled="ncliSalvando" @click="ncliSalvar">
+            <span v-if="ncliSalvando" class="spin-xs"></span>
+            <span class="material-symbols-outlined" v-else style="font-size:16px">person_add</span>
+            {{ ncliSalvando ? 'Salvando...' : 'Cadastrar e Selecionar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -814,6 +938,9 @@ const formaPag    = ref('dinheiro');
 const formasPagamento = ref([]);
 const valorPag    = ref(0);
 const valorPagDisplay = ref('');
+const acrescimoDisplay    = ref('');
+const acrescimoValor      = ref(0);
+const acrescimoConfirmado = ref(false);
 const processando = ref(false);
 const emitindo    = ref(false);
 const vendaFinalizada = ref(false);
@@ -884,6 +1011,99 @@ const clienteInadimplente  = ref(false);
 const inadimplenteQtd      = ref(0);
 
 const clienteStats = ref(null);
+
+// ── Modal Novo Cliente ─────────────────────────────────────────
+const modalNovoCliente = ref(false);
+const ncliSalvando     = ref(false);
+const ncliBuscandoCep  = ref(false);
+const ncliErro         = ref('');
+const ncliMapUrl       = ref('');
+const ncliBodyRef      = ref(null);
+const ncli = ref({ nome: '', cpf: '', telefone: '', email: '', cep: '', logradouro: '', numero: '', bairro: '', cidade: '', uf: '', decorador: false });
+
+function ncliNextField(e) {
+  const inputs = Array.from(ncliBodyRef.value?.querySelectorAll('input, select, textarea') || []);
+  const idx = inputs.indexOf(e.target);
+  if (idx >= 0 && idx < inputs.length - 1) inputs[idx + 1].focus();
+}
+
+function abrirModalNovoCliente() {
+  ncli.value = { nome: clienteBusca.value || '', cpf: '', telefone: '', email: '', cep: '', logradouro: '', numero: '', bairro: '', cidade: '', uf: '', decorador: false };
+  ncliErro.value = '';
+  ncliMapUrl.value = '';
+  modalNovoCliente.value = true;
+}
+
+function ncliMaskDoc(e) {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 11) {
+    v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  } else {
+    v = v.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
+  ncli.value.cpf = v;
+}
+
+function ncliOnCepInput(e) {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+  ncli.value.cep = v;
+}
+
+function ncliAtualizarMapa() {
+  const p = [ncli.value.logradouro, ncli.value.numero, ncli.value.bairro, ncli.value.cidade, ncli.value.uf].filter(Boolean);
+  if (!p.length && !ncli.value.cep) { ncliMapUrl.value = ''; return; }
+  const q = encodeURIComponent(p.length >= 2 ? p.join(', ') : ncli.value.cep);
+  ncliMapUrl.value = `https://maps.google.com/maps?q=${q}&output=embed&hl=pt-BR`;
+}
+
+async function ncliBuscarCep() {
+  const cep = ncli.value.cep?.replace(/\D/g, '');
+  if (cep?.length !== 8) return;
+  ncliBuscandoCep.value = true;
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (!d.erro) {
+      ncli.value.logradouro = d.logradouro || ncli.value.logradouro;
+      ncli.value.bairro     = d.bairro     || ncli.value.bairro;
+      ncli.value.cidade     = d.localidade || ncli.value.cidade;
+      ncli.value.uf         = d.uf         || ncli.value.uf;
+      ncliAtualizarMapa();
+    }
+  } catch {} finally { ncliBuscandoCep.value = false; }
+}
+
+async function ncliSalvar() {
+  if (!ncli.value.nome?.trim()) { ncliErro.value = 'Nome obrigatório.'; return; }
+  ncliSalvando.value = true;
+  ncliErro.value = '';
+  try {
+    const payload = {
+      nome:       ncli.value.nome.trim(),
+      cpf:        ncli.value.cpf?.trim() || null,
+      telefone:   ncli.value.telefone?.trim() || null,
+      email:      ncli.value.email?.trim() || null,
+      decorador:  ncli.value.decorador || false,
+      cep:        ncli.value.cep?.trim() || null,
+      logradouro: ncli.value.logradouro?.trim() || null,
+      numero:     ncli.value.numero?.trim() || null,
+      bairro:     ncli.value.bairro?.trim() || null,
+      cidade:     ncli.value.cidade?.trim() || null,
+      uf:         ncli.value.uf?.trim()?.toUpperCase() || null,
+      filial_pk:  sessaoStore.filial?.pk || null,
+    };
+    const { data, error } = await supabase.from('clientes').insert(payload).select().single();
+    if (error) throw error;
+    clienteSel.value = data;
+    clienteBusca.value = '';
+    modalNovoCliente.value = false;
+  } catch (e) {
+    ncliErro.value = e.message;
+  } finally {
+    ncliSalvando.value = false;
+  }
+}
 
 watch(clienteSel, async (cli) => {
   if (!cli?.pk) { clienteStats.value = null; return; }
@@ -1378,6 +1598,27 @@ function preencherValorPag(v) {
     : '';
 }
 
+function onAcrescimoInput(e) {
+  const digits = e.target.value.replace(/\D/g, '');
+  if (!digits || digits === '0') {
+    acrescimoValor.value = 0;
+    acrescimoDisplay.value = '';
+    e.target.value = '';
+    return;
+  }
+  const cents = parseInt(digits, 10);
+  acrescimoValor.value = cents / 100;
+  const fmt2 = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  acrescimoDisplay.value = fmt2;
+  e.target.value = fmt2;
+}
+
+function confirmarAcrescimo() {
+  vendaStore.setAcrescimo(acrescimoValor.value);
+  acrescimoConfirmado.value = true;
+  setTimeout(() => { acrescimoConfirmado.value = false; }, 2500);
+}
+
 function onValorPagInput(e) {
   const digits = e.target.value.replace(/\D/g, '');
   if (!digits || digits === '0') {
@@ -1628,6 +1869,7 @@ async function finalizar() {
       pagamentos:     vendaStore.pagamentos.map(p => ({ forma: p.forma, valor: p.valor })),
       subtotal:       vendaStore.subtotal,
       desconto_total: vendaStore.desconto,
+      acrescimo:      vendaStore.acrescimo,
       total:          vendaStore.total,
       cliente:        clienteSel.value?.nome || null,
       cliente_pk:     clienteSel.value?.pk || null,
@@ -1962,6 +2204,7 @@ async function emitirNFCe() {
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 /* ── Base ─────────────────────────────────────────────────────── */
+.pdv-modal-open { pointer-events: none; user-select: none; }
 .pdv {
   --bg0:     #08090c;
   --bg1:     #0e1016;
@@ -2553,6 +2796,11 @@ async function emitirNFCe() {
 }
 .summary-row span:last-child { font-family: var(--mono); }
 .summary-row.disc span { color: var(--amber); }
+.summary-row.acrescimo span { color: #34d399; }
+.acrescimo-section { margin-top: 8px; }
+.acrescimo-add-btn { background: rgba(52,211,153,.15) !important; color: #34d399 !important; border-color: rgba(52,211,153,.3) !important; }
+.acrescimo-add-btn:hover { background: rgba(52,211,153,.25) !important; }
+.acrescimo-ok { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #34d399; margin-top: 6px; font-weight: 600; }
 .summary-total {
   display: flex;
   justify-content: space-between;
@@ -2688,7 +2936,7 @@ async function emitirNFCe() {
   border-radius: 6px; 
   color: #ef4444; 
   cursor: pointer; 
-  width: 40px; 
+  width: 50px; 
   height: 28px; 
   display: flex; 
   align-items: center; 
@@ -2697,6 +2945,8 @@ async function emitirNFCe() {
   flex-shrink: 0;
 }
 .item-del:hover { background: #ef4444; color: #fff; }
+
+[data-theme="light"]
 
 /* Transitions */
 .item-enter-active { transition: all .2s ease; }
@@ -2716,7 +2966,7 @@ async function emitirNFCe() {
 
 .cart-input {
   width: 100%;
-  padding: 7px 10px;
+  padding: 7px 9px;
   background: var(--bg3);
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -2946,6 +3196,8 @@ async function emitirNFCe() {
 
 /* Cliente */
 .cliente-section { position: relative; }
+.cliente-search-row { display: flex; align-items: center; gap: 6px; }
+.cliente-search-row .cliente-search-wrap { flex: 1; }
 .cliente-search-wrap { position: relative; display: flex; align-items: center; }
 .cliente-search-wrap .search-ico { position: absolute; left: 10px; color: var(--muted); pointer-events: none; }
 .cliente-input { padding-left: 30px !important; }
@@ -2963,6 +3215,112 @@ async function emitirNFCe() {
 .cliente-chip-del:hover { color: var(--red); }
 
 .badge-dec { padding: 1px 6px; background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.25); border-radius: 4px; color: var(--amber); font-size: 10px; font-weight: 600; }
+
+.btn-novo-cliente {
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  border: none; color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  transition: transform .15s, box-shadow .15s, opacity .15s;
+  box-shadow: 0 2px 8px rgba(99,102,241,.35);
+}
+.btn-novo-cliente:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(99,102,241,.45); }
+.btn-novo-cliente:active { transform: translateY(0); opacity: .85; }
+.btn-novo-cliente .material-symbols-outlined { font-size: 18px; }
+
+/* Modal Novo Cliente */
+.ncli-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 4000; padding: 16px;
+  animation: fadeIn .18s ease;
+  pointer-events: all;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.ncli-modal {
+  width: 740px; max-width: 96vw; max-height: 90vh;
+  display: flex; flex-direction: column;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04);
+  overflow: hidden;
+  animation: slideUp .22s cubic-bezier(.22,.68,0,1.2);
+}
+.ncli-header-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(129,140,248,.04));
+}
+.ncli-header-icon {
+  width: 44px; height: 44px; border-radius: 13px;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(99,102,241,.35);
+}
+.ncli-header-icon .material-symbols-outlined { font-size: 22px; color: #fff; }
+.ncli-header-text h3 { font-size: 16px; font-weight: 700; color: var(--text); margin: 0 0 2px; }
+.ncli-header-text p { font-size: 12px; color: var(--text2); margin: 0; }
+.ncli-close-btn {
+  margin-left: auto; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
+  color: #f87171; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; width: 36px; height: 36px; border-radius: 10px;
+  font-size: 22px; line-height: 1; transition: background .15s, color .15s, transform .1s; flex-shrink: 0;
+}
+.ncli-close-btn:hover { background: rgba(239,68,68,.2); color: #ef4444; transform: scale(1.08); }
+
+.ncli-body  { overflow-y: auto; padding: 20px 24px; flex: 1; }
+.ncli-form  { display: flex; flex-direction: column; gap: 16px; }
+.ncli-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ncli-field { display: flex; flex-direction: column; gap: 5px; }
+.ncli-field.full { grid-column: 1 / -1; }
+.ncli-field label { font-size: .72rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+.ncli-input {
+  padding: .55rem .8rem; border: 1.5px solid var(--border);
+  border-radius: 9px; background: var(--bg); color: var(--text);
+  font-size: .88rem; outline: none; transition: border-color .15s, box-shadow .15s;
+  width: 100%; box-sizing: border-box;
+}
+.ncli-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); background: var(--bg); }
+.ncli-cep-wrap { position: relative; display: flex; align-items: center; }
+.ncli-cep-wrap .ncli-input { flex: 1; }
+.ncli-spin { position: absolute; right: 10px; width: 13px; height: 13px; border: 2px solid var(--border); border-top-color: #6366f1; border-radius: 50%; animation: spin .6s linear infinite; }
+.ncli-check-label { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--text); cursor: pointer; font-weight: normal !important; text-transform: none !important; letter-spacing: 0 !important; }
+.ncli-map-wrap { border-radius: 12px; overflow: hidden; height: 180px; border: 1.5px solid var(--border); }
+.ncli-map { width: 100%; height: 100%; display: block; border: none; }
+.ncli-erro { color: #f87171; font-size: .82rem; background: rgba(220,38,38,.1); border: 1px solid rgba(220,38,38,.2); padding: .4rem .75rem; border-radius: 8px; }
+.ncli-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.ncli-btn-cancel {
+  padding: 9px 18px; background: var(--bg3); border: 1px solid var(--line);
+  border-radius: 10px; color: var(--text2); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.ncli-btn-cancel:hover { background: var(--bg4); }
+.ncli-btn-save {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 20px;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  border: none; border-radius: 10px; color: #fff;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(99,102,241,.35);
+  transition: opacity .15s, transform .15s;
+}
+.ncli-btn-save:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+.ncli-btn-save:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 .cliente-stats { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--bg3); border-radius: 7px; flex-wrap: wrap; margin-top: 6px; }
 .cs-item { display: flex; align-items: baseline; gap: 4px; }

@@ -244,6 +244,10 @@
                   <span class="det-pag-val">{{ fmt(p.valor) }}</span>
                 </div>
               </div>
+              <div v-if="parseFloat(detalhe.acrescimo) > 0" class="det-pag-row det-acrescimo-row">
+                <span class="det-pag-forma">Acréscimo</span>
+                <span class="det-pag-val det-acrescimo-val">+ {{ fmt(detalhe.acrescimo) }}</span>
+              </div>
               <div class="det-total-row">
                 <span>TOTAL DA VENDA</span>
                 <span class="det-total-val">{{ fmt(detalhe.total) }}</span>
@@ -978,6 +982,8 @@ function statusCls(s) {
 .det-pag-forma { display: flex; align-items: center; gap: 6px; text-transform: capitalize; color: var(--text); font-weight: 700; font-size: .88rem; }
 .det-pag-ico { font-size: 15px; color: var(--primary); }
 .det-pag-val  { font-weight: 800; color: #10b981; font-family: monospace; font-size: .95rem; }
+.det-acrescimo-row { background: rgba(52,211,153,.06); border-color: rgba(52,211,153,.2); }
+.det-acrescimo-val { color: #34d399 !important; }
 .det-total-row { display: flex; justify-content: space-between; align-items: center; font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); padding-top: .75rem; border-top: 2px solid var(--border); margin-top: auto; }
 .det-total-val { font-size: 1.3rem; font-weight: 900; color: var(--text); font-family: monospace; letter-spacing: -1px; }
 

@@ -26,8 +26,9 @@ const dataLocacao     = ref('');
 const dataDevolucao   = ref('');
 const dataVencCrediario = ref('');
 
-const itens      = ref([]);
-const pagamentos = ref([]);
+const itens          = ref([]);
+const pagamentos     = ref([]);
+const formasPagamento = ref([]);
 
 const busca            = ref('');
 const buscaResultados  = ref([]);
@@ -46,13 +47,31 @@ function toast(msg, tipo = 'ok', dur = 3500) {
   toastTimer = setTimeout(() => (toastMsg.value = ''), dur);
 }
 
+const acrescimo = ref(0);
+const acrescimoDisplay = ref('');
+
 const subtotal = computed(() =>
   itens.value.reduce((s, i) => s + parseFloat(i.qtd || 0) * parseFloat(i.preco_unit || 0), 0)
 );
 const descontoTotal = computed(() =>
   itens.value.reduce((s, i) => s + parseFloat(i.desconto_val || 0), 0)
 );
-const total = computed(() => subtotal.value - descontoTotal.value);
+const total = computed(() => subtotal.value - descontoTotal.value + parseFloat(acrescimo.value || 0));
+
+function onAcrescimoInput(e) {
+  const digits = e.target.value.replace(/\D/g, '');
+  if (!digits || digits === '0') {
+    acrescimo.value = 0;
+    acrescimoDisplay.value = '';
+    e.target.value = '';
+    return;
+  }
+  const cents = parseInt(digits, 10);
+  acrescimo.value = cents / 100;
+  const fmt2 = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  acrescimoDisplay.value = fmt2;
+  e.target.value = fmt2;
+}
 const totalPagamentos = computed(() =>
   pagamentos.value.reduce((s, p) => s + parseFloat(p.valor || 0), 0)
 );
@@ -76,11 +95,16 @@ onMounted(async () => {
     dataLocacao.value    = v.data_locacao            ? v.data_locacao.slice(0, 16)            : '';
     dataDevolucao.value  = v.data_devolucao_prevista ? v.data_devolucao_prevista.slice(0, 16) : '';
     dataVencCrediario.value = v.data_vencimento_crediario || '';
+    acrescimo.value = parseFloat(v.acrescimo || 0);
+    if (acrescimo.value > 0)
+      acrescimoDisplay.value = acrescimo.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const [{ data: iData }, { data: pData }] = await Promise.all([
+    const [{ data: iData }, { data: pData }, { data: fData }] = await Promise.all([
       supabase.from('itens_venda').select('*').eq('venda_pk', venda_pk),
       supabase.from('pagamentos_venda').select('*').eq('venda_pk', venda_pk),
+      supabase.from('formas_pagamento').select('forma, label, icone').eq('filial_pk', sessao.filial?.pk).order('label'),
     ]);
+    formasPagamento.value = fData || [];
 
     itens.value = (iData || []).map(i => {
       const bruto = parseFloat(i.qtd || 0) * parseFloat(i.preco_unit || 0);
@@ -168,7 +192,10 @@ async function buscarVendedores() {
 function selecionarVendedor(v) { vendedor.value = v.nome; vendedor_pk.value = v.pk; buscaVendedor.value = ''; vendedoresRes.value = []; }
 function limparVendedor()       { vendedor.value = ''; vendedor_pk.value = null; }
 
-function adicionarPagamento() { pagamentos.value.push({ forma: 'dinheiro', valor: 0 }); }
+function adicionarPagamento() {
+  const forma = formasPagamento.value[0]?.forma || 'dinheiro';
+  pagamentos.value.push({ forma, valor: 0 });
+}
 function removerPagamento(idx) { pagamentos.value.splice(idx, 1); }
 
 async function salvar() {
@@ -186,6 +213,7 @@ async function salvar() {
       canal_venda:  canalVenda.value,
       subtotal:     subtotal.value,
       desconto_total: descontoTotal.value,
+      acrescimo:    acrescimo.value,
       total:        total.value,
       itens: itens.value.map(i => ({
         produto_pk:   i.produto_pk   || null,
@@ -348,6 +376,17 @@ function fmtVal(v) {
             <span>Desconto total</span>
             <span>- R$ {{ fmtVal(descontoTotal) }}</span>
           </div>
+          <div class="ev-tot-row ev-tot-acrescimo">
+            <span>Acréscimo</span>
+            <input
+              :value="acrescimoDisplay"
+              @input="onAcrescimoInput"
+              type="text"
+              inputmode="numeric"
+              placeholder="0,00"
+              class="ev-acrescimo-input"
+            />
+          </div>
           <div class="ev-tot-row ev-tot-final">
             <span>Total da venda</span>
             <span>R$ {{ fmtVal(total) }}</span>
@@ -437,16 +476,10 @@ function fmtVal(v) {
 
           <div v-for="(pag, idx) in pagamentos" :key="idx" class="ev-pag-row">
             <select v-model="pag.forma" class="ev-select ev-pag-forma">
-              <option value="dinheiro">Dinheiro</option>
-              <option value="pix">Pix</option>
-              <option value="cartao_credito">Cartão Crédito</option>
-              <option value="cartao_debito">Cartão Débito</option>
-              <option value="crediario">Crediário</option>
-              <option value="transferencia">Transferência</option>
-              <option value="cheque">Cheque</option>
+              <option v-for="f in formasPagamento" :key="f.forma" :value="f.forma">{{ f.icone }} {{ f.label }}</option>
             </select>
             <input v-model.number="pag.valor" type="number" min="0" step="0.01" class="ev-input ev-pag-valor" placeholder="0,00" />
-            <button @click="removerPagamento(idx)" class="ev-remove-btn">
+            <button type="button" @click="removerPagamento(idx)" class="ev-remove-btn">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
@@ -539,6 +572,10 @@ function fmtVal(v) {
 .ev-totals { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
 .ev-tot-row { display: flex; justify-content: space-between; font-size: .9rem; color: var(--text2); }
 .ev-tot-desc { color: #f87171; }
+.ev-tot-acrescimo { color: #34d399; align-items: center; }
+.ev-acrescimo-input { width: 100px; text-align: right; padding: 3px 8px; border: 1.5px solid var(--border); border-radius: 7px; background: #fff; color: #111827; font-size: .88rem; outline: none; }
+.ev-acrescimo-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+[data-theme="dark"] .ev-acrescimo-input { background: var(--bg); border-color: var(--border); color: var(--text); }
 .ev-tot-final { font-size: 1.1rem; font-weight: 800; color: var(--text); border-top: 1px solid var(--border); padding-top: 8px; margin-top: 2px; }
 
 /* Cards */

@@ -85,6 +85,7 @@ router.post('/finalizar', async (req, res) => {
       pagamentos,
       subtotal,
       desconto_total,
+      acrescimo,
       total,
       tipo_venda,
       canal_venda,
@@ -114,6 +115,7 @@ router.post('/finalizar', async (req, res) => {
       vendedor_pk:  vendedor_pk || null,
       subtotal:     parseFloat(subtotal || 0),
       desconto_total: parseFloat(desconto_total || 0),
+      acrescimo:    parseFloat(acrescimo || 0),
       total:        parseFloat(total),
       operador:     operador || null,
       status: 'finalizada',
@@ -309,7 +311,7 @@ router.get('/', async (req, res) => {
     
     let q = supabase
       .from('vendas')
-      .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' });
+      .select('pk, numero, criado_em, cliente, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' });
 
     if (filial_pk && filial_pk !== 'undefined' && filial_pk !== 'null' && filial_pk !== '') {
       q = q.eq('filial_pk', parseInt(filial_pk));

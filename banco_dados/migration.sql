@@ -951,6 +951,12 @@ END;
 $$;
 
 -- ============================================================
+-- SEÇÃO 16 — ACRÉSCIMO NA VENDA
+-- ============================================================
+
+  ALTER TABLE vendas ADD COLUMN IF NOT EXISTS acrescimo numeric(12,2) DEFAULT 0;
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 
