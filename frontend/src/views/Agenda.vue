@@ -345,6 +345,12 @@
                 Editar
               </button>
             </template>
+            <template v-else-if="eventoDetalhe.source === 'locacao'">
+              <button class="btn-salvar" @click="abrirModalObs(eventoDetalhe); eventoDetalhe = null">
+                <span class="material-symbols-outlined">edit_note</span>
+                Observação
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -363,6 +369,44 @@
             <button class="btn-danger" @click="deletarEvento" :disabled="removendo">
               <span v-if="removendo" class="spin-sm"></span>
               Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Modal observação de locação -->
+    <Teleport to="body">
+      <div v-if="modalObsLocacao" class="modal-overlay" @click.self="modalObsLocacao = null">
+        <div class="modal-box modal-sm">
+          <div class="modal-header">
+            <h3>
+              <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle">edit_note</span>
+              Observação
+            </h3>
+            <button class="modal-close" @click="modalObsLocacao = null">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="obs-ev-titulo">{{ modalObsLocacao.titulo }}</div>
+            <div class="mf-group mf-full" style="margin-top:12px">
+              <label>Observação</label>
+              <textarea
+                v-model="obsLocacaoTexto"
+                class="m-input m-textarea"
+                rows="4"
+                placeholder="Ex: Cliente confirmou retirada às 14h, levar peças extras…"
+                autofocus
+              ></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="modalObsLocacao = null">Cancelar</button>
+            <button class="btn-salvar" @click="salvarObsLocacao" :disabled="salvandoObs">
+              <span v-if="salvandoObs" class="spin-sm"></span>
+              <span v-else class="material-symbols-outlined">save</span>
+              Salvar
             </button>
           </div>
         </div>
@@ -411,6 +455,35 @@ const removendo = ref(false);
 // Detalhe do evento
 const eventoDetalhe = ref(null);
 function abrirDetalheEvento(ev) { eventoDetalhe.value = ev; }
+
+// Observação de locação
+const modalObsLocacao  = ref(null);
+const obsLocacaoTexto  = ref('');
+const salvandoObs      = ref(false);
+
+function abrirModalObs(ev) {
+  modalObsLocacao.value = ev;
+  obsLocacaoTexto.value = ev.observacao || '';
+}
+
+async function salvarObsLocacao() {
+  if (!modalObsLocacao.value?.venda_pk) return;
+  salvandoObs.value = true;
+  try {
+    const { error } = await supabase
+      .from('vendas')
+      .update({ observacao: obsLocacaoTexto.value || null })
+      .eq('pk', modalObsLocacao.value.venda_pk);
+    if (error) throw error;
+    showToast('Observação salva!', 'ok');
+    modalObsLocacao.value = null;
+    await carregarEventos();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'err');
+  } finally {
+    salvandoObs.value = false;
+  }
+}
 
 // Detalhe da venda
 const vendaDetalhe      = ref(null);
@@ -534,7 +607,7 @@ async function carregarEventos() {
 
       supabase
         .from('vendas')
-        .select('pk, numero, cliente, data_locacao, data_devolucao_prevista, status_locacao')
+        .select('pk, numero, cliente, data_locacao, data_devolucao_prevista, status_locacao, observacao')
         .eq('filial_pk', sessaoStore.filial?.pk)
         .eq('tipo_venda', 'locacao')
         .or(`data_locacao.gte.${ini}T00:00:00,data_devolucao_prevista.gte.${ini}T00:00:00`)
@@ -572,7 +645,9 @@ async function carregarEventos() {
             tipo:       'locacao_retirada',
             date:       d,
             hora:       loc.data_locacao.slice(11, 16) !== '00:00' ? loc.data_locacao.slice(11, 16) : null,
-            descricao:  loc.status_locacao === 'devolvida' ? 'Já devolvida' : null,
+            descricao:  loc.observacao || (loc.status_locacao === 'devolvida' ? 'Já devolvida' : null),
+            observacao: loc.observacao || '',
+            status_locacao: loc.status_locacao,
             cor:        COR_TIPOS.locacao_retirada,
             venda_pk:   loc.pk,
             venda_info: { numero: loc.numero, cliente: loc.cliente },
@@ -589,7 +664,9 @@ async function carregarEventos() {
             tipo:       'locacao_devolucao',
             date:       d,
             hora:       null,
-            descricao:  loc.status_locacao === 'devolvida' ? 'Devolvida' : 'Pendente',
+            descricao:  loc.observacao || (loc.status_locacao === 'devolvida' ? 'Devolvida' : 'Pendente'),
+            observacao: loc.observacao || '',
+            status_locacao: loc.status_locacao,
             cor:        COR_TIPOS.locacao_devolucao,
             venda_pk:   loc.pk,
             venda_info: { numero: loc.numero, cliente: loc.cliente },
@@ -909,6 +986,9 @@ function showToast(msg, tipo = 'ok') {
 .btn-icon-action.del { background: rgba(239,68,68,.12); color: #f87171; }
 .btn-icon-action.del:hover { background: rgba(239,68,68,.22); }
 .btn-icon-action .material-symbols-outlined { font-size: 16px; }
+
+/* Modal observação locação */
+.obs-ev-titulo { font-size: 13px; font-weight: 600; color: var(--text2); padding: 8px 12px; background: var(--bg3); border-radius: 8px; border-left: 3px solid var(--primary); }
 
 /* Modal detalhe */
 .modal-det { max-width: 580px; }

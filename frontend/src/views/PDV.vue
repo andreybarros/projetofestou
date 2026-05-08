@@ -822,6 +822,7 @@ import { useSessaoStore }     from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import { supabase }           from '../composables/useSupabase';
 import apiClient              from '../services/api';
+import { imprimirContratoLocacao } from '../utils/contrato';
 
 const mobileView      = ref('catalog'); // 'catalog' | 'cart'
 const vendaStore      = useVendaStore();
@@ -1258,11 +1259,14 @@ onMounted(async () => {
   const _fin = sessionStorage.getItem('pdv_finalizada');
   if (_fin) {
     try {
-      const { pk, numero } = JSON.parse(_fin);
+      const { pk, numero, tipoVenda: tv, dtLocacao: dl, dtDevolucao: dd } = JSON.parse(_fin);
       vendaPk.value         = pk;
       vendaNumero.value     = numero;
       vendaFinalizada.value = true;
       cartTab.value         = 3;
+      if (tv) tipoVenda.value    = tv;
+      if (dl) dtLocacao.value    = dl;
+      if (dd) dtDevolucao.value  = dd;
     } catch {}
   }
 
@@ -1525,7 +1529,7 @@ function buscarClientes() {
       const q = clienteBusca.value.trim();
       const { data } = await supabase
         .from('clientes')
-        .select('pk, nome, cpf, telefone, decorador')
+        .select('pk, nome, cpf, telefone, decorador, logradouro, numero, bairro, cep')
         .or(`nome.ilike.%${q}%,cpf.ilike.%${q}%,telefone.ilike.%${q}%`)
         .order('nome')
         .limit(8);
@@ -2009,7 +2013,13 @@ async function finalizar() {
     vendaNumero.value     = data.numero;
     vendaFinalizada.value = true;
     cartTab.value         = 3;
-    sessionStorage.setItem('pdv_finalizada', JSON.stringify({ pk: data.venda_pk, numero: data.numero }));
+    sessionStorage.setItem('pdv_finalizada', JSON.stringify({
+      pk:         data.venda_pk,
+      numero:     data.numero,
+      tipoVenda:  tipoVenda.value,
+      dtLocacao:  dtLocacao.value || null,
+      dtDevolucao: dtDevolucao.value || null,
+    }));
     toast(`Venda #${data.numero} finalizada com sucesso!`);
 
     // Impressão automática
@@ -2132,149 +2142,13 @@ ${troco.value > 0.009 ? `<div class="troco-line"><span>Troco</span><span>${fmt(t
 
 // ── Contrato de Locação ───────────────────────────────────────
 function imprimirContrato() {
-  const cli   = clienteSel.value || {};
-  const itens = vendaStore.itens;
-
-  const fmtDt = (iso) => {
-    if (!iso) return '_______________';
-    const d = new Date(iso);
-    return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  };
-
-
-  const hoje = new Date();
-  const dia  = hoje.getDate();
-  const mes  = hoje.toLocaleString('pt-BR', { month: 'long' });
-  const ano  = hoje.getFullYear();
-
-  const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"/>
-<title>Contrato de Locação — Festou</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 30px 40px; line-height: 1.5; }
-  h1 { font-size: 15px; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-  h2 { font-size: 12px; text-align: center; font-weight: normal; margin-bottom: 20px; color: #444; }
-  .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #333; margin: 16px 0 8px; padding-bottom: 2px; }
-  .row { display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
-  .field { flex: 1; min-width: 160px; }
-  .field label { font-size: 10px; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 2px; color: #555; }
-  .field .val { border-bottom: 1px solid #555; padding-bottom: 2px; min-height: 18px; word-break: break-word; }
-  .pagamento-checks { display: flex; gap: 20px; margin-bottom: 8px; flex-wrap: wrap; }
-  .check-item { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-  .check-box { width: 12px; height: 12px; border: 1px solid #333; display: inline-block; line-height: 12px; text-align: center; font-size: 10px; }
-  .itens-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  .itens-table th, .itens-table td { border: 1px solid #aaa; padding: 5px 8px; font-size: 11px; }
-  .itens-table th { background: #f0f0f0; font-weight: bold; }
-  .itens-table td:last-child { text-align: right; }
-  .total-line { text-align: right; font-weight: bold; font-size: 13px; margin-top: 8px; }
-  .clausulas { margin-top: 16px; }
-  .clausulas p { font-size: 10.5px; margin-bottom: 6px; text-align: justify; }
-  .assinaturas { display: flex; justify-content: space-between; margin-top: 40px; }
-  .assin { width: 45%; border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 11px; }
-  .page-break { page-break-before: always; }
-  @media print { body { padding: 15px 20px; } .page-break { page-break-before: always; } }
-</style>
-</head>
-<body>
-<h1>Contrato de Prestação de Serviço</h1>
-<h2>Locação de Móveis de Decoração</h2>
-
-<div class="section-title">Dados do Contratante</div>
-<div class="row">
-  <div class="field"><label>Nome completo</label><div class="val">${cli.nome || ''}</div></div>
-  <div class="field" style="max-width:200px"><label>CPF</label><div class="val">${cli.cpf || cpf.value || ''}</div></div>
-</div>
-<div class="row">
-  <div class="field"><label>RG</label><div class="val"> </div></div>
-  <div class="field"><label>Telefone</label><div class="val">${cli.telefone || ''}</div></div>
-  <div class="field"><label>Data de Nascimento</label><div class="val">${cli.data_nascimento ? new Date(cli.data_nascimento).toLocaleDateString('pt-BR') : ''}</div></div>
-</div>
-<div class="row">
-  <div class="field"><label>Endereço</label><div class="val">${[cli.logradouro, cli.numero, cli.bairro, cli.cidade, cli.uf].filter(Boolean).join(', ') || ''}</div></div>
-</div>
-
-<div class="section-title">Dados da Contratada</div>
-<div class="row">
-  <div class="field"><label>Nome</label><div class="val">ANDREY RONALD BARROS DA CONCEIÇÃO</div></div>
-  <div class="field"><label>CPF/CNPJ</label><div class="val">56.918.133/0001-04</div></div>
-</div>
-<div class="row">
-  <div class="field"><label>Endereço</label><div class="val">ALAMEDA COSME FERREIRA 6893 — ZUMBI DOS PALMARES, MANAUS-AM</div></div>
-  <div class="field" style="max-width:200px"><label>Telefone</label><div class="val">(92) 98612-5736</div></div>
-</div>
-
-<div class="section-title">Forma de Pagamento</div>
-<div class="pagamento-checks">
-  ${['dinheiro','pix','débito','crédito','crediário'].map(f => {
-    const ativo = vendaStore.pagamentos.some(p => p.forma.toLowerCase() === f);
-    return `<div class="check-item"><span class="check-box">${ativo ? '✓' : ''}</span> ${f.charAt(0).toUpperCase()+f.slice(1)}</div>`;
-  }).join('')}
-</div>
-<div class="row">
-  <div class="field"><label>Valor total</label><div class="val"><strong>${fmt(vendaStore.total)}</strong></div></div>
-  <div class="field"><label>Data da retirada</label><div class="val">${fmtDt(dtLocacao.value)}</div></div>
-  <div class="field"><label>Data de devolução</label><div class="val">${fmtDt(dtDevolucao.value)}</div></div>
-</div>
-
-<div class="section-title">Acessórios Locados</div>
-<table class="itens-table">
-  <thead><tr><th>#</th><th>Descrição</th><th>Qtd</th><th>Unit.</th><th>Desc.</th><th>Total</th></tr></thead>
-  <tbody>
-    ${itens.map((it, i) => `<tr>
-      <td>${i+1}</td>
-      <td>${it.nome}</td>
-      <td style="text-align:center">${it.qtd}</td>
-      <td>${fmt(it.preco_unitario)}</td>
-      <td style="text-align:center">${it.desconto_pct > 0 ? it.desconto_pct + '%' : '—'}</td>
-      <td>${fmt(it.preco_total)}</td>
-    </tr>`).join('')}
-  </tbody>
-</table>
-<div class="total-line">TOTAL: ${fmt(vendaStore.total)}</div>
-
-<div class="clausulas page-break">
-<div class="section-title">Cláusulas Contratuais</div>
-<p>1. A locação terá a duração de 1 (um) dia útil, contados a partir da retirada e conforme negociação para devolução. A entrega deverá ser feita no dia informado no contrato, caso contrário será cobrado o mesmo valor da locação.</p>
-<p>2. O pagamento total deverá ser efetuado no ato da locação. Optando pelo frete, este será cobrado de acordo com a localização da entrega e recolhimento (conforme tabela afixada no estabelecimento).</p>
-<p>3. Em caso de extravio, danos, ou quebra de material, o contratante deverá repor a(s) peça(s) por substituição de peça nova de mesma especificação (inclusive cor e modelo), ou efetuar o pagamento em dinheiro ou cartão do valor correspondente à peça nova (incluindo frete).</p>
-<p>4. No caso em que a peça faça parte de um conjunto, na indisponibilidade de reposição da unidade, fica obrigado o contratante a repor todo o conjunto.</p>
-<p>5. O pagamento referente à reposição deverá ser realizado no momento da devolução, sob pena de multa correspondente a duas vezes o valor da peça.</p>
-<p>6. A não devolução das peças locadas configurará apropriação indébita, sendo devida a aplicação das penalidades previstas em lei.</p>
-<p>7. Em caso de devolução em estado de conservação diferente do entregue (peças sujas, arranhadas ou com pequenas avarias), a loja poderá cobrar até 20% do valor de reposição a título de despesas com manutenção.</p>
-<p>8. Em caso de cancelamento com até 7 dias de antecedência: sem ônus. Após esse prazo: multa de 50% do valor total. Em até 24h da retirada: multa de 100% do valor total, sem devolução se já pago.</p>
-<p>9. Todo material utilizado para transporte dos itens locados deverá ser devolvido juntamente com as peças, nas mesmas condições recebidas.</p>
-<p>10. Fica eleito o foro da cidade de Manaus, Amazonas, como único competente para dirimir questões oriundas deste contrato.</p>
-</div>
-
-<p style="margin-top:20px; text-align:center">Manaus, ${dia} de ${mes} de ${ano}.</p>
-<div class="assinaturas">
-  <div class="assin">LOCADOR<br/>Andrey Ronald Barros da Conceição</div>
-  <div class="assin">LOCATÁRIO(A)<br/>${cli.nome || '_______________________________'}</div>
-</div>
-
-<script>window.onload = function(){ window.print(); }<\/script>
-</body></html>`;
-
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
-  iframe.onload = () => {
-    iframe.contentWindow.addEventListener('afterprint', () => {
-      if (iframe.parentNode) document.body.removeChild(iframe);
-    });
-  };
-  iframe.contentWindow.document.open();
-  iframe.contentWindow.document.write(html);
-  iframe.contentWindow.document.close();
-  setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 10_000);
+  imprimirContratoLocacao({
+    vendaPk:   vendaPk.value,
+    cpfNota:   cpf.value,
+    pagamentos: vendaStore.pagamentos,
+    itens:     vendaStore.itens,
+    total:     vendaStore.total,
+  });
 }
 
 // ── NFC-e ─────────────────────────────────────────────────────

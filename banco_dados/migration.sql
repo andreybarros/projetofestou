@@ -156,6 +156,9 @@ ALTER TABLE vendas
 -- 2.7 Vinculação de locação na agenda
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS venda_pk bigint REFERENCES vendas(pk) ON DELETE SET NULL;
 
+-- 2.7.1 Observação em locações
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS observacao text;
+
 -- 2.8 Fornecedores
 CREATE TABLE IF NOT EXISTS fornecedores (
   pk         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
