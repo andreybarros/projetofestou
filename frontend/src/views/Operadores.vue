@@ -213,6 +213,7 @@ const ROTINAS = [
   { id: 'fech_ponto',   icon: '🔐', label: 'Fechamento de Ponto (RH)',          campo: 'acesso_fechamento_ponto' },
   { id: 'rel_vendas',  icon: '💰', label: 'Relatórios de Vendas',               campo: 'acesso_relatorio_vendas' },
   { id: 'vales',       icon: '💵', label: 'Vales (Adiantamento Salarial)',       campo: 'acesso_vales' },
+  { id: 'projetos',    icon: '🎨', label: 'Projetos (Decoração / NF-e)',         campo: 'acesso_projetos' },
 ];
 
 const f = reactive({
@@ -249,6 +250,7 @@ const f = reactive({
   acesso_relatorio_vendas: false,
   acesso_vales:            false,
   acesso_entrada_nfe:      false,
+  acesso_projetos:         false,
 });
 
 onMounted(async () => {

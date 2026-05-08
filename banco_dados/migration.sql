@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS agenda (
 -- Garante colunas mesmo que a tabela já existisse parcialmente
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS filial_pk   bigint;
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS descricao   text;
+ALTER TABLE agenda ADD COLUMN IF NOT EXISTS data_evento date;
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS data_fim    date;
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS hora_inicio time;
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS hora_fim    time;
@@ -958,6 +959,49 @@ $$;
 -- ============================================================
 
   ALTER TABLE vendas ADD COLUMN IF NOT EXISTS acrescimo numeric(12,2) DEFAULT 0;
+
+-- ============================================================
+-- SEÇÃO 17 — MÓDULO DE PROJETOS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS projetos (
+  pk              bigserial   PRIMARY KEY,
+  filial_pk       bigint      REFERENCES filiais(pk),
+  titulo          text        NOT NULL,
+  cliente_pk      bigint      REFERENCES clientes(pk) ON DELETE SET NULL,
+  valor           numeric(12,2) DEFAULT 0,
+  data_decoracao  date,
+  cfop            text        DEFAULT '5102',
+  ncm             text,
+  status          text        DEFAULT 'pendente',
+  forma_pagamento text,
+  observacao      text,
+  agenda_pk       bigint,
+  nfe_ref         text,
+  nfe_chave       text,
+  nfe_protocolo   text,
+  nfe_status      text,
+  nfe_motivo      text,
+  nfe_numero      text,
+  nfe_serie       text,
+  nfe_ambiente    text,
+  nfe_xml         text,
+  nfe_danfe       text,
+  criado_em       timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_projetos_filial  ON projetos(filial_pk);
+CREATE INDEX IF NOT EXISTS idx_projetos_cliente ON projetos(cliente_pk);
+CREATE INDEX IF NOT EXISTS idx_projetos_data    ON projetos(data_decoracao);
+
+ALTER TABLE projetos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_projetos" ON projetos;
+CREATE POLICY "anon_all_projetos" ON projetos
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE agenda ADD COLUMN IF NOT EXISTS projeto_pk bigint;
+
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_projetos boolean DEFAULT false;
 
 -- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema

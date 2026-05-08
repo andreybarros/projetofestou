@@ -6,7 +6,10 @@
         <span class="material-symbols-outlined">tune</span>
         Parâmetros do Sistema
       </h2>
-      <p class="params-sub">Configure o comportamento do sistema. Alterações são salvas automaticamente.</p>
+      <p class="params-sub">
+        Configurações da filial <strong>{{ sessaoStore.filial?.nome_fantasia || sessaoStore.filial?.razao_social || '' }}</strong>.
+        Alterações são salvas automaticamente e valem apenas para esta filial.
+      </p>
     </div>
 
     <div v-if="carregando" class="state-msg">
@@ -207,7 +210,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { useParametrosStore } from '../stores/parametros';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
@@ -275,17 +278,22 @@ const vals = reactive({
   vale_gestor_pk:                       '',
 });
 
-onMounted(async () => {
+async function carregar() {
+  carregando.value = true;
   const [, { data: ops }] = await Promise.all([
     parametrosStore.carregar(sessaoStore.filial?.pk),
     supabase.from('operadores').select('id, nome').eq('ativo', true).order('nome'),
   ]);
   operadoresAtivos.value = ops || [];
   Object.keys(vals).forEach(k => {
-    if (parametrosStore.mapa[k] !== undefined) vals[k] = parametrosStore.mapa[k];
+    vals[k] = parametrosStore.mapa[k] !== undefined ? parametrosStore.mapa[k] : vals[k];
   });
   carregando.value = false;
-});
+}
+
+onMounted(carregar);
+
+watch(() => sessaoStore.filial?.pk, carregar);
 
 function isTrue(chave) {
   return vals[chave] === 'true' || vals[chave] === true;
@@ -299,7 +307,7 @@ async function toggleBool(chave) {
 async function salvar(chave, valor) {
   vals[chave] = String(valor);
   try {
-    await parametrosStore.salvar(chave, String(valor), null);
+    await parametrosStore.salvar(chave, String(valor), sessaoStore.filial?.pk);
     showToast('Parâmetro salvo com sucesso!', 'ok');
   } catch {
     showToast('Erro ao salvar parâmetro.', 'err');

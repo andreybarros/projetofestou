@@ -45,10 +45,11 @@
             <RouterLink v-if="pode('entrada_nfe')" to="/entrada-nfe"  class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">move_to_inbox</span><span class="nav-label">Entrada de NF-e</span></RouterLink>
           </div>
 
-          <!-- Agenda -->
-          <div v-if="pode('agenda')" class="nav-section">
+          <!-- Agenda e Projetos -->
+          <div v-if="pode('agenda') || pode('projetos')" class="nav-section">
             <p class="section-title">Agenda</p>
-            <RouterLink to="/agenda" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">calendar_month</span><span class="nav-label">Eventos</span></RouterLink>
+            <RouterLink v-if="pode('agenda')"   to="/agenda"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">calendar_month</span><span class="nav-label">Eventos</span></RouterLink>
+            <RouterLink v-if="pode('projetos')" to="/projetos" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a855f7">design_services</span><span class="nav-label">Projetos</span></RouterLink>
           </div>
 
           <!-- Vendas -->
@@ -332,6 +333,7 @@ function pode(modulo) {
     espelho: 'ponto', gestao_ponto: 'ponto', fech_ponto: 'funcionarios',
     criar_ordem: 'separacao', vales: 'funcionarios',
     entrada_nfe: 'produtos',
+    projetos:    'agenda',
   };
 
   // 1. FILIAL: bloqueia se a filial não tem o módulo (mesmo para admin)
@@ -371,6 +373,7 @@ function pode(modulo) {
     rel_vendas:   o.acesso_relatorio_vendas || o.acesso_historico || o.acesso_pdv,
     vales:        o.acesso_vales,
     entrada_nfe:  o.acesso_entrada_nfe,
+    projetos:     o.acesso_projetos,
   };
   return !!mapa[modulo];
 }

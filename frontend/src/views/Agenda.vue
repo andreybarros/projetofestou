@@ -332,6 +332,21 @@
                 </button>
               </div>
             </div>
+
+            <!-- Projeto vinculado -->
+            <div v-if="eventoDetalhe.projeto_pk" class="ev-det-venda-box" style="border-left: 3px solid #a855f7;">
+              <div class="ev-det-venda-header">
+                <span class="material-symbols-outlined" style="font-size:16px;color:#a855f7">design_services</span>
+                Projeto de decoração
+              </div>
+              <div class="ev-det-venda-info">
+                <button class="btn-ver-venda-det btn-historico" style="color:#a855f7;border-color:rgba(168,85,247,.3);"
+                  @click="router.push('/projetos/' + eventoDetalhe.projeto_pk + '/editar'); eventoDetalhe = null">
+                  <span class="material-symbols-outlined" style="font-size:14px">open_in_new</span>
+                  Abrir Projeto
+                </button>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn-cancel" @click="eventoDetalhe = null">Fechar</button>
@@ -529,14 +544,16 @@ const COR_TIPOS = {
   outro:              '#94a3b8',
   locacao_retirada:   '#4ade80',
   locacao_devolucao:  '#f59e0b',
+  projeto:            '#a855f7',
 };
 
 const legenda = [
-  { tipo: 'locacao_retirada',  cor: COR_TIPOS.locacao_retirada,  label: 'Retirada locação'  },
-  { tipo: 'locacao_devolucao', cor: COR_TIPOS.locacao_devolucao, label: 'Devolução locação' },
-  { tipo: 'montagem',          cor: COR_TIPOS.montagem,          label: 'Montagem balões'   },
-  { tipo: 'entrega',           cor: COR_TIPOS.entrega,           label: 'Entrega'           },
-  { tipo: 'manual',            cor: COR_TIPOS.manual,            label: 'Evento geral'      },
+  { tipo: 'locacao_retirada',  cor: COR_TIPOS.locacao_retirada,  label: 'Retirada locação'      },
+  { tipo: 'locacao_devolucao', cor: COR_TIPOS.locacao_devolucao, label: 'Devolução locação'     },
+  { tipo: 'montagem',          cor: COR_TIPOS.montagem,          label: 'Montagem balões'        },
+  { tipo: 'entrega',           cor: COR_TIPOS.entrega,           label: 'Entrega'                },
+  { tipo: 'projeto',           cor: COR_TIPOS.projeto,           label: 'Projeto de decoração'   },
+  { tipo: 'manual',            cor: COR_TIPOS.manual,            label: 'Evento geral'           },
 ];
 
 // ── Computed calendário ────────────────────────────────────────
@@ -619,17 +636,18 @@ async function carregarEventos() {
     // Eventos da agenda
     for (const ev of resAgenda.data || []) {
       evs.push({
-        id:         'ag-' + ev.pk,
-        pk:         ev.pk,
-        source:     'agenda',
-        titulo:     ev.titulo,
-        tipo:       ev.tipo || 'manual',
-        date:       ev.data_evento || ev.data_inicio,
-        hora:       ev.hora_inicio ? ev.hora_inicio.slice(0, 5) : null,
-        descricao:  ev.descricao,
-        cor:        ev.cor || COR_TIPOS[ev.tipo] || COR_TIPOS.manual,
-        venda_pk:   ev.venda_pk,
-        venda_info: ev.vendas || null,
+        id:          'ag-' + ev.pk,
+        pk:          ev.pk,
+        source:      'agenda',
+        titulo:      ev.titulo,
+        tipo:        ev.tipo || 'manual',
+        date:        ev.data_evento || ev.data_inicio,
+        hora:        ev.hora_inicio ? ev.hora_inicio.slice(0, 5) : null,
+        descricao:   ev.descricao,
+        cor:         ev.cor || COR_TIPOS[ev.tipo] || COR_TIPOS.manual,
+        venda_pk:    ev.venda_pk,
+        venda_info:  ev.vendas || null,
+        projeto_pk:  ev.projeto_pk || null,
       });
     }
 
@@ -822,6 +840,7 @@ function labelTipo(tipo) {
   const m = {
     manual: 'Evento geral', montagem: 'Montagem', entrega: 'Entrega',
     outro: 'Outro', locacao_retirada: 'Retirada', locacao_devolucao: 'Devolução',
+    projeto: 'Projeto',
   };
   return m[tipo] || tipo;
 }

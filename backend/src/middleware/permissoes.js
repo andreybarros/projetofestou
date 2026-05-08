@@ -24,6 +24,12 @@ const rotasPermissoes = {
   'PATCH /api/vales/:pk/pagar':     'acesso_vales',
   'PATCH /api/vales/:pk/descontar':         'acesso_vales',
   'PATCH /api/vales/:pk/desconto-parcial':  'acesso_vales',
+  'GET /api/projetos':                      'acesso_projetos',
+  'GET /api/projetos/:pk':                  'acesso_projetos',
+  'POST /api/projetos':                     'acesso_projetos',
+  'PUT /api/projetos/:pk':                  'acesso_projetos',
+  'DELETE /api/projetos/:pk':               'acesso_projetos',
+  'POST /api/projetos/:pk/emitir-nfe':      'acesso_projetos',
 };
 
 async function permissoesMiddleware(req, res, next) {
@@ -46,6 +52,18 @@ async function permissoesMiddleware(req, res, next) {
   if (rotaKey.match(/^PATCH \/api\/vales\/\d+\/(aprovar|rejeitar|pagar|descontar|desconto-parcial)$/)) {
     const acao = rotaKey.split('/').pop();
     rotaKey = `PATCH /api/vales/:pk/${acao}`;
+  }
+  if (rotaKey.match(/^GET \/api\/projetos\/\d+$/)) {
+    rotaKey = 'GET /api/projetos/:pk';
+  }
+  if (rotaKey.match(/^PUT \/api\/projetos\/\d+$/)) {
+    rotaKey = 'PUT /api/projetos/:pk';
+  }
+  if (rotaKey.match(/^DELETE \/api\/projetos\/\d+$/)) {
+    rotaKey = 'DELETE /api/projetos/:pk';
+  }
+  if (rotaKey.match(/^POST \/api\/projetos\/\d+\/emitir-nfe$/)) {
+    rotaKey = 'POST /api/projetos/:pk/emitir-nfe';
   }
 
   const permissaoRequerida = rotasPermissoes[rotaKey];
