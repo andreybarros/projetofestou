@@ -1253,6 +1253,19 @@ let _realtimeChannel = null;
 
 onMounted(async () => {
   window.addEventListener('keydown', onHotkey);
+
+  // Restaura estado de venda finalizada após reload
+  const _fin = sessionStorage.getItem('pdv_finalizada');
+  if (_fin) {
+    try {
+      const { pk, numero } = JSON.parse(_fin);
+      vendaPk.value         = pk;
+      vendaNumero.value     = numero;
+      vendaFinalizada.value = true;
+      cartTab.value         = 3;
+    } catch {}
+  }
+
   await checkCaixa();
   await Promise.all([loadProdutos(), loadCategorias(), loadVendedores(), loadFormasPagamento()]);
   if (vendaStore.cliente) clienteSel.value = vendaStore.cliente;
@@ -1763,6 +1776,7 @@ function addPag() {
 
 function limpar() {
   vendaStore.resetar();
+  sessionStorage.removeItem('pdv_finalizada');
   vendaFinalizada.value      = false;
   vendaPk.value              = null;
   vendaNumero.value          = null;
@@ -1794,6 +1808,7 @@ onBeforeRouteLeave(() => {
   fecharScanner();
   if (vendaFinalizada.value) {
     vendaStore.resetar();
+    sessionStorage.removeItem('pdv_finalizada');
     vendaFinalizada.value = false;
     vendaPk.value = null;
     vendaNumero.value = null;
@@ -1994,6 +2009,7 @@ async function finalizar() {
     vendaNumero.value     = data.numero;
     vendaFinalizada.value = true;
     cartTab.value         = 3;
+    sessionStorage.setItem('pdv_finalizada', JSON.stringify({ pk: data.venda_pk, numero: data.numero }));
     toast(`Venda #${data.numero} finalizada com sucesso!`);
 
     // Impressão automática
