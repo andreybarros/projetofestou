@@ -22,7 +22,9 @@
             <button class="btn-scan" @click="abrirScanner" title="Ler código de barras">
               <span class="material-symbols-outlined">barcode_scanner</span>
             </button>
-            
+            <button class="btn-scan btn-refresh-prod" @click="recarregarProdutos" :class="{ 'refreshing': recarregandoProd }" title="Atualizar lista de produtos">
+              <span class="material-symbols-outlined">refresh</span>
+            </button>
           </div>
 
           <div class="cat-scroll">
@@ -159,15 +161,42 @@
                     <button class="qty-btn" @click="incrementarItem(i, it)" :disabled="!permitirEstoqueNegativo && it.saldo !== null && it.qtd >= it.saldo">+</button>
                   </div>
                   <div class="item-desc-inline">
+                    <!-- Toggle % / R$ sempre visível -->
                     <div class="desc-type-toggle compact">
                       <button :class="['desc-type-btn', { active: itemDescAberto === i && itemDescTipo === 'pct' }]" @click="toggleDescItem(i, 'pct')">%</button>
                       <button :class="['desc-type-btn', { active: itemDescAberto === i && itemDescTipo === 'brl' }]" @click="toggleDescItem(i, 'brl')">R$</button>
                     </div>
+
+                    <!-- Input aberto -->
                     <template v-if="itemDescAberto === i">
-                      <input v-model.number="itemDescVal" type="number" min="0" step="0.01" :max="itemDescTipo === 'pct' ? 100 : undefined" :placeholder="itemDescTipo === 'pct' ? '%' : '0,00'" class="cart-input item-desc-input" prevent @keydown.enter.prevent="aplicarDescontoItem(i)" />
+                      <input
+                        v-if="itemDescTipo === 'pct'"
+                        v-model.number="itemDescVal"
+                        type="number" inputmode="numeric" min="0" max="100" step="1"
+                        placeholder="0"
+                        class="cart-input item-desc-input"
+                        @keydown.enter.prevent="aplicarDescontoItem(i)"
+                      />
+                      <input
+                        v-else
+                        :value="itemDescBrlDisplay"
+                        @input="onItemDescBrlInput"
+                        type="text" inputmode="numeric"
+                        placeholder="0,00"
+                        class="cart-input item-desc-input"
+                        @keydown.enter.prevent="aplicarDescontoItem(i)"
+                      />
                       <button class="desc-confirm-btn" @click.stop.prevent="aplicarDescontoItem(i)">✓</button>
+                      <button class="desc-cancel-btn" @click.stop="itemDescAberto = null">×</button>
                     </template>
-                    <span v-else-if="it.desconto_pct > 0" class="item-disc-badge" @click="toggleDescItem(i, 'pct')" style="cursor:pointer">−{{ it.desconto_pct % 1 === 0 ? it.desconto_pct : it.desconto_pct.toFixed(1) }}%</span>
+
+                    <!-- Badge quando fechado com desconto -->
+                    <div v-else-if="it.desconto_pct > 0" class="disc-badge">
+                      <button class="disc-badge-btn" @click="toggleDescItem(i, 'pct')">
+                        −{{ it.desconto_pct % 1 === 0 ? it.desconto_pct : it.desconto_pct.toFixed(1) }}%
+                      </button>
+                      <button class="disc-badge-remove" @click.stop="vendaStore.atualizarDescontoItem(i, 0, 'pct')" title="Remover desconto">×</button>
+                    </div>
                   </div>
                   <span class="item-total">{{ fmt(it.preco_total) }}</span>
                 </div>
@@ -279,20 +308,25 @@
             <!-- Vendedor -->
             <div class="cart-section vendedor-section">
               <label class="section-label">Vendedor <span v-if="exigeVendedor" class="obrig">*</span></label>
-              <select v-model="vendedorSel" class="cart-select vendedor-select">
-                <option :value="null" disabled>— Selecione o vendedor —</option>
-                <option v-for="v in vendedores" :key="v.pk" :value="v">{{ v.nome }}</option>
-              </select>
+              <div class="det-pills-wrap">
+                <button
+                  v-for="v in vendedores"
+                  :key="v.pk"
+                  :class="['det-pill', { active: vendedorSel?.pk === v.pk }]"
+                  @click="vendedorSel = (vendedorSel?.pk === v.pk ? null : v)"
+                >{{ v.nome }}</button>
+                <span v-if="!vendedores.length" class="det-pills-empty">Nenhum vendedor cadastrado</span>
+              </div>
               <span v-if="exigeVendedor && !vendedorSel" class="vendedor-aviso">Selecione um vendedor para finalizar</span>
             </div>
 
             <!-- Tipo de venda -->
             <div class="cart-section">
               <label class="section-label">Tipo de venda</label>
-              <select v-model="tipoVenda" class="cart-select">
-                <option value="venda">Venda</option>
-                <option value="locacao">Locação</option>
-              </select>
+              <div class="det-pills-wrap">
+                <button :class="['det-pill', { active: tipoVenda === 'venda' }]" @click="tipoVenda = 'venda'">Venda</button>
+                <button :class="['det-pill', { active: tipoVenda === 'locacao' }]" @click="tipoVenda = 'locacao'">Locação</button>
+              </div>
             </div>
 
             <!-- Datas locação -->
@@ -939,6 +973,7 @@ const scannerStatusTipo = ref('');
 const catSel         = ref(null);
 const somentePromo   = ref(false);
 const carregando     = ref(true);
+const recarregandoProd = ref(false);
 const caixaVerificado = ref(false);
 const todos          = ref([]);
 const categorias     = ref([]);
@@ -951,6 +986,7 @@ const cartTab           = ref(0);
 const itemDescAberto    = ref(null);
 const itemDescTipo      = ref('pct');
 const itemDescVal       = ref(0);
+const itemDescBrlDisplay = ref('');
 const clienteSel        = ref(null);
 const clienteBusca      = ref('');
 const clienteResultados = ref([]);
@@ -1258,6 +1294,14 @@ async function loadProdutos() {
   }
 }
 
+async function recarregarProdutos() {
+  if (recarregandoProd.value) return;
+  recarregandoProd.value = true;
+  await loadProdutos();
+  filtrarProdutos();
+  recarregandoProd.value = false;
+}
+
 async function loadVendedores() {
   let q = supabase.from('vendedores').select('pk, nome').eq('ativo', true).order('nome');
   if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
@@ -1535,11 +1579,31 @@ function toggleDescItem(i, tipo = 'pct') {
     const it = vendaStore.itens[i];
     itemDescTipo.value = tipo;
     if (tipo === 'pct') {
-      itemDescVal.value = it.desconto_pct || 0;
+      itemDescVal.value = Math.round(it.desconto_pct || 0);
+      itemDescBrlDisplay.value = '';
     } else {
-      itemDescVal.value = it.desconto_pct > 0 ? parseFloat((it.qtd * it.preco_unitario - it.preco_total).toFixed(2)) : 0;
+      const brl = it.desconto_pct > 0 ? parseFloat((it.qtd * it.preco_unitario - it.preco_total).toFixed(2)) : 0;
+      itemDescVal.value = brl;
+      itemDescBrlDisplay.value = brl > 0
+        ? brl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '';
     }
   }
+}
+
+function onItemDescBrlInput(e) {
+  const digits = e.target.value.replace(/\D/g, '');
+  if (!digits || digits === '0') {
+    itemDescVal.value = 0;
+    itemDescBrlDisplay.value = '';
+    e.target.value = '';
+    return;
+  }
+  const cents = parseInt(digits, 10);
+  itemDescVal.value = cents / 100;
+  const formatted = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  itemDescBrlDisplay.value = formatted;
+  e.target.value = formatted;
 }
 
 function aplicarDescontoItem(i) {
@@ -2369,6 +2433,9 @@ async function emitirNFCe() {
 
 .btn-scan:hover { background: rgba(99,102,241,.12); color: var(--primary); border-color: rgba(99,102,241,.4); }
 .btn-scan .material-symbols-outlined { font-size: 20px; }
+.btn-refresh-prod .material-symbols-outlined { transition: transform .6s ease; }
+.btn-refresh-prod.refreshing .material-symbols-outlined { animation: spin-refresh .7s linear infinite; }
+@keyframes spin-refresh { to { transform: rotate(360deg); } }
 .btn-lista-ia:hover { background: rgba(16,185,129,.12) !important; color: #10b981 !important; border-color: rgba(16,185,129,.4) !important; }
 
 /* Modal base (usado pelo modal de lista IA) */
@@ -2968,7 +3035,7 @@ async function emitirNFCe() {
 .summary-total {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
   padding-top: 6px;
@@ -3058,12 +3125,48 @@ async function emitirNFCe() {
 .item-desc-btn:hover, .item-desc-btn.active { background: rgba(99,102,241,.15); border-color: var(--accent); color: var(--accent2); }
 
 .item-desc-inline {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 5px; flex: 1;
 }
+
+/* Badge de desconto aplicado */
+.disc-badge {
+  display: flex; align-items: center;
+  border-radius: 20px;
+  border: 1px solid rgba(245,158,11,.4);
+  background: rgba(245,158,11,.12);
+  overflow: hidden;
+  height: 26px;
+  flex-shrink: 0;
+}
+.disc-badge-btn {
+  display: flex; align-items: center; gap: 3px;
+  padding: 0 8px 0 7px;
+  background: transparent; border: none;
+  color: #f59e0b;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer;
+  height: 100%;
+  transition: background .15s;
+}
+.disc-badge-btn .material-symbols-outlined { font-size: 12px; }
+.disc-badge-btn:hover { background: rgba(245,158,11,.15); }
+.disc-badge-remove {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 100%;
+  background: transparent; border: none; border-left: 1px solid rgba(245,158,11,.3);
+  color: #f59e0b; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+  flex-shrink: 0;
+}
+.disc-badge-remove:hover { background: rgba(245,158,11,.25); }
+
+/* Estado de edição */
 .desc-type-toggle.compact .desc-type-btn { padding: 4px 8px; font-size: 11px; height: 26px; }
-.item-desc-input { width: 66px !important; padding: 4px 6px !important; height: 26px !important; font-size: 12px !important; }
+.item-desc-input { width: 60px !important; padding: 4px 6px !important; height: 26px !important; font-size: 12px !important; }
 .desc-confirm-btn { background: var(--green); color: #fff; border: none; border-radius: 4px; padding: 0; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; font-weight: bold; transition: all .15s; flex-shrink: 0; }
 .desc-confirm-btn:hover { opacity: .8; }
+.desc-cancel-btn { background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: 4px; padding: 0; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; font-weight: 700; transition: all .15s; flex-shrink: 0; }
+.desc-cancel-btn:hover { background: rgba(244,63,94,.1); border-color: rgba(244,63,94,.4); color: #f43f5e; }
 
 .item-controls { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.03); border-radius: 6px; padding: 3px; border: 1px solid var(--line); flex-shrink: 0; }
 .qty-btn {
@@ -3244,7 +3347,7 @@ async function emitirNFCe() {
 .pag-status { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 10px; }
 .crediario-fields { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .crediario-row { display: flex; gap: 12px; }
-.crediario-warn { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #f59e0b; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); border-radius: 7px; padding: 5px 10px; }
+.crediario-warn { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: #f59e0b; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); border-radius: 7px; padding: 5px 10px; }
 .crediario-warn .material-symbols-outlined { font-size: 15px; }
 .crediario-warn.inadimpl { color: #ef4444; background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.25); }
 .pag-status strong { font-family: var(--mono); color: var(--text); }
@@ -3666,9 +3769,31 @@ async function emitirNFCe() {
   .cart { border-top: none; max-height: none; }
 }
 
+/* Det pills (vendedor / tipo de venda) */
+.det-pills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.det-pill {
+  padding: 9px 22px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  white-space: nowrap;
+}
+.det-pill:hover { background: rgba(99,102,241,.1); border-color: rgba(99,102,241,.35); color: var(--text); }
+.det-pill.active { background: #6366f1; border-color: #6366f1; color: #fff; font-weight: 600; }
+.det-pills-empty { font-size: 12px; color: var(--text2); font-style: italic; }
+
 /* Vendedor */
 .vendedor-section { border-top: 2px solid var(--accent); background: rgba(99,102,241,.04); }
-.vendedor-select  { font-weight: 600; }
 .obrig            { color: var(--red); }
 .vendedor-aviso   { font-size: 11px; color: var(--amber); margin-top: 4px; display: block; }
 
@@ -3757,7 +3882,9 @@ async function emitirNFCe() {
 [data-theme="light"] .drop-nome      { color: #0f172a; }
 [data-theme="light"] .drop-sub       { color: #6b7280; }
 [data-theme="light"] .vendedor-section { background: rgba(67,56,202,.06); border-top-color: #4338ca; }
-[data-theme="light"] .item-disc-badge { background: rgba(180,83,9,.1); border-color: rgba(180,83,9,.25); color: #92400e; }
+[data-theme="light"] .disc-badge { background: rgba(180,83,9,.08); border-color: rgba(180,83,9,.3); }
+[data-theme="light"] .disc-badge-btn { color: #b45309; }
+[data-theme="light"] .disc-badge-remove { color: #b45309; border-left-color: rgba(180,83,9,.25); }
 [data-theme="light"] .nfce-result.ok  { background: rgba(5,150,105,.08); border-color: rgba(5,150,105,.25); color: #065f46; }
 [data-theme="light"] .nfce-result.err { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.25); color: #991b1b; }
 [data-theme="light"] .pdv-toast.ok  { background: #065f46; color: #d1fae5; border-color: rgba(5,150,105,.4); }
@@ -3801,16 +3928,12 @@ async function emitirNFCe() {
   .catalog { border-right: none; height: 100%; }
 
   /* Compactação extrema solicitada pelo usuário */
-  .vendedor-section { 
-    padding: 10px 12px; 
-    display: flex; 
-    align-items: center; 
-    gap: 10px;
-    background: rgba(99,102,241,0.06); 
+  .vendedor-section {
+    padding: 10px 12px;
+    background: rgba(99,102,241,0.06);
   }
-  .vendedor-section .section-label { margin-bottom: 0; white-space: nowrap; }
-  .vendedor-select { padding: 4px 8px; font-size: 13px; height: 32px; }
-  .vendedor-aviso { position: absolute; bottom: 100%; right: 14px; background: var(--bg2); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--amber); }
+  .vendedor-aviso { font-size: 11px; color: var(--amber); margin-top: 4px; display: block; }
+  .det-pill { padding: 5px 12px; font-size: 12px; }
 
   .cart-actions { padding: 8px 12px; gap: 4px; }
   .btn-finalizar { padding: 10px; font-size: 13.5px; height: 44px; }
