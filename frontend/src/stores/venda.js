@@ -33,6 +33,16 @@ export const useVendaStore = defineStore('venda', () => {
     }, 0);
   });
 
+  const subtotalBruto = computed(() => {
+    return itens.value.reduce((sum, item) => {
+      const uni = parseFloat(item.preco_unitario || 0);
+      const qtd = parseFloat(item.qtd || 0);
+      if (uni > 0 && qtd > 0) return sum + uni * qtd;
+      // fallback: preco_total já com desconto + desconto_val = bruto
+      return sum + parseFloat(item.preco_total || 0) + parseFloat(item.desconto_val || 0);
+    }, 0);
+  });
+
   const total = computed(() => {
     return Math.max(0, subtotal.value - parseFloat(desconto.value || 0) + parseFloat(acrescimo.value || 0)).toFixed(2);
   });
@@ -167,6 +177,7 @@ export const useVendaStore = defineStore('venda', () => {
     vendedor,
     cliente,
     subtotal,
+    subtotalBruto,
     total,
     totalPago,
     faltaPagar,

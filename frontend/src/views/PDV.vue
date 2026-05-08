@@ -48,8 +48,13 @@
             </div>
           </div>
 
-          <div v-if="carregando" class="state-msg">
-            <span class="spin"></span> Carregando produtos…
+          <div v-if="carregando" class="loading-state">
+            <div class="loading-rings">
+              <span class="loading-ring r1"></span>
+              <span class="loading-ring r2"></span>
+              <span class="loading-ring r3"></span>
+            </div>
+            <span class="loading-label">Carregando produtos…</span>
           </div>
           <div v-else-if="!filtrados.length" class="state-msg muted">
             Nenhum produto encontrado
@@ -327,123 +332,144 @@
         </div>
 
         <!-- ── ABA 2: Pagamento ─────────────────────────────── -->
-        <div v-show="cartTab === 2" class="tab-panel">
+        <div v-show="cartTab === 2" class="tab-panel pag-panel">
 
-          <!-- Total + troco em destaque -->
-          <div class="total-hero">
-            <span class="total-hero-label">Total da Venda</span>
-            <span class="total-hero-value">{{ fmt(vendaStore.total) }}</span>
-            <div v-if="parseFloat(vendaStore.desconto) > 0" class="total-hero-disc">
-              Subtotal {{ fmt(vendaStore.subtotal) }} · Desconto − {{ fmt(vendaStore.desconto) }}
+          <!-- ① Painel de totais -->
+          <div class="pag-totais">
+            <div class="pag-total-principal">
+              <span class="pag-total-label">Total da Venda</span>
+              <span class="pag-total-valor">{{ fmt(vendaStore.total) }}</span>
             </div>
-          </div>
-
-          <!-- Cartão de status do pagamento -->
-          <div class="pag-status-card">
-            <div class="psc-row">
-              <span class="psc-label">Total</span>
-              <span class="psc-val">{{ fmt(vendaStore.total) }}</span>
+            <div class="pag-metricas">
+              <div class="pag-metrica">
+                <span class="pm-label">Descontos Aplicados</span>
+                <span class="pm-val pm-desc">{{ fmt(descontoTotal) }}</span>
+              </div>
+              <div class="pag-metrica-div"></div>
+              <div class="pag-metrica">
+                <span class="pm-label">Pago</span>
+                <span class="pm-val pm-pago">{{ fmt(vendaStore.totalPago) }}</span>
+              </div>
+              <div class="pag-metrica-div"></div>
+              <div v-if="parseFloat(vendaStore.faltaPagar) > 0.009" class="pag-metrica">
+                <span class="pm-label">Falta</span>
+                <span class="pm-val pm-falta">{{ fmt(vendaStore.faltaPagar) }}</span>
+              </div>
+              <div v-else-if="troco > 0.009" class="pag-metrica">
+                <span class="pm-label">Troco</span>
+                <span class="pm-val pm-troco">{{ fmt(troco) }}</span>
+              </div>
+              <div v-else class="pag-metrica">
+                <span class="pm-label">Falta</span>
+                <span class="pm-val pm-zero">R$ 0,00</span>
+              </div>
             </div>
-            <div class="psc-row">
-              <span class="psc-label">Pago</span>
-              <span class="psc-val psc-pago">{{ fmt(vendaStore.totalPago) }}</span>
+            <!-- Barra de progresso -->
+            <div class="pag-progress-wrap">
+              <div class="pag-progress-bar" :style="{ width: Math.min(100, (parseFloat(vendaStore.totalPago) / parseFloat(vendaStore.total)) * 100) + '%' }"></div>
             </div>
-            <div v-if="parseFloat(vendaStore.faltaPagar) > 0.009" class="psc-row psc-falta">
-              <span class="psc-label">Falta</span>
-              <span class="psc-val">{{ fmt(vendaStore.faltaPagar) }}</span>
-            </div>
-            <div v-else-if="troco > 0.009" class="psc-row psc-troco">
-              <span class="psc-label">Troco</span>
-              <span class="psc-val">{{ fmt(troco) }}</span>
-            </div>
-            <div v-if="parseFloat(vendaStore.faltaPagar) <= 0.009 && vendaStore.pagamentos.length" class="psc-ok">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <div v-if="parseFloat(vendaStore.faltaPagar) <= 0.009 && vendaStore.pagamentos.length" class="pag-completo">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Pagamento completo
             </div>
           </div>
 
-          <div class="pag-scroll">
-            <!-- Forma de pagamento -->
-            <div class="cart-section">
-              <label class="section-label">Forma de pagamento</label>
-              <select v-model="formaPag" class="cart-select pag-select-full">
-                <option v-for="f in formasPagamento" :key="f.pk" :value="f.forma">{{ f.icone }} {{ f.label }}</option>
-              </select>
+          <!-- ② Formas de pagamento (pills) -->
+          <div class="pag-formas-wrap">
+            <span class="pag-sec-label">Forma de pagamento</span>
+            <div class="pag-formas-pills">
+              <button
+                v-for="f in formasPagamento" :key="f.pk"
+                :class="['pag-pill', { active: formaPag === f.forma }]"
+                @click="formaPag = f.forma"
+              >{{ f.icone }} {{ f.label }}</button>
+            </div>
+          </div>
 
-              <label class="section-label" style="margin-top:12px">Valor recebido</label>
-              <div class="pag-row-col">
+          <!-- ③ Campo valor + adicionar -->
+          <div class="pag-entrada">
+            <div class="pag-entrada-row">
+              <div class="pag-entrada-input-wrap">
+                <span class="pag-rs">R$</span>
                 <input
                   :value="valorPagDisplay"
                   @input="onValorPagInput"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="0,00"
-                  class="pag-val-big"
+                  @keydown.enter.prevent="addPag"
+                  type="text" inputmode="numeric" placeholder="0,00"
+                  class="pag-entrada-input"
                 />
-                <button class="pag-add-full" @click="addPag">
-                  <span class="material-symbols-outlined">add_circle</span>
-                  Adicionar
+              </div>
+              <button class="pag-btn-add" @click="addPag">
+                <span class="material-symbols-outlined">add</span>
+                Adicionar
+              </button>
+            </div>
+            <div v-if="formaPag === 'crediario'" class="pag-crediario-row">
+              <label class="pag-sec-label">Vencimento <span class="obrig">*</span></label>
+              <input v-model="dtVenc" type="date" class="cart-input sm" style="flex:1" />
+            </div>
+            <div v-if="formaPag === 'crediario' && crediarioExigeCliente && !clienteSel" class="crediario-warn" style="margin-top:4px">
+              <span class="material-symbols-outlined">warning</span>
+              Selecione um cliente para usar o crediário
+            </div>
+            <div v-if="tipoVenda === 'locacao' && locacaoExigeCliente && !clienteSel" class="crediario-warn" style="margin-top:4px">
+              <span class="material-symbols-outlined">warning</span>
+              Selecione um cliente para finalizar a locação
+            </div>
+            <div v-if="temCrediario && clienteInadimplente && crediarioBloqueiainadimpl" class="crediario-warn inadimpl" style="margin-top:4px">
+              <span class="material-symbols-outlined">block</span>
+              <span>Cliente possui <b>{{ inadimplenteQtd }} boleto(s) em atraso</b>. Crediário disponível somente após quitar as dívidas.</span>
+            </div>
+          </div>
+
+          <!-- ④ Pagamentos adicionados + acréscimo -->
+          <div class="pag-lista-acrescimo">
+            <div v-if="vendaStore.pagamentos.length" class="pag-chips">
+              <div v-for="(p, i) in vendaStore.pagamentos" :key="i" class="pag-chip">
+                <span class="pag-chip-forma">{{ p.label || p.forma }}</span>
+                <span class="pag-chip-val">{{ fmt(p.valor) }}</span>
+                <button class="pag-chip-del" @click="vendaStore.removerPagamento(i)">
+                  <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <div v-if="formaPag === 'crediario'" class="crediario-fields">
-                <div class="crediario-row">
-                  <div>
-                    <label class="section-label">Vencimento <span class="obrig">*</span></label>
-                    <input v-model="dtVenc" type="date" class="cart-input sm" />
-                  </div>
-                </div>
-                <div v-if="crediarioExigeCliente && !clienteSel" class="crediario-warn">
-                  <span class="material-symbols-outlined">warning</span>
-                  Selecione um cliente para usar o crediário
-                </div>
-              </div>
-              <div v-if="tipoVenda === 'locacao' && locacaoExigeCliente && !clienteSel" class="crediario-warn" style="margin-top:6px">
-                <span class="material-symbols-outlined">warning</span>
-                Selecione um cliente para finalizar a locação
-              </div>
-              <div v-if="temCrediario && clienteInadimplente && crediarioBloqueiainadimpl" class="crediario-warn inadimpl" style="margin-top:6px">
-                <span class="material-symbols-outlined">block</span>
-                <span>Cliente possui <b>{{ inadimplenteQtd }} boleto(s) em atraso</b>. Crediário disponível somente após quitar as dívidas.</span>
-              </div>
-              <div v-if="vendaStore.pagamentos.length" class="pag-list">
-                <div v-for="(p, i) in vendaStore.pagamentos" :key="i" class="pag-item">
-                  <span class="pag-forma">{{ p.label || p.forma }}</span>
-                  <span class="pag-valor">{{ fmt(p.valor) }}</span>
-                  <button class="pag-del" @click="vendaStore.removerPagamento(i)">×</button>
-                </div>
-              </div>
+            </div>
 
-              <!-- Acréscimo -->
-              <div class="cart-section acrescimo-section">
-                <label class="section-label">Acréscimo (R$)</label>
-                <div class="pag-row-col">
+            <!-- Acréscimo -->
+            <div class="pag-acrescimo-simples">
+              <span class="pag-sec-label" style="white-space:nowrap;margin-bottom:0">Acréscimo</span>
+              <div class="pag-acrescimo-row">
+                <div class="pag-acrescimo-input-wrap">
+                  <span class="pag-acrescimo-rs">R$</span>
                   <input
                     :value="acrescimoDisplay"
                     @input="onAcrescimoInput"
                     @keydown.enter.stop.prevent="confirmarAcrescimo"
-                    type="text"
-                    inputmode="numeric"
-                    placeholder="0,00"
-                    class="pag-val-big"
+                    type="text" inputmode="numeric" placeholder="0,00"
+                    class="pag-acrescimo-input"
                   />
-                  <button type="button" class="pag-add-full acrescimo-add-btn" @click.stop.prevent="confirmarAcrescimo">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    Aplicar
-                  </button>
                 </div>
-                <div v-if="acrescimoConfirmado" class="acrescimo-ok">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  Acréscimo de {{ fmt(vendaStore.acrescimo) }} aplicado ao total
-                </div>
+                <button type="button" class="pag-acrescimo-btn" @click.stop.prevent="confirmarAcrescimo">
+                  <span class="material-symbols-outlined">check</span>
+                  Aplicar
+                </button>
+              </div>
+              <!-- Chip do acréscimo aplicado -->
+              <div v-if="parseFloat(vendaStore.acrescimo) > 0" class="pag-acrescimo-chip">
+                <span class="material-symbols-outlined" style="font-size:15px;color:#34d399">add_circle</span>
+                <span class="pac-forma">Acréscimo aplicado</span>
+                <span class="pac-val">+ {{ fmt(vendaStore.acrescimo) }}</span>
+                <button class="pag-chip-del" @click="removerAcrescimo">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- Ações fixas no fundo -->
-          <div class="cart-actions">
-            <button class="btn-finalizar" :disabled="!podeFinalizar || processando" @click="finalizar">
+          <!-- ⑤ Finalizar -->
+          <div class="pag-footer">
+            <button class="btn-finalizar pag-btn-finalizar" :disabled="!podeFinalizar || processando" @click="finalizar">
               <span v-if="processando" class="spin-sm"></span>
-              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               {{ processando ? 'Processando…' : 'Finalizar Venda' }}
             </button>
           </div>
@@ -1159,6 +1185,14 @@ const troco = computed(() =>
   Math.max(0, parseFloat(vendaStore.totalPago) - parseFloat(vendaStore.total))
 );
 
+const descontoTotal = computed(() => {
+  // desconto total = bruto - total + acrescimo = descontos de itens + desconto de venda
+  const bruto = parseFloat(vendaStore.subtotalBruto) || 0;
+  const total  = parseFloat(vendaStore.total) || 0;
+  const acr    = parseFloat(vendaStore.acrescimo) || 0;
+  return Math.max(0, bruto - total + acr);
+});
+
 // ── Sincronização vendedor/cliente com store ──────────────────
 watch(vendedorSel, v  => vendaStore.setVendedor(v));
 watch(clienteSel,  c  => vendaStore.setCliente(c));
@@ -1614,9 +1648,20 @@ function onAcrescimoInput(e) {
 }
 
 function confirmarAcrescimo() {
-  vendaStore.setAcrescimo(acrescimoValor.value);
+  const val = acrescimoValor.value;
+  if (val <= 0) return;
+  vendaStore.setAcrescimo(val);
   acrescimoConfirmado.value = true;
-  setTimeout(() => { acrescimoConfirmado.value = false; }, 2500);
+  preencherValorPag(val);
+  acrescimoDisplay.value = '';
+  acrescimoValor.value = 0;
+}
+
+function removerAcrescimo() {
+  vendaStore.setAcrescimo(0);
+  acrescimoDisplay.value = '';
+  acrescimoValor.value = 0;
+  acrescimoConfirmado.value = false;
 }
 
 function onValorPagInput(e) {
@@ -2268,7 +2313,7 @@ async function emitirNFCe() {
 /* ── Corpo ────────────────────────────────────────────────────── */
 .pdv-body {
   display: grid;
-  grid-template-columns: 1fr 560px;
+  grid-template-columns: 1fr 660px;
   flex: 1;
   overflow: hidden;
   margin-bottom: 1rem;
@@ -2526,6 +2571,7 @@ async function emitirNFCe() {
   flex: 1;
   overflow-y: auto;
   padding: 14px 16px;
+  position: relative;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.1) transparent;
 }
@@ -2540,6 +2586,37 @@ async function emitirNFCe() {
   color: var(--text);
 }
 .state-msg.muted { color: var(--muted); }
+
+/* Loading state */
+.loading-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px;
+  position: absolute; inset: 0;
+}
+.loading-rings {
+  position: relative; width: 56px; height: 56px;
+}
+.loading-ring {
+  position: absolute; inset: 0; border-radius: 70%;
+  border: 7px solid transparent; animation: ringPulse 1.4s ease-in-out infinite;
+}
+.r1 { border-top-color: #6366f1; animation-delay: 0s; }
+.r2 { inset: 8px; border-top-color: #818cf8; animation-delay: .18s; }
+.r3 { inset: 15px; border-top-color: #a5b4fc; animation-delay: .36s; }
+@keyframes ringPulse {
+  0%   { transform: rotate(0deg); opacity: 1; }
+  50%  { opacity: .6; }
+  100% { transform: rotate(360deg); opacity: 1; }
+}
+.loading-label {
+  font-size: 19px; font-weight: 500; color: var(--text2);
+  letter-spacing: .3px;
+  animation: textBlink 1.4s ease-in-out infinite;
+}
+@keyframes textBlink {
+  0%, 100% { opacity: .5; }
+  50%       { opacity: 1; }
+}
 
 .products-list {
   display: flex;
@@ -2680,7 +2757,7 @@ async function emitirNFCe() {
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 8px 0 0;
+  padding: 1px 0 0;
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
   background: var(--bg1);
@@ -2691,7 +2768,7 @@ async function emitirNFCe() {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 4px;
+  padding: 8px 4px;
   border: none;
   background: none;
   color: var(--muted);
@@ -2739,37 +2816,124 @@ async function emitirNFCe() {
   overflow: hidden;
 }
 
-/* Total hero (aba pagamento) */
-.total-hero {
-  padding: 20px 16px 16px;
-  background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(99,102,241,.04));
+/* ── ABA PAGAMENTO REDESIGN ───────────────────────────────────── */
+.pag-panel { gap: 0; }
+
+/* ① Totais */
+.pag-totais {
+  padding: 12px 16px 10px;
+  background: linear-gradient(160deg, rgba(99,102,241,.13) 0%, rgba(99,102,241,.04) 100%);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
-  text-align: center;
 }
-.total-hero-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
-  margin-bottom: 6px;
+
+.pag-total-principal { text-align: center; margin-bottom: 10px; }
+.pag-total-label { display: block; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 2px; }
+.pag-total-valor { display: block; font-family: var(--mono); font-size: 55px; font-weight: 800; color: var(--accent2); line-height: 1; letter-spacing: -1px; }
+.pag-metricas { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 10px; }
+.pag-metrica { flex: 1; text-align: center; padding: 6px 0; }
+.pag-metrica-div { width: 1px; height: 30px; background: var(--line); flex-shrink: 0; }
+.pm-label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 3px; }
+.pm-val { display: block; font-family: var(--mono); font-size: 19px; font-weight: 800; color: var(--text); }
+.pm-pago  { color: #10b981; }
+.pm-falta { color: #f43f5e; }
+.pm-troco { color: #10b981; }
+.pm-zero  { color: #64748b; font-size: 16px; }
+.pm-desc  { color: var(--text); }
+.pag-progress-wrap { height: 5px; background: var(--bg3); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
+.pag-progress-bar { height: 100%; background: linear-gradient(90deg, #6366f1, #10b981); border-radius: 99px; transition: width .4s ease; }
+.pag-completo { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: #10b981; }
+
+/* ② Pills de forma de pagamento */
+.pag-formas-wrap { padding: 10px 14px 8px; flex-shrink: 0; border-bottom: 1px solid var(--line); }
+.pag-sec-label { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); display: block; margin-bottom: 7px; }
+.pag-formas-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pag-pill {
+  padding: 10px 22px; border-radius: 99px; font-size: 13px; font-weight: 600;
+  background: var(--bg3); border: 1.5px solid var(--line); color: var(--text2);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
 }
-.total-hero-value {
-  display: block;
-  font-family: var(--mono);
-  font-size: 52px;
-  font-weight: 800;
-  color: var(--accent2);
-  line-height: 1;
-  letter-spacing: -1px;
+.pag-pill:hover { border-color: #6366f1; color: #818cf8; background: rgba(99,102,241,.08); }
+.pag-pill.active {
+  background: #6366f1; border-color: #6366f1; color: #fff;
 }
-.total-hero-disc {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--muted);
+
+/* ③ Entrada de valor */
+.pag-entrada { padding: 10px 14px 8px; flex-shrink: 0; border-bottom: 1px solid var(--line); }
+.pag-entrada-row { display: flex; gap: 8px; align-items: stretch; }
+.pag-entrada-input-wrap { flex: 1; display: flex; align-items: center; gap: 6px; background: var(--bg3); border: 1.5px solid var(--line); border-radius: 10px; padding: 0 12px; transition: border-color .15s; }
+.pag-entrada-input-wrap:focus-within { border-color: #6366f1; background: var(--bg); box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+.pag-rs { font-size: 13px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+.pag-entrada-input { flex: 1; background: none; border: none; outline: none; font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--text); padding: 10px 0; width: 0; min-width: 0; }
+.pag-entrada-input::placeholder { color: var(--muted); font-weight: 400; font-size: 20px; }
+.pag-btn-add {
+  display: flex; align-items: center; gap: 5px; padding: 0 16px;
+  background: #6366f1;
+  border: none; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0; transition: opacity .15s;
 }
+.pag-btn-add:hover { opacity: .85; }
+.pag-btn-add .material-symbols-outlined { font-size: 18px; }
+.pag-crediario-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+/* ④ Chips de pagamentos + acréscimo */
+.pag-lista-acrescimo { padding: 8px 14px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.pag-chips { display: flex; flex-direction: column; gap: 5px; }
+.pag-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; background: var(--bg3);
+  border: 1px solid var(--line); border-radius: 9px;
+}
+.pag-chip-forma { flex: 1; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.pag-chip-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: #818cf8; }
+.pag-chip-del { background: none; border: none; color: var(--muted); cursor: pointer; display: flex; padding: 0; transition: color .15s; }
+.pag-chip-del:hover { color: #f43f5e; }
+.pag-chip-del .material-symbols-outlined { font-size: 16px; }
+
+/* Acréscimo simples */
+.pag-acrescimo-simples { display: flex; flex-direction: column; gap: 6px; }
+.pag-acrescimo-badge { font-size: 10.5px; font-weight: 700; color: #34d399; background: rgba(52,211,153,.15); border: 1px solid rgba(52,211,153,.25); border-radius: 99px; padding: 1px 7px; margin-left: 6px; }
+.pag-acrescimo-row { display: flex; align-items: center; gap: 8px; }
+.pag-acrescimo-input-wrap {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  background: var(--bg3); border: 1.5px solid var(--line);
+  border-radius: 9px; padding: 0 10px; transition: border-color .15s;
+}
+.pag-acrescimo-input-wrap:focus-within { border-color: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.1); }
+.pag-acrescimo-rs { font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+.pag-acrescimo-input { flex: 1; background: none; border: none; outline: none; font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--text); padding: 7px 0; width: 0; min-width: 0; }
+.pag-acrescimo-input::placeholder { color: var(--muted); font-size: 15px; font-weight: 400; }
+.pag-acrescimo-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 7px 13px; background: var(--bg3); border: 1.5px solid var(--line);
+  border-radius: 9px; color: var(--text2); font-size: 12px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0; transition: background .15s, border-color .15s, color .15s;
+}
+.pag-acrescimo-btn:hover { border-color: #34d399; color: #34d399; background: rgba(52,211,153,.08); }
+.pag-acrescimo-btn .material-symbols-outlined { font-size: 14px; }
+
+
+
+/* Chip acréscimo aplicado */
+.pag-acrescimo-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.25);
+  border-radius: 9px;
+}
+.pac-forma { flex: 1; font-size: 12.5px; font-weight: 600; color: #34d399; }
+.pac-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: #34d399; }
+
+/* ⑤ Footer finalizar */
+.pag-footer { padding: 10px 14px 14px; flex-shrink: 0; border-top: 1px solid var(--line); }
+.pag-btn-finalizar {
+  width: 100%; font-size: 17px !important; padding: 15px !important;
+  border-radius: 12px !important; letter-spacing: .4px;
+  box-shadow: 0 4px 18px rgba(16,185,129,.3);
+  gap: 10px !important;
+}
+.pag-btn-finalizar:hover:not(:disabled) { box-shadow: 0 6px 24px rgba(16,185,129,.4); transform: translateY(-1px); }
+.pag-btn-finalizar:disabled { box-shadow: none; }
 
 /* Scroll da aba pagamento */
 .pag-scroll {
@@ -2804,7 +2968,7 @@ async function emitirNFCe() {
 .summary-total {
   display: flex;
   justify-content: space-between;
-  font-size: 15px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text);
   padding-top: 6px;
@@ -2961,7 +3125,7 @@ async function emitirNFCe() {
   flex-shrink: 0;
 }
 .cart-section.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.section-label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 5px; }
+.section-label { display: block; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 5px; }
 .opt { font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 .cart-input {
@@ -3577,6 +3741,12 @@ async function emitirNFCe() {
 [data-theme="light"] .pag-status     { color: #4b5563; }
 [data-theme="light"] .pag-status strong { color: #0f172a; }
 [data-theme="light"] .pag-item       { background: #fff; border-color: rgba(0,0,0,.15); }
+[data-theme="light"] .pm-desc        { color: #111827; }
+[data-theme="light"] .pag-pill       { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+[data-theme="light"] .pag-pill:hover { background: #e0e7ff; border-color: #6366f1; color: #4338ca; }
+[data-theme="light"] .pag-pill.active { background: #4338ca; border-color: #4338ca; color: #fff; }
+[data-theme="light"] .pag-chip       { background: #f8fafc; border-color: rgba(0,0,0,.12); }
+[data-theme="light"] .pag-acrescimo-chip { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.25); }
 [data-theme="light"] .desc-type-btn  { background: #fff; color: #374151; }
 [data-theme="light"] .desc-type-btn.active { background: #4338ca; color: #fff; }
 [data-theme="light"] .desc-type-toggle { border-color: rgba(0,0,0,.18); }
@@ -3901,7 +4071,7 @@ async function emitirNFCe() {
   gap: 6px;
   padding: 10px 16px;
   color: var(--green);
-  font-size: 13px;
+  font-size: 50px;
   font-weight: 700;
   background: rgba(16,185,129,.08);
   border-top: 1px solid rgba(16,185,129,.15);
