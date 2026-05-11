@@ -11,16 +11,17 @@ function focusBaseUrl(ambiente) {
     : 'https://homologacao.focusnfe.com.br';
 }
 
-function focusAuth(ambiente) {
+function focusAuth(ambiente, tokenOverride) {
+  if (tokenOverride) return 'Basic ' + Buffer.from(tokenOverride + ':').toString('base64');
   const isProd = Number(ambiente || 2) === 1;
   const token  = isProd ? process.env.FOCUSNFE_TOKEN_PROD : process.env.FOCUSNFE_TOKEN_HOM;
   if (!token) throw new Error(isProd ? 'FOCUSNFE_TOKEN_PROD não configurado' : 'FOCUSNFE_TOKEN_HOM não configurado');
   return 'Basic ' + Buffer.from(token + ':').toString('base64');
 }
 
-async function focusRequest(method, path, body, ambiente) {
+async function focusRequest(method, path, body, ambiente, tokenOverride) {
   const url  = focusBaseUrl(ambiente) + path;
-  const auth = focusAuth(ambiente);
+  const auth = focusAuth(ambiente, tokenOverride);
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: auth },
@@ -36,10 +37,10 @@ async function focusRequest(method, path, body, ambiente) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function aguardarAutorizacaoNfe(ref, ambiente) {
+async function aguardarAutorizacaoNfe(ref, ambiente, tokenOverride) {
   for (let i = 0; i < 14; i++) {
     await sleep(2000);
-    const { data } = await focusRequest('GET', `/v2/nfe/${ref}`, null, ambiente);
+    const { data } = await focusRequest('GET', `/v2/nfe/${ref}`, null, ambiente, tokenOverride);
     if (data.status !== 'processando_autorizacao') return data;
   }
   return { status: 'timeout', mensagem_sefaz: 'Tempo limite aguardando resposta da SEFAZ' };
@@ -90,7 +91,7 @@ router.get('/:pk', async (req, res) => {
 // ── POST /api/projetos ───────────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { filial_pk, titulo, cliente_pk, valor, data_decoracao, cfop, ncm, forma_pagamento, observacao, status } = req.body;
+    const { filial_pk, titulo, cliente_pk, valor, custo, data_decoracao, cfop, ncm, forma_pagamento, observacao, status, cnpj_pk } = req.body;
     if (!filial_pk || !titulo) return res.status(400).json({ erro: 'filial_pk e titulo são obrigatórios' });
 
     const payload = {
@@ -98,12 +99,14 @@ router.post('/', async (req, res) => {
       titulo,
       cliente_pk:      cliente_pk      || null,
       valor:           parseFloat(valor || 0),
+      custo:           parseFloat(custo || 0),
       data_decoracao:  data_decoracao  || null,
       cfop:            cfop            || '5102',
       ncm:             ncm             || null,
       forma_pagamento: forma_pagamento || null,
       observacao:      observacao      || null,
-      status:          status          || 'pendente',
+      status:          status          || 'a_montar',
+      cnpj_pk:         cnpj_pk         || null,
     };
 
     const { data: proj, error } = await supabase
@@ -123,18 +126,20 @@ router.post('/', async (req, res) => {
 router.put('/:pk', async (req, res) => {
   try {
     const { pk } = req.params;
-    const { titulo, cliente_pk, valor, data_decoracao, cfop, ncm, forma_pagamento, observacao, status } = req.body;
+    const { titulo, cliente_pk, valor, custo, data_decoracao, cfop, ncm, forma_pagamento, observacao, status, cnpj_pk } = req.body;
 
     const payload = {
       titulo,
       cliente_pk:      cliente_pk      || null,
       valor:           parseFloat(valor || 0),
+      custo:           parseFloat(custo || 0),
       data_decoracao:  data_decoracao  || null,
       cfop:            cfop            || '5102',
       ncm:             ncm             || null,
       forma_pagamento: forma_pagamento || null,
       observacao:      observacao      || null,
-      status:          status          || 'pendente',
+      status:          status          || 'a_montar',
+      cnpj_pk:         cnpj_pk         || null,
     };
 
     const { data: proj, error } = await supabase
@@ -189,15 +194,36 @@ router.post('/:pk/emitir-nfe', async (req, res) => {
     }
 
     const { data: filial } = await supabase.from('filiais').select('*').eq('pk', proj.filial_pk).single();
-    if (!filial?.cnpj) return res.status(400).json({ erro: 'Filial sem CNPJ cadastrado' });
+
+    let cnpj, tokenOverride;
+    if (proj.cnpj_pk) {
+      const { data: cnpjReg } = await supabase.from('filial_cnpjs').select('cnpj, razao_social, nome_fantasia, focusnfe_token_hom, focusnfe_token_prod').eq('pk', proj.cnpj_pk).single();
+      if (!cnpjReg?.cnpj) return res.status(400).json({ erro: 'CNPJ selecionado no projeto não encontrado' });
+      cnpj = String(cnpjReg.cnpj).replace(/\D/g, '');
+      tokenOverride = amb === 1 ? cnpjReg.focusnfe_token_prod : cnpjReg.focusnfe_token_hom;
+      if (!tokenOverride) return res.status(400).json({ erro: `Token Focus NFe ${amb === 1 ? 'de produção' : 'de homologação'} não cadastrado para este CNPJ. Cadastre em Configurações → Filiais.` });
+    } else {
+      if (!filial?.cnpj) return res.status(400).json({ erro: 'Filial sem CNPJ cadastrado' });
+      cnpj = String(filial.cnpj).replace(/\D/g, '');
+    }
 
     const cli = proj.clientes;
     if (!cli) return res.status(400).json({ erro: 'Projeto sem cliente vinculado' });
-    if (!cli.logradouro || !cli.cidade || !cli.uf) {
-      return res.status(400).json({ erro: 'Cliente sem endereço completo. Cadastre logradouro, município e UF antes de emitir NF-e.' });
+
+    const cidadeCliente = String(cli.cidade || '').trim();
+    const logradouroCliente = String(cli.logradouro || '').trim();
+    const ufCliente = String(cli.uf || '').trim();
+
+    console.log(`[Projetos/emitir-nfe] cidade="${cidadeCliente}" uf="${ufCliente}" logradouro="${logradouroCliente}"`);
+
+    if (!logradouroCliente || !cidadeCliente || !ufCliente) {
+      const campos = [];
+      if (!logradouroCliente) campos.push('logradouro');
+      if (!cidadeCliente)     campos.push('município (cidade)');
+      if (!ufCliente)         campos.push('UF (estado)');
+      return res.status(400).json({ erro: `Cliente sem endereço completo. Campo(s) faltando: ${campos.join(', ')}. Complete o cadastro antes de emitir NF-e.` });
     }
 
-    const cnpj = String(filial.cnpj).replace(/\D/g, '');
     const dataEmissao = new Date().toLocaleString('sv-SE', { timeZone: 'America/Manaus' })
       .replace(' ', 'T') + '-04:00';
 
@@ -215,11 +241,11 @@ router.post('/:pk/emitir-nfe', async (req, res) => {
       indicador_inscricao_estadual_destinatario: 9,
       modalidade_frete:                          9,
       nome_destinatario:                         cli.nome,
-      logradouro_destinatario:                   cli.logradouro,
-      numero_destinatario:                       cli.numero || 'S/N',
-      bairro_destinatario:                       cli.bairro || 'Centro',
-      cidade_destinatario:                    cli.cidade,
-      uf_destinatario:                           cli.uf,
+      logradouro_destinatario:                   logradouroCliente,
+      numero_destinatario:                       String(cli.numero || '').trim() || 'S/N',
+      bairro_destinatario:                       String(cli.bairro || '').trim() || 'Centro',
+      municipio_destinatario:                    cidadeCliente,
+      uf_destinatario:                           ufCliente,
       cep_destinatario:                          String(cli.cep || '').replace(/\D/g, '') || undefined,
       itens: [{
         numero_item:               1,
@@ -252,16 +278,18 @@ router.post('/:pk/emitir-nfe', async (req, res) => {
     const ref = `nfe-proj-${pk}-${Date.now()}`;
     console.log('[Projetos/NF-e payload]', JSON.stringify(payload, null, 2));
 
-    const { status: httpStatus, data: envio } = await focusRequest('POST', `/v2/nfe?ref=${ref}`, payload, amb);
+    const { status: httpStatus, data: envio } = await focusRequest('POST', `/v2/nfe?ref=${ref}`, payload, amb, tokenOverride);
 
     if (httpStatus >= 400) {
-      const msg = envio.mensagem || envio.erros?.map(e => e.mensagem).join('; ') || 'Erro ao enviar para Focus NFe';
-      return res.json({ ok: false, erro: msg });
+      const erros = envio.erros?.map(e => e.mensagem).filter(Boolean) || [];
+      const msg   = envio.mensagem || erros.join('; ') || `Erro HTTP ${httpStatus} ao enviar para Focus NFe`;
+      console.error('[Projetos/emitir-nfe] Focus NFe erro:', JSON.stringify(envio));
+      return res.json({ ok: false, erro: msg, detalhes: erros.length > 0 ? erros : undefined });
     }
 
     let resultado = envio;
     if (resultado.status === 'processando_autorizacao') {
-      resultado = await aguardarAutorizacaoNfe(ref, amb);
+      resultado = await aguardarAutorizacaoNfe(ref, amb, tokenOverride);
     }
 
     const autorizada = resultado.status === 'autorizado';
@@ -290,6 +318,7 @@ router.post('/:pk/emitir-nfe', async (req, res) => {
       numero:    update.nfe_numero,
       danfe:     update.nfe_danfe,
       erro:      autorizada ? null : `[${update.nfe_status}] ${update.nfe_motivo || 'Erro na autorização'}`,
+      detalhes:  !autorizada && resultado.erros ? resultado.erros.map(e => e.mensagem).filter(Boolean) : undefined,
     });
 
   } catch (err) {

@@ -712,9 +712,10 @@ INSERT INTO parametros (filial_pk, chave, valor) VALUES
   (null, 'ponto_adicional_hora_extra',           '60'),
   (null, 'ponto_adicional_hora_domingo',         '100'),
   (null, 'ponto_fechamento_exige_espelho',        'true'),
-  -- Fiscal / NFC-e
+  -- Fiscal / NFC-e e NF-e
   (null, 'nfce_ativa',                           'false'),
   (null, 'nfce_ambiente',                        '2'),
+  (null, 'nfe_ambiente',                         '2'),
   -- Vendas
   (null, 'venda_permite_desconto_sem_aprovacao', 'true'),
   (null, 'venda_imprime_cupom',                  'false'),
@@ -1002,6 +1003,59 @@ CREATE POLICY "anon_all_projetos" ON projetos
 ALTER TABLE agenda ADD COLUMN IF NOT EXISTS projeto_pk bigint;
 
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_projetos boolean DEFAULT false;
+
+-- ============================================================
+-- Seção 18 — Busca de produtos com suporte a acentos (unaccent)
+-- ============================================================
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+CREATE OR REPLACE FUNCTION buscar_produtos(p_filial bigint, p_termo text)
+RETURNS TABLE(pk bigint, descricao text, codigo text, valor_venda numeric, saldo numeric, categoria_pk bigint)
+LANGUAGE sql STABLE
+AS $$
+  SELECT
+    pr.pk, pr.descricao, pr.codigo,
+    pr.valor_venda, pr.saldo, pr.categoria_pk
+  FROM produtos pr
+  WHERE pr.filial_pk = p_filial
+    AND (
+      unaccent(lower(pr.descricao)) ILIKE '%' || unaccent(lower(p_termo)) || '%'
+      OR lower(pr.codigo::text)     ILIKE '%' || lower(p_termo)            || '%'
+    )
+  ORDER BY pr.descricao
+  LIMIT 20;
+$$;
+
+-- ============================================================
+-- Seção 19 — CNPJs adicionais por filial (para projetos / NF-e)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS filial_cnpjs (
+  pk            bigserial PRIMARY KEY,
+  filial_pk     bigint NOT NULL REFERENCES filiais(pk) ON DELETE CASCADE,
+  cnpj          text NOT NULL,
+  razao_social  text,
+  nome_fantasia text,
+  ie            text,
+  ativo         boolean DEFAULT true,
+  criado_em     timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_filial_cnpjs_filial ON filial_cnpjs(filial_pk);
+ALTER TABLE filial_cnpjs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_filial_cnpjs" ON filial_cnpjs;
+CREATE POLICY "anon_all_filial_cnpjs" ON filial_cnpjs FOR ALL TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE projetos ADD COLUMN IF NOT EXISTS cnpj_pk bigint REFERENCES filial_cnpjs(pk) ON DELETE SET NULL;
+
+ALTER TABLE filial_cnpjs ADD COLUMN IF NOT EXISTS focusnfe_token_hom  text DEFAULT NULL;
+ALTER TABLE filial_cnpjs ADD COLUMN IF NOT EXISTS focusnfe_token_prod text DEFAULT NULL;
+
+-- ============================================================
+-- Seção 20 — Migração de status de projetos
+-- ============================================================
+UPDATE projetos SET status = 'a_montar'  WHERE status IN ('pendente', 'confirmado');
+UPDATE projetos SET status = 'montado'   WHERE status = 'realizado';
+
+ALTER TABLE projetos ADD COLUMN IF NOT EXISTS custo numeric(12,2) DEFAULT 0;
 
 -- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema

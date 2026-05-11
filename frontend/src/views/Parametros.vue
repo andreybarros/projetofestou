@@ -247,6 +247,8 @@ const grupos = {
     { chave: 'nfce_ativa',    tipo: 'boolean', label: 'Emissão de NFC-e ativa',  desc: 'Habilita a emissão automática de NFC-e ao finalizar uma venda no PDV.' },
     { chave: 'nfce_ambiente', tipo: 'select',  label: 'Ambiente NFC-e',          desc: 'Homologação para testes; Produção para emissões com validade fiscal.',
       opcoes: [{ value: '2', label: 'Homologação (Testes)' }, { value: '1', label: 'Produção' }] },
+    { chave: 'nfe_ambiente',  tipo: 'select',  label: 'Ambiente NF-e (Projetos)', desc: 'Ambiente usado ao emitir Nota Fiscal modelo 55 nos projetos de decoração.',
+      opcoes: [{ value: '2', label: 'Homologação (Testes)' }, { value: '1', label: 'Produção' }] },
   ],
   vendas: [
     { chave: 'venda_permite_desconto_sem_aprovacao', tipo: 'boolean', label: 'Desconto sem aprovação de supervisor', desc: 'Quando ativo, qualquer operador pode aplicar descontos sem autorização prévia.' },
@@ -272,6 +274,7 @@ const vals = reactive({
   ponto_fechamento_exige_espelho:        'true',
   nfce_ativa:                           'false',
   nfce_ambiente:                        '2',
+  nfe_ambiente:                         '2',
   venda_permite_desconto_sem_aprovacao: 'true',
   venda_imprime_cupom:                  'false',
   locacao_taxa_realocacao:              '0',

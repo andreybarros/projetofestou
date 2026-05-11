@@ -35,7 +35,7 @@
           </RouterLink>
 
           <!-- Estoque -->
-          <div class="nav-section">
+          <div v-if="pode('produtos') || pode('categorias') || pode('clientes') || pode('fornecedores') || pode('armazens') || pode('entrada_nfe')" class="nav-section">
             <p class="section-title">Estoque</p>
             <RouterLink v-if="pode('produtos')"     to="/produtos"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">inventory_2</span><span class="nav-label">Produtos</span></RouterLink>
             <RouterLink v-if="pode('categorias')"   to="/categorias"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#facc15">label</span><span class="nav-label">Categorias</span></RouterLink>
@@ -53,21 +53,20 @@
           </div>
 
           <!-- Vendas -->
-          <div v-if="podeVendas" class="nav-section">
+          <div v-if="pode('pdv') || pode('vendedores') || pode('historico')" class="nav-section">
             <p class="section-title">Vendas</p>
-
-            <RouterLink v-if="pode('pdv')"                          to="/pdv"              class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">point_of_sale</span><span class="nav-label">Ponto de Venda</span></RouterLink>
-            <RouterLink v-if="pode('vendedores')"                   to="/vendedores"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#818cf8">person</span><span class="nav-label">Vendedores</span></RouterLink>
-            <RouterLink v-if="pode('historico')"                    to="/historico-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">history</span><span class="nav-label">Histórico de Vendas</span></RouterLink>
+            <RouterLink v-if="pode('pdv')"        to="/pdv"              class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">point_of_sale</span><span class="nav-label">Ponto de Venda</span></RouterLink>
+            <RouterLink v-if="pode('vendedores')" to="/vendedores"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#818cf8">person</span><span class="nav-label">Vendedores</span></RouterLink>
+            <RouterLink v-if="pode('historico')"  to="/historico-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">history</span><span class="nav-label">Histórico de Vendas</span></RouterLink>
           </div>
 
-          <div v-if="podeVendas" class="nav-section">
+          <div v-if="pode('caixa') || (pode('pdv') && op?.acesso_dashboard) || pode('receitas') || pode('despesas') || pode('financeiro')" class="nav-section">
             <p class="section-title">Financeiro</p>
-            <RouterLink v-if="pode('caixa')"                         to="/caixa"            class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#10b981">payments</span><span class="nav-label">Caixa (Operação)</span></RouterLink>
-            <RouterLink v-if="pode('pdv') && op?.acesso_dashboard"  to="/dashboard"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">bar_chart</span><span class="nav-label">Dashboard</span></RouterLink>
-            <RouterLink v-if="pode('receitas')"                     to="/contas-receber"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">receipt_long</span><span class="nav-label">Contas a Receber</span></RouterLink>
-            <RouterLink v-if="pode('despesas')"   to="/despesas"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Contas a Pagar</span></RouterLink>
-            <RouterLink v-if="pode('financeiro')" to="/financeiro"        class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Cadastro de Contas</span></RouterLink>
+            <RouterLink v-if="pode('caixa')"                        to="/caixa"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#10b981">payments</span><span class="nav-label">Caixa (Operação)</span></RouterLink>
+            <RouterLink v-if="pode('pdv') && op?.acesso_dashboard"  to="/dashboard"      class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">bar_chart</span><span class="nav-label">Dashboard</span></RouterLink>
+            <RouterLink v-if="pode('receitas')"                     to="/contas-receber" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">receipt_long</span><span class="nav-label">Contas a Receber</span></RouterLink>
+            <RouterLink v-if="pode('despesas')"                     to="/despesas"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Contas a Pagar</span></RouterLink>
+            <RouterLink v-if="pode('financeiro')"                   to="/financeiro"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Cadastro de Contas</span></RouterLink>
           </div>
 
           <!-- RH -->

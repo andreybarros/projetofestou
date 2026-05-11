@@ -31,11 +31,29 @@ const pagamentos     = ref([]);
 const formasPagamento = ref([]);
 
 const busca            = ref('');
-const buscaResultados  = ref([]);
+const todosProdutos    = ref([]);
 const buscaCliente     = ref('');
 const clientesRes      = ref([]);
 const buscaVendedor    = ref('');
 const vendedoresRes    = ref([]);
+
+const categorias       = ref([]);
+const clienteDecorador = ref(false);
+
+function normalizar(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+const buscaResultados = computed(() => {
+  const q = busca.value.trim();
+  if (!q) return [];
+  const palavras = normalizar(q).split(/\s+/).filter(Boolean);
+  return todosProdutos.value.filter(p => {
+    const desc = normalizar(p.descricao);
+    const cod  = normalizar(p.codigo || '');
+    return palavras.every(w => desc.includes(w) || cod.includes(w));
+  }).slice(0, 20);
+});
 
 const toastMsg  = ref('');
 const toastTipo = ref('ok');
@@ -99,19 +117,38 @@ onMounted(async () => {
     if (acrescimo.value > 0)
       acrescimoDisplay.value = acrescimo.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const [{ data: iData }, { data: pData }, { data: fData }] = await Promise.all([
+    const [{ data: iData }, { data: pData }, { data: fData }, { data: cats }, { data: prods }] = await Promise.all([
       supabase.from('itens_venda').select('*').eq('venda_pk', venda_pk),
       supabase.from('pagamentos_venda').select('*').eq('venda_pk', venda_pk),
       supabase.from('formas_pagamento').select('forma, label, icone').eq('filial_pk', sessao.filial?.pk).order('label'),
+      supabase.from('categorias').select('pk, nome, desconto_somente_decorador').eq('filial_pk', sessao.filial?.pk),
+      supabase.from('produtos').select('pk, descricao, codigo, valor_venda, saldo, categoria_pk').eq('filial_pk', sessao.filial?.pk).order('descricao'),
     ]);
+    todosProdutos.value = prods || [];
     formasPagamento.value = fData || [];
+    categorias.value = (cats || []).filter(c => c.desconto_somente_decorador);
 
     itens.value = (iData || []).map(i => {
       const bruto = parseFloat(i.qtd || 0) * parseFloat(i.preco_unit || 0);
       const pct   = bruto > 0 ? Math.round(parseFloat(i.desconto_val || 0) / bruto * 10000) / 100 : 0;
-      return { ...i, desconto_pct: pct, modo_desc: 'val' };
+      return { ...i, desconto_pct: pct, modo_desc: 'val', categoria_pk: null };
     });
     pagamentos.value = (pData || []).map(p => ({ ...p }));
+
+    // Busca categoria_pk dos produtos nos itens
+    const pksItens = [...new Set(itens.value.filter(i => i.produto_pk).map(i => i.produto_pk))];
+    if (pksItens.length) {
+      const { data: prods } = await supabase.from('produtos').select('pk, categoria_pk').in('pk', pksItens);
+      const prodMap = {};
+      (prods || []).forEach(p => { prodMap[p.pk] = p.categoria_pk; });
+      itens.value.forEach(item => { if (item.produto_pk) item.categoria_pk = prodMap[item.produto_pk] || null; });
+    }
+
+    // Verifica se o cliente já carregado é decorador
+    if (v.cliente_pk) {
+      const { data: cli } = await supabase.from('clientes').select('decorador').eq('pk', v.cliente_pk).single();
+      clienteDecorador.value = cli?.decorador || false;
+    }
   } catch (e) {
     toast('Erro ao carregar: ' + e.message, 'err');
   } finally {
@@ -119,19 +156,6 @@ onMounted(async () => {
   }
 });
 
-let buscaTimer = null;
-async function buscarProdutos() {
-  const q = busca.value.trim();
-  if (!q) { buscaResultados.value = []; return; }
-  clearTimeout(buscaTimer);
-  buscaTimer = setTimeout(async () => {
-    const isNum = /^\d+$/.test(q);
-    let qb = supabase.from('produtos').select('pk, descricao, codigo, valor_venda, saldo').eq('filial_pk', sessao.filial.pk);
-    qb = isNum ? qb.or(`codigo.eq.${q},descricao.ilike.%${q}%`) : qb.ilike('descricao', `%${q}%`);
-    const { data } = await qb.limit(12);
-    buscaResultados.value = data || [];
-  }, 280);
-}
 
 function adicionarProduto(p) {
   const existente = itens.value.find(i => i.produto_pk === p.pk);
@@ -140,7 +164,7 @@ function adicionarProduto(p) {
     recalcularItem(existente);
   } else {
     const preco = parseFloat(p.valor_venda || 0);
-    itens.value.push({ produto_pk: p.pk, descricao: p.descricao, codigo: p.codigo || '', qtd: 1, preco_unit: preco, desconto_pct: 0, desconto_val: 0, total_item: preco, modo_desc: 'val' });
+    itens.value.push({ produto_pk: p.pk, descricao: p.descricao, codigo: p.codigo || '', qtd: 1, preco_unit: preco, desconto_pct: 0, desconto_val: 0, total_item: preco, modo_desc: 'val', categoria_pk: p.categoria_pk || null });
   }
   busca.value = '';
   buscaResultados.value = [];
@@ -172,12 +196,12 @@ async function buscarClientes() {
   if (!q) { clientesRes.value = []; return; }
   clearTimeout(cliTimer);
   cliTimer = setTimeout(async () => {
-    const { data } = await supabase.from('clientes').select('pk, nome').eq('filial_pk', sessao.filial.pk).ilike('nome', `%${q}%`).limit(8);
+    const { data } = await supabase.from('clientes').select('pk, nome, decorador').eq('filial_pk', sessao.filial.pk).ilike('nome', `%${q}%`).limit(8);
     clientesRes.value = data || [];
   }, 280);
 }
-function selecionarCliente(c) { cliente.value = c.nome; cliente_pk.value = c.pk; buscaCliente.value = ''; clientesRes.value = []; }
-function limparCliente()       { cliente.value = ''; cliente_pk.value = null; }
+function selecionarCliente(c) { cliente.value = c.nome; cliente_pk.value = c.pk; clienteDecorador.value = c.decorador || false; buscaCliente.value = ''; clientesRes.value = []; }
+function limparCliente()       { cliente.value = ''; cliente_pk.value = null; clienteDecorador.value = false; }
 
 let vendTimer = null;
 async function buscarVendedores() {
@@ -248,6 +272,36 @@ async function salvar() {
   }
 }
 
+const catsDecorador = computed(() => {
+  const pksNoCarrinho = new Set(itens.value.filter(i => i.categoria_pk).map(i => i.categoria_pk));
+  return categorias.value.filter(c => pksNoCarrinho.has(c.pk));
+});
+
+function aplicarDescCat(cat) {
+  if (!clienteDecorador.value) {
+    toast(`Desconto em "${cat.nome}" é exclusivo para clientes decoradores.`, 'err');
+    return;
+  }
+  itens.value.forEach(item => {
+    if (item.categoria_pk === cat.pk) {
+      item.modo_desc = 'pct';
+      item.desconto_pct = 10;
+      recalcularItem(item);
+    }
+  });
+  toast(`Desconto 10% aplicado em ${cat.nome}.`);
+}
+
+function removerDescCat(cat) {
+  itens.value.forEach(item => {
+    if (item.categoria_pk === cat.pk) {
+      item.modo_desc = 'pct';
+      item.desconto_pct = 0;
+      recalcularItem(item);
+    }
+  });
+}
+
 function cancelar() { router.push('/historico-vendas?abrir=' + venda_pk); }
 
 function fmtVal(v) {
@@ -292,9 +346,9 @@ function fmtVal(v) {
           <span class="material-symbols-outlined ev-search-icon">search</span>
           <input
             v-model="busca"
-            @input="buscarProdutos"
             class="ev-search-input"
             placeholder="Buscar produto por nome ou código..."
+            autocomplete="off"
           />
           <div v-if="buscaResultados.length" class="ev-dropdown">
             <div
@@ -306,6 +360,20 @@ function fmtVal(v) {
               <span class="ev-di-nome">{{ p.descricao }}</span>
               <span class="ev-di-preco">R$ {{ fmtVal(p.valor_venda) }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Desconto decorador -->
+        <div v-if="catsDecorador.length" class="ev-dec-section">
+          <div class="ev-section-label">Desconto decorador</div>
+          <div v-for="cd in catsDecorador" :key="cd.pk" class="ev-dec-row">
+            <span class="ev-dec-nome">🎈 {{ cd.nome }}</span>
+            <span class="ev-dec-pct">10%</span>
+            <button class="ev-btn-apply-dec" @click="aplicarDescCat(cd)">Aplicar</button>
+            <button class="ev-btn-remove-dec" @click="removerDescCat(cd)" title="Remover desconto">
+              <span class="material-symbols-outlined" style="font-size:13px">close</span>
+              Tirar
+            </button>
           </div>
         </div>
 
@@ -607,6 +675,16 @@ function fmtVal(v) {
 .ev-pag-ok  { background: rgba(16,185,129,.1); color: #34d399; }
 .ev-pag-err { background: rgba(239,68,68,.1); color: #f87171; }
 .ev-pag-diff-info { font-size: .8rem; }
+
+/* Desconto decorador */
+.ev-dec-section { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ev-dec-row { display: flex; align-items: center; gap: 8px; }
+.ev-dec-nome { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); }
+.ev-dec-pct { font-family: monospace; font-size: 13px; font-weight: 700; color: #f59e0b; padding: 3px 8px; }
+.ev-btn-apply-dec { padding: 5px 12px; border: 1px solid rgba(99,102,241,.4); background: rgba(99,102,241,.1); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 700; transition: all .15s; }
+.ev-btn-apply-dec:hover { background: rgba(99,102,241,.2); }
+.ev-btn-remove-dec { display: flex; align-items: center; gap: 3px; padding: 5px 10px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; transition: all .15s; }
+.ev-btn-remove-dec:hover { background: rgba(239,68,68,.12); color: #f87171; border-color: rgba(239,68,68,.3); }
 
 /* Toast */
 .ev-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 12px; font-weight: 700; font-size: .9rem; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,.3); white-space: nowrap; }

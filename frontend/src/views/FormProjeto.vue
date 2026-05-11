@@ -73,9 +73,8 @@
           <div class="field">
             <label>Status</label>
             <select v-model="form.status">
-              <option value="pendente">Pendente</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="realizado">Realizado</option>
+              <option value="a_montar">À montar</option>
+              <option value="montado">Montado</option>
               <option value="cancelado">Cancelado</option>
             </select>
           </div>
@@ -85,6 +84,17 @@
             <input
               :value="valorDisplay"
               @input="onValorInput"
+              type="text"
+              inputmode="numeric"
+              placeholder="0,00"
+            />
+          </div>
+
+          <div class="field">
+            <label>Custo (R$)</label>
+            <input
+              :value="custoDisplay"
+              @input="onCustoInput"
               type="text"
               inputmode="numeric"
               placeholder="0,00"
@@ -112,6 +122,16 @@
         </div>
         <p class="section-sub">Necessário para emissão de Nota Fiscal modelo 55 pela Focus NFe.</p>
         <div class="form-grid">
+          <div v-if="cnpjsFilial.length >= 1" class="field full">
+            <label>CNPJ Emitente</label>
+            <select v-model="form.cnpj_pk">
+              <option :value="null">— Selecione o CNPJ emitente —</option>
+              <option v-for="c in cnpjsFilial" :key="c.pk" :value="c.pk">
+                {{ c.razao_social || c.nome_fantasia || 'Sem razão social' }} — {{ c.cnpj }}
+              </option>
+            </select>
+            <small class="field-hint">Selecione a razão social / CNPJ que será usado para emitir a NF-e deste projeto.</small>
+          </div>
           <div class="field">
             <label>CFOP</label>
             <input v-model="form.cfop" type="text" placeholder="5102" maxlength="10" />
@@ -172,14 +192,16 @@ const pk = computed(() => route.params.pk ? Number(route.params.pk) : null);
 const carregando      = ref(true);
 const salvando        = ref(false);
 const formasPagamento = ref([]);
+const cnpjsFilial     = ref([]);
 
 const form = ref({
-  titulo: '', cliente_pk: null, valor: 0, data_decoracao: '',
+  titulo: '', cliente_pk: null, valor: 0, custo: 0, data_decoracao: '',
   cfop: '5102', ncm: '', forma_pagamento: '',
-  status: 'pendente', observacao: '',
+  status: 'a_montar', observacao: '', cnpj_pk: null,
 });
 
 const valorDisplay       = ref('');
+const custoDisplay       = ref('');
 const clienteBusca       = ref('');
 const clienteOpcoes      = ref([]);
 const clienteSelecionado = ref(null);
@@ -195,6 +217,12 @@ function onValorInput(e) {
   const num = parseInt(e.target.value.replace(/\D/g, '') || '0', 10) / 100;
   form.value.valor = num;
   valorDisplay.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+}
+
+function onCustoInput(e) {
+  const num = parseInt(e.target.value.replace(/\D/g, '') || '0', 10) / 100;
+  form.value.custo = num;
+  custoDisplay.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
 async function buscarClientes() {
@@ -229,6 +257,16 @@ async function carregarFormasPagamento() {
   formasPagamento.value = data || [];
 }
 
+async function carregarCnpjsFilial() {
+  const { data } = await supabase
+    .from('filial_cnpjs')
+    .select('pk, cnpj, razao_social, nome_fantasia')
+    .eq('filial_pk', sessao.filial.pk)
+    .eq('ativo', true)
+    .order('pk');
+  cnpjsFilial.value = data || [];
+}
+
 async function carregarProjeto() {
   if (!pk.value) return;
   try {
@@ -238,15 +276,19 @@ async function carregarProjeto() {
       titulo:          p.titulo,
       cliente_pk:      p.cliente_pk,
       valor:           parseFloat(p.valor || 0),
+      custo:           parseFloat(p.custo || 0),
       data_decoracao:  p.data_decoracao || '',
       cfop:            p.cfop || '5102',
       ncm:             p.ncm || '',
       forma_pagamento: p.forma_pagamento || '',
-      status:          p.status || 'pendente',
+      status:          p.status || 'a_montar',
       observacao:      p.observacao || '',
+      cnpj_pk:         p.cnpj_pk || null,
     };
     const num = parseFloat(p.valor || 0);
     valorDisplay.value       = num.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const custo = parseFloat(p.custo || 0);
+    custoDisplay.value       = custo.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     clienteBusca.value       = p.clientes?.nome || '';
     clienteSelecionado.value = p.clientes || null;
   } catch (e) {
@@ -256,7 +298,7 @@ async function carregarProjeto() {
 }
 
 onMounted(async () => {
-  await Promise.all([carregarFormasPagamento(), carregarProjeto()]);
+  await Promise.all([carregarFormasPagamento(), carregarCnpjsFilial(), carregarProjeto()]);
   carregando.value = false;
 });
 
@@ -269,12 +311,14 @@ async function salvar() {
       titulo:          form.value.titulo,
       cliente_pk:      form.value.cliente_pk || null,
       valor:           form.value.valor,
+      custo:           form.value.custo,
       data_decoracao:  form.value.data_decoracao || null,
       cfop:            form.value.cfop || '5102',
       ncm:             form.value.ncm || null,
       forma_pagamento: form.value.forma_pagamento || null,
       status:          form.value.status,
       observacao:      form.value.observacao || null,
+      cnpj_pk:         form.value.cnpj_pk || null,
     };
 
     if (pk.value) {

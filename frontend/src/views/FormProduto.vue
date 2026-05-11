@@ -68,7 +68,13 @@
           </div>
           <div class="field">
             <label>Saldo em Estoque</label>
-            <input v-model.number="form.saldo" type="number" step="0.01" />
+            <input
+              :value="form.saldo"
+              @input="e => form.saldo = parseInt(e.target.value.replace(/\D/g, '') || '0', 10)"
+              type="text"
+              inputmode="numeric"
+              placeholder="0"
+            />
           </div>
           <div class="field" v-if="form.valor_venda > 0 && form.preco_custo > 0">
             <label>Margem Lucro</label>
@@ -368,7 +374,7 @@ async function salvar() {
       descricao:         form.value.descricao.trim(),
       valor_venda:       parseFloat(form.value.valor_venda  || 0),
       preco_custo:       parseFloat(form.value.preco_custo  || 0),
-      saldo:             parseFloat(form.value.saldo        || 0),
+      saldo:             parseInt(form.value.saldo           || 0, 10),
       ncm:               form.value.ncm               || null,
       cfop:              form.value.cfop              || '5102',
       csosn:             form.value.csosn             || '400',

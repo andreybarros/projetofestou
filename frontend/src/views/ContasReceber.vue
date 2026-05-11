@@ -97,7 +97,7 @@
               <span :class="['badge', statusConta(v)]">{{ labelStatus(statusConta(v)) }}</span>
             </td>
             <td v-if="temFormaRecebimento" class="td-muted td-forma">
-              {{ v.forma_recebimento ? v.forma_recebimento.charAt(0).toUpperCase() + v.forma_recebimento.slice(1) : '—' }}
+              {{ v.forma_recebimento ? (formaLabel[v.forma_recebimento] || v.forma_recebimento) : '—' }}
             </td>
             <td class="td-acoes">
               <button
@@ -213,6 +213,12 @@ let   _toastTimer    = null;
 
 const formas = ref([]);
 
+const formaLabel = computed(() => {
+  const m = {};
+  formas.value.forEach(f => { m[f.val] = f.label; });
+  return m;
+});
+
 const hoje = new Date().toISOString().slice(0, 10);
 
 function toast(msg, tipo = 'ok', dur = 3500) {
@@ -312,7 +318,7 @@ async function confirmarReceber() {
     .eq('pk', v.pk);
   recebendoPk.value = null;
   if (error) { toast('Erro: ' + error.message, 'err'); return; }
-  toast(`Venda #${v.numero} recebida via ${formaRecebimento.value}.`);
+  toast(`Venda #${v.numero} recebida via ${formaLabel.value[formaRecebimento.value] || formaRecebimento.value}.`);
   await carregar();
 }
 

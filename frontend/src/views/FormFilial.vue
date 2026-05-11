@@ -155,6 +155,59 @@
         </div>
       </div>
 
+      <!-- CNPJs adicionais -->
+      <div v-if="editando" class="card cnpj-card">
+        <div class="cnpj-card-header">
+          <div>
+            <h3>CNPJs para Emissão de NF-e</h3>
+            <p class="sub">CNPJs disponíveis para faturar projetos nesta filial. Pode ter mais de um.</p>
+          </div>
+          <button type="button" class="btn-add-cnpj" @click="adicionarCnpj">
+            <span class="material-symbols-outlined" style="font-size:16px">add</span>
+            Adicionar CNPJ
+          </button>
+        </div>
+
+        <div v-if="cnpjs.length === 0" class="cnpj-empty">Nenhum CNPJ cadastrado ainda.</div>
+
+        <div v-for="(c, idx) in cnpjs" :key="idx" class="cnpj-row">
+          <div class="cnpj-row-fields">
+            <div class="cnpj-field">
+              <label>CNPJ *</label>
+              <input v-model="c.cnpj" type="text" placeholder="00.000.000/0000-00" v-maska="'##.###.###/####-##'" />
+            </div>
+            <div class="cnpj-field cnpj-field-lg">
+              <label>Razão Social</label>
+              <input v-model="c.razao_social" type="text" placeholder="Razão Social" />
+            </div>
+            <div class="cnpj-field">
+              <label>Nome Fantasia</label>
+              <input v-model="c.nome_fantasia" type="text" placeholder="Nome Fantasia" />
+            </div>
+            <div class="cnpj-field cnpj-field-sm">
+              <label>IE</label>
+              <input v-model="c.ie" type="text" placeholder="Inscrição Estadual" />
+            </div>
+            <div class="cnpj-field cnpj-field-xs">
+              <label>Ativo</label>
+              <select v-model="c.ativo">
+                <option :value="true">Sim</option>
+                <option :value="false">Não</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" class="btn-del-cnpj" @click="removerCnpj(idx, c.pk)" title="Remover">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+
+        <div class="cnpj-footer">
+          <button type="button" class="btn-primary" @click="salvarCnpjs" :disabled="salvandoCnpjs">
+            {{ salvandoCnpjs ? 'Salvando...' : '💾 Salvar CNPJs' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Módulos / Rotinas -->
        <div class="card rotinas-card">
           <h3>🔧 Módulos / Rotinas</h3>
@@ -232,6 +285,8 @@ const form = reactive({
 const certB64 = ref('');
 const certFileName = ref('');
 const selectedRotinas = ref(new Set());
+const cnpjs = ref([]);
+const salvandoCnpjs = ref(false);
 
 onMounted(async () => {
   if (route.params.pk) {
@@ -259,16 +314,61 @@ async function carregar() {
       .select('modulo')
       .eq('filial_pk', filial.pk)
       .eq('ativo', true);
-    
+
     if (mods) {
       mods.forEach(m => selectedRotinas.value.add(m.modulo));
     }
+
+    const { data: cnpjData } = await supabase.from('filial_cnpjs')
+      .select('*').eq('filial_pk', filial.pk).order('pk');
+    cnpjs.value = cnpjData || [];
 
   } catch (e) {
     showToast('Erro ao carregar filial: ' + e.message, 'error');
     router.push('/filiais');
   } finally {
     carregando.value = false;
+  }
+}
+
+function adicionarCnpj() {
+  cnpjs.value.push({ pk: null, cnpj: '', razao_social: '', nome_fantasia: '', ie: '', ativo: true });
+}
+
+async function removerCnpj(idx, pk) {
+  if (pk) {
+    if (!confirm('Remover este CNPJ?')) return;
+    await supabase.from('filial_cnpjs').delete().eq('pk', pk);
+  }
+  cnpjs.value.splice(idx, 1);
+}
+
+async function salvarCnpjs() {
+  const filialPk = route.params.pk;
+  if (!filialPk) return;
+  salvandoCnpjs.value = true;
+  try {
+    for (const c of cnpjs.value) {
+      const payload = {
+        filial_pk:            Number(filialPk),
+        cnpj:                 c.cnpj.replace(/\D/g, ''),
+        razao_social:         c.razao_social         || null,
+        nome_fantasia:        c.nome_fantasia        || null,
+        ie:                   c.ie                   || null,
+        ativo:                c.ativo,
+      };
+      if (c.pk) {
+        await supabase.from('filial_cnpjs').update(payload).eq('pk', c.pk);
+      } else {
+        const { data } = await supabase.from('filial_cnpjs').insert([payload]).select('pk').single();
+        if (data) c.pk = data.pk;
+      }
+    }
+    showToast('CNPJs salvos com sucesso!');
+  } catch (e) {
+    showToast('Erro ao salvar CNPJs: ' + e.message, 'error');
+  } finally {
+    salvandoCnpjs.value = false;
   }
 }
 
@@ -435,6 +535,26 @@ async function salvar() {
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-cancel { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 500; }
+
+.cnpj-card h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+.cnpj-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 1rem; }
+.cnpj-empty { color: var(--text2); font-size: .88rem; padding: 8px 0; }
+.btn-add-cnpj { display: flex; align-items: center; gap: 5px; padding: 6px 14px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); color: #6366f1; border-radius: 8px; font-size: .82rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all .15s; flex-shrink: 0; }
+.btn-add-cnpj:hover { background: rgba(99,102,241,.2); }
+.cnpj-row { display: flex; align-items: flex-end; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.cnpj-row:last-of-type { border-bottom: none; }
+.cnpj-row-fields { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+.cnpj-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
+.cnpj-field-lg  { flex: 2; }
+.cnpj-field-sm  { min-width: 120px; }
+.cnpj-field-xs  { min-width: 80px; flex: 0 0 80px; }
+.cnpj-field label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
+.cnpj-field input, .cnpj-field select { padding: .45rem .7rem; border: 1px solid var(--border); border-radius: 7px; font-size: .88rem; background: var(--bg3); color: var(--text); outline: none; }
+.cnpj-field input:focus, .cnpj-field select:focus { border-color: var(--primary); }
+.btn-del-cnpj { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: none; border: 1px solid var(--border); border-radius: 7px; color: var(--text2); cursor: pointer; flex-shrink: 0; transition: all .15s; }
+.btn-del-cnpj:hover { background: rgba(239,68,68,.1); border-color: #ef4444; color: #ef4444; }
+.btn-del-cnpj .material-symbols-outlined { font-size: 17px; }
+.cnpj-footer { margin-top: 1rem; display: flex; justify-content: flex-end; }
 
 .rotinas-card h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
 .rotinas-card .sub { margin: 0 0 1.5rem; font-size: 0.85rem; color: var(--text2); }

@@ -220,7 +220,7 @@ async function carregarAvisos() {
     .lte('data_vencimento_crediario', limite)
     .order('data_vencimento_crediario');
 
-  const CREDIARIO_DONE = ['pago', 'quitado', 'cancelado'];
+  const CREDIARIO_DONE = ['pago', 'quitado', 'cancelado', 'recebido'];
   for (const v of crediarios || []) {
     if (CREDIARIO_DONE.includes(v.status_crediario)) continue;
     const venc  = v.data_vencimento_crediario;
