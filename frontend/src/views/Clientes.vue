@@ -92,7 +92,7 @@ onMounted(carregar);
 async function carregar() {
   carregando.value = true;
   try {
-    let q = supabase.from('clientes').select('pk, nome, cpf, telefone, email, decorador, cep, logradouro, numero, bairro, cidade, uf').order('nome');
+    let q = supabase.from('clientes').select('pk, nome, cpf, telefone, email, decorador, cep, logradouro, numero, bairro, cidade, uf').eq('ativo', true).order('nome');
     if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
     const { data, error } = await q;
     if (error) throw error;
@@ -106,7 +106,7 @@ async function carregar() {
 
 async function excluir(c) {
   if (!confirm(`Excluir cliente "${c.nome}"?`)) return;
-  const { error } = await supabase.from('clientes').delete().eq('pk', c.pk);
+  const { error } = await supabase.from('clientes').update({ ativo: false }).eq('pk', c.pk);
   if (error) return alert('Erro: ' + error.message);
   await carregar();
 }

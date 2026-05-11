@@ -294,6 +294,7 @@ async function tentarCarregar(comForma) {
   let q = supabase
     .from('vendas')
     .select(campos)
+    .eq('ativo', true)
     .not('data_vencimento_crediario', 'is', null)
     .order('data_vencimento_crediario', { ascending: true });
   if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);

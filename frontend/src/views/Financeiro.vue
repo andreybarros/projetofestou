@@ -380,7 +380,7 @@ async function carregarContas() {
   if (!fil) return;
   carregandoContas.value = true;
   try {
-    const { data, error } = await supabase.from('contas_bancarias').select('*').eq('filial_pk', fil).order('nome');
+    const { data, error } = await supabase.from('contas_bancarias').select('*').eq('filial_pk', fil).eq('ativo', true).order('nome');
     if (error) throw error;
     contas.value = data || [];
   } catch (e) {
@@ -583,7 +583,7 @@ async function carregarCategorias() {
   if (!fil) return;
   carregandoCats.value = true;
   try {
-    const { data, error } = await supabase.from('categorias_despesa').select('*').eq('filial_pk', fil).order('nome');
+    const { data, error } = await supabase.from('categorias_despesa').select('*').eq('filial_pk', fil).eq('ativo', true).order('nome');
     if (error) throw error;
     categorias.value = data || [];
   } catch (e) {
@@ -614,7 +614,7 @@ async function salvarCategoria() {
 async function excluirCategoria(c) {
   if (!confirm(`Excluir categoria "${c.nome}"?`)) return;
   try {
-    const { error } = await supabase.from('categorias_despesa').delete().eq('pk', c.pk);
+    const { error } = await supabase.from('categorias_despesa').update({ ativo: false }).eq('pk', c.pk);
     if (error) throw error;
     categorias.value = categorias.value.filter(x => x.pk !== c.pk);
     showToast('Categoria excluída.');
@@ -626,7 +626,7 @@ async function excluirCategoria(c) {
 async function excluirConta(c) {
   if (!confirm(`Deseja realmente excluir a conta "${c.nome}"? Movimentações antigas não serão apagadas.`)) return;
   try {
-    const { error } = await supabase.from('contas_bancarias').delete().eq('pk', c.pk);
+    const { error } = await supabase.from('contas_bancarias').update({ ativo: false }).eq('pk', c.pk);
     if (error) throw error;
     showToast('Conta excluída.');
     carregarContas();

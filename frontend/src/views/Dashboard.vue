@@ -224,6 +224,7 @@ async function carregarVendas() {
   let qDisplay = supabase
     .from("vendas")
     .select("pk, numero, cliente, operador, vendedor, total, status, criado_em")
+    .eq("ativo", true)
     .order("criado_em", { ascending: false })
     .limit(10);
   if (sessaoStore.filial?.pk) qDisplay = qDisplay.eq("filial_pk", sessaoStore.filial.pk);
@@ -234,6 +235,7 @@ async function carregarVendas() {
   let qHoje = supabase
     .from("vendas")
     .select("pk, total")
+    .eq("ativo", true)
     .eq("status", "finalizada")
     .gte("criado_em", hoje + "T00:00:00")
     .lte("criado_em", hoje + "T23:59:59");

@@ -316,6 +316,7 @@ async function carregarPendentes() {
     .from('pagamentos_venda')
     .select('pk, venda_pk, forma, valor, vendas!inner(pk, numero, criado_em, cliente, filial_pk)')
     .eq('vendas.filial_pk', sessaoStore.filial?.pk)
+    .eq('vendas.ativo', true)
     .gte('vendas.criado_em', de)
     .lte('vendas.criado_em', ate);
 
@@ -383,7 +384,7 @@ async function carregarRecebimentos() {
   const items    = data || [];
   const vendaPks = [...new Set(items.filter(r => r.venda_pk).map(r => r.venda_pk))];
   if (vendaPks.length) {
-    const { data: vendas } = await supabase.from('vendas').select('pk, numero, cliente').in('pk', vendaPks);
+    const { data: vendas } = await supabase.from('vendas').select('pk, numero, cliente').eq('ativo', true).in('pk', vendaPks);
     const vm = {};
     (vendas || []).forEach(v => { vm[v.pk] = v; });
     items.forEach(r => {

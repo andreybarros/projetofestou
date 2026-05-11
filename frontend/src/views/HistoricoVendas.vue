@@ -505,6 +505,7 @@ onMounted(async () => {
         .from('vendas')
         .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe')
         .eq('pk', abrirPk)
+        .eq('ativo', true)
         .single();
       v = data;
     }

@@ -16,8 +16,9 @@ const carregando = ref(true);
 const salvando   = ref(false);
 const venda      = ref(null);
 
-const cliente    = ref('');
-const cliente_pk = ref(null);
+const cliente        = ref('');
+const cliente_pk     = ref(null);
+const cliente_codigo = ref(null);
 const vendedor   = ref('');
 const vendedor_pk = ref(null);
 const tipoVenda  = ref('venda');
@@ -103,9 +104,17 @@ onMounted(async () => {
     const { data: v } = await supabase.from('vendas').select('*').eq('pk', venda_pk).single();
     if (!v) { toast('Venda não encontrada', 'err'); carregando.value = false; return; }
 
-    venda.value        = v;
-    cliente.value      = v.cliente  || '';
-    cliente_pk.value   = v.cliente_pk  || null;
+    venda.value          = v;
+    cliente_pk.value     = v.cliente_pk   || null;
+    cliente_codigo.value = v.cliente_codigo || null;
+    // Busca nome atualizado do cadastro; fallback para o nome salvo na venda
+    if (v.cliente_pk) {
+      const { data: cli } = await supabase.from('clientes').select('nome, codigo').eq('pk', v.cliente_pk).single();
+      cliente.value        = cli?.nome   || v.cliente || '';
+      cliente_codigo.value = cli?.codigo || v.cliente_codigo || null;
+    } else {
+      cliente.value = v.cliente || '';
+    }
     vendedor.value     = v.vendedor || '';
     vendedor_pk.value  = v.vendedor_pk || null;
     tipoVenda.value    = v.tipo_venda   || 'venda';
@@ -196,12 +205,12 @@ async function buscarClientes() {
   if (!q) { clientesRes.value = []; return; }
   clearTimeout(cliTimer);
   cliTimer = setTimeout(async () => {
-    const { data } = await supabase.from('clientes').select('pk, nome, decorador').eq('filial_pk', sessao.filial.pk).ilike('nome', `%${q}%`).limit(8);
+    const { data } = await supabase.from('clientes').select('pk, nome, codigo, decorador').eq('filial_pk', sessao.filial.pk).eq('ativo', true).ilike('nome', `%${q}%`).limit(8);
     clientesRes.value = data || [];
   }, 280);
 }
-function selecionarCliente(c) { cliente.value = c.nome; cliente_pk.value = c.pk; clienteDecorador.value = c.decorador || false; buscaCliente.value = ''; clientesRes.value = []; }
-function limparCliente()       { cliente.value = ''; cliente_pk.value = null; clienteDecorador.value = false; }
+function selecionarCliente(c) { cliente.value = c.nome; cliente_pk.value = c.pk; cliente_codigo.value = c.codigo || null; clienteDecorador.value = c.decorador || false; buscaCliente.value = ''; clientesRes.value = []; }
+function limparCliente()       { cliente.value = ''; cliente_pk.value = null; cliente_codigo.value = null; clienteDecorador.value = false; }
 
 let vendTimer = null;
 async function buscarVendedores() {
@@ -229,8 +238,9 @@ async function salvar() {
   salvando.value = true;
   try {
     const payload = {
-      cliente:      cliente.value      || null,
-      cliente_pk:   cliente_pk.value   || null,
+      cliente:        cliente.value        || null,
+      cliente_pk:     cliente_pk.value     || null,
+      cliente_codigo: cliente_codigo.value || null,
       vendedor:     vendedor.value     || null,
       vendedor_pk:  vendedor_pk.value  || null,
       tipo_venda:   tipoVenda.value,

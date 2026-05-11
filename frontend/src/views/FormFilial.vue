@@ -338,7 +338,7 @@ function adicionarCnpj() {
 async function removerCnpj(idx, pk) {
   if (pk) {
     if (!confirm('Remover este CNPJ?')) return;
-    await supabase.from('filial_cnpjs').delete().eq('pk', pk);
+    await supabase.from('filial_cnpjs').update({ ativo: false }).eq('pk', pk);
   }
   cnpjs.value.splice(idx, 1);
 }

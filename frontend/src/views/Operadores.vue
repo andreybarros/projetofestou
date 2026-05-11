@@ -261,7 +261,7 @@ async function carregar() {
   carregando.value = true;
   const opLogado = sessaoStore.operador;
   try {
-    let q = supabase.from('operadores').select('*').order('nome');
+    let q = supabase.from('operadores').select('*').eq('ativo', true).order('nome');
     
     // Se o logado não for superadmin (tem filial_pk), vê só a sua filial
     if (opLogado?.filial_pk) {
@@ -357,7 +357,7 @@ async function excluir(u) {
   if (u.login === 'Admin') return;
   if (!confirm(`Deseja realmente excluir o operador "${u.nome}"?`)) return;
   try {
-    const { error } = await supabase.from('operadores').delete().eq('id', u.id);
+    const { error } = await supabase.from('operadores').update({ ativo: false }).eq('id', u.id);
     if (error) throw error;
     showToast('Operador removido.');
     carregar();

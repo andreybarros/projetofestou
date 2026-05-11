@@ -178,7 +178,7 @@ onMounted(carregar);
 async function carregar() {
   carregando.value = true;
   try {
-    let q = supabase.from('armazem').select('pk, filial, id, localizacao').order('id');
+    let q = supabase.from('armazem').select('pk, filial, id, localizacao').eq('ativo', true).order('id');
     if (sessaoStore.filial?.codigo) q = q.eq('filial', sessaoStore.filial.codigo);
     const { data, error } = await q;
     if (error) throw error;
@@ -208,8 +208,7 @@ async function confirmarExclusao() {
   if (!a) return;
   excluindo.value = true;
   try {
-    await supabase.from('endereco_armazem').delete().eq('armazem_pk', String(a.pk));
-    const { error } = await supabase.from('armazem').delete().eq('pk', String(a.pk));
+    const { error } = await supabase.from('armazem').update({ ativo: false }).eq('pk', String(a.pk));
     if (error) throw error;
     armToDelete.value = null;
     await carregar();

@@ -71,7 +71,7 @@ onMounted(carregar);
 async function carregar() {
   carregando.value = true;
   try {
-    const { data: filiais, error } = await supabase.from('filiais').select('*').order('codigo');
+    const { data: filiais, error } = await supabase.from('filiais').select('*').eq('ativo', true).order('codigo');
     if (error) throw error;
 
     // Buscar contagem de módulos para cada filial
@@ -96,7 +96,7 @@ async function excluir(f) {
   if (!confirm(`Deseja realmente excluir a filial "${f.nome}"? Esta ação não pode ser desfeita.`)) return;
 
   try {
-    const { error } = await supabase.from('filiais').delete().eq('pk', f.pk);
+    const { error } = await supabase.from('filiais').update({ ativo: false }).eq('pk', f.pk);
     if (error) throw error;
     await carregar();
   } catch (e) {

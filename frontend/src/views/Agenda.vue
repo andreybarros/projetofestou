@@ -626,6 +626,7 @@ async function carregarEventos() {
         .from('vendas')
         .select('pk, numero, cliente, data_locacao, data_devolucao_prevista, status_locacao, observacao')
         .eq('filial_pk', sessaoStore.filial?.pk)
+        .eq('ativo', true)
         .eq('tipo_venda', 'locacao')
         .or(`data_locacao.gte.${ini}T00:00:00,data_devolucao_prevista.gte.${ini}T00:00:00`)
         .lte('data_locacao', fim + 'T23:59:59'),
@@ -816,6 +817,7 @@ async function buscarVendas() {
       .from('vendas')
       .select('pk, numero, cliente, tipo_venda, criado_em')
       .eq('filial_pk', sessaoStore.filial?.pk)
+      .eq('ativo', true)
       .order('numero', { ascending: false })
       .limit(8);
     if (!isNaN(numQ)) {

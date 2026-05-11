@@ -30,6 +30,7 @@ router.get('/vendas/:filial_pk', async (req, res) => {
       .from('vendas')
       .select('pk, total, criado_em, cliente, vendedor, vendedor_pk')
       .eq('filial_pk', filial_pk)
+      .eq('ativo', true)
       .eq('status', 'finalizada')
       .gte('criado_em', inicioISO)
       .lte('criado_em', fimISO);
@@ -45,6 +46,7 @@ router.get('/vendas/:filial_pk', async (req, res) => {
       .from('vendas')
       .select('total')
       .eq('filial_pk', filial_pk)
+      .eq('ativo', true)
       .eq('status', 'finalizada')
       .gte('criado_em', inicioAnteriorISO)
       .lte('criado_em', fimAnteriorISO);

@@ -14,7 +14,11 @@
       <!-- ── Formulário ── -->
       <form @submit.prevent="salvar" @keydown.enter.prevent="onEnterForm" class="form-card" ref="formRef">
         <div class="form-grid">
-          <div class="field full"><label>Nome *</label><input v-model="form.nome" type="text" required autofocus /></div>
+          <div class="field">
+            <label>Código</label>
+            <input :value="form.codigo || '—'" type="text" readonly style="opacity:.6;cursor:not-allowed;font-family:monospace" />
+          </div>
+          <div class="field"><label>Nome *</label><input v-model="form.nome" type="text" required autofocus /></div>
           <div class="field"><label>CPF / CNPJ</label><input v-model="form.cpf" type="text" placeholder="CPF ou CNPJ" maxlength="18" @input="maskDocumento" /></div>
           <div class="field"><label>Telefone</label><input v-model="form.telefone" type="text" placeholder="(92) 99999-9999" /></div>
           <div class="field full"><label>E-mail</label><input v-model="form.email" type="email" /></div>
@@ -163,7 +167,7 @@ async function onEnterForm(e) {
 }
 
 const form = ref({
-  nome: '', cpf: '', telefone: '', email: '',
+  codigo: '', nome: '', cpf: '', telefone: '', email: '',
   cep: '', logradouro: '', numero: '', bairro: '', cidade: '', uf: '',
   decorador: false,
 });
@@ -213,6 +217,7 @@ async function carregarContas() {
     .from('vendas')
     .select('pk, total, data_vencimento_crediario, status_crediario')
     .eq('cliente_pk', pk)
+    .eq('ativo', true)
     .eq('status_crediario', 'pendente')
     .order('data_vencimento_crediario', { ascending: true });
   contasAReceber.value = (data || []).map(c => ({
@@ -223,7 +228,14 @@ async function carregarContas() {
 }
 
 onMounted(async () => {
-  if (!pk) return;
+  const filialPk = sessaoStore.filial?.pk;
+  if (!pk) {
+    if (filialPk) {
+      const { data: cod } = await supabase.rpc('proximo_codigo_cliente', { p_filial_pk: filialPk });
+      form.value.codigo = cod || '0001';
+    }
+    return;
+  }
   const { data, error } = await supabase.from('clientes').select('*').eq('pk', pk).single();
   if (error || !data) { erro.value = 'Cliente não encontrado.'; carregando.value = false; return; }
   form.value = { ...data };
@@ -252,8 +264,10 @@ async function salvar() {
   salvando.value = true;
   erro.value = '';
   try {
+    const nomeNovo = form.value.nome.trim();
     const payload = {
-      nome:       form.value.nome.trim(),
+      codigo:     form.value.codigo || null,
+      nome:       nomeNovo,
       cpf:        form.value.cpf?.trim() || null,
       telefone:   form.value.telefone?.trim() || null,
       email:      form.value.email?.trim() || null,
@@ -269,6 +283,12 @@ async function salvar() {
     let error;
     if (pk) {
       ({ error } = await supabase.from('clientes').update(payload).eq('pk', pk));
+      if (!error) {
+        // Sincroniza nome e código denormalizados nas vendas vinculadas
+        await supabase.from('vendas')
+          .update({ cliente: nomeNovo, cliente_codigo: form.value.codigo || null })
+          .eq('cliente_pk', pk);
+      }
     } else {
       ({ error } = await supabase.from('clientes').insert(payload));
     }

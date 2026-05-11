@@ -214,23 +214,39 @@ async function carregarAvisos() {
   // Crediários vencidos ou vencendo em até 2 dias
   const { data: crediarios } = await supabase
     .from('vendas')
-    .select('pk, numero, cliente, data_vencimento_crediario, status_crediario')
+    .select('pk, numero, cliente, cliente_pk, data_vencimento_crediario, status_crediario')
     .eq('filial_pk', fil)
+    .eq('ativo', true)
     .not('data_vencimento_crediario', 'is', null)
     .lte('data_vencimento_crediario', limite)
     .order('data_vencimento_crediario');
 
+  // Lookup em lote: pega nome e código atualizados dos clientes vinculados
+  const pksClientes = [...new Set((crediarios || []).map(v => v.cliente_pk).filter(Boolean))];
+  const clienteMap  = {};
+  if (pksClientes.length) {
+    const { data: clis } = await supabase
+      .from('clientes')
+      .select('pk, nome, codigo')
+      .in('pk', pksClientes);
+    (clis || []).forEach(c => { clienteMap[c.pk] = c; });
+  }
+
   const CREDIARIO_DONE = ['pago', 'quitado', 'cancelado', 'recebido'];
   for (const v of crediarios || []) {
     if (CREDIARIO_DONE.includes(v.status_crediario)) continue;
-    const venc  = v.data_vencimento_crediario;
-    const dias  = diffDias(venc, hoje);
-    const atras  = venc < hoje;
+    const cli     = v.cliente_pk ? clienteMap[v.cliente_pk] : null;
+    const nomeExib = cli
+      ? `${cli.codigo ? '[' + cli.codigo + '] ' : ''}${cli.nome}`
+      : (v.cliente || 'Consumidor Final');
+    const venc    = v.data_vencimento_crediario;
+    const dias    = diffDias(venc, hoje);
+    const atras   = venc < hoje;
     const diasFut = diffDias(hoje, venc);
     lista.push({
       tipo:    atras ? 'aviso-vermelho' : 'aviso-amarelo',
       icone:   atras ? 'warning' : 'schedule',
-      msg:     v.cliente || 'Consumidor Final',
+      msg:     nomeExib,
       detalhe: atras
         ? `Crediário vencido há ${dias} dia${dias !== 1 ? 's' : ''} — Venda #${v.numero}`
         : diasFut === 0
@@ -246,6 +262,7 @@ async function carregarAvisos() {
     .from('vendas')
     .select('pk, numero, cliente, data_devolucao_prevista, status_locacao')
     .eq('filial_pk', fil)
+    .eq('ativo', true)
     .eq('tipo_venda', 'locacao')
     .not('data_devolucao_prevista', 'is', null)
     .lte('data_devolucao_prevista', limite + 'T23:59:59')

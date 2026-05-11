@@ -1058,6 +1058,48 @@ UPDATE projetos SET status = 'montado'   WHERE status = 'realizado';
 ALTER TABLE projetos ADD COLUMN IF NOT EXISTS custo numeric(12,2) DEFAULT 0;
 
 -- ============================================================
+-- Seção 21 — Código de cliente + soft delete
+-- ============================================================
+
+ALTER TABLE clientes         ADD COLUMN IF NOT EXISTS codigo text;
+ALTER TABLE clientes         ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE vendas           ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE categorias       ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE fornecedores     ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE filiais          ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE operadores       ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE projetos         ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE armazem          ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE categorias_despesa ADD COLUMN IF NOT EXISTS ativo boolean DEFAULT true;
+ALTER TABLE contas_bancarias ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE vendas   ADD COLUMN IF NOT EXISTS cliente_codigo text;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'clientes_filial_pk_codigo_key'
+  ) THEN
+    ALTER TABLE clientes ADD CONSTRAINT clientes_filial_pk_codigo_key UNIQUE (filial_pk, codigo);
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION proximo_codigo_cliente(p_filial_pk bigint)
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  v_max     integer;
+  v_proximo integer;
+BEGIN
+  SELECT COALESCE(MAX(codigo::integer), 0)
+    INTO v_max
+    FROM clientes
+   WHERE filial_pk = p_filial_pk
+     AND codigo ~ '^\d{1,5}$';
+  v_proximo := v_max + 1;
+  RETURN LPAD(v_proximo::text, 4, '0');
+END;
+$$;
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

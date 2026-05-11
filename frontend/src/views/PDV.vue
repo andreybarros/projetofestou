@@ -1175,6 +1175,7 @@ watch(clienteSel, async (cli) => {
     .from('vendas')
     .select('total, status_crediario, data_vencimento_crediario')
     .eq('cliente_pk', cli.pk)
+    .eq('ativo', true)
     .not('status', 'eq', 'cancelada');
   if (!vendas) return;
   const contasAberto = vendas
@@ -1199,6 +1200,7 @@ watch([clienteSel, temCrediario, crediarioBloqueiainadimpl], async ([cli, temCre
     .from('vendas')
     .select('pk')
     .eq('cliente_pk', cli.pk)
+    .eq('ativo', true)
     .not('data_vencimento_crediario', 'is', null)
     .or('status_crediario.is.null,status_crediario.eq.pendente')
     .lt('data_vencimento_crediario', hoje);
@@ -1530,6 +1532,7 @@ function buscarClientes() {
       const { data } = await supabase
         .from('clientes')
         .select('pk, nome, cpf, telefone, decorador, logradouro, numero, bairro, cep')
+        .eq('ativo', true)
         .or(`nome.ilike.%${q}%,cpf.ilike.%${q}%,telefone.ilike.%${q}%`)
         .order('nome')
         .limit(8);
@@ -1999,8 +2002,9 @@ async function finalizar() {
       desconto_total: vendaStore.desconto,
       acrescimo:      vendaStore.acrescimo,
       total:          vendaStore.total,
-      cliente:        clienteSel.value?.nome || null,
-      cliente_pk:     clienteSel.value?.pk || null,
+      cliente:        clienteSel.value?.nome   || null,
+      cliente_pk:     clienteSel.value?.pk     || null,
+      cliente_codigo: clienteSel.value?.codigo || null,
       vendedor:       vendedorSel.value?.nome || null,
       vendedor_pk:    vendedorSel.value?.pk || null,
       tipo_venda:     tipoVenda.value,

@@ -233,6 +233,7 @@ async function buscarClientes() {
     const { data } = await supabase
       .from('clientes')
       .select('pk, nome, cpf, logradouro, bairro, cep, cidade, uf')
+      .eq('ativo', true)
       .or(`filial_pk.is.null,filial_pk.eq.${sessao.filial.pk}`)
       .ilike('nome', `%${q}%`)
       .limit(8);

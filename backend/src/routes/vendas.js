@@ -79,6 +79,7 @@ router.post('/finalizar', async (req, res) => {
       operador,
       cliente,
       cliente_pk,
+      cliente_codigo,
       vendedor,
       vendedor_pk,
       itens,
@@ -109,10 +110,11 @@ router.post('/finalizar', async (req, res) => {
     const payloadVenda = {
       filial_pk: filial_pk || null,
       numero,
-      cliente:      cliente    || null,
-      cliente_pk:   cliente_pk || null,
-      vendedor:     vendedor   || null,
-      vendedor_pk:  vendedor_pk || null,
+      cliente:        cliente        || null,
+      cliente_pk:     cliente_pk     || null,
+      cliente_codigo: cliente_codigo || null,
+      vendedor:       vendedor       || null,
+      vendedor_pk:    vendedor_pk    || null,
       subtotal:     parseFloat(subtotal || 0),
       desconto_total: parseFloat(desconto_total || 0),
       acrescimo:    parseFloat(acrescimo || 0),
@@ -311,7 +313,8 @@ router.get('/', async (req, res) => {
     
     let q = supabase
       .from('vendas')
-      .select('pk, numero, criado_em, cliente, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' });
+      .select('pk, numero, criado_em, cliente, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' })
+      .eq('ativo', true);
 
     if (filial_pk && filial_pk !== 'undefined' && filial_pk !== 'null' && filial_pk !== '') {
       q = q.eq('filial_pk', parseInt(filial_pk));
@@ -356,7 +359,7 @@ router.put('/:pk', async (req, res) => {
   try {
     const { pk } = req.params;
     const {
-      cliente, cliente_pk, vendedor, vendedor_pk,
+      cliente, cliente_pk, cliente_codigo, vendedor, vendedor_pk,
       itens, pagamentos, subtotal, desconto_total, total,
       tipo_venda, canal_venda,
       data_locacao, data_devolucao_prevista, data_vencimento_crediario,
@@ -383,10 +386,11 @@ router.put('/:pk', async (req, res) => {
     await supabase.from('pagamentos_venda').delete().eq('venda_pk', pk);
 
     const payloadVenda = {
-      cliente:       cliente      || null,
-      cliente_pk:    cliente_pk   || null,
-      vendedor:      vendedor     || null,
-      vendedor_pk:   vendedor_pk  || null,
+      cliente:        cliente        || null,
+      cliente_pk:     cliente_pk     || null,
+      cliente_codigo: cliente_codigo || null,
+      vendedor:       vendedor       || null,
+      vendedor_pk:    vendedor_pk    || null,
       subtotal:      parseFloat(subtotal      || 0),
       desconto_total: parseFloat(desconto_total || 0),
       total:         parseFloat(total),
@@ -482,11 +486,10 @@ router.delete('/:pk', async (req, res) => {
       }
     }
 
-    await supabase.from('itens_venda').delete().eq('venda_pk', pk);
-    await supabase.from('pagamentos_venda').delete().eq('venda_pk', pk);
     await supabase.from('movimentos_caixa').delete().eq('venda_pk', pk);
-    
-    const { error: errDel } = await supabase.from('vendas').delete().eq('pk', pk);
+    await supabase.from('agenda').delete().eq('venda_pk', pk);
+
+    const { error: errDel } = await supabase.from('vendas').update({ ativo: false }).eq('pk', pk);
     if (errDel) throw errDel;
 
     res.json({ ok: true });

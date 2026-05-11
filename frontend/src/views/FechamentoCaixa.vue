@@ -210,6 +210,7 @@ async function gerar() {
     let qv = supabase.from('vendas')
       .select('pk, numero, criado_em, cliente, operador, total, status, canal_venda')
       .eq('filial_pk', filial_pk)
+      .eq('ativo', true)
       .eq('status', 'finalizada')
       .gte('criado_em', `${filtros.ini}T00:00:00`)
       .lte('criado_em', `${filtros.fim}T23:59:59`);

@@ -61,6 +61,7 @@ router.get('/', async (req, res) => {
       .from('projetos')
       .select('*, clientes(pk, nome, cpf, logradouro, numero, bairro, cep, cidade, uf)')
       .eq('filial_pk', filial_pk)
+      .eq('ativo', true)
       .order('data_decoracao', { ascending: false });
 
     if (error) throw error;
@@ -161,7 +162,7 @@ router.delete('/:pk', async (req, res) => {
     const { pk } = req.params;
     const { data: proj } = await supabase.from('projetos').select('agenda_pk').eq('pk', pk).single();
 
-    const { error } = await supabase.from('projetos').delete().eq('pk', pk);
+    const { error } = await supabase.from('projetos').update({ ativo: false }).eq('pk', pk);
     if (error) throw error;
 
     if (proj?.agenda_pk) {

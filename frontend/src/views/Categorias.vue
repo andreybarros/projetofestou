@@ -86,7 +86,7 @@ onMounted(carregar);
 async function carregar() {
   carregando.value = true;
   try {
-    let q = supabase.from('categorias').select('pk, nome, descricao, desconto_somente_decorador').order('nome');
+    let q = supabase.from('categorias').select('pk, nome, descricao, desconto_somente_decorador').eq('ativo', true).order('nome');
     if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
     const { data, error } = await q;
     if (error) throw error;
@@ -100,7 +100,7 @@ async function carregar() {
 
 async function excluir(c) {
   if (!confirm(`Excluir categoria "${c.nome}"?`)) return;
-  const { error } = await supabase.from('categorias').delete().eq('pk', c.pk);
+  const { error } = await supabase.from('categorias').update({ ativo: false }).eq('pk', c.pk);
   if (error) return alert('Erro: ' + error.message);
   await carregar();
 }
