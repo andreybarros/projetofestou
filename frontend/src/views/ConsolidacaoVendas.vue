@@ -35,8 +35,53 @@
       </button>
     </div>
 
+    <!-- Abas -->
+    <div class="cv-tabs">
+      <button :class="['cv-tab', { active: abaAtiva === 'lancamentos' }]" @click="abaAtiva = 'lancamentos'">
+        <span class="material-symbols-outlined">receipt_long</span>
+        Lançamentos
+      </button>
+      <button :class="['cv-tab', { active: abaAtiva === 'por_conta' }]" @click="abaAtiva = 'por_conta'">
+        <span class="material-symbols-outlined">account_balance_wallet</span>
+        Por Conta
+      </button>
+    </div>
+
+    <!-- ══ ABA: Por Conta ══ -->
+    <div v-if="abaAtiva === 'por_conta'">
+      <div v-if="carregando" class="state-center"><span class="spin"></span></div>
+      <div v-else-if="!resumoPorConta.length" class="state-center muted">
+        <span class="material-symbols-outlined" style="font-size:36px;opacity:.25">account_balance_wallet</span>
+        Nenhum recebimento lançado no período.
+      </div>
+      <div v-else>
+        <div class="pc-total-header">
+          <span class="pc-total-label">Total do período</span>
+          <strong class="pc-total-valor">{{ fmt(totalRec) }}</strong>
+        </div>
+        <div class="pc-grid">
+          <div v-for="item in resumoPorConta" :key="item.conta_pk || '__sem__'" class="pc-card">
+            <div class="pc-card-header">
+              <span class="material-symbols-outlined pc-card-ico">{{ item.conta_pk ? 'account_balance' : 'money_off' }}</span>
+              <div class="pc-card-info">
+                <span class="pc-card-nome">{{ item.nome }}</span>
+                <span class="pc-card-count">{{ item.count }} lançamento{{ item.count !== 1 ? 's' : '' }}</span>
+              </div>
+              <strong class="pc-card-total">{{ fmt(item.total) }}</strong>
+            </div>
+            <div class="pc-formas">
+              <div v-for="(val, forma) in item.porForma" :key="forma" class="pc-forma-row">
+                <span :class="['badge-forma sm', `bf-${normForma(forma)}`]">{{ labelForma(forma) }}</span>
+                <span class="pc-forma-valor">{{ fmt(val) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Layout duas colunas -->
-    <div class="cv-cols">
+    <div v-if="abaAtiva === 'lancamentos'" class="cv-cols">
 
       <!-- ══ ESQUERDA: Vendas pendentes ══ -->
       <div class="cv-col-left">
@@ -205,7 +250,7 @@
         </div>
 
       </div>
-    </div><!-- /cv-cols -->
+    </div><!-- /cv-cols lancamentos -->
 
     <!-- Modal confirmar exclusão -->
     <Teleport to="body">
@@ -252,6 +297,7 @@ const inicioMes = hoje.slice(0, 8) + '01';
 
 const filtro    = ref({ de: inicioMes, ate: hoje, forma: '' });
 const carregando = ref(false);
+const abaAtiva  = ref('lancamentos');
 
 const listaPendentes = ref([]);
 const listaRec       = ref([]);
@@ -278,6 +324,22 @@ const formas = ref([]);
 const totalRec = computed(() =>
   listaRec.value.reduce((s, r) => s + parseFloat(r.valor || 0), 0)
 );
+
+const resumoPorConta = computed(() => {
+  const map = {};
+  listaRec.value.forEach(r => {
+    const key = r.conta_pk ?? '__sem__';
+    if (!map[key]) {
+      const conta = contas.value.find(c => c.pk === r.conta_pk);
+      map[key] = { conta_pk: r.conta_pk, nome: conta?.nome || 'Sem conta', total: 0, count: 0, porForma: {} };
+    }
+    map[key].total += parseFloat(r.valor || 0);
+    map[key].count++;
+    const f = r.forma || 'outro';
+    map[key].porForma[f] = (map[key].porForma[f] || 0) + parseFloat(r.valor || 0);
+  });
+  return Object.values(map).sort((a, b) => b.total - a.total);
+});
 
 const periodoLabel = computed(() =>
   `${fmtDataSimples(filtro.value.de)} a ${fmtDataSimples(filtro.value.ate)}`
@@ -659,10 +721,38 @@ function showToast(msg, tipo = 'ok') {
 .spin-sm { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ══ ABAS ══ */
+.cv-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); padding-bottom: 0; }
+.cv-tab { display: flex; align-items: center; gap: 7px; padding: 9px 18px; background: none; border: none; border-radius: 8px 8px 0 0; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; margin-bottom: -2px; border-bottom: 2px solid transparent; }
+.cv-tab:hover { background: var(--bg3); color: var(--text); }
+.cv-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--bg2); }
+.cv-tab .material-symbols-outlined { font-size: 18px; }
+
+/* ══ POR CONTA ══ */
+.pc-total-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; margin-bottom: 4px; }
+.pc-total-label { font-size: 13px; color: var(--text2); font-weight: 600; }
+.pc-total-valor { font-size: 20px; font-weight: 800; color: var(--text); font-family: var(--mono, monospace); }
+
+.pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+.pc-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.pc-card-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); background: var(--bg3); }
+.pc-card-ico { font-size: 22px; color: var(--primary); flex-shrink: 0; }
+.pc-card-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.pc-card-nome { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-card-count { font-size: 11px; color: var(--text2); }
+.pc-card-total { font-size: 16px; font-weight: 800; color: var(--text); font-family: var(--mono, monospace); white-space: nowrap; }
+
+.pc-formas { display: flex; flex-direction: column; gap: 1px; padding: 8px 0; }
+.pc-forma-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 16px; }
+.pc-forma-row:hover { background: var(--bg3); }
+.pc-forma-valor { font-size: 13px; font-weight: 700; color: var(--text); font-family: var(--mono, monospace); }
+
 @media (max-width: 900px) {
   .cv-cols { grid-template-columns: 1fr; }
   .cv-col-right { position: static; }
   .pend-main { grid-template-columns: 60px 1fr 80px 80px; }
   .pend-prev { display: none; }
+  .pc-grid { grid-template-columns: 1fr; }
 }
 </style>
