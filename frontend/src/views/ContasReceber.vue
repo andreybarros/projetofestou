@@ -92,7 +92,7 @@
             <td class="td-mono" :class="{ 'td-venc': statusConta(v) === 'vencido' }">
               {{ fmtDateOnly(v.data_vencimento_crediario) }}
             </td>
-            <td class="td-val">{{ fmt(v.total) }}</td>
+            <td class="td-val">{{ fmt(valorCrediario(v)) }}</td>
             <td>
               <span :class="['badge', statusConta(v)]">{{ labelStatus(statusConta(v)) }}</span>
             </td>
@@ -289,8 +289,8 @@ async function carregar() {
 
 async function tentarCarregar(comForma) {
   const campos = comForma
-    ? 'pk, numero, criado_em, cliente, vendedor, total, status_crediario, data_vencimento_crediario, forma_recebimento'
-    : 'pk, numero, criado_em, cliente, vendedor, total, status_crediario, data_vencimento_crediario';
+    ? 'pk, numero, criado_em, cliente, vendedor, total, status_crediario, data_vencimento_crediario, forma_recebimento, pagamentos_venda(forma, valor)'
+    : 'pk, numero, criado_em, cliente, vendedor, total, status_crediario, data_vencimento_crediario, pagamentos_venda(forma, valor)';
   let q = supabase
     .from('vendas')
     .select(campos)
@@ -299,6 +299,14 @@ async function tentarCarregar(comForma) {
     .order('data_vencimento_crediario', { ascending: true });
   if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
   return await q;
+}
+
+function valorCrediario(v) {
+  const pags = v.pagamentos_venda || [];
+  const soma = pags
+    .filter(p => String(p.forma).toLowerCase() === 'crediario')
+    .reduce((s, p) => s + parseFloat(p.valor || 0), 0);
+  return soma > 0 ? soma : parseFloat(v.total || 0);
 }
 
 function receber(v) {
