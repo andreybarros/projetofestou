@@ -702,4 +702,68 @@ function fmtVal(v) {
 .ev-toast-err { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
 .toast-enter-active, .toast-leave-active { transition: all .3s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(16px); }
+
+/* ── MOBILE ──────────────────────────────────── */
+@media (max-width: 700px) {
+
+  /* Header compacto */
+  .ev-header { padding: 10px 14px; gap: 10px; }
+  .ev-back-btn { padding: 7px 10px; font-size: .8rem; }
+  .ev-back-btn span { font-size: 18px; }
+  .ev-h1 { font-size: .95rem; }
+  .ev-sub { display: none; }
+  .ev-btn-cancel { display: none; }
+  .ev-btn-save { padding: 8px 14px; font-size: .82rem; }
+
+  /* Layout: coluna única */
+  .ev-main { flex-direction: column; padding: 12px; gap: 14px; overflow-x: hidden; }
+  .ev-right { width: 100%; }
+
+  /* Tabela de itens → cards */
+  .ev-items-wrap { overflow: hidden; }
+  .ev-table { display: block; }
+  .ev-table thead { display: none; }
+  .ev-table tbody { display: flex; flex-direction: column; }
+  .ev-tr { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto; gap: 4px 8px;
+    padding: 12px; border-bottom: 1px solid var(--border); }
+  .ev-tr:last-child { border-bottom: none; }
+  .ev-tr:hover { background: var(--bg3); }
+
+  /* Descrição — linha inteira */
+  .ev-tr td:nth-child(1) { grid-column: 1 / -1; grid-row: 1; padding: 0; border: none; }
+  .ev-tr td:nth-child(1) .ev-td-input { padding: 0; font-size: .95rem; font-weight: 700; }
+
+  /* Qtd, Preço, Desconto — linha 2, col 1 */
+  .ev-tr td:nth-child(2),
+  .ev-tr td:nth-child(3),
+  .ev-tr td:nth-child(4) { grid-column: 1; padding: 0; border: none; }
+  .ev-tr td:nth-child(2) { grid-row: 2; }
+  .ev-tr td:nth-child(3) { grid-row: 3; }
+  .ev-tr td:nth-child(4) { grid-row: 4; }
+
+  .ev-td-input { padding: 5px 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; width: 100%; box-sizing: border-box; font-size: .88rem; }
+  .ev-td-num { text-align: left; width: 100%; }
+
+  /* Labels antes dos inputs */
+  .ev-tr td:nth-child(2)::before { content: 'Qtd'; display: block; font-size: .68rem; font-weight: 700; color: var(--text2); text-transform: uppercase; margin-bottom: 2px; }
+  .ev-tr td:nth-child(3)::before { content: 'Preço Unit.'; display: block; font-size: .68rem; font-weight: 700; color: var(--text2); text-transform: uppercase; margin-bottom: 2px; }
+  .ev-tr td:nth-child(4)::before { content: 'Desconto'; display: block; font-size: .68rem; font-weight: 700; color: var(--text2); text-transform: uppercase; margin-bottom: 2px; }
+
+  /* Total — coluna 2, linhas 2-4 */
+  .ev-td-total { grid-column: 2; grid-row: 2 / 5; display: flex; align-items: center; justify-content: flex-end; padding: 0 0 0 8px; font-size: 1rem; border: none; }
+
+  /* Botão remover — linha 5, largura inteira */
+  .ev-tr td:nth-child(6) { grid-column: 1 / -1; grid-row: 5; padding: 6px 0 0; border: none; display: flex; justify-content: flex-end; border-top: 1px dashed var(--border); margin-top: 4px; }
+
+  /* Desc-cell (desconto toggle) */
+  .ev-desc-cell { flex-direction: row; gap: 6px; }
+
+  /* Pagamentos */
+  .ev-pag-row { flex-wrap: wrap; gap: 6px; }
+  .ev-pag-forma { min-width: 0; flex: 1 1 100%; }
+  .ev-pag-valor { width: 100%; flex: 1 1 auto; }
+
+  /* Totais */
+  .ev-tot-final { font-size: 1rem; }
+}
 </style>
