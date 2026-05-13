@@ -1068,4 +1068,99 @@ function statusCls(s) {
 [data-theme="light"] .busca-input-v2:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
 [data-theme="light"] .sel-input-v2:focus { border-color: #6366f1; }
 [data-theme="light"] .date-input-v2 { color: #111827; }
+
+/* ── MOBILE ──────────────────────────────────── */
+@media (max-width: 700px) {
+
+  /* Filtros */
+  .filtros-bar { flex-direction: column; gap: .75rem; padding: .75rem; }
+  .search-group { min-width: unset; }
+  .filter-group { gap: .5rem; }
+  .date-range-group { flex: 1; padding: 0 8px; height: 42px; }
+  .date-input-v2 { width: 90px; font-size: .78rem; }
+  .sel-input-v2 { flex: 1; min-width: unset; font-size: .82rem; padding: .6rem .75rem; }
+  .btn-refresh, .btn-clear { width: 42px; height: 42px; border-radius: 10px; }
+
+  /* Lista de vendas → cards */
+  .tabela-container { background: transparent; border: none; border-radius: 0; gap: 10px; }
+  .tabela-v2 { display: flex; flex-direction: column; gap: 10px; }
+  .tabela-v2 thead { display: none; }
+  .tabela-v2 tbody { display: flex; flex-direction: column; gap: 10px; }
+  .tabela-v2 tr { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto; gap: 4px 8px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; cursor: pointer; }
+  .tabela-v2 tr:hover td { background: transparent; }
+  .tabela-v2 tr:hover { background: var(--bg3); }
+  .tabela-v2 td { padding: 0; border: none; font-size: .88rem; }
+
+  .col-num  { font-size: 1rem; font-weight: 900; grid-column: 1; grid-row: 1; }
+  .col-date { font-size: .78rem; color: var(--text2); grid-column: 1; grid-row: 2; }
+  .col-client { font-size: .85rem; grid-column: 1; grid-row: 3; color: var(--text2); }
+  .col-op   { display: none; }
+  .col-total { font-size: 1rem; font-weight: 900; color: #10b981; grid-column: 2; grid-row: 1; text-align: right; }
+
+  /* type-pill e status-badge ficam na linha 2, coluna 2 */
+  .tabela-v2 td:has(.type-pill)   { grid-column: 2; grid-row: 2; text-align: right; }
+  .tabela-v2 td:has(.status-badge){ grid-column: 2; grid-row: 3; text-align: right; }
+  .tabela-v2 td:has(.nfce-status) { display: none; }
+  .tabela-v2 td:has(.actions-group) { grid-column: 1 / -1; grid-row: 4; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+  .actions-group { justify-content: flex-start; }
+
+  /* Paginação */
+  .pagination-bar { gap: 1rem; padding: 1rem; }
+  .pag-btn { padding: .5rem .9rem; font-size: .8rem; }
+
+  /* Modal de detalhe — full screen bottom sheet */
+  .modal-bg { padding: 0; align-items: flex-end; }
+  .det-modal { max-width: 100%; width: 100%; max-height: 95vh; border-radius: 20px 20px 0 0; }
+
+  /* Cabeçalho do modal */
+  .det-modal-header { padding: 1.1rem 1.1rem .9rem; flex-wrap: wrap; gap: .6rem; }
+  .det-venda-num { font-size: 1.3rem; }
+  .det-header-meta { gap: .6rem; }
+  .det-sub-item { font-size: .78rem; }
+  .det-header-right { gap: .4rem; flex-wrap: wrap; }
+
+  /* Barra locação */
+  .det-loc-bar { padding: .75rem 1rem; gap: 1rem; }
+  .det-nfce-bar { padding: .5rem 1rem; }
+
+  /* Corpo: coluna única */
+  .det-body { grid-template-columns: 1fr; overflow-y: auto; display: flex; flex-direction: column; }
+  .det-section-block { padding: 1rem; overflow-y: visible; }
+  .det-section-block + .det-section-block { border-left: none; border-top: 1px solid var(--border); }
+  .det-pag-block { background: var(--bg3); }
+
+  /* Tabela de itens → cards empilhados */
+  .det-table { display: block; }
+  .det-table thead { display: none; }
+  .det-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .det-table tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px;
+    background: var(--bg3); border-radius: 10px; padding: 10px 12px; border: none; }
+  .det-table tr:hover td { background: transparent; }
+  .det-table td { padding: 0; border: none; }
+  /* Produto — largura total */
+  .det-table td:nth-child(1) { grid-column: 1 / -1; margin-bottom: 4px; }
+  /* Qtd × Unit → linha 2 col 1 */
+  .det-table td:nth-child(2)::before { content: 'Qtd: '; font-size: .72rem; color: var(--text2); font-weight: 600; }
+  .det-table td:nth-child(2) { grid-column: 1; font-size: .82rem; text-align: left; }
+  .det-table td:nth-child(3)::before { content: 'Unit.: '; font-size: .72rem; color: var(--text2); font-weight: 600; }
+  .det-table td:nth-child(3) { grid-column: 1; font-size: .82rem; text-align: left; }
+  /* Desconto → linha 3 col 1 */
+  .det-table td:nth-child(4) { grid-column: 1; font-size: .82rem; text-align: left; }
+  /* Total → coluna 2, linhas 2-4 */
+  .det-table td:nth-child(5) { grid-column: 2; grid-row: 2 / 5; align-self: center; font-size: 1rem; }
+
+  /* Ações do modal */
+  .det-actions { padding: .75rem 1rem; gap: .5rem; }
+  .det-actions-right { gap: .4rem; width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+  .det-btn-fechar, .det-btn-editar, .det-btn-loc-dev, .det-btn-loc-taxa,
+  .det-btn-print, .det-btn-nfce { font-size: .78rem; padding: .5rem .85rem; }
+
+  /* Outros modais */
+  .modal { max-width: 100%; width: 100%; border-radius: 20px 20px 0 0; }
+  .modal-bg:has(.excl-modal),
+  .modal-bg:has(.dev-modal),
+  .modal-bg:has(.modal-nfce),
+  .modal-bg:has(.modal-loc) { align-items: flex-end; padding: 0; }
+}
 </style>
