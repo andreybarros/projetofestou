@@ -349,8 +349,12 @@ const categoriasMap = computed(() =>
   Object.fromEntries(categorias.value.map(c => [c.pk, c.nome]))
 );
 
+function semAcento(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 const produtosCatalogo = computed(() => {
-  const q = buscaCatalogo.value.trim().toLowerCase();
+  const q = semAcento(buscaCatalogo.value.trim());
   const palavras = q ? q.split(/\s+/) : [];
   const jaAdicionados = new Set(itens.value.map(i => i.produto_pk));
 
@@ -359,8 +363,8 @@ const produtosCatalogo = computed(() => {
     if (somenteBaixo.value && (p.saldo ?? 0) > 0) return false;
     if (categoriaFiltro.value !== null && p.categoria_pk !== categoriaFiltro.value) return false;
     if (!q) return true;
-    const desc = (p.descricao || '').toLowerCase();
-    const cod  = (p.codigo   || '').toLowerCase();
+    const desc = semAcento(p.descricao);
+    const cod  = semAcento(p.codigo);
     if (cod.includes(q)) return true;
     return palavras.every(w => desc.includes(w));
   }).sort((a, b) => {

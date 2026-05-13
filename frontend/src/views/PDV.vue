@@ -1034,8 +1034,12 @@ const qtdMultiplicador = computed(() => {
   return m ? parseInt(m[1]) : 1;
 });
 
+function semAcento(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 const termoBusca = computed(() => {
-  return busca.value.replace(/^\d+\*/, '').trim().toLowerCase();
+  return semAcento(busca.value.replace(/^\d+\*/, '').trim());
 });
 
 const filtrados = computed(() => {
@@ -1048,9 +1052,9 @@ const filtrados = computed(() => {
   if (q) {
     const palavras = q.split(/\s+/).filter(Boolean);
     l = l.filter(p => {
-      const desc    = (p.descricao    || '').toLowerCase();
-      const codigo  = (p.codigo       || '').toLowerCase();
-      const barras  = (p.codigo_barras || '');
+      const desc   = semAcento(p.descricao);
+      const codigo = semAcento(p.codigo);
+      const barras = (p.codigo_barras || '');
       if (barras.includes(q) || codigo.includes(q)) return true;
       return palavras.every(w => desc.includes(w));
     });

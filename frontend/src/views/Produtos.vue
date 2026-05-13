@@ -9,6 +9,9 @@
         <div class="search-box">
           <span class="material-symbols-outlined search-icon">search</span>
           <input v-model="busca" type="text" placeholder="Buscar por nome, código ou barras..." class="busca-input" />
+          <button class="btn-scan-prod" @click="abrirScanner" title="Ler código de barras">
+            <span class="material-symbols-outlined">barcode_scanner</span>
+          </button>
         </div>
         <div class="view-toggle">
           <button :class="['btn-view', viewMode === 'grid' ? 'active' : '']" @click="viewMode = 'grid'" title="Grade">
@@ -177,10 +180,36 @@
       </div>
     </div>
   </div>
+
+  <!-- Scanner de código de barras -->
+  <Teleport to="body">
+    <div v-if="scannerAberto" class="prod-scanner-overlay">
+      <div class="prod-scanner-box">
+        <div class="prod-scanner-header">
+          <span class="material-symbols-outlined" style="font-size:22px;color:#6366f1">barcode_scanner</span>
+          <span class="prod-scanner-title">Aponte para o código de barras</span>
+          <button class="prod-scanner-close" @click="fecharScanner">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="prod-scanner-viewport">
+          <video id="prod-scanner-video" class="prod-scanner-video" playsinline muted></video>
+          <div class="prod-scanner-frame">
+            <span class="psf-corner tl"></span>
+            <span class="psf-corner tr"></span>
+            <span class="psf-corner bl"></span>
+            <span class="psf-corner br"></span>
+          </div>
+          <div class="prod-scanner-line"></div>
+        </div>
+        <p v-if="scannerStatus" class="prod-scanner-status" :class="scannerStatusTipo">{{ scannerStatus }}</p>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useSessaoStore } from "../stores/sessao";
 import { supabase } from "../composables/useSupabase";
@@ -197,15 +226,87 @@ const pagina       = ref(1);
 const POR_PAGINA   = 48;
 const showAcoes    = ref(false);
 const filtroPromo  = ref(false);
+const scannerAberto     = ref(false);
+const scannerStatus     = ref('');
+const scannerStatusTipo = ref('');
+let zxingReader     = null;
+let scannerControls = null;
+let scannerDetectado = false;
+
+async function abrirScanner() {
+  scannerAberto.value = true;
+  scannerDetectado = false;
+  scannerStatus.value = '';
+  scannerStatusTipo.value = '';
+  await nextTick();
+  await nextTick();
+  if (!navigator.mediaDevices?.getUserMedia) {
+    scannerStatus.value = 'Câmera requer conexão segura (HTTPS).';
+    scannerStatusTipo.value = 'err';
+    return;
+  }
+  const videoEl = document.getElementById('prod-scanner-video');
+  if (!videoEl) { scannerStatus.value = 'Erro: vídeo não encontrado.'; scannerStatusTipo.value = 'err'; return; }
+  try {
+    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+    const { DecodeHintType, BarcodeFormat } = await import('@zxing/library');
+    const hints = new Map([
+      [DecodeHintType.TRY_HARDER, true],
+      [DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
+        BarcodeFormat.CODE_128, BarcodeFormat.CODE_39,
+        BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+      ]],
+    ]);
+    zxingReader = new BrowserMultiFormatReader(hints);
+    scannerControls = await zxingReader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      videoEl,
+      (result, error) => {
+        if (!result || scannerDetectado) return;
+        scannerDetectado = true;
+        const codigo = result.getText();
+        fecharScanner();
+        busca.value = codigo;
+        pagina.value = 1;
+      }
+    );
+  } catch (e) {
+    const msg = e?.message || '';
+    if (/permission|denied|notallowed/i.test(msg)) {
+      scannerStatus.value = 'Permissão de câmera negada. Libere nas configurações do navegador.';
+    } else if (/notfound|devicenotfound/i.test(msg)) {
+      scannerStatus.value = 'Nenhuma câmera encontrada neste dispositivo.';
+    } else {
+      scannerStatus.value = msg || 'Não foi possível iniciar o scanner.';
+    }
+    scannerStatusTipo.value = 'err';
+  }
+}
+
+function fecharScanner() {
+  try { scannerControls?.stop(); } catch {}
+  try { zxingReader?.reset(); } catch {}
+  const videoEl = document.getElementById('prod-scanner-video');
+  if (videoEl?.srcObject) { videoEl.srcObject.getTracks().forEach(t => t.stop()); videoEl.srcObject = null; }
+  scannerControls = null;
+  zxingReader = null;
+  scannerAberto.value = false;
+  scannerStatus.value = '';
+}
+
+function semAcento(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
 
 const produtosFiltrados = computed(() => {
-  const q = (busca.value || "").trim().toLowerCase();
+  const q = semAcento((busca.value || '').trim());
   return produtos.value.filter(p => {
     if (filtroPromo.value && !p.em_promo) return false;
     if (!q) return true;
     const palavras = q.split(/\s+/).filter(Boolean);
-    const desc   = (p.descricao     || '').toLowerCase();
-    const codigo = (p.codigo        || '').toLowerCase();
+    const desc   = semAcento(p.descricao);
+    const codigo = semAcento(p.codigo);
     const barras = (p.codigo_barras || '').toLowerCase();
     if (barras.includes(q) || codigo.includes(q)) return true;
     return palavras.every(w => desc.includes(w));
@@ -342,10 +443,35 @@ function fmt(v) {
 
 .header-actions { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
 
-.search-box  { position: relative; display: flex; align-items: center; }
+.search-box  { position: relative; display: flex; align-items: center; gap: 4px; }
 .search-icon { position: absolute; left: 10px; font-size: 20px; color: var(--text2); pointer-events: none; }
-.busca-input { padding: .55rem .9rem .55rem 2.4rem; border: 1px solid var(--border); border-radius: 10px; width: 320px; background: var(--bg2); color: var(--text); font-size: .9rem; transition: border-color .2s; outline: none; }
+.busca-input { padding: .55rem 2.6rem .55rem 2.4rem; border: 1px solid var(--border); border-radius: 10px; width: 320px; background: var(--bg2); color: var(--text); font-size: .9rem; transition: border-color .2s; outline: none; }
 .busca-input:focus { border-color: #6366f1; }
+.btn-scan-prod { position: absolute; right: 6px; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: transparent; border: none; color: var(--text2); border-radius: 7px; cursor: pointer; transition: all .15s; }
+.btn-scan-prod:hover { background: rgba(99,102,241,.12); color: #6366f1; }
+.btn-scan-prod .material-symbols-outlined { font-size: 20px; }
+
+/* Scanner */
+.prod-scanner-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.92); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.prod-scanner-box { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: .75rem; }
+.prod-scanner-header { display: flex; align-items: center; gap: .5rem; color: #fff; }
+.prod-scanner-title { flex: 1; font-size: .95rem; font-weight: 700; }
+.prod-scanner-close { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.prod-scanner-close:hover { background: rgba(255,255,255,.18); }
+.prod-scanner-close .material-symbols-outlined { font-size: 18px; }
+.prod-scanner-viewport { position: relative; width: 100%; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: #000; }
+.prod-scanner-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prod-scanner-frame { position: absolute; inset: 0; }
+.psf-corner { position: absolute; width: 28px; height: 28px; border-color: #6366f1; border-style: solid; }
+.psf-corner.tl { top: 16px;    left: 16px;    border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.psf-corner.tr { top: 16px;    right: 16px;   border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.psf-corner.bl { bottom: 16px; left: 16px;    border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.psf-corner.br { bottom: 16px; right: 16px;   border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+.prod-scanner-line { position: absolute; left: 16px; right: 16px; height: 2px; background: linear-gradient(90deg, transparent, #6366f1, transparent); animation: prodScanLine 2s ease-in-out infinite; box-shadow: 0 0 8px #6366f1; }
+@keyframes prodScanLine { 0%, 100% { top: 20%; } 50% { top: 78%; } }
+.prod-scanner-status { text-align: center; font-size: .85rem; font-weight: 700; padding: .5rem; border-radius: 8px; }
+.prod-scanner-status.err { background: rgba(239,68,68,.2); color: #fca5a5; }
+.prod-scanner-status.ok  { background: rgba(16,185,129,.2); color: #6ee7b7; }
 
 .view-toggle { display: flex; gap: 3px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
 .btn-view { background: none; border: none; color: var(--text2); cursor: pointer; padding: 5px 8px; border-radius: 7px; display: flex; align-items: center; transition: all .15s; }
