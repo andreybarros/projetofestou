@@ -177,6 +177,22 @@
           </table>
         </div>
 
+        <!-- Vínculo com Pedido de Compra -->
+        <div class="en-card pedido-link-card">
+          <div class="pedido-link-header">
+            <span class="material-symbols-outlined" style="color:#f59e0b;font-size:20px">shopping_cart</span>
+            <span class="pedido-link-title">Vincular a Pedido de Compra</span>
+            <span class="pedido-link-hint">(opcional)</span>
+          </div>
+          <select v-model="pedidoLinkPk" class="pedido-link-select">
+            <option :value="null">Nenhum — entrada avulsa</option>
+            <option v-for="p in pedidosAbertos" :key="p.pk" :value="p.pk">
+              #{{ p.numero }} — {{ p.fornecedores?.nome || 'Sem fornecedor' }}
+              ({{ labelStatusPedido(p.status) }})
+            </option>
+          </select>
+        </div>
+
         <!-- Ações -->
         <div class="en-actions">
           <button class="btn-ghost" @click="step = 1">Voltar</button>
@@ -296,6 +312,8 @@ let   toastTimer  = null;
 
 const carregandoHist = ref(false);
 const historico      = ref([]);
+const pedidoLinkPk   = ref(null);
+const pedidosAbertos = ref([]);
 
 const steps = ['Upload XML', 'Conferência', 'Concluído'];
 
@@ -430,7 +448,24 @@ function parseNFeXML(xmlStr) {
   };
 }
 
+async function carregarPedidosAbertos() {
+  try {
+    const { data } = await api.get('/api/pedidos-compra', {
+      params: { filial_pk: sessao.filial?.pk },
+    });
+    pedidosAbertos.value = (data.data || []).filter(p =>
+      p.status === 'em_andamento' || p.status === 'comprado'
+    );
+  } catch { pedidosAbertos.value = []; }
+}
+
+function labelStatusPedido(s) {
+  const m = { em_andamento: 'Em Andamento', comprado: 'Comprado' };
+  return m[s] || s;
+}
+
 async function buscarPreview(itensXml) {
+  carregarPedidosAbertos();
   try {
     const { data } = await api.post('/api/estoque/entrada-nf/preview', {
       filial_pk:       sessao.filial.pk,
@@ -509,6 +544,20 @@ async function confirmar() {
       })),
     });
     resultado.value = data;
+
+    if (pedidoLinkPk.value) {
+      try {
+        await api.patch(`/api/pedidos-compra/${pedidoLinkPk.value}/status`, {
+          status:          'finalizado',
+          nf_numero:       nf.value.numero_nf       || null,
+          nf_chave:        nf.value.chave_nfe        || null,
+          nf_fornecedor:   nf.value.fornecedor_nome  || null,
+          nf_data_entrada: nf.value.data_emissao     || null,
+          nf_valor:        nf.value.total_nf         || null,
+        });
+      } catch { /* vínculo falhou silenciosamente — não impede a entrada */ }
+    }
+
     step.value = 3;
   } catch (err) {
     toast('Erro ao confirmar: ' + (err.response?.data?.erro || err.message), 'err');
@@ -518,10 +567,12 @@ async function confirmar() {
 }
 
 function reiniciar() {
-  step.value      = 1;
-  itens.value     = [];
-  resultado.value = {};
-  erroXml.value   = '';
+  step.value       = 1;
+  itens.value      = [];
+  resultado.value  = {};
+  erroXml.value    = '';
+  pedidoLinkPk.value = null;
+  pedidosAbertos.value = [];
   nf.value = { fornecedor_cnpj: '', fornecedor_nome: '', numero_nf: '', chave_nfe: '', data_emissao: '', total_nf: 0 };
 }
 
@@ -651,6 +702,14 @@ function fmtDataHora(dt) {
 .en-alert .material-symbols-outlined { font-size: 20px; }
 .en-alert.err  { background: rgba(239,68,68,.1); color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
 .en-alert.warn { background: rgba(245,158,11,.1); color: #d97706; border: 1px solid rgba(245,158,11,.25); }
+
+/* Vínculo pedido de compra */
+.pedido-link-card { padding: 14px 18px; }
+.pedido-link-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pedido-link-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.pedido-link-hint  { font-size: 12px; color: var(--text2); }
+.pedido-link-select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg3); color: var(--text); font-size: 13px; outline: none; }
+.pedido-link-select:focus { border-color: var(--primary); }
 
 .en-info { display: flex; align-items: center; gap: 10px; color: var(--text2); font-size: .85rem; }
 

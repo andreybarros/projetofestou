@@ -35,7 +35,7 @@
           </RouterLink>
 
           <!-- Estoque -->
-          <div v-if="pode('produtos') || pode('categorias') || pode('clientes') || pode('fornecedores') || pode('armazens') || pode('entrada_nfe')" class="nav-section">
+          <div v-if="pode('produtos') || pode('categorias') || pode('clientes') || pode('fornecedores') || pode('armazens') || pode('entrada_nfe') || pode('pedidos_compra')" class="nav-section">
             <p class="section-title">Estoque</p>
             <RouterLink v-if="pode('produtos')"     to="/produtos"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">inventory_2</span><span class="nav-label">Produtos</span></RouterLink>
             <RouterLink v-if="pode('categorias')"   to="/categorias"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#facc15">label</span><span class="nav-label">Categorias</span></RouterLink>
@@ -43,6 +43,7 @@
             <RouterLink v-if="pode('fornecedores')" to="/fornecedores" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f59e0b">handshake</span><span class="nav-label">Fornecedores</span></RouterLink>
             <RouterLink v-if="pode('armazens')"     to="/armazens"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#22d3ee">warehouse</span><span class="nav-label">Armazéns</span></RouterLink>
             <RouterLink v-if="pode('entrada_nfe')" to="/entrada-nfe"  class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">move_to_inbox</span><span class="nav-label">Entrada de NF-e</span></RouterLink>
+            <RouterLink v-if="pode('pedidos_compra')" to="/pedidos-compra" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f59e0b">shopping_cart</span><span class="nav-label">Pedidos de Compra</span></RouterLink>
           </div>
 
           <!-- Agenda e Projetos -->
@@ -331,8 +332,9 @@ function pode(modulo) {
     dashboard: 'pdv', fornecedores: 'clientes',
     espelho: 'ponto', gestao_ponto: 'ponto', fech_ponto: 'funcionarios',
     criar_ordem: 'separacao', vales: 'funcionarios',
-    entrada_nfe: 'produtos',
-    projetos:    'agenda',
+    entrada_nfe:    'produtos',
+    projetos:       'agenda',
+    pedidos_compra: 'produtos',
   };
 
   // 1. FILIAL: bloqueia se a filial não tem o módulo (mesmo para admin)
@@ -371,8 +373,9 @@ function pode(modulo) {
     fech_ponto:   o.acesso_fechamento_ponto || o.acesso_funcionarios,
     rel_vendas:   o.acesso_relatorio_vendas || o.acesso_historico || o.acesso_pdv,
     vales:        o.acesso_vales,
-    entrada_nfe:  o.acesso_entrada_nfe,
-    projetos:     o.acesso_projetos,
+    entrada_nfe:    o.acesso_entrada_nfe,
+    projetos:       o.acesso_projetos,
+    pedidos_compra: o.acesso_pedidos_compra,
   };
   return !!mapa[modulo];
 }

@@ -9,7 +9,8 @@ const relatoriosRoutes = require('./relatorios');
 const pontoRoutes      = require('./ponto');
 const valesRoutes      = require('./vales');
 const iaRoutes         = require('./ia');
-const projetosRoutes   = require('./projetos');
+const projetosRoutes        = require('./projetos');
+const pedidosCompraRoutes   = require('./pedidosCompra');
 
 function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   // Health
@@ -31,7 +32,8 @@ function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   app.use('/api/ponto',   authMiddleware, permissoesMiddleware, pontoRoutes);
   app.use('/api/vales',  authMiddleware, permissoesMiddleware, valesRoutes);
   app.use('/api/ia',       authMiddleware, iaRoutes);
-  app.use('/api/projetos', authMiddleware, permissoesMiddleware, projetosRoutes);
+  app.use('/api/projetos',       authMiddleware, permissoesMiddleware, projetosRoutes);
+  app.use('/api/pedidos-compra', authMiddleware, permissoesMiddleware, pedidosCompraRoutes);
 }
 
 module.exports = setupRoutes;

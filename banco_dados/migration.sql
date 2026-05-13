@@ -1100,6 +1100,51 @@ END;
 $$;
 
 -- ============================================================
+-- Seção 22 — Pedidos de Compra
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS pedidos_compra (
+  pk              bigserial PRIMARY KEY,
+  numero          text NOT NULL,
+  filial_pk       bigint REFERENCES filiais(pk),
+  fornecedor_pk   bigint REFERENCES fornecedores(pk),
+  status          text DEFAULT 'em_andamento',
+  observacao      text,
+  nf_numero       text,
+  nf_serie        text,
+  nf_chave        text,
+  nf_fornecedor   text,
+  nf_data_entrada date,
+  nf_valor        numeric(12,2),
+  ativo           boolean DEFAULT true,
+  criado_em       timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS pedidos_compra_itens (
+  pk             bigserial PRIMARY KEY,
+  pedido_pk      bigint REFERENCES pedidos_compra(pk),
+  produto_pk     bigint REFERENCES produtos(pk),
+  quantidade     numeric(12,3) DEFAULT 0,
+  preco_unitario numeric(12,2) DEFAULT 0
+);
+
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_pedidos_compra boolean DEFAULT false;
+
+CREATE OR REPLACE FUNCTION proximo_numero_pedido_compra(p_filial_pk bigint)
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  v_max integer;
+BEGIN
+  SELECT COALESCE(MAX(numero::integer), 0)
+    INTO v_max
+    FROM pedidos_compra
+   WHERE filial_pk = p_filial_pk
+     AND numero ~ '^\d+$';
+  RETURN LPAD((v_max + 1)::text, 6, '0');
+END;
+$$;
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

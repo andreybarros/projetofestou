@@ -46,6 +46,8 @@ const AjustePrecos        = () => import('../views/AjustePrecos.vue');
 const EntradaNFe          = () => import('../views/EntradaNFe.vue');
 const Projetos            = () => import('../views/Projetos.vue');
 const FormProjeto         = () => import('../views/FormProjeto.vue');
+const PedidosCompra       = () => import('../views/PedidosCompra.vue');
+const FormPedidoCompra    = () => import('../views/FormPedidoCompra.vue');
 
 const routes = [
   { path: '/',                  name: 'Home',             component: Home,            meta: { requiresAuth: true } },
@@ -100,6 +102,9 @@ const routes = [
   { path: '/projetos',                  name: 'Projetos',       component: Projetos,    meta: { requiresAuth: true } },
   { path: '/projetos/novo',             name: 'NovoProjeto',    component: FormProjeto, meta: { requiresAuth: true } },
   { path: '/projetos/:pk/editar',       name: 'EditarProjeto',  component: FormProjeto, meta: { requiresAuth: true } },
+  { path: '/pedidos-compra',              name: 'PedidosCompra',      component: PedidosCompra,    meta: { requiresAuth: true } },
+  { path: '/pedidos-compra/novo',         name: 'NovoPedidoCompra',   component: FormPedidoCompra, meta: { requiresAuth: true } },
+  { path: '/pedidos-compra/:pk/editar',   name: 'EditarPedidoCompra', component: FormPedidoCompra, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({
