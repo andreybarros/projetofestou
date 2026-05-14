@@ -1591,11 +1591,18 @@ function aplicarDescCat(cd) {
   if (descontoMax > 0 && 10 > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
   }
+  const emPromo = vendaStore.itens.some(it => it.categoria_pk === cd.pk && itemEmPromo(it));
+  if (emPromo) {
+    toast('Categoria contém produto em promoção — desconto adicional não permitido.', 'err'); return;
+  }
   if (!validarDescontoCategoria(cd.pk, 10)) return;
   vendaStore.aplicarDescontoCategoria(cd.pk, 10);
 }
 
 function toggleDescItem(i, tipo = 'pct') {
+  if (itemEmPromo(vendaStore.itens[i])) {
+    toast('Produto em promoção — desconto adicional não permitido.', 'err'); return;
+  }
   if (itemDescAberto.value === i && itemDescTipo.value === tipo) {
     itemDescAberto.value = null;
   } else {
@@ -1634,6 +1641,11 @@ function aplicarDescontoItem(i) {
   if (!parametrosStore.getParam('venda_permite_desconto_sem_aprovacao', true)) {
     toast('Descontos desabilitados pelo administrador.', 'err'); return;
   }
+  const item = vendaStore.itens[i];
+  if (itemEmPromo(item)) {
+    toast('Produto em promoção — desconto adicional não permitido.', 'err');
+    itemDescAberto.value = null; return;
+  }
   const descontoMax = parametrosStore.getParam('pdv_desconto_maximo', 0);
   if (descontoMax > 0 && itemDescTipo.value === 'pct' && itemDescVal.value > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
@@ -1653,6 +1665,11 @@ function getPromoAtiva(p) {
   if (!p.preco_promo || !p.promo_inicio || !p.promo_fim) return false;
   const agora = new Date();
   return agora >= new Date(p.promo_inicio) && agora <= new Date(p.promo_fim);
+}
+
+function itemEmPromo(it) {
+  const p = todos.value.find(x => x.pk === it.produto_pk);
+  return p ? getPromoAtiva(p) : false;
 }
 
 function getPrecoEfetivo(p) {
