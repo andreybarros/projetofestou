@@ -36,6 +36,13 @@ const rotasPermissoes = {
   'PUT /api/pedidos-compra/:pk':                   'acesso_pedidos_compra',
   'PATCH /api/pedidos-compra/:pk/status':          'acesso_pedidos_compra',
   'DELETE /api/pedidos-compra/:pk':                'acesso_pedidos_compra',
+  'GET /api/contas-receber':                       'acesso_receitas',
+  'PATCH /api/contas-receber/:pk/receber':         'acesso_receitas',
+  'PATCH /api/contas-receber/:pk/desfazer':        'acesso_receitas',
+  'GET /api/pdv/produtos':                         'acesso_pdv',
+  'GET /api/pdv/categorias':                       'acesso_pdv',
+  'GET /api/pdv/vendedores':                       'acesso_pdv',
+  'GET /api/pdv/formas-pagamento':                 'acesso_pdv',
 };
 
 async function permissoesMiddleware(req, res, next) {

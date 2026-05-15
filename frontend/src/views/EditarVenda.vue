@@ -238,7 +238,6 @@ async function salvar() {
   salvando.value = true;
   try {
     const payload = {
-      cliente:        cliente.value        || null,
       cliente_pk:     cliente_pk.value     || null,
       cliente_codigo: cliente_codigo.value || null,
       vendedor:     vendedor.value     || null,

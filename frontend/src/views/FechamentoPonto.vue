@@ -568,7 +568,6 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import apiClient from '../services/api';
-import { supabase } from '../composables/useSupabase';
 
 const sessao     = useSessaoStore();
 const parametros = useParametrosStore();
@@ -703,36 +702,33 @@ async function abrirBatidas(d) {
 
 async function recarregarBatidas() {
   carregandoBatidas.value = true;
-  const { data } = await supabase
-    .from('registro_ponto')
-    .select('*')
-    .eq('funcionario_pk', funcSelecionado.value.pk)
-    .eq('data', batidasDtStr.value)
-    .order('hora');
-  batidasLista.value     = data || [];
-  carregandoBatidas.value = false;
+  try {
+    const { data } = await apiClient.get('/api/ponto/batidas-dia', {
+      params: { funcionario_pk: funcSelecionado.value.pk, data: batidasDtStr.value },
+    });
+    batidasLista.value = data.data || [];
+  } finally {
+    carregandoBatidas.value = false;
+  }
 }
 
 async function adicionarBatida() {
   if (!novaBatidaHora.value) return;
   adicionandoBatida.value = true;
   try {
-    const { error } = await supabase.from('registro_ponto').insert({
+    await apiClient.post('/api/ponto/batida-manual', {
       filial_pk:      sessao.filial?.pk || null,
       funcionario_pk: funcSelecionado.value.pk,
       matricula:      funcSelecionado.value.matricula || '',
       tipo:           novaBatidaTipo.value + '_manual',
       data:           batidasDtStr.value,
       hora:           novaBatidaHora.value + ':00',
-      latitude:       null,
-      longitude:      null,
     });
-    if (error) throw error;
     novaBatidaHora.value = '';
     await recarregarBatidas();
     await carregar();
   } catch (e) {
-    toast('Erro ao adicionar: ' + e.message, 'err');
+    toast('Erro ao adicionar: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     adicionandoBatida.value = false;
   }
@@ -740,10 +736,13 @@ async function adicionarBatida() {
 
 async function removerBatida(b) {
   if (!confirm(`Remover batida de ${tipoBaseBatida(b.tipo)} às ${b.hora.substring(0, 5)}?`)) return;
-  const { error } = await supabase.from('registro_ponto').delete().eq('pk', b.pk);
-  if (error) { toast('Erro ao remover: ' + error.message, 'err'); return; }
-  await recarregarBatidas();
-  await carregar();
+  try {
+    await apiClient.delete(`/api/ponto/batidas/${b.pk}`);
+    await recarregarBatidas();
+    await carregar();
+  } catch (e) {
+    toast('Erro ao remover: ' + (e.response?.data?.erro || e.message), 'err');
+  }
 }
 
 function fecharBatidas() { modalBatidas.value = false; }
@@ -855,38 +854,21 @@ const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 async function carregarLista() {
   carregandoLista.value = true;
   try {
-    let q = supabase.from('funcionarios').select('*').eq('ativo', true).order('nome');
-    if (sessao.filial?.pk) q = q.or(`filial_pk.eq.${sessao.filial.pk},filial_pk.is.null`);
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-    await carregarUltimosFechamentos(data || []);
+    const { data } = await apiClient.get('/api/ponto/funcionarios', {
+      params: { filial_pk: sessao.filial?.pk },
+    });
+    lista.value = data.data || [];
+    const map = {};
+    Object.entries(data.ultimosFech || {}).forEach(([pk, r]) => {
+      const q = r.quinzena === 1 ? '1ª Qnz' : '2ª Qnz';
+      map[pk] = `${q} ${meses[r.mes - 1].substring(0, 3)}/${r.ano}${r.bloqueado ? ' 🔒' : ''}`;
+    });
+    ultimosFech.value = map;
   } catch (e) {
-    toast('Erro ao carregar: ' + e.message, 'err');
+    toast('Erro ao carregar: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     carregandoLista.value = false;
   }
-}
-
-async function carregarUltimosFechamentos(funcs) {
-  if (!funcs.length) return;
-  const pks = funcs.map(f => f.pk);
-  const { data } = await supabase
-    .from('fechamento_ponto')
-    .select('funcionario_pk, mes, ano, quinzena, bloqueado')
-    .in('funcionario_pk', pks)
-    .order('ano', { ascending: false })
-    .order('mes', { ascending: false })
-    .order('quinzena', { ascending: false });
-  if (!data) return;
-  const map = {};
-  data.forEach(r => {
-    if (!map[r.funcionario_pk]) {
-      const q = r.quinzena === 1 ? '1ª Qnz' : '2ª Qnz';
-      map[r.funcionario_pk] = `${q} ${meses[r.mes - 1].substring(0,3)}/${r.ano}${r.bloqueado ? ' 🔒' : ''}`;
-    }
-  });
-  ultimosFech.value = map;
 }
 
 // ── Selecionar funcionário ─────────────────────────────────────────────────
@@ -913,26 +895,15 @@ function selecionarFunc(f) {
 async function carregarValesPendentes() {
   const func = funcSelecionado.value;
   if (!func) return;
-
-  const [r1, r2] = await Promise.all([
-    supabase.from('vales').select('*')
-      .eq('funcionario_pk', func.pk)
-      .in('status', ['aprovado', 'pago'])
-      .order('solicitado_em'),
-    supabase.from('vales').select('*')
-      .is('funcionario_pk', null)
-      .ilike('funcionario_nome', func.nome)
-      .in('status', ['aprovado', 'pago'])
-      .order('solicitado_em'),
-  ]);
-
-  const todos = [...(r1.data || []), ...(r2.data || [])];
-  const seen  = new Set();
-  const uniq  = todos.filter(v => { if (seen.has(v.pk)) return false; seen.add(v.pk); return true; });
-
-  valesPendentes.value = uniq.filter(v =>
-    !valesParaDescontar.value.some(vd => vd.vale.pk === v.pk)
-  );
+  try {
+    const { data } = await apiClient.get('/api/ponto/vales-funcionario', {
+      params: { funcionario_pk: func.pk, nome: func.nome },
+    });
+    const uniq = (data.data || []);
+    valesPendentes.value = uniq.filter(v =>
+      !valesParaDescontar.value.some(vd => vd.vale.pk === v.pk)
+    );
+  } catch { /* não bloqueia */ }
 }
 
 function incluirValeComoDesconto(v) {
@@ -978,55 +949,33 @@ async function carregar() {
     ? `${a1}-${String(m1).padStart(2,'0')}-15`
     : new Date(a1, m1, 0).toISOString().split('T')[0];
 
-  // 1. Fechamento existente
-  const { data: fch } = await supabase.from('fechamento_ponto')
-    .select('*').eq('funcionario_pk', func.pk)
-    .eq('mes', m1).eq('ano', a1).eq('quinzena', q1).maybeSingle();
+  const { data: resp } = await apiClient.get('/api/ponto/fechamento-dados', {
+    params: { funcionario_pk: func.pk, mes: m1, ano: a1, quinzena: q1 },
+  });
 
-  bloqueado.value     = fch?.bloqueado    ?? false;
-  espelhoStatus.value = fch?.espelho_status ?? 'rascunho';
+  const fch = resp.fechamento;
+  bloqueado.value     = fch?.bloqueado         ?? false;
+  espelhoStatus.value = fch?.espelho_status     ?? 'rascunho';
   espelhoObs.value    = fch?.espelho_observacao ?? '';
-  fechPk.value        = fch?.pk ?? null;
+  fechPk.value        = fch?.pk                ?? null;
 
   if (fch) {
-    pagarHorasNormal.value = fch.qtd_horas_extras_normais || 0;
+    pagarHorasNormal.value  = fch.qtd_horas_extras_normais || 0;
     pagarHorasDomingo.value = fch.qtd_horas_extras_domingo || 0;
-    // Fallback para registros antigos que usavam apenas um campo
     if (!fch.qtd_horas_extras_normais && !fch.qtd_horas_extras_domingo && fch.qtd_horas_pagas) {
       pagarHorasNormal.value = fch.qtd_horas_pagas;
     }
   } else {
-    pagarHorasNormal.value = 0;
+    pagarHorasNormal.value  = 0;
     pagarHorasDomingo.value = 0;
   }
 
-  // 2. Saldo anterior (quinzena anterior)
-  const antQ = q1 === 1 ? 2 : 1;
-  const antM = q1 === 1 ? (m1 === 1 ? 12 : m1 - 1) : m1;
-  const antA = q1 === 1 ? (m1 === 1 ? a1 - 1 : a1) : a1;
-  const { data: fchAnt } = await supabase.from('fechamento_ponto')
-    .select('saldo_acumulado').eq('funcionario_pk', func.pk)
-    .eq('mes', antM).eq('ano', antA).eq('quinzena', antQ).maybeSingle();
-  const saldoAntRaw = fchAnt?.saldo_acumulado ?? (func.saldo_inicial_banco || 0);
+  const saldoAntRaw = resp.saldo_acumulado_anterior ?? (func.saldo_inicial_banco || 0);
   summaries.value.saldoAnt = Math.max(0, saldoAntRaw);
 
-  // 3. Batidas e justificativas
-  const [resP, resJ] = await Promise.all([
-    supabase.from('registro_ponto').select('*').eq('funcionario_pk', func.pk)
-      .gte('data', dataIni).lte('data', dataFim).order('data').order('hora'),
-    supabase.from('justificativas_ponto').select('*').eq('funcionario_pk', func.pk)
-      .gte('data', dataIni).lte('data', dataFim),
-  ]);
-  punches.value = resP.data || [];
-  justs.value   = resJ.data || [];
-
-  // 4. Descontos
-  if (fch?.pk) {
-    const { data: desc } = await supabase.from('descontos_fechamento').select('*').eq('fechamento_pk', fch.pk);
-    descontos.value = desc || [];
-  } else {
-    descontos.value = [];
-  }
+  punches.value   = resp.punches  || [];
+  justs.value     = resp.justs    || [];
+  descontos.value = resp.descontos || [];
 
   processar(a1, m1, q1, dataIni, dataFim);
   carregandoFech.value = false;
@@ -1184,18 +1133,13 @@ function fecharJust() { modalJust.value = false; }
 async function salvarJustificativa() {
   salvandoJust.value = true;
   try {
-    if (!justTipo.value) {
-      await supabase.from('justificativas_ponto').delete()
-        .eq('funcionario_pk', funcSelecionado.value.pk).eq('data', justDtStr.value);
-    } else {
-      await supabase.from('justificativas_ponto').upsert({
-        funcionario_pk: funcSelecionado.value.pk,
-        filial_pk:      sessao.filial?.pk || null,
-        data:           justDtStr.value,
-        tipo:           justTipo.value,
-        observacoes:    justObs.value,
-      }, { onConflict: 'funcionario_pk, data' });
-    }
+    await apiClient.post('/api/ponto/justificativa', {
+      funcionario_pk: funcSelecionado.value.pk,
+      filial_pk:      sessao.filial?.pk || null,
+      data:           justDtStr.value,
+      tipo:           justTipo.value || '',
+      observacoes:    justObs.value,
+    });
     fecharJust();
     await carregar();
   } catch (e) {
@@ -1211,13 +1155,11 @@ async function enviarEspelho() {
   salvando.value = true;
   try {
     const payload = buildPayload(saldoFinal.value, false, 'enviado', null, null);
-    const { error } = await supabase.from('fechamento_ponto')
-      .upsert(payload, { onConflict: 'funcionario_pk, mes, ano, quinzena' });
-    if (error) throw error;
+    await apiClient.post('/api/ponto/espelho', { payload });
     toast('Espelho enviado para aprovação!');
     await carregar();
   } catch (e) {
-    toast('Erro ao enviar espelho: ' + e.message, 'err', 6000);
+    toast('Erro ao enviar espelho: ' + (e.response?.data?.erro || e.message), 'err', 6000);
   } finally {
     salvando.value = false;
   }
@@ -1289,13 +1231,16 @@ function buildPayload(saldoFinal, isBloqueado, espStatus, espObs, espAprovadoEm)
 // ── Desbloquear ────────────────────────────────────────────────────────────
 async function desbloquear() {
   if (!confirm('Reabrir este período permitirá novas alterações. Continuar?')) return;
-  const { error } = await supabase.from('fechamento_ponto')
-    .update({ bloqueado: false })
-    .eq('funcionario_pk', funcSelecionado.value.pk)
-    .eq('mes', mes.value).eq('ano', ano.value).eq('quinzena', quinzena.value);
-  if (error) { toast('Erro ao reabrir: ' + error.message, 'err'); return; }
-  toast('Período reaberto.');
-  await carregar();
+  try {
+    await apiClient.patch('/api/ponto/desbloquear', {
+      funcionario_pk: funcSelecionado.value.pk,
+      mes: mes.value, ano: ano.value, quinzena: quinzena.value,
+    });
+    toast('Período reaberto.');
+    await carregar();
+  } catch (e) {
+    toast('Erro ao reabrir: ' + (e.response?.data?.erro || e.message), 'err');
+  }
 }
 
 onMounted(carregarLista);

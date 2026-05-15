@@ -84,17 +84,17 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="v in filtrados" :key="v.pk" :class="['cr-row', statusConta(v)]">
+          <tr v-for="v in filtrados" :key="v.pk" :class="['cr-row', v.status_calc]">
             <td class="td-num">#{{ v.numero }}</td>
-            <td class="td-cliente">{{ v.cliente || '—' }}</td>
+            <td class="td-cliente">{{ v.cliente_nome || '—' }}</td>
             <td class="td-muted">{{ v.vendedor || '—' }}</td>
             <td class="td-muted td-mono">{{ fmtDate(v.criado_em) }}</td>
-            <td class="td-mono" :class="{ 'td-venc': statusConta(v) === 'vencido' }">
+            <td class="td-mono" :class="{ 'td-venc': v.status_calc === 'vencido' }">
               {{ fmtDateOnly(v.data_vencimento_crediario) }}
             </td>
-            <td class="td-val">{{ fmt(valorCrediario(v)) }}</td>
+            <td class="td-val">{{ fmt(v.valor_crediario) }}</td>
             <td>
-              <span :class="['badge', statusConta(v)]">{{ labelStatus(statusConta(v)) }}</span>
+              <span :class="['badge', v.status_calc]">{{ labelStatus(v.status_calc) }}</span>
             </td>
             <td v-if="temFormaRecebimento" class="td-muted td-forma">
               {{ v.forma_recebimento ? (formaLabel[v.forma_recebimento] || v.forma_recebimento) : '—' }}
@@ -144,7 +144,7 @@
           <div class="modal-info">
             <span class="modal-label">Venda #{{ recebModal.numero }}</span>
             <span class="modal-valor">{{ fmt(recebModal.total) }}</span>
-            <span class="modal-cliente">{{ recebModal.cliente || 'Cliente não informado' }}</span>
+            <span class="modal-cliente">{{ recebModal.cliente_nome || 'Cliente não informado' }}</span>
           </div>
           <div class="modal-field">
             <label class="modal-field-label">Forma de recebimento</label>
@@ -196,20 +196,22 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
+import apiClient from '../services/api';
 
 const sessaoStore  = useSessaoStore();
 const lista        = ref([]);
 const carregando   = ref(true);
 const busca        = ref('');
 const filtroStatus = ref('');
-const recebendoPk       = ref(null);
-const temFormaRecebimento = ref(false);
-const recebModal     = ref(null);
-const desfazModal    = ref(null);
+const recebendoPk      = ref(null);
+const recebModal       = ref(null);
+const desfazModal      = ref(null);
 const formaRecebimento = ref('');
-const toastMsg       = ref('');
-const toastTipo      = ref('ok');
-let   _toastTimer    = null;
+const toastMsg         = ref('');
+const toastTipo        = ref('ok');
+let   _toastTimer      = null;
+
+const totais = ref({ totalPendente: 0, totalVencido: 0, totalRecebido: 0 });
 
 const formas = ref([]);
 
@@ -219,19 +221,11 @@ const formaLabel = computed(() => {
   return m;
 });
 
-const hoje = new Date().toISOString().slice(0, 10);
-
 function toast(msg, tipo = 'ok', dur = 3500) {
   clearTimeout(_toastTimer);
   toastMsg.value  = msg;
   toastTipo.value = tipo;
   _toastTimer = setTimeout(() => { toastMsg.value = ''; }, dur);
-}
-
-function statusConta(v) {
-  if (v.status_crediario === 'recebido') return 'recebido';
-  if (v.data_vencimento_crediario && v.data_vencimento_crediario < hoje) return 'vencido';
-  return 'pendente';
 }
 
 function labelStatus(s) {
@@ -242,71 +236,50 @@ const filtrados = computed(() => {
   let l = lista.value;
   const q = busca.value.trim().toLowerCase();
   if (q) l = l.filter(v =>
-    (v.cliente || '').toLowerCase().includes(q) ||
+    (v.cliente_nome || '').toLowerCase().includes(q) ||
     String(v.numero).includes(q)
   );
-  if (filtroStatus.value) l = l.filter(v => statusConta(v) === filtroStatus.value);
+  if (filtroStatus.value) l = l.filter(v => v.status_calc === filtroStatus.value);
   return l;
 });
 
-const totalPendente  = computed(() => lista.value.filter(v => statusConta(v) === 'pendente').reduce((s, v) => s + parseFloat(v.total || 0), 0));
-const totalVencido   = computed(() => lista.value.filter(v => statusConta(v) === 'vencido').reduce((s, v) => s + parseFloat(v.total || 0), 0));
-const totalRecebido  = computed(() => lista.value.filter(v => statusConta(v) === 'recebido').reduce((s, v) => s + parseFloat(v.total || 0), 0));
-const contPendente   = computed(() => lista.value.filter(v => statusConta(v) === 'pendente').length);
-const contVencido    = computed(() => lista.value.filter(v => statusConta(v) === 'vencido').length);
-const contRecebido   = computed(() => lista.value.filter(v => statusConta(v) === 'recebido').length);
+const totalPendente = computed(() => totais.value.totalPendente);
+const totalVencido  = computed(() => totais.value.totalVencido);
+const totalRecebido = computed(() => totais.value.totalRecebido);
+const contPendente  = computed(() => lista.value.filter(v => v.status_calc === 'pendente').length);
+const contVencido   = computed(() => lista.value.filter(v => v.status_calc === 'vencido').length);
+const contRecebido  = computed(() => lista.value.filter(v => v.status_calc === 'recebido').length);
+const temFormaRecebimento = computed(() => lista.value.some(v => v.forma_recebimento));
 
 onMounted(carregar);
 
 async function carregar() {
   carregando.value = true;
   try {
-    const resultado = await tentarCarregar(true);
-    if (resultado.error?.code === '42703') {
-      // coluna forma_recebimento ainda não existe — busca sem ela
-      const fallback = await tentarCarregar(false);
-      if (fallback.error) throw fallback.error;
-      lista.value = fallback.data || [];
-      temFormaRecebimento.value = false;
-    } else {
-      if (resultado.error) throw resultado.error;
-      lista.value = resultado.data || [];
-      temFormaRecebimento.value = true;
-    }
-    const { data: fp } = await supabase
-      .from('formas_pagamento')
-      .select('pk, forma, label, icone')
-      .eq('filial_pk', sessaoStore.filial.pk)
-      .eq('ativo', true)
-      .order('ordem');
-    formas.value = (fp || []).map(f => ({ val: f.forma, label: f.label, ico: f.icone }));
+    const [resLista, resFormas] = await Promise.all([
+      apiClient.get('/api/contas-receber', {
+        params: { filial_pk: sessaoStore.filial?.pk }
+      }),
+      supabase
+        .from('formas_pagamento')
+        .select('pk, forma, label, icone')
+        .eq('filial_pk', sessaoStore.filial.pk)
+        .eq('ativo', true)
+        .order('ordem'),
+    ]);
+
+    lista.value  = resLista.data.data || [];
+    totais.value = {
+      totalPendente: resLista.data.totalPendente || 0,
+      totalVencido:  resLista.data.totalVencido  || 0,
+      totalRecebido: resLista.data.totalRecebido || 0,
+    };
+    formas.value = (resFormas.data || []).map(f => ({ val: f.forma, label: f.label, ico: f.icone }));
   } catch (e) {
-    toast('Erro ao carregar: ' + e.message, 'err');
+    toast('Erro ao carregar: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     carregando.value = false;
   }
-}
-
-async function tentarCarregar(comForma) {
-  const campos = comForma
-    ? 'pk, numero, criado_em, cliente, vendedor, total, status_crediario, data_vencimento_crediario, forma_recebimento, pagamentos_venda(forma, valor)'
-    : 'pk, numero, criado_em, cliente, vendedor, total, status_crediario, data_vencimento_crediario, pagamentos_venda(forma, valor)';
-  let q = supabase
-    .from('vendas')
-    .select(campos)
-    .eq('ativo', true)
-    .not('data_vencimento_crediario', 'is', null)
-    .order('data_vencimento_crediario', { ascending: true });
-  if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-  return await q;
-}
-
-function valorCrediario(v) {
-  const pags = v.pagamentos_venda || [];
-  const soma = pags
-    .filter(p => String(p.forma).toLowerCase() === 'crediario')
-    .reduce((s, p) => s + parseFloat(p.valor || 0), 0);
-  return soma > 0 ? soma : parseFloat(v.total || 0);
 }
 
 function receber(v) {
@@ -322,24 +295,27 @@ async function confirmarReceber() {
   const v = recebModal.value;
   recebModal.value = null;
   recebendoPk.value = v.pk;
-  const { error } = await supabase.from('vendas')
-    .update({ status_crediario: 'recebido', forma_recebimento: formaRecebimento.value })
-    .eq('pk', v.pk);
-  recebendoPk.value = null;
-  if (error) { toast('Erro: ' + error.message, 'err'); return; }
-  toast(`Venda #${v.numero} recebida via ${formaLabel.value[formaRecebimento.value] || formaRecebimento.value}.`);
-  await carregar();
+  try {
+    await apiClient.patch(`/api/contas-receber/${v.pk}/receber`, { forma_recebimento: formaRecebimento.value });
+    toast(`Venda #${v.numero} recebida via ${formaLabel.value[formaRecebimento.value] || formaRecebimento.value}.`);
+    await carregar();
+  } catch (e) {
+    toast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
+  } finally {
+    recebendoPk.value = null;
+  }
 }
 
 async function confirmarDesfazer() {
   const v = desfazModal.value;
   desfazModal.value = null;
-  const { error } = await supabase.from('vendas')
-    .update({ status_crediario: 'pendente', forma_recebimento: null })
-    .eq('pk', v.pk);
-  if (error) { toast('Erro: ' + error.message, 'err'); return; }
-  toast(`Venda #${v.numero} voltou para pendente.`);
-  await carregar();
+  try {
+    await apiClient.patch(`/api/contas-receber/${v.pk}/desfazer`);
+    toast(`Venda #${v.numero} voltou para pendente.`);
+    await carregar();
+  } catch (e) {
+    toast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
+  }
 }
 
 function fmt(v) {

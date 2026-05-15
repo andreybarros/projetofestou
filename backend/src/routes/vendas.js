@@ -77,7 +77,6 @@ router.post('/finalizar', async (req, res) => {
     const {
       filial_pk,
       operador,
-      cliente,
       cliente_pk,
       cliente_codigo,
       vendedor,
@@ -110,7 +109,6 @@ router.post('/finalizar', async (req, res) => {
     const payloadVenda = {
       filial_pk: filial_pk || null,
       numero,
-      cliente:        cliente        || null,
       cliente_pk:     cliente_pk     || null,
       cliente_codigo: cliente_codigo || null,
       vendedor:       vendedor       || null,
@@ -149,7 +147,7 @@ router.post('/finalizar', async (req, res) => {
         .maybeSingle();
       const exigeCliente = paramCliente ? paramCliente.valor !== 'false' : true;
 
-      if (exigeCliente && !cliente) return res.status(400).json({ erro: "Crediário exige um cliente selecionado." });
+      if (exigeCliente && !cliente_pk) return res.status(400).json({ erro: "Crediário exige um cliente selecionado." });
 
       payloadVenda.data_vencimento_crediario = data_vencimento_crediario;
       payloadVenda.status_crediario = 'pendente';
@@ -313,7 +311,7 @@ router.get('/', async (req, res) => {
     
     let q = supabase
       .from('vendas')
-      .select('pk, numero, criado_em, cliente, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk', { count: 'exact' })
+      .select('pk, numero, criado_em, cliente, cliente_pk, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_dh_emissao, nfce_ref, nfce_danfe, filial_pk, clientes(nome)', { count: 'exact' })
       .eq('ativo', true);
 
     if (filial_pk && filial_pk !== 'undefined' && filial_pk !== 'null' && filial_pk !== '') {
@@ -331,12 +329,18 @@ router.get('/', async (req, res) => {
 
     if (busca && busca.trim() !== "") {
       const b = busca.trim();
+      // Busca clientes pelo nome para incluir PKs novos registros
+      const { data: cliMatch } = await supabase
+        .from('clientes')
+        .select('pk')
+        .ilike('nome', `%${b}%`);
+      const cliPks = (cliMatch || []).map(c => c.pk);
+
       const isNum = !isNaN(b);
-      if (isNum) {
-        q = q.or(`numero.eq.${b},cliente.ilike.%${b}%,operador.ilike.%${b}%`);
-      } else {
-        q = q.or(`cliente.ilike.%${b}%,operador.ilike.%${b}%`);
-      }
+      let orParts = [`operador.ilike.%${b}%`, `cliente.ilike.%${b}%`];
+      if (isNum) orParts.push(`numero.eq.${b}`);
+      if (cliPks.length) orParts.push(`cliente_pk.in.(${cliPks.join(',')})`);
+      q = q.or(orParts.join(','));
     }
 
     q = q.order('criado_em', { ascending: false })
@@ -348,7 +352,13 @@ router.get('/', async (req, res) => {
       throw error;
     }
 
-    res.json({ data: data || [], count: count || 0 });
+    // Resolve nome do cliente: cadastro atual > snapshot antigo
+    const rows = (data || []).map(v => ({
+      ...v,
+      cliente_nome: v.clientes?.nome || v.cliente || null,
+    }));
+
+    res.json({ data: rows, count: count || 0 });
   } catch (err) {
     console.error('[Vendas/Listar] Erro:', err);
     res.status(500).json({ erro: err.message });
@@ -359,7 +369,7 @@ router.put('/:pk', async (req, res) => {
   try {
     const { pk } = req.params;
     const {
-      cliente, cliente_pk, cliente_codigo, vendedor, vendedor_pk,
+      cliente_pk, cliente_codigo, vendedor, vendedor_pk,
       itens, pagamentos, subtotal, desconto_total, total,
       tipo_venda, canal_venda,
       data_locacao, data_devolucao_prevista, data_vencimento_crediario,
@@ -386,7 +396,6 @@ router.put('/:pk', async (req, res) => {
     await supabase.from('pagamentos_venda').delete().eq('venda_pk', pk);
 
     const payloadVenda = {
-      cliente:        cliente        || null,
       cliente_pk:     cliente_pk     || null,
       cliente_codigo: cliente_codigo || null,
       vendedor:       vendedor       || null,

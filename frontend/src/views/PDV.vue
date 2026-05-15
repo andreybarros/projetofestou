@@ -1160,9 +1160,8 @@ async function ncliSalvar() {
       uf:         ncli.value.uf?.trim()?.toUpperCase() || null,
       filial_pk:  sessaoStore.filial?.pk || null,
     };
-    const { data, error } = await supabase.from('clientes').insert(payload).select().single();
-    if (error) throw error;
-    clienteSel.value = data;
+    const res = await apiClient.post('/api/clientes', payload);
+    clienteSel.value = res.data.data;
     clienteBusca.value = '';
     modalNovoCliente.value = false;
   } catch (e) {
@@ -1247,6 +1246,13 @@ watch(() => vendaStore.faltaPagar, (val) => {
   }
 }, { immediate: false });
 
+// Preenche ao abrir a aba de pagamento
+watch(cartTab, (tab) => {
+  if (tab === 2 && vendaStore.pagamentos.length === 0) {
+    preencherValorPag(parseFloat(vendaStore.faltaPagar) || 0);
+  }
+});
+
 // ── Mount ─────────────────────────────────────────────────────
 function onHotkey(e) {
   if (e.key === 'Escape') { e.preventDefault(); limpar(); }
@@ -1301,15 +1307,10 @@ onUnmounted(() => {
 async function loadProdutos() {
   carregando.value = true;
   try {
-    let q = supabase
-      .from('produtos')
-      .select('pk, codigo, descricao, valor_venda, preco_promo, promo_inicio, promo_fim, saldo, categoria_pk, foto_url, codigo_barras, ncm, cfop, csosn, unidade_comercial')
-      .order('descricao');
-    if (sessaoStore.filial?.pk)
-      q = q.eq('filial_pk', sessaoStore.filial.pk);
-    const { data, error } = await q;
-    if (error) throw error;
-    todos.value = data || [];
+    const { data } = await apiClient.get('/api/pdv/produtos', {
+      params: { filial_pk: sessaoStore.filial?.pk },
+    });
+    todos.value = data.data || [];
   } catch (e) {
     console.error('Produtos:', e.message);
   } finally {
@@ -1326,18 +1327,21 @@ async function recarregarProdutos() {
 }
 
 async function loadVendedores() {
-  let q = supabase.from('vendedores').select('pk, nome').eq('ativo', true).order('nome');
-  if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-  const { data } = await q;
-  vendedores.value = data || [];
+  try {
+    const { data } = await apiClient.get('/api/pdv/vendedores', {
+      params: { filial_pk: sessaoStore.filial?.pk },
+    });
+    vendedores.value = data.data || [];
+  } catch { /* não bloqueia o PDV */ }
 }
 
 async function loadCategorias() {
-  let q = supabase.from('categorias').select('pk, nome, desconto_somente_decorador').order('nome');
-  if (sessaoStore.filial?.pk)
-    q = q.eq('filial_pk', sessaoStore.filial.pk);
-  const { data } = await q;
-  categorias.value = data || [];
+  try {
+    const { data } = await apiClient.get('/api/pdv/categorias', {
+      params: { filial_pk: sessaoStore.filial?.pk },
+    });
+    categorias.value = data.data || [];
+  } catch { /* não bloqueia o PDV */ }
 }
 
 const categoriasMap = computed(() => {
@@ -1363,21 +1367,24 @@ async function checkCaixa() {
 async function loadFormasPagamento() {
   const fil = sessaoStore.filial?.pk;
   if (!fil) return;
-  const { data } = await supabase
-    .from('formas_pagamento')
-    .select('*')
-    .eq('filial_pk', fil)
-    .eq('ativo', true)
-    .order('ordem');
-
-  formasPagamento.value = data?.length ? data : [
-    { pk: 'dinheiro',  forma: 'dinheiro',  label: 'Dinheiro',  icone: '💵', ordem: 1 },
-    { pk: 'pix',       forma: 'pix',       label: 'PIX',       icone: '📱', ordem: 2 },
-    { pk: 'debito',    forma: 'debito',    label: 'Débito',    icone: '💳', ordem: 3 },
-    { pk: 'credito',   forma: 'credito',   label: 'Crédito',   icone: '💳', ordem: 4 },
-    { pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 5 },
-  ];
-
+  try {
+    const { data } = await apiClient.get('/api/pdv/formas-pagamento', { params: { filial_pk: fil } });
+    formasPagamento.value = data.data?.length ? data.data : [
+      { pk: 'dinheiro',  forma: 'dinheiro',  label: 'Dinheiro',  icone: '💵', ordem: 1 },
+      { pk: 'pix',       forma: 'pix',       label: 'PIX',       icone: '📱', ordem: 2 },
+      { pk: 'debito',    forma: 'debito',    label: 'Débito',    icone: '💳', ordem: 3 },
+      { pk: 'credito',   forma: 'credito',   label: 'Crédito',   icone: '💳', ordem: 4 },
+      { pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 5 },
+    ];
+  } catch {
+    formasPagamento.value = [
+      { pk: 'dinheiro',  forma: 'dinheiro',  label: 'Dinheiro',  icone: '💵', ordem: 1 },
+      { pk: 'pix',       forma: 'pix',       label: 'PIX',       icone: '📱', ordem: 2 },
+      { pk: 'debito',    forma: 'debito',    label: 'Débito',    icone: '💳', ordem: 3 },
+      { pk: 'credito',   forma: 'credito',   label: 'Crédito',   icone: '💳', ordem: 4 },
+      { pk: 'crediario', forma: 'crediario', label: 'Crediário', icone: '🧾', ordem: 5 },
+    ];
+  }
   if (!formasPagamento.value.some(f => f.forma === formaPag.value)) {
     formaPag.value = formasPagamento.value[0]?.forma || 'dinheiro';
   }
@@ -1532,15 +1539,10 @@ function buscarClientes() {
   _clienteTimer = setTimeout(async () => {
     buscandoCliente.value = true;
     try {
-      const q = clienteBusca.value.trim();
-      const { data } = await supabase
-        .from('clientes')
-        .select('pk, nome, cpf, telefone, decorador, logradouro, numero, bairro, cep')
-        .eq('ativo', true)
-        .or(`nome.ilike.%${q}%,cpf.ilike.%${q}%,telefone.ilike.%${q}%`)
-        .order('nome')
-        .limit(8);
-      clienteResultados.value = data || [];
+      const { data } = await apiClient.get('/api/clientes', {
+        params: { busca: clienteBusca.value.trim(), filial_pk: sessaoStore.filial?.pk },
+      });
+      clienteResultados.value = data.data || [];
     } finally {
       buscandoCliente.value = false;
     }
@@ -1650,7 +1652,6 @@ function aplicarDescontoItem(i) {
   if (descontoMax > 0 && itemDescTipo.value === 'pct' && itemDescVal.value > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
   }
-  const item = vendaStore.itens[i];
   let pct = itemDescVal.value;
   if (itemDescTipo.value === 'val') {
     const bruto = Number(item.qtd || 1) * Number(item.preco_unitario || 0);
@@ -2023,7 +2024,6 @@ async function finalizar() {
       desconto_total: vendaStore.desconto,
       acrescimo:      vendaStore.acrescimo,
       total:          vendaStore.total,
-      cliente:        clienteSel.value?.nome   || null,
       cliente_pk:     clienteSel.value?.pk     || null,
       cliente_codigo: clienteSel.value?.codigo || null,
       vendedor:       vendedorSel.value?.nome || null,

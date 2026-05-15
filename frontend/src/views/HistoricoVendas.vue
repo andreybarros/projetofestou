@@ -67,7 +67,7 @@
           <tr v-for="v in vendas" :key="v.pk" @click="abrirDetalhe(v)">
             <td class="col-num">#{{ v.numero }}</td>
             <td class="col-date">{{ fmtDate(v.criado_em) }}</td>
-            <td class="col-client">{{ v.cliente || "Consumidor Final" }}</td>
+            <td class="col-client">{{ v.cliente_nome || "Consumidor Final" }}</td>
             <td class="col-op">{{ v.vendedor || v.operador || "—" }}</td>
             <td>
               <span :class="['type-pill', v.tipo_venda === 'locacao' ? 'loc' : 'vnd']">
@@ -93,6 +93,10 @@
                 <button v-if="v.tipo_venda !== 'locacao'"
                   @click="abrirDetalheEImprimir(v)" class="action-btn print" title="Reimprimir Recibo">
                   <span class="material-symbols-outlined">print</span>
+                </button>
+                <button v-if="v.tipo_venda === 'locacao'"
+                  @click="abrirDetalheEImprimirContrato(v)" class="action-btn print" title="Reimprimir Contrato">
+                  <span class="material-symbols-outlined">description</span>
                 </button>
                 <button v-if="v.status === 'finalizada'"
                   @click="confirmarDevolucao(v)" class="action-btn return" title="Devolução">
@@ -137,7 +141,7 @@
                 </span>
                 <span class="det-sub-item">
                   <span class="material-symbols-outlined">person</span>
-                  {{ detalhe.cliente || 'Consumidor Final' }}
+                  {{ detalhe.cliente_nome || 'Consumidor Final' }}
                 </span>
                 <span v-if="detalhe.vendedor || detalhe.operador" class="det-sub-item">
                   <span class="material-symbols-outlined">badge</span>
@@ -292,6 +296,10 @@
                 <span class="material-symbols-outlined">print</span>
                 Reimprimir
               </button>
+              <button v-if="detalhe.tipo_venda === 'locacao'" @click="reimprimirContrato" class="det-btn-print" :disabled="detalheCarregando">
+                <span class="material-symbols-outlined">description</span>
+                Reimprimir Contrato
+              </button>
               <button v-if="!detalhe.nfce_chave && detalhe.status === 'finalizada'"
                 @click="emitirNFCeDetalhe" class="det-btn-nfce" :disabled="emitindoPk === detalhe.pk">
                 <span class="material-symbols-outlined" :style="emitindoPk === detalhe.pk ? 'animation:spin 1s linear infinite' : ''">
@@ -444,6 +452,7 @@ import { useSessaoStore }     from "../stores/sessao";
 import { useParametrosStore } from "../stores/parametros";
 import { supabase }           from "../composables/useSupabase";
 import apiClient              from "../services/api";
+import { imprimirContratoLocacao } from "../utils/contrato";
 
 const route           = useRoute();
 const router          = useRouter();
@@ -588,6 +597,34 @@ async function abrirDetalheEImprimir(v) {
   reimprimirRecibo();
 }
 
+async function abrirDetalheEImprimirContrato(v) {
+  await abrirDetalhe(v);
+  reimprimirContrato();
+}
+
+function reimprimirContrato() {
+  const v    = detalhe.value;
+  const itens = detalheItens.value.map(it => ({
+    nome:          it.descricao,
+    qtd:           it.qtd,
+    preco_unitario: it.preco_unit,
+    desconto_pct:  it.desconto_pct || 0,
+    preco_total:   it.preco_total,
+  }));
+  const pagamentos = detalhePagamentos.value.map(p => ({
+    forma: p.forma,
+    label: p.forma,
+    valor: p.valor,
+  }));
+  imprimirContratoLocacao({
+    vendaPk:   v.pk,
+    cpfNota:   v.cpf_nota || '',
+    pagamentos,
+    itens,
+    total:     v.total,
+  });
+}
+
 function fecharDetalhe() { detalhe.value = null; }
 
 function fmtDataHora(d) {
@@ -717,7 +754,7 @@ function reimprimirRecibo() {
 <hr class="sep"/>
 <div class="sub-line"><span>Nº da venda</span><span>#${v.numero}</span></div>
 <div class="sub-line"><span>Data/hora</span><span>${fmtDt(new Date(v.criado_em))}</span></div>
-${v.cliente ? `<div class="sub-line"><span>Cliente</span><span>${v.cliente}</span></div>` : ''}
+${v.cliente_nome ? `<div class="sub-line"><span>Cliente</span><span>${v.cliente_nome}</span></div>` : ''}
 <div class="sub-line"><span>Vendedor</span><span>${v.vendedor || v.operador || '—'}</span></div>
 <hr class="sep"/>
 <table>${linhaItens}</table>
