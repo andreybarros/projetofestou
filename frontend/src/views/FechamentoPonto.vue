@@ -457,6 +457,7 @@
               <select v-model="justTipo" class="fp-input">
                 <option value="Atestado Médico">Atestado Médico</option>
                 <option value="Abono">Abono</option>
+                <option value="Falta">Falta</option>
                 <option value="Folga">Folga</option>
                 <option value="Feriado">Feriado</option>
                 <option value="Outros">Outros</option>
@@ -770,8 +771,8 @@ function toast(msg, tipo = 'ok', dur = 3500) {
 const multExtra   = computed(() => 1 + parametros.getParam('ponto_adicional_hora_extra',   60)  / 100);
 const multDomingo = computed(() => 1 + parametros.getParam('ponto_adicional_hora_domingo', 100) / 100);
 
-const extraNormalH  = computed(() => summaries.value.saldoMes >= 0 ? summaries.value.extraSecNormal / 3600 : 0);
-const extraDomRawH  = computed(() => summaries.value.extraSecDomingo / 3600);
+const extraNormalH  = computed(() => parseFloat((summaries.value.extraSecNormal / 3600).toFixed(2)));
+const extraDomRawH  = computed(() => parseFloat((summaries.value.extraSecDomingo / 3600).toFixed(2)));
 const extraDomValH  = computed(() => extraDomRawH.value * multDomingo.value);
 const extraTotalH   = computed(() => extraNormalH.value + extraDomValH.value);
 const totalDescontos = computed(() => descontos.value.reduce((s, d) => s + d.valor, 0));
@@ -824,7 +825,7 @@ const totalOT = computed(() => {
 const totalLiquido = computed(() => salProp.value + totalOT.value - totalDescontos.value);
 
 const saldoFinal = computed(() => {
-  const totalDescontar = pagarHorasNormal.value + (pagarHorasDomingo.value * multDomingo.value);
+  const totalDescontar = pagarHorasNormal.value + pagarHorasDomingo.value;
   return (summaries.value.saldoAcum || 0) - totalDescontar;
 });
 
@@ -1064,7 +1065,11 @@ function processar(a1, m1, q1, dataIni, dataFim) {
   diasPeriodo.value = dias;
 
   const saldoMes  = (trabTot - prevTot) / 3600;
-  const saldoAcum = summaries.value.saldoAnt + saldoMes;
+  // Banco de horas acumula apenas extras; faltas são descontadas do salário, não do banco
+  // Usa mesma precisão de 2 casas que os campos de pagamento para evitar erro de ponto flutuante
+  const extraNormalHRound = parseFloat((extraSecNormal / 3600).toFixed(2));
+  const extraDomRawHRound = parseFloat((extraSecDomingo / 3600).toFixed(2));
+  const saldoAcum = summaries.value.saldoAnt + extraNormalHRound + extraDomRawHRound;
 
   summaries.value = {
     ...summaries.value,
