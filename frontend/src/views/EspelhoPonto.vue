@@ -120,6 +120,14 @@
           <div class="fin-card">
             <h3 class="fin-title">Resumo de Pagamento</h3>
             <div class="fin-row">
+              <span>Salário Base (½ mês)</span>
+              <strong>{{ fmt((itemSelecionado.salario_base || 0) / 2) }}</strong>
+            </div>
+            <div v-if="descontoAusencias > 0" class="fin-row">
+              <span>Desconto faltas/atrasos</span>
+              <strong class="neg">- {{ fmt(descontoAusencias) }}</strong>
+            </div>
+            <div class="fin-row">
               <span>Salário Proporcional</span>
               <strong>{{ fmt(salarioProp) }}</strong>
             </div>
@@ -132,7 +140,7 @@
               </div>
             </div>
             <div v-if="itemSelecionado.valor_descontos > 0" class="fin-row">
-              <span>Descontos</span>
+              <span>Outros descontos</span>
               <strong class="neg">- {{ fmt(itemSelecionado.valor_descontos) }}</strong>
             </div>
             <div class="divider"></div>
@@ -232,9 +240,15 @@ function statusTexto(s) {
 
 const salarioProp = computed(() => {
   if (!itemSelecionado.value) return 0;
-  // O valor total líquido e extras já vêm calculados do banco
-  // Calculamos apenas visualmente o salário proporcional para o funcionário ver
-  return itemSelecionado.value.salario_base / 2; 
+  const item = itemSelecionado.value;
+  // Deriva salário proporcional real (já com desconto de faltas/atrasos) dos valores armazenados
+  return item.total_liquido - (item.valor_horas_extras || 0) + (item.valor_descontos || 0);
+});
+
+const descontoAusencias = computed(() => {
+  if (!itemSelecionado.value) return 0;
+  const gross = (itemSelecionado.value.salario_base || 0) / 2;
+  return Math.max(0, parseFloat((gross - salarioProp.value).toFixed(2)));
 });
 
 async function carregar() {

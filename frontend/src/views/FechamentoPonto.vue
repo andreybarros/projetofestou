@@ -239,7 +239,7 @@
                   <strong>{{ extraNormalH.toFixed(2) }}h</strong>
                 </div>
                 <div class="extra-linha">
-                  <span>Extras Domingo <small>(×2 = 100%)</small></span>
+                  <span>Extras Domingo <small>(×{{ (1 + (summaries.adicionalDomingoPct ?? 100) / 100).toFixed(1) }} = {{ summaries.adicionalDomingoPct ?? 100 }}%)</small></span>
                   <strong>{{ extraDomRawH.toFixed(2) }}h → {{ extraDomValH.toFixed(2) }}h</strong>
                 </div>
                 <div class="extra-linha extra-total">
@@ -252,7 +252,7 @@
                 <label>Pagar Horas Extras (Banco)</label>
                 <div class="extra-pay-grid">
                   <div class="extra-pay-item">
-                    <span class="extra-pay-label">Normais ({{ parametros.getParam('ponto_adicional_hora_extra', 60) }}%)</span>
+                    <span class="extra-pay-label">Normais ({{ summaries.adicionalExtraPct ?? 60 }}%)</span>
                     <span class="extra-pay-rate">{{ fmt(valorHoraNormal) }}/h</span>
                     <div class="fin-field-row">
                       <input v-model.number="pagarHorasNormal" type="number" min="0" :max="extraNormalH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
@@ -261,7 +261,7 @@
                     <small class="td-muted">Disp: {{ extraNormalH.toFixed(2) }}h</small>
                   </div>
                   <div class="extra-pay-item extra-pay-dom">
-                    <span class="extra-pay-label">Domingo ({{ parametros.getParam('ponto_adicional_hora_domingo', 100) }}%)</span>
+                    <span class="extra-pay-label">Domingo ({{ summaries.adicionalDomingoPct ?? 100 }}%)</span>
                     <span class="extra-pay-rate">{{ fmt(valorHoraDomingo) }}/h</span>
                     <div class="fin-field-row">
                       <input v-model.number="pagarHorasDomingo" type="number" min="0" :max="extraDomRawH" step="0.5" class="fp-input fin-input" :disabled="bloqueado" />
@@ -274,7 +274,7 @@
                   <button class="btn-banco-acao" @click="pagarTudoExtra">Pagar Tudo Disponível</button>
                   <button class="btn-banco-acao btn-dom" @click="pagarSoDomingo">Pagar Só Domingo</button>
                 </div>
-                <small style="margin-top:4px">O desconto no banco de horas é automático (Domingo desconta ×2).</small>
+                <small style="margin-top:4px">O desconto no banco de horas é automático (Domingo desconta ×{{ (1 + (summaries.adicionalDomingoPct ?? 100) / 100).toFixed(1) }}).</small>
               </div>
 
               <button class="btn-avancar-etapa" @click="etapaFin = 2">
@@ -768,26 +768,14 @@ function toast(msg, tipo = 'ok', dur = 3500) {
 }
 
 // ── Computed financeiro ────────────────────────────────────────────────────
-const multExtra   = computed(() => 1 + parametros.getParam('ponto_adicional_hora_extra',   60)  / 100);
-const multDomingo = computed(() => 1 + parametros.getParam('ponto_adicional_hora_domingo', 100) / 100);
-
-const extraNormalH  = computed(() => parseFloat((summaries.value.extraSecNormal / 3600).toFixed(2)));
-const extraDomRawH  = computed(() => parseFloat((summaries.value.extraSecDomingo / 3600).toFixed(2)));
-const extraDomValH  = computed(() => extraDomRawH.value * multDomingo.value);
-const extraTotalH   = computed(() => extraNormalH.value + extraDomValH.value);
+// Taxas e salário proporcional vêm do backend (summaries)
+const extraNormalH   = computed(() => parseFloat((summaries.value.extraSecNormal  / 3600).toFixed(2)));
+const extraDomRawH   = computed(() => parseFloat((summaries.value.extraSecDomingo / 3600).toFixed(2)));
+const extraDomValH   = computed(() => parseFloat((extraDomRawH.value * (1 + (summaries.value.adicionalDomingoPct || 100) / 100)).toFixed(2)));
+const extraTotalH    = computed(() => parseFloat((extraNormalH.value + extraDomValH.value).toFixed(2)));
 const totalDescontos = computed(() => descontos.value.reduce((s, d) => s + d.valor, 0));
 
-const salProp = computed(() => {
-  const f = funcSelecionado.value;
-  if (!f) return 0;
-  if (f.diarista) {
-    return summaries.value.diasPagos * (f.valor_diaria || 0);
-  }
-  const hourVal  = summaries.value.baseSalary / (summaries.value.horasFechamento || 120);
-  const salBase  = summaries.value.baseSalary / 2;
-  const valorFlt = (summaries.value.missingSec / 3600) * hourVal;
-  return Math.max(0, salBase - valorFlt);
-});
+const salProp = computed(() => summaries.value.salarioProporcional || 0);
 
 const labelProp = computed(() => {
   const f = funcSelecionado.value;
@@ -799,32 +787,13 @@ const labelProp = computed(() => {
   return fmt(salProp.value) + (faltas > 0 ? ` (desconto ${faltas.toFixed(1)}h faltas)` : '');
 });
 
-const valorHoraBase = computed(() => {
-  const f = funcSelecionado.value;
-  if (!f) return 0;
-  const horas = summaries.value.horasFechamento || 120;
-  return summaries.value.baseSalary / horas;
-});
+const valorHoraNormal  = computed(() => summaries.value.valorHoraNormal  || 0);
+const valorHoraDomingo = computed(() => summaries.value.valorHoraDomingo || 0);
 
-const valorHoraNormal = computed(() => {
-  const f = funcSelecionado.value;
-  if (!f || f.diarista) return 0;
-  return parseFloat((valorHoraBase.value * multExtra.value).toFixed(2));
-});
-
-const valorHoraDomingo = computed(() => {
-  const f = funcSelecionado.value;
-  if (!f || f.diarista) return 0;
-  return parseFloat((valorHoraBase.value * multDomingo.value).toFixed(2));
-});
-
-const totalOT = computed(() => {
-  return (pagarHorasNormal.value * valorHoraNormal.value) + (pagarHorasDomingo.value * valorHoraDomingo.value);
-});
-
+// Estes dependem do input do usuário (quantas horas pagar) — permanecem no frontend
+const totalOT      = computed(() => (pagarHorasNormal.value * valorHoraNormal.value) + (pagarHorasDomingo.value * valorHoraDomingo.value));
 const totalLiquido = computed(() => salProp.value + totalOT.value - totalDescontos.value);
-
-const saldoFinal = computed(() => {
+const saldoFinal   = computed(() => {
   const totalDescontar = pagarHorasNormal.value + pagarHorasDomingo.value;
   return (summaries.value.saldoAcum || 0) - totalDescontar;
 });
@@ -845,11 +814,9 @@ watch(pagarHorasDomingo, (val) => {
 });
 
 // ── Utils ──────────────────────────────────────────────────────────────────
-function timeToSec(t) { const [h, m] = t.split(':'); return +h * 3600 + +m * 60; }
 function formatSec(s) { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return `${h}h${String(m).padStart(2,'0')}`; }
 function fmtH(v)  { return (v || 0).toFixed(2) + 'h'; }
 function fmt(v)   { return new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v || 0); }
-const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
 // ── Carregar lista ─────────────────────────────────────────────────────────
 async function carregarLista() {
@@ -874,15 +841,7 @@ async function carregarLista() {
 
 // ── Selecionar funcionário ─────────────────────────────────────────────────
 function selecionarFunc(f) {
-  funcSelecionado.value = f;
-  // Configura salário base e horas de fechamento
-  if (f.diarista) {
-    summaries.value.baseSalary      = f.valor_diaria || 0;
-    summaries.value.horasFechamento = f.horas_fechamento || 0;
-  } else {
-    summaries.value.baseSalary      = f.salario_mensal || 0;
-    summaries.value.horasFechamento = f.horas_fechamento > 0 ? f.horas_fechamento : 120;
-  }
+  funcSelecionado.value    = f;
   pagarHorasNormal.value   = 0;
   pagarHorasDomingo.value  = 0;
   valesPendentes.value     = [];
@@ -944,12 +903,6 @@ async function carregar() {
   const func = funcSelecionado.value;
   const q1   = quinzena.value, m1 = mes.value, a1 = ano.value;
 
-  const diaIni  = q1 === 1 ? '01' : '16';
-  const dataIni = `${a1}-${String(m1).padStart(2,'0')}-${diaIni}`;
-  const dataFim = q1 === 1
-    ? `${a1}-${String(m1).padStart(2,'0')}-15`
-    : new Date(a1, m1, 0).toISOString().split('T')[0];
-
   const { data: resp } = await apiClient.get('/api/ponto/fechamento-dados', {
     params: { funcionario_pk: func.pk, mes: m1, ano: a1, quinzena: q1 },
   });
@@ -971,120 +924,19 @@ async function carregar() {
     pagarHorasDomingo.value = 0;
   }
 
-  const saldoAntRaw = resp.saldo_acumulado_anterior ?? (func.saldo_inicial_banco || 0);
-  summaries.value.saldoAnt = Math.max(0, saldoAntRaw);
-
-  punches.value   = resp.punches  || [];
-  justs.value     = resp.justs    || [];
+  punches.value   = resp.punches   || [];
+  justs.value     = resp.justs     || [];
   descontos.value = resp.descontos || [];
-
-  processar(a1, m1, q1, dataIni, dataFim);
-  carregandoFech.value = false;
-}
-
-// ── Processar dias do período ──────────────────────────────────────────────
-function processar(a1, m1, q1, dataIni, dataFim) {
-  const func     = funcSelecionado.value;
-  const cargaSec = (func.carga_horaria_diaria || 8) * 3600;
-  const intSec   = (func.minutos_intervalo || 60) * 60;
-
-  // Mapa de batidas por dia
-  const diasMap = {};
-  punches.value.forEach(p => {
-    if (!diasMap[p.data]) diasMap[p.data] = [];
-    diasMap[p.data].push(p.hora.substring(0, 5));
-  });
-
-  let prevTot = 0, trabTot = 0, missingSec = 0;
-  let extraSecNormal = 0, extraSecDomingo = 0, diasPagos = 0;
-
-  const dIni = new Date(dataIni + 'T00:00:00');
-  const dFim = new Date(dataFim + 'T00:00:00');
-  const dias = [];
-
-  for (let dt = new Date(dIni); dt <= dFim; dt.setDate(dt.getDate() + 1)) {
-    const dtStr    = dt.toISOString().split('T')[0];
-    const isDomingo = dt.getDay() === 0;
-    const dia      = dt.getDate();
-    const dayName  = DAYS[dt.getDay()];
-
-    const just = justs.value.find(j => j.data === dtStr) || null;
-    const bats = diasMap[dtStr] || [];
-
-    let previsto = (func.diarista || isDomingo) ? 0 : cargaSec;
-    // "Falta" mantém previsto para que o saldo do dia fique negativo e desconte do salário
-    if ((just && just.tipo !== 'Falta') || isDomingo) previsto = 0;
-
-    let trabalhado = 0;
-    if (bats.length >= 2) {
-      let ent = timeToSec(bats[0]);
-      let sai = timeToSec(bats[bats.length - 1]);
-
-      // Resolve horários previstos — normaliza para HH:MM antes de converter
-      const normTime = t => t ? String(t).trim().substring(0, 5) : null;
-      let entPrev = normTime(func.hora_entrada) ? timeToSec(normTime(func.hora_entrada)) : null;
-      let saiPrev = normTime(func.hora_saida)   ? timeToSec(normTime(func.hora_saida))   : null;
-
-      // Fallback: deriva um pelo outro quando um deles é nulo
-      if (entPrev === null && saiPrev !== null) entPrev = saiPrev - cargaSec - intSec;
-      if (saiPrev === null && entPrev !== null) saiPrev = entPrev + cargaSec + intSec;
-
-      // Tolerância entrada/saída (CLT Art. 58 §1º) — configurável via parâmetro ponto_tolerancia_minutos
-      const tolerSec = parametros.getParam('ponto_tolerancia_minutos', 15) * 60;
-      if (entPrev !== null && ent < entPrev && (entPrev - ent) <= tolerSec) ent = entPrev;
-      if (saiPrev !== null && sai > saiPrev && (sai - saiPrev) <= tolerSec) sai = saiPrev;
-
-      trabalhado = Math.max(0, sai - ent - intSec);
-    }
-
-    const diff = trabalhado - previsto;
-    prevTot  += previsto;
-    trabTot  += trabalhado;
-
-    const isPaidJust = just && (just.tipo === 'Abono' || just.tipo === 'Atestado Médico' || just.tipo === 'Folga');
-
-    // Horas extras
-    if (isDomingo && trabalhado > 0) {
-      extraSecDomingo += trabalhado;
-    } else if (diff > 0) {
-      extraSecNormal += diff;
-    }
-
-    // Faltas mensalistas — desconta se não há justificativa paga ("Falta" registrada conta igual a sem justificativa)
-    if (!func.diarista && !isDomingo && trabalhado < cargaSec) {
-      if (!isPaidJust) {
-        missingSec += (cargaSec - trabalhado);
-      }
-    }
-
-    // Dias pagos (diaristas): precisa ter trabalhado algum tempo (> 0) ou justificativa paga
-    if (func.diarista && (isPaidJust || (bats.length >= 2 && trabalhado > 0))) diasPagos++;
-
-    dias.push({ dtStr, dia, dayName, isDomingo, previsto, trabalhado, diff, batidas: bats, just });
-  }
-
-  diasPeriodo.value = dias;
-
-  const saldoMes  = (trabTot - prevTot) / 3600;
-  // Banco de horas acumula apenas extras; faltas são descontadas do salário, não do banco
-  // Usa mesma precisão de 2 casas que os campos de pagamento para evitar erro de ponto flutuante
-  const extraNormalHRound = parseFloat((extraSecNormal / 3600).toFixed(2));
-  const extraDomRawHRound = parseFloat((extraSecDomingo / 3600).toFixed(2));
-  const saldoAcum = summaries.value.saldoAnt + extraNormalHRound + extraDomRawHRound;
+  diasPeriodo.value = resp.dias    || [];
 
   summaries.value = {
     ...summaries.value,
-    previsto: prevTot,
-    trabalhado: trabTot,
-    saldoMes,
-    saldoAcum,
-    missingSec,
-    extraSecNormal,
-    extraSecDomingo,
-    extraSec: extraSecNormal + extraSecDomingo * 2,
-    diasPagos,
+    ...resp.summaries,
   };
+
+  carregandoFech.value = false;
 }
+
 
 // ── Descontos ──────────────────────────────────────────────────────────────
 function addDesconto() {

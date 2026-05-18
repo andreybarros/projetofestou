@@ -170,7 +170,114 @@ router.get('/funcionarios', async (req, res) => {
   }
 });
 
-// 6. Dados completos do fechamento de um período
+// ── Lógica de cálculo do período (regras de negócio) ─────────────────────────
+function timeToSec(t) {
+  const [h, m] = String(t).trim().substring(0, 5).split(':');
+  return +h * 3600 + +m * 60;
+}
+
+const DAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function calcularPeriodo({ func, punches, justs, saldoAnt, toleranciaMin, dataIni, dataFim }) {
+  const cargaSec  = (func.carga_horaria_diaria || 8) * 3600;
+  const intSec    = (func.minutos_intervalo || 60) * 60;
+  const tolerSec  = (toleranciaMin ?? 15) * 60;
+
+  const diasMap = {};
+  punches.forEach(p => {
+    if (!diasMap[p.data]) diasMap[p.data] = [];
+    diasMap[p.data].push(p.hora.substring(0, 5));
+  });
+
+  const justMap = {};
+  justs.forEach(j => { justMap[j.data] = j; });
+
+  let prevTot = 0, trabTot = 0, missingSec = 0;
+  let extraSecNormal = 0, extraSecDomingo = 0, diasPagos = 0;
+  const dias = [];
+
+  const dIni = new Date(dataIni + 'T00:00:00');
+  const dFim = new Date(dataFim + 'T00:00:00');
+
+  for (let dt = new Date(dIni); dt <= dFim; dt.setDate(dt.getDate() + 1)) {
+    const dtStr    = dt.toISOString().split('T')[0];
+    const isDomingo = dt.getDay() === 0;
+    const dayName  = DAYS_PT[dt.getDay()];
+    const dia      = dt.getDate();
+
+    const just = justMap[dtStr] || null;
+    const bats = diasMap[dtStr] || [];
+
+    // Previsto: diaristas e domingos não têm expectativa. Justificativas (exceto Falta) zeram previsto.
+    let previsto = (func.diarista || isDomingo) ? 0 : cargaSec;
+    if (just && just.tipo !== 'Falta') previsto = 0;
+
+    let trabalhado = 0;
+    if (bats.length >= 2) {
+      let ent = timeToSec(bats[0]);
+      let sai = timeToSec(bats[bats.length - 1]);
+
+      const normTime = t => t ? String(t).trim().substring(0, 5) : null;
+      let entPrev = normTime(func.hora_entrada) ? timeToSec(normTime(func.hora_entrada)) : null;
+      let saiPrev = normTime(func.hora_saida)   ? timeToSec(normTime(func.hora_saida))   : null;
+
+      if (entPrev === null && saiPrev !== null) entPrev = saiPrev - cargaSec - intSec;
+      if (saiPrev === null && entPrev !== null) saiPrev = entPrev + cargaSec + intSec;
+
+      // Tolerância CLT Art. 58 §1º
+      if (entPrev !== null && ent < entPrev && (entPrev - ent) <= tolerSec) ent = entPrev;
+      if (saiPrev !== null && sai > saiPrev && (sai - saiPrev) <= tolerSec) sai = saiPrev;
+
+      trabalhado = Math.max(0, sai - ent - intSec);
+    }
+
+    const diff = trabalhado - previsto;
+    prevTot  += previsto;
+    trabTot  += trabalhado;
+
+    const isPaidJust = just && ['Abono', 'Atestado Médico', 'Folga'].includes(just.tipo);
+
+    // Horas extras
+    if (isDomingo && trabalhado > 0) {
+      extraSecDomingo += trabalhado;
+    } else if (diff > 0) {
+      extraSecNormal += diff;
+    }
+
+    // Faltas mensalistas — só desconta se o dia era esperado (previsto > 0)
+    // Feriados e folgas justificadas têm previsto=0 e não geram desconto de salário
+    if (!func.diarista && previsto > 0 && trabalhado < cargaSec && !isPaidJust) {
+      missingSec += (cargaSec - trabalhado);
+    }
+
+    // Dias pagos diaristas
+    if (func.diarista && (isPaidJust || (bats.length >= 2 && trabalhado > 0))) diasPagos++;
+
+    dias.push({ dtStr, dia, dayName, isDomingo, previsto, trabalhado, diff, batidas: bats, just });
+  }
+
+  const saldoMes         = (trabTot - prevTot) / 3600;
+  const extraNormalHRound = parseFloat((extraSecNormal  / 3600).toFixed(2));
+  const extraDomRawHRound = parseFloat((extraSecDomingo / 3600).toFixed(2));
+  const saldoAcum        = (saldoAnt || 0) + extraNormalHRound + extraDomRawHRound;
+
+  return {
+    summaries: {
+      previsto: prevTot,
+      trabalhado: trabTot,
+      saldoMes,
+      saldoAcum,
+      missingSec,
+      extraSecNormal,
+      extraSecDomingo,
+      extraSec: extraSecNormal + extraSecDomingo * 2,
+      diasPagos,
+    },
+    dias,
+  };
+}
+
+// 6. Dados completos do fechamento de um período (inclui cálculo do período)
 router.get('/fechamento-dados', async (req, res) => {
   try {
     const { funcionario_pk, mes, ano, quinzena } = req.query;
@@ -190,16 +297,22 @@ router.get('/fechamento-dados', async (req, res) => {
     const antM = q1 === 1 ? (m1 === 1 ? 12 : m1 - 1) : m1;
     const antA = q1 === 1 ? (m1 === 1 ? a1 - 1 : a1) : a1;
 
-    const [resFch, resFchAnt, resP, resJ] = await Promise.all([
+    const [resFch, resFchAnt, resFunc, resP, resJ, resTol, resExtra, resDom] = await Promise.all([
       supabase.from('fechamento_ponto').select('*')
         .eq('funcionario_pk', fpk).eq('mes', m1).eq('ano', a1).eq('quinzena', q1).maybeSingle(),
       supabase.from('fechamento_ponto').select('saldo_acumulado')
         .eq('funcionario_pk', fpk).eq('mes', antM).eq('ano', antA).eq('quinzena', antQ).maybeSingle(),
+      supabase.from('funcionarios').select('*').eq('pk', fpk).single(),
       supabase.from('registro_ponto').select('*')
         .eq('funcionario_pk', fpk).gte('data', dataIni).lte('data', dataFim).order('data').order('hora'),
       supabase.from('justificativas_ponto').select('*')
         .eq('funcionario_pk', fpk).gte('data', dataIni).lte('data', dataFim),
+      supabase.from('parametros_sistema').select('valor').eq('chave', 'ponto_tolerancia_minutos').maybeSingle(),
+      supabase.from('parametros_sistema').select('valor').eq('chave', 'ponto_adicional_hora_extra').maybeSingle(),
+      supabase.from('parametros_sistema').select('valor').eq('chave', 'ponto_adicional_hora_domingo').maybeSingle(),
     ]);
+
+    if (!resFunc.data) return res.status(404).json({ erro: 'Funcionário não encontrado' });
 
     const fch = resFch.data;
     let descontos = [];
@@ -208,13 +321,55 @@ router.get('/fechamento-dados', async (req, res) => {
       descontos = desc || [];
     }
 
+    const func          = resFunc.data;
+    const saldoAnt      = Math.max(0, resFchAnt.data?.saldo_acumulado ?? (func.saldo_inicial_banco || 0));
+    const toleranciaMin = parseInt(resTol.data?.valor  ?? 15);
+    const adicionalExtraPct   = parseFloat(resExtra.data?.valor ?? 60);
+    const adicionalDomingoPct = parseFloat(resDom.data?.valor   ?? 100);
+
+    const { summaries, dias } = calcularPeriodo({
+      func, punches: resP.data || [], justs: resJ.data || [],
+      saldoAnt, toleranciaMin, dataIni, dataFim,
+    });
+
+    // ── Cálculos financeiros ───────────────────────────────────────────────
+    const horasFechamento = func.horas_fechamento > 0 ? func.horas_fechamento : 220;
+    let salarioProporcional, valorHoraBase, valorHoraNormal, valorHoraDomingo;
+
+    if (func.diarista) {
+      salarioProporcional = parseFloat((summaries.diasPagos * (func.valor_diaria || 0)).toFixed(2));
+      valorHoraBase       = func.valor_diaria || 0;
+      valorHoraNormal     = 0;
+      valorHoraDomingo    = 0;
+    } else {
+      valorHoraBase    = (func.salario_mensal || 0) / horasFechamento;
+      valorHoraNormal  = parseFloat((valorHoraBase * (1 + adicionalExtraPct   / 100)).toFixed(2));
+      valorHoraDomingo = parseFloat((valorHoraBase * (1 + adicionalDomingoPct / 100)).toFixed(2));
+      const salBase    = (func.salario_mensal || 0) / 2;
+      const deducao    = (summaries.missingSec / 3600) * valorHoraBase;
+      salarioProporcional = parseFloat(Math.max(0, salBase - deducao).toFixed(2));
+    }
+
     res.json({
       ok: true,
-      fechamento:                resFch.data  || null,
-      saldo_acumulado_anterior:  resFchAnt.data?.saldo_acumulado ?? null,
-      punches:                   resP.data    || [],
-      justs:                     resJ.data    || [],
+      fechamento:               fch || null,
+      saldo_acumulado_anterior: resFchAnt.data?.saldo_acumulado ?? null,
+      punches:                  resP.data  || [],
+      justs:                    resJ.data  || [],
       descontos,
+      summaries: {
+        ...summaries,
+        saldoAnt,
+        baseSalary:           func.salario_mensal || func.valor_diaria || 0,
+        horasFechamento,
+        adicionalExtraPct,
+        adicionalDomingoPct,
+        valorHoraBase:        parseFloat(valorHoraBase.toFixed(4)),
+        valorHoraNormal,
+        valorHoraDomingo,
+        salarioProporcional,
+      },
+      dias,
     });
   } catch (err) {
     console.error('[Ponto/FechamentoDados] Erro:', err.message);
