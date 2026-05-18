@@ -10,7 +10,7 @@ router.get('/auxiliares', async (req, res) => {
     const [{ data: forn }, { data: contas }, { data: cats }] = await Promise.all([
       supabase.from('fornecedores').select('pk, nome').eq('ativo', true).order('nome'),
       supabase.from('contas_bancarias').select('pk, nome').eq('ativo', true).order('nome'),
-      supabase.from('categorias_despesa').select('pk, nome, cor').eq('filial_pk', filial_pk).order('nome'),
+      supabase.from('categorias_despesa').select('pk, nome, cor').eq('filial_pk', filial_pk).eq('ativo', true).order('nome'),
     ]);
     res.json({ ok: true, fornecedores: forn || [], contas: contas || [], categorias: cats || [] });
   } catch (e) {
