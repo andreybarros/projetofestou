@@ -223,13 +223,16 @@ async function carregarVendas() {
   // Query 1: últimas 10 para exibição
   let qDisplay = supabase
     .from("vendas")
-    .select("pk, numero, cliente, operador, vendedor, total, status, criado_em")
+    .select("pk, numero, cliente, cliente_pk, operador, vendedor, total, status, criado_em, clientes(nome)")
     .eq("ativo", true)
     .order("criado_em", { ascending: false })
     .limit(10);
   if (sessaoStore.filial?.pk) qDisplay = qDisplay.eq("filial_pk", sessaoStore.filial.pk);
   const { data: recentes } = await qDisplay;
-  ultimasVendas.value = recentes || [];
+  ultimasVendas.value = (recentes || []).map(v => ({
+    ...v,
+    cliente: v.clientes?.nome || v.cliente || null,
+  }));
 
   // Query 2: todas as finalizadas de hoje para KPIs
   let qHoje = supabase
