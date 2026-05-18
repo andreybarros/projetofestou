@@ -1052,7 +1052,7 @@ async function enviarEspelho() {
   if (!confirm('Os dados do período serão enviados ao funcionário para revisão e aprovação. Continuar?')) return;
   salvando.value = true;
   try {
-    const payload = buildPayload(saldoFinal.value, false, 'enviado', null, null);
+    const payload = buildPayload(saldoFinal.value, false, 'enviado', null);
     await apiClient.post('/api/ponto/espelho', { payload });
     toast('Espelho enviado para aprovação!');
     await carregar();
@@ -1071,7 +1071,7 @@ async function salvar() {
   if (!confirm('O período será bloqueado e o saldo final do banco de horas será carregado para o próximo período. Continuar?')) return;
   salvando.value = true;
   try {
-    const payload = buildPayload(saldoFinal.value, true, espelhoStatus.value, espelhoObs.value, null);
+    const payload = buildPayload(saldoFinal.value, true, espelhoStatus.value, espelhoObs.value);
     
     const { data: fchResp } = await apiClient.post('/api/ponto/fechamento', {
         payload,
@@ -1099,7 +1099,7 @@ async function salvar() {
   }
 }
 
-function buildPayload(saldoFinal, isBloqueado, espStatus, espObs, espAprovadoEm) {
+function buildPayload(saldoFinal, isBloqueado, espStatus, espObs) {
   return {
     filial_pk:           sessao.filial?.pk || null,
     funcionario_pk:      funcSelecionado.value.pk,
@@ -1113,16 +1113,15 @@ function buildPayload(saldoFinal, isBloqueado, espStatus, espObs, espAprovadoEm)
     saldo_mes:           summaries.value.saldoMes,
     saldo_acumulado:     isBloqueado ? Math.max(0, saldoFinal) : saldoFinal,
     valor_horas_extras:  totalOT.value,
-    qtd_horas_pagas:     pagarHorasNormal.value + (pagarHorasDomingo.value * 2), // Total descontado do banco
+    qtd_horas_pagas:     pagarHorasNormal.value + (pagarHorasDomingo.value * 2),
     qtd_horas_extras_normais: pagarHorasNormal.value,
     qtd_horas_extras_domingo: pagarHorasDomingo.value,
-    valor_hora_extra_pago: valorHoraNormal.value, // Referência apenas
+    valor_hora_extra_pago: valorHoraNormal.value,
     valor_descontos:     totalDescontos.value,
     total_liquido:       totalLiquido.value,
     bloqueado:           isBloqueado,
     espelho_status:      espStatus,
     espelho_observacao:  espObs,
-    espelho_aprovado_em: espAprovadoEm,
   };
 }
 

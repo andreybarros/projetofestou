@@ -111,13 +111,14 @@ router.post('/batida-manual', async (req, res) => {
 router.post('/fechamento', async (req, res) => {
     try {
         const { payload, descontos } = req.body;
-        
+
         if (!payload || !payload.funcionario_pk) {
              return res.status(400).json({ erro: 'Payload inválido.' });
         }
 
+        const { espelho_aprovado_em: _a, ...payloadFechamento } = payload;
         const { data: fchRes, error } = await supabase.from('fechamento_ponto')
-          .upsert(payload, { onConflict: 'funcionario_pk, mes, ano, quinzena' })
+          .upsert(payloadFechamento, { onConflict: 'funcionario_pk, mes, ano, quinzena' })
           .select('pk').single();
           
         if (error) throw error;
@@ -448,8 +449,9 @@ router.post('/espelho', async (req, res) => {
   try {
     const { payload } = req.body;
     if (!payload?.funcionario_pk) return res.status(400).json({ erro: 'Payload inválido.' });
+    const { espelho_aprovado_em: _a, ...payloadEspelho } = payload;
     const { error } = await supabase.from('fechamento_ponto')
-      .upsert({ ...payload, espelho_status: 'enviado' }, { onConflict: 'funcionario_pk, mes, ano, quinzena' });
+      .upsert({ ...payloadEspelho, espelho_status: 'enviado', espelho_aprovado_em: null }, { onConflict: 'funcionario_pk, mes, ano, quinzena' });
     if (error) throw error;
     res.json({ ok: true });
   } catch (err) {
