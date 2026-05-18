@@ -86,33 +86,43 @@
 
       <!-- Seletor de período -->
       <div class="periodo-bar">
-        <select v-model="quinzena" class="fp-select" @change="carregar">
+        <select v-model="quinzena" class="fp-select" @change="onPeriodoChange">
           <option :value="1">1ª Quinzena (01 a 15)</option>
           <option :value="2">2ª Quinzena (16 ao fim)</option>
         </select>
-        <select v-model="mes" class="fp-select" @change="carregar">
+        <select v-model="mes" class="fp-select" @change="onPeriodoChange">
           <option v-for="(nm, idx) in meses" :key="idx+1" :value="idx+1">{{ nm }}</option>
         </select>
-        <select v-model="ano" class="fp-select" @change="carregar">
+        <select v-model="ano" class="fp-select" @change="onPeriodoChange">
           <option v-for="a in anos" :key="a" :value="a">{{ a }}</option>
         </select>
-        <div v-if="carregandoFech" class="spin-sm"></div>
+        <button class="btn-carregar-dados" @click="carregarDados" :disabled="carregandoFech">
+          <div v-if="carregandoFech" class="spin-sm"></div>
+          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          {{ carregandoFech ? 'Carregando…' : (dadosCarregados ? 'Recarregar' : 'Carregar Dados') }}
+        </button>
       </div>
 
       <!-- Alerta: período bloqueado -->
-      <div v-if="bloqueado" class="alerta alerta-bloqueado">
+      <div v-if="dadosCarregados && bloqueado" class="alerta alerta-bloqueado">
         <div>🔒 <strong>Período Bloqueado:</strong> Este período já foi finalizado.</div>
         <button class="btn-reabrir" @click="desbloquear">🔑 Reabrir Período</button>
       </div>
 
       <!-- Alerta: espelho -->
-      <div v-if="espelhoStatus !== 'rascunho'" :class="['alerta', 'alerta-espelho-' + espelhoStatus]">
+      <div v-if="dadosCarregados && espelhoStatus !== 'rascunho'" :class="['alerta', 'alerta-espelho-' + espelhoStatus]">
         <span v-if="espelhoStatus === 'enviado'">⏳ <strong>Espelho enviado.</strong> Aguardando aprovação do funcionário.</span>
         <span v-else-if="espelhoStatus === 'aprovado'">✅ <strong>Espelho aprovado.</strong> Você pode finalizar o fechamento.</span>
         <span v-else-if="espelhoStatus === 'rejeitado'">❌ <strong>Espelho rejeitado.</strong> Motivo: <em>{{ espelhoObs || '—' }}</em>. Revise e reenvie.</span>
       </div>
 
-      <div class="close-layout">
+      <!-- Placeholder: aguardando clique em Carregar -->
+      <div v-if="!dadosCarregados && !carregandoFech" class="fp-placeholder">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+        <p>Selecione o período e clique em <strong>Carregar Dados</strong> para visualizar o fechamento.</p>
+      </div>
+
+      <div v-if="dadosCarregados" class="close-layout">
 
         <!-- Coluna esquerda: estatísticas + tabela de dias -->
         <div class="close-left">
@@ -566,10 +576,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import apiClient from '../services/api';
 
+const route      = useRoute();
+const router     = useRouter();
 const sessao     = useSessaoStore();
 const parametros = useParametrosStore();
 
@@ -596,6 +609,21 @@ function ultimoFechamento(pk) {
 // ── Painel de fechamento ───────────────────────────────────────────────────
 const funcSelecionado = ref(null);
 const carregandoFech  = ref(false);
+const dadosCarregados = ref(false);
+
+function slugAtual() {
+  const f = funcSelecionado.value;
+  if (!f) return null;
+  const mat = (f.matricula || String(f.pk)).replace(/[^a-zA-Z0-9]/g, '');
+  return `${mat}-${mes.value}-${quinzena.value}-${ano.value}`;
+}
+
+function atualizarUrl() {
+  const slug = slugAtual();
+  if (slug && route.params.slug !== slug) {
+    router.replace({ name: 'FechamentoPonto', params: { slug } });
+  }
+}
 
 const hoje    = new Date();
 const meses   = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -842,14 +870,24 @@ async function carregarLista() {
 // ── Selecionar funcionário ─────────────────────────────────────────────────
 function selecionarFunc(f) {
   funcSelecionado.value    = f;
+  dadosCarregados.value    = false;
   pagarHorasNormal.value   = 0;
   pagarHorasDomingo.value  = 0;
+  punches.value            = [];
+  justs.value              = [];
+  descontos.value          = [];
+  diasPeriodo.value        = [];
   valesPendentes.value     = [];
   valesParaDescontar.value = [];
   valeInputs.value         = {};
   etapaFin.value           = 1;
-  carregar();
-  carregarValesPendentes();
+  atualizarUrl();
+}
+
+async function carregarDados() {
+  await carregar();
+  await carregarValesPendentes();
+  dadosCarregados.value = true;
 }
 
 async function carregarValesPendentes() {
@@ -892,6 +930,8 @@ function incluirValeComoDesconto(v) {
 
 function voltarLista() {
   funcSelecionado.value = null;
+  dadosCarregados.value = false;
+  router.replace({ name: 'FechamentoPonto', params: { slug: undefined } });
   carregarLista();
 }
 
@@ -1101,7 +1141,41 @@ async function desbloquear() {
   }
 }
 
-onMounted(carregarLista);
+function onPeriodoChange() {
+  dadosCarregados.value = false;
+  atualizarUrl();
+}
+
+onMounted(async () => {
+  await carregarLista();
+
+  const slug = route.params.slug;
+  if (slug) {
+    // formato: {matricula}-{mes}-{quinzena}-{ano}
+    const partes = slug.split('-');
+    if (partes.length >= 4) {
+      const anoVal      = parseInt(partes[partes.length - 1]);
+      const quinzenaVal = parseInt(partes[partes.length - 2]);
+      const mesVal      = parseInt(partes[partes.length - 3]);
+      const matStr      = partes.slice(0, partes.length - 3).join('-');
+
+      if (!isNaN(mesVal) && !isNaN(quinzenaVal) && !isNaN(anoVal)) {
+        mes.value      = mesVal;
+        quinzena.value = quinzenaVal;
+        ano.value      = anoVal;
+      }
+
+      // Localiza funcionário pela matrícula ou pk
+      const func = lista.value.find(f =>
+        (f.matricula || '').replace(/[^a-zA-Z0-9]/g, '') === matStr ||
+        String(f.pk) === matStr
+      );
+      if (func) {
+        selecionarFunc(func);
+      }
+    }
+  }
+});
 </script>
 
 <style scoped>
@@ -1151,6 +1225,24 @@ onMounted(carregarLista);
 
 /* Período */
 .periodo-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.btn-carregar-dados {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; background: #6366f1; border: none;
+  border-radius: 8px; color: #fff; font-size: .875rem; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-carregar-dados:hover:not(:disabled) { opacity: .88; }
+.btn-carregar-dados:disabled { opacity: .55; cursor: not-allowed; }
+
+.fp-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 60px 24px; text-align: center;
+  background: var(--bg2); border: 1px dashed var(--border); border-radius: 16px;
+  color: var(--text2);
+}
+.fp-placeholder p { margin: 0; font-size: .9rem; line-height: 1.6; max-width: 360px; }
+.fp-placeholder strong { color: var(--text); }
 .spin-sm {
   display: inline-block; width: 16px; height: 16px;
   border: 2px solid rgba(99,102,241,.2); border-top-color: #6366f1;

@@ -91,7 +91,7 @@ const routes = [
   { path: '/filiais/novo',         name: 'NovaFilial',       component: FormFilial,      meta: { requiresAuth: true } },
   { path: '/filiais/:pk/editar',   name: 'EditarFilial',     component: FormFilial,      meta: { requiresAuth: true } },
   { path: '/fechamento-caixa',  name: 'FechamentoCaixa',  component: FechamentoCaixa, meta: { requiresAuth: true } },
-  { path: '/fechamento-ponto',  name: 'FechamentoPonto',  component: FechamentoPonto, meta: { requiresAuth: true } },
+  { path: '/fechamento-ponto/:slug?', name: 'FechamentoPonto', component: FechamentoPonto, meta: { requiresAuth: true } },
   { path: '/vales',             name: 'Vales',            component: Vales,           meta: { requiresAuth: true } },
   { path: '/operadores',        name: 'Operadores',       component: Operadores,      meta: { requiresAuth: true } },
   { path: '/caixa',             name: 'Caixa',            component: Caixa,           meta: { requiresAuth: true } },
