@@ -72,7 +72,7 @@ router.get('/pendentes', async (req, res) => {
     const pks = lista.map(p => p.pk);
     let jaConfirmados = new Set();
     if (pks.length) {
-      const { data: recExist } = await supabase.from('recebimentos').select('pagamento_pk').in('pagamento_pk', pks);
+      const { data: recExist } = await supabase.from('recebimentos').select('pagamento_pk').eq('ativo', true).in('pagamento_pk', pks);
       jaConfirmados = new Set((recExist || []).map(r => r.pagamento_pk));
     }
 
@@ -114,6 +114,7 @@ router.get('/recebimentos', async (req, res) => {
       .from('recebimentos')
       .select('*')
       .eq('filial_pk', parseInt(filial_pk))
+      .eq('ativo', true)
       .gte('data_recebimento', dataIni)
       .lte('data_recebimento', dataFim)
       .order('data_recebimento', { ascending: false });
@@ -220,7 +221,7 @@ router.delete('/:pk', async (req, res) => {
       .from('recebimentos').select('pk, conta_pk, valor').eq('pk', parseInt(pk)).single();
     if (erGet || !rec) return res.status(404).json({ erro: 'Recebimento não encontrado' });
 
-    const { error } = await supabase.from('recebimentos').delete().eq('pk', parseInt(pk));
+    const { error } = await supabase.from('recebimentos').update({ ativo: false }).eq('pk', parseInt(pk));
     if (error) throw error;
 
     if (rec.conta_pk) {

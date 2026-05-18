@@ -666,6 +666,8 @@ CREATE TABLE IF NOT EXISTS recebimentos (
   criado_em        timestamptz DEFAULT now()
 );
 
+ALTER TABLE recebimentos ADD COLUMN IF NOT EXISTS ativo boolean DEFAULT true;
+
 CREATE INDEX IF NOT EXISTS idx_recebimentos_filial    ON recebimentos(filial_pk);
 CREATE INDEX IF NOT EXISTS idx_recebimentos_pagamento ON recebimentos(pagamento_pk);
 CREATE INDEX IF NOT EXISTS idx_recebimentos_data      ON recebimentos(data_recebimento);
