@@ -442,7 +442,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { supabase } from '../composables/useSupabase';
+import api from '../services/api';
 import { useSessaoStore } from '../stores/sessao';
 
 const sessaoStore = useSessaoStore();
@@ -485,16 +485,14 @@ async function salvarObsLocacao() {
   if (!modalObsLocacao.value?.venda_pk) return;
   salvandoObs.value = true;
   try {
-    const { error } = await supabase
-      .from('vendas')
-      .update({ observacao: obsLocacaoTexto.value || null })
-      .eq('pk', modalObsLocacao.value.venda_pk);
-    if (error) throw error;
+    await api.patch(`/api/agenda/obs-locacao/${modalObsLocacao.value.venda_pk}`, {
+      observacao: obsLocacaoTexto.value || null,
+    });
     showToast('Observação salva!', 'ok');
     modalObsLocacao.value = null;
     await carregarEventos();
   } catch (e) {
-    showToast('Erro: ' + e.message, 'err');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     salvandoObs.value = false;
   }
@@ -508,18 +506,15 @@ async function abrirDetalheVenda(venda_pk) {
   if (!venda_pk) return;
   vendaDetalhe.value      = { carregando: true };
   carregandoDetalhe.value = true;
-  const { data, error } = await supabase
-    .from('vendas')
-    .select('pk, numero, cliente, total, tipo_venda, criado_em, itens_venda(pk, descricao, qtd, preco_unit, total_item)')
-    .eq('pk', venda_pk)
-    .single();
-  carregandoDetalhe.value = false;
-  if (error || !data) {
+  try {
+    const resp = await api.get(`/api/agenda/venda-detalhe/${venda_pk}`);
+    vendaDetalhe.value = resp.data.data;
+  } catch (e) {
     showToast('Erro ao carregar detalhes da venda.', 'err');
     vendaDetalhe.value = null;
-    return;
+  } finally {
+    carregandoDetalhe.value = false;
   }
-  vendaDetalhe.value = data;
 }
 
 // Toast
@@ -610,93 +605,16 @@ onMounted(() => carregarEventos());
 async function carregarEventos() {
   carregando.value = true;
   try {
-    const ini = `${anoAtual.value}-${String(mesAtual.value + 1).padStart(2, '0')}-01`;
-    const fim = new Date(anoAtual.value, mesAtual.value + 1, 0).toISOString().slice(0, 10);
-
-    const [resAgenda, resLocacoes] = await Promise.all([
-      supabase
-        .from('agenda')
-        .select('*, vendas(pk, numero, cliente)')
-        .eq('filial_pk', sessaoStore.filial?.pk)
-        .gte('data_evento', ini)
-        .lte('data_evento', fim)
-        .order('hora_inicio', { nullsFirst: true }),
-
-      supabase
-        .from('vendas')
-        .select('pk, numero, cliente, data_locacao, data_devolucao_prevista, status_locacao, observacao')
-        .eq('filial_pk', sessaoStore.filial?.pk)
-        .eq('ativo', true)
-        .eq('tipo_venda', 'locacao')
-        .or(`data_locacao.gte.${ini}T00:00:00,data_devolucao_prevista.gte.${ini}T00:00:00`)
-        .lte('data_locacao', fim + 'T23:59:59'),
-    ]);
-
-    const evs = [];
-
-    // Eventos da agenda
-    for (const ev of resAgenda.data || []) {
-      evs.push({
-        id:          'ag-' + ev.pk,
-        pk:          ev.pk,
-        source:      'agenda',
-        titulo:      ev.titulo,
-        tipo:        ev.tipo || 'manual',
-        date:        ev.data_evento || ev.data_inicio,
-        hora:        ev.hora_inicio ? ev.hora_inicio.slice(0, 5) : null,
-        descricao:   ev.descricao,
-        cor:         ev.cor || COR_TIPOS[ev.tipo] || COR_TIPOS.manual,
-        venda_pk:    ev.venda_pk,
-        venda_info:  ev.vendas || null,
-        projeto_pk:  ev.projeto_pk || null,
-      });
-    }
-
-    // Locações: retirada
-    for (const loc of resLocacoes.data || []) {
-      if (loc.data_locacao) {
-        const d = loc.data_locacao.slice(0, 10);
-        if (d >= ini && d <= fim) {
-          evs.push({
-            id:         'ret-' + loc.pk,
-            source:     'locacao',
-            titulo:     `Retirada #${loc.numero}${loc.cliente ? ' · ' + loc.cliente : ''}`,
-            tipo:       'locacao_retirada',
-            date:       d,
-            hora:       loc.data_locacao.slice(11, 16) !== '00:00' ? loc.data_locacao.slice(11, 16) : null,
-            descricao:  loc.observacao || (loc.status_locacao === 'devolvida' ? 'Já devolvida' : null),
-            observacao: loc.observacao || '',
-            status_locacao: loc.status_locacao,
-            cor:        COR_TIPOS.locacao_retirada,
-            venda_pk:   loc.pk,
-            venda_info: { numero: loc.numero, cliente: loc.cliente },
-          });
-        }
-      }
-      if (loc.data_devolucao_prevista) {
-        const d = loc.data_devolucao_prevista.slice(0, 10);
-        if (d >= ini && d <= fim) {
-          evs.push({
-            id:         'dev-' + loc.pk,
-            source:     'locacao',
-            titulo:     `Devolução #${loc.numero}${loc.cliente ? ' · ' + loc.cliente : ''}`,
-            tipo:       'locacao_devolucao',
-            date:       d,
-            hora:       null,
-            descricao:  loc.observacao || (loc.status_locacao === 'devolvida' ? 'Devolvida' : 'Pendente'),
-            observacao: loc.observacao || '',
-            status_locacao: loc.status_locacao,
-            cor:        COR_TIPOS.locacao_devolucao,
-            venda_pk:   loc.pk,
-            venda_info: { numero: loc.numero, cliente: loc.cliente },
-          });
-        }
-      }
-    }
-
-    eventos.value = evs;
+    const resp = await api.get('/api/agenda/eventos', {
+      params: {
+        filial_pk: sessaoStore.filial?.pk,
+        ano:       anoAtual.value,
+        mes:       mesAtual.value + 1,
+      },
+    });
+    eventos.value = resp.data.data || [];
   } catch (e) {
-    showToast('Erro ao carregar agenda: ' + e.message, 'err');
+    showToast('Erro ao carregar agenda: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     carregando.value = false;
   }
@@ -765,24 +683,20 @@ async function salvarEvento() {
       titulo:      f.titulo,
       tipo:        f.tipo || 'manual',
       data_evento: f.data_evento,
-      data_inicio: f.data_evento,
       hora_inicio: f.hora_inicio || null,
       descricao:   f.descricao  || null,
       venda_pk:    f.venda_pk   || null,
-      cor:         COR_TIPOS[f.tipo] || COR_TIPOS.manual,
     };
-    let error;
     if (f.pk) {
-      ({ error } = await supabase.from('agenda').update(payload).eq('pk', f.pk));
+      await api.put(`/api/agenda/${f.pk}`, payload);
     } else {
-      ({ error } = await supabase.from('agenda').insert(payload));
+      await api.post('/api/agenda', payload);
     }
-    if (error) throw error;
     showToast(f.pk ? 'Evento atualizado!' : 'Evento criado!', 'ok');
     fecharModal();
     await carregarEventos();
   } catch (e) {
-    showToast('Erro: ' + e.message, 'err');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     salvando.value = false;
   }
@@ -793,13 +707,12 @@ function confirmarExclusao(ev) { excluindo.value = ev; }
 async function deletarEvento() {
   removendo.value = true;
   try {
-    const { error } = await supabase.from('agenda').delete().eq('pk', excluindo.value.pk);
-    if (error) throw error;
+    await api.delete(`/api/agenda/${excluindo.value.pk}`);
     showToast('Evento excluído.', 'ok');
     excluindo.value = null;
     await carregarEventos();
   } catch (e) {
-    showToast('Erro: ' + e.message, 'err');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     removendo.value = false;
   }
@@ -812,21 +725,14 @@ async function buscarVendas() {
   const q = vendaBusca.value.trim();
   if (q.length < 1) { vendaResultados.value = []; return; }
   buscaTimer = setTimeout(async () => {
-    const numQ = parseInt(q);
-    let query = supabase
-      .from('vendas')
-      .select('pk, numero, cliente, tipo_venda, criado_em')
-      .eq('filial_pk', sessaoStore.filial?.pk)
-      .eq('ativo', true)
-      .order('numero', { ascending: false })
-      .limit(8);
-    if (!isNaN(numQ)) {
-      query = query.eq('numero', numQ);
-    } else {
-      query = query.ilike('cliente', `%${q}%`);
+    try {
+      const resp = await api.get('/api/agenda/buscar-vendas', {
+        params: { filial_pk: sessaoStore.filial?.pk, q },
+      });
+      vendaResultados.value = resp.data.data || [];
+    } catch {
+      vendaResultados.value = [];
     }
-    const { data } = await query;
-    vendaResultados.value = data || [];
   }, 300);
 }
 

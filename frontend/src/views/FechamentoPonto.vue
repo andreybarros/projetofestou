@@ -904,7 +904,7 @@ async function carregar() {
   const q1   = quinzena.value, m1 = mes.value, a1 = ano.value;
 
   const { data: resp } = await apiClient.get('/api/ponto/fechamento-dados', {
-    params: { funcionario_pk: func.pk, mes: m1, ano: a1, quinzena: q1 },
+    params: { funcionario_pk: func.pk, mes: m1, ano: a1, quinzena: q1, filial_pk: sessao.filial?.pk },
   });
 
   const fch = resp.fechamento;

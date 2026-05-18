@@ -450,7 +450,6 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSessaoStore }     from "../stores/sessao";
 import { useParametrosStore } from "../stores/parametros";
-import { supabase }           from "../composables/useSupabase";
 import apiClient              from "../services/api";
 import { imprimirContratoLocacao } from "../utils/contrato";
 
@@ -502,21 +501,20 @@ function fmtVal(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFrac
 onMounted(async () => {
   const fil = sessaoStore.filial?.pk;
   if (fil) {
-    const { data: formas } = await supabase.from('formas_pagamento').select('forma, label').eq('filial_pk', fil);
-    if (formas) formas.forEach(f => { formasMap.value[f.forma] = f.label; });
+    try {
+      const resp = await apiClient.get('/api/vendas/formas', { params: { filial_pk: fil } });
+      (resp.data.data || []).forEach(f => { formasMap.value[f.forma] = f.label; });
+    } catch { /* formasMap fica vazio, não quebra */ }
   }
   await carregar(0);
   const abrirPk = route.query.abrir ? parseInt(route.query.abrir) : null;
   if (abrirPk) {
     let v = vendas.value.find(x => x.pk === abrirPk);
     if (!v) {
-      const { data } = await supabase
-        .from('vendas')
-        .select('pk, numero, criado_em, cliente, operador, vendedor, total, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe')
-        .eq('pk', abrirPk)
-        .eq('ativo', true)
-        .single();
-      v = data;
+      try {
+        const resp = await apiClient.get(`/api/vendas/${abrirPk}`);
+        v = resp.data.data;
+      } catch { /* ignora */ }
     }
     if (v) abrirDetalhe(v);
   }
@@ -579,12 +577,9 @@ async function abrirDetalhe(v) {
   detalhePagamentos.value = [];
   detalheCarregando.value = true;
   try {
-    const [ri, rp] = await Promise.all([
-      supabase.from('itens_venda').select('*').eq('venda_pk', v.pk).order('pk'),
-      supabase.from('pagamentos_venda').select('*').eq('venda_pk', v.pk).order('pk'),
-    ]);
-    detalheItens.value      = ri.data || [];
-    detalhePagamentos.value = rp.data || [];
+    const resp = await apiClient.get(`/api/vendas/${v.pk}/detalhe`);
+    detalheItens.value      = resp.data.itens      || [];
+    detalhePagamentos.value = resp.data.pagamentos  || [];
   } catch (e) {
     toast('Erro ao carregar detalhes.', 'err');
   } finally {

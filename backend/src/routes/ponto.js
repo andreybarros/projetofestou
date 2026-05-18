@@ -297,7 +297,9 @@ router.get('/fechamento-dados', async (req, res) => {
     const antM = q1 === 1 ? (m1 === 1 ? 12 : m1 - 1) : m1;
     const antA = q1 === 1 ? (m1 === 1 ? a1 - 1 : a1) : a1;
 
-    const [resFch, resFchAnt, resFunc, resP, resJ, resTol, resExtra, resDom] = await Promise.all([
+    const filialPk = req.query.filial_pk ? parseInt(req.query.filial_pk) : null;
+
+    const [resFch, resFchAnt, resFunc, resP, resJ, resParams] = await Promise.all([
       supabase.from('fechamento_ponto').select('*')
         .eq('funcionario_pk', fpk).eq('mes', m1).eq('ano', a1).eq('quinzena', q1).maybeSingle(),
       supabase.from('fechamento_ponto').select('saldo_acumulado')
@@ -307,9 +309,10 @@ router.get('/fechamento-dados', async (req, res) => {
         .eq('funcionario_pk', fpk).gte('data', dataIni).lte('data', dataFim).order('data').order('hora'),
       supabase.from('justificativas_ponto').select('*')
         .eq('funcionario_pk', fpk).gte('data', dataIni).lte('data', dataFim),
-      supabase.from('parametros_sistema').select('valor').eq('chave', 'ponto_tolerancia_minutos').maybeSingle(),
-      supabase.from('parametros_sistema').select('valor').eq('chave', 'ponto_adicional_hora_extra').maybeSingle(),
-      supabase.from('parametros_sistema').select('valor').eq('chave', 'ponto_adicional_hora_domingo').maybeSingle(),
+      supabase.from('parametros_sistema')
+        .select('chave, valor, filial_pk')
+        .in('chave', ['ponto_tolerancia_minutos', 'ponto_adicional_hora_extra', 'ponto_adicional_hora_domingo'])
+        .or(filialPk ? `filial_pk.is.null,filial_pk.eq.${filialPk}` : 'filial_pk.is.null'),
     ]);
 
     if (!resFunc.data) return res.status(404).json({ erro: 'Funcionário não encontrado' });
@@ -321,11 +324,20 @@ router.get('/fechamento-dados', async (req, res) => {
       descontos = desc || [];
     }
 
+    // Para cada chave, prefere valor específico da filial sobre o global
+    const getParam = (chave, defaultVal) => {
+      const rows = (resParams.data || []).filter(r => r.chave === chave);
+      const filialRow  = rows.find(r => r.filial_pk !== null);
+      const globalRow  = rows.find(r => r.filial_pk === null);
+      const row = filialRow || globalRow;
+      return row ? parseFloat(row.valor) : defaultVal;
+    };
+
     const func          = resFunc.data;
     const saldoAnt      = Math.max(0, resFchAnt.data?.saldo_acumulado ?? (func.saldo_inicial_banco || 0));
-    const toleranciaMin = parseInt(resTol.data?.valor  ?? 15);
-    const adicionalExtraPct   = parseFloat(resExtra.data?.valor ?? 60);
-    const adicionalDomingoPct = parseFloat(resDom.data?.valor   ?? 100);
+    const toleranciaMin = getParam('ponto_tolerancia_minutos',  15);
+    const adicionalExtraPct   = getParam('ponto_adicional_hora_extra',   50);
+    const adicionalDomingoPct = getParam('ponto_adicional_hora_domingo', 100);
 
     const { summaries, dias } = calcularPeriodo({
       func, punches: resP.data || [], justs: resJ.data || [],

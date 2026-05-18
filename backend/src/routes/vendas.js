@@ -594,4 +594,63 @@ router.get('/:pk/editar-dados', async (req, res) => {
   }
 });
 
+// ── Formas de pagamento da filial ─────────────────────────────────────────────
+router.get('/formas', async (req, res) => {
+  const { filial_pk } = req.query;
+  if (!filial_pk) return res.status(400).json({ erro: 'filial_pk obrigatório' });
+  try {
+    const { data, error } = await supabase
+      .from('formas_pagamento')
+      .select('forma, label')
+      .eq('filial_pk', parseInt(filial_pk))
+      .eq('ativo', true)
+      .order('ordem');
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (e) {
+    console.error('[Vendas/formas]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ── Detalhe completo de uma venda (itens + pagamentos) ────────────────────────
+router.get('/:pk/detalhe', async (req, res) => {
+  const venda_pk = parseInt(req.params.pk);
+  try {
+    const [{ data: venda, error: ve }, { data: itens }, { data: pagamentos }] = await Promise.all([
+      supabase.from('vendas')
+        .select('pk, numero, criado_em, cliente, cliente_pk, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe, clientes(nome)')
+        .eq('pk', venda_pk)
+        .single(),
+      supabase.from('itens_venda').select('*').eq('venda_pk', venda_pk).order('pk'),
+      supabase.from('pagamentos_venda').select('*').eq('venda_pk', venda_pk).order('pk'),
+    ]);
+    if (ve || !venda) return res.status(404).json({ erro: 'Venda não encontrada' });
+    const row = { ...venda, cliente_nome: venda.clientes?.nome || venda.cliente || null };
+    res.json({ ok: true, venda: row, itens: itens || [], pagamentos: pagamentos || [] });
+  } catch (e) {
+    console.error('[Vendas/detalhe]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ── Buscar venda por pk ───────────────────────────────────────────────────────
+router.get('/:pk', async (req, res) => {
+  const venda_pk = parseInt(req.params.pk);
+  try {
+    const { data, error } = await supabase
+      .from('vendas')
+      .select('pk, numero, criado_em, cliente, cliente_pk, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe, clientes(nome)')
+      .eq('pk', venda_pk)
+      .eq('ativo', true)
+      .single();
+    if (error || !data) return res.status(404).json({ erro: 'Venda não encontrada' });
+    const row = { ...data, cliente_nome: data.clientes?.nome || data.cliente || null };
+    res.json({ ok: true, data: row });
+  } catch (e) {
+    console.error('[Vendas/buscarPk]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
 module.exports = router;

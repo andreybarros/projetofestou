@@ -202,8 +202,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { supabase } from '../composables/useSupabase';
+import { ref, computed, onMounted } from 'vue';
+import api from '../services/api';
 import { useSessaoStore } from '../stores/sessao';
 
 const sessaoStore = useSessaoStore();
@@ -242,50 +242,25 @@ const promoPreco  = ref(null);
 const promoInicio = ref('');
 const promoFim    = ref('');
 
-onMounted(async () => {
-  await carregarCategorias();
-  await carregarProdutos();
-});
-
-async function carregarCategorias() {
-  let q = supabase.from("categorias").select("pk, nome").order("nome");
-  if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
-  const { data } = await q;
-  categorias.value = data || [];
-}
+onMounted(carregarProdutos);
 
 async function carregarProdutos() {
   carregando.value = true;
   try {
-    let q = supabase
-      .from("produtos")
-      .select("pk, codigo, descricao, valor_venda, preco_custo, categoria_pk, preco_promo, promo_inicio, promo_fim")
-      .order("descricao");
-    
-    if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
-    
-    const { data, error } = await q;
-    if (error) throw error;
-
-    const catMap = {};
-    categorias.value.forEach(c => { catMap[c.pk] = c.nome; });
-    
-    produtos.value = (data || []).map(p => ({
-      ...p,
-      categoria_nome: catMap[p.categoria_pk] || ""
-    }));
+    const resp = await api.get('/api/ajuste-precos/produtos', {
+      params: { filial_pk: sessaoStore.filial?.pk },
+    });
+    produtos.value   = resp.data.produtos   || [];
+    categorias.value = resp.data.categorias || [];
   } catch (e) {
-    console.error(e.message);
+    toast('Erro ao carregar produtos: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     carregando.value = false;
   }
 }
 
 function estaEmPromo(p) {
-  if (!p.preco_promo || p.preco_promo <= 0) return false;
-  if (!p.promo_inicio || !p.promo_fim) return false;
-  const agora = new Date();
-  return agora >= new Date(p.promo_inicio) && agora <= new Date(p.promo_fim);
+  return !!p.em_promo;
 }
 
 // Lógica de Filtro e Seleção
@@ -366,38 +341,18 @@ function confirmarReajuste() {
 async function executarReajuste() {
   showConfirm.value = false;
   atualizando.value = true;
-  
   try {
-    const batchSize = 10; // Processar em pequenos lotes para não sobrecarregar
-    const chunks = [];
-    for (let i = 0; i < selecionados.value.length; i += batchSize) {
-      chunks.push(selecionados.value.slice(i, i + batchSize));
-    }
-
-    for (const chunk of chunks) {
-      const prodsToUpdate = produtos.value.filter(p => chunk.includes(p.pk));
-      
-      const updates = prodsToUpdate.map(p => {
-        const payload = {};
-        
-        if (tipoAlvo.value === 'venda' || tipoAlvo.value === 'ambos') {
-          payload.valor_venda = calcularNovoPreco(p.valor_venda);
-        }
-        if (tipoAlvo.value === 'custo' || tipoAlvo.value === 'ambos') {
-          payload.preco_custo = calcularNovoPreco(p.preco_custo);
-        }
-
-        return supabase.from('produtos').update(payload).eq('pk', p.pk);
-      });
-
-      await Promise.all(updates);
-    }
-
+    await api.post('/api/ajuste-precos/reajuste', {
+      pks:        selecionados.value,
+      tipoAlvo:   tipoAlvo.value,
+      metodo:     metodo.value,
+      valorAjuste: valorAjuste.value,
+    });
     await carregarProdutos();
     limparSelecao();
     toast('Preços atualizados com sucesso!');
   } catch (err) {
-    toast('Erro ao atualizar preços: ' + err.message, 'err');
+    toast('Erro ao atualizar preços: ' + (err.response?.data?.erro || err.message), 'err');
   } finally {
     atualizando.value = false;
   }
@@ -407,19 +362,17 @@ async function aplicarPromo() {
   if (!promoPreco.value || !promoInicio.value || !promoFim.value) return;
   atualizando.value = true;
   try {
-    const updates = selecionados.value.map(pk =>
-      supabase.from('produtos').update({
-        preco_promo:  parseFloat(promoPreco.value),
-        promo_inicio: new Date(promoInicio.value).toISOString(),
-        promo_fim:    new Date(promoFim.value).toISOString(),
-      }).eq('pk', pk)
-    );
-    await Promise.all(updates);
+    await api.post('/api/ajuste-precos/promo', {
+      pks:         selecionados.value,
+      preco_promo:  promoPreco.value,
+      promo_inicio: promoInicio.value,
+      promo_fim:    promoFim.value,
+    });
     await carregarProdutos();
     limparSelecao();
-    toast(`Promoção aplicada em ${updates.length} produto(s)!`);
+    toast(`Promoção aplicada em ${selecionados.value.length} produto(s)!`);
   } catch (err) {
-    toast('Erro ao aplicar promoção: ' + err.message, 'err');
+    toast('Erro ao aplicar promoção: ' + (err.response?.data?.erro || err.message), 'err');
   } finally {
     atualizando.value = false;
   }
@@ -428,30 +381,15 @@ async function aplicarPromo() {
 async function limparPromo() {
   atualizando.value = true;
   try {
-    const updates = selecionados.value.map(pk =>
-      supabase.from('produtos').update({
-        preco_promo: null, promo_inicio: null, promo_fim: null,
-      }).eq('pk', pk)
-    );
-    await Promise.all(updates);
+    await api.delete('/api/ajuste-precos/promo', { data: { pks: selecionados.value } });
     await carregarProdutos();
     limparSelecao();
-    toast(`Promoção removida com sucesso!`);
+    toast('Promoção removida com sucesso!');
   } catch (err) {
-    toast('Erro ao remover promoção: ' + err.message, 'err');
+    toast('Erro ao remover promoção: ' + (err.response?.data?.erro || err.message), 'err');
   } finally {
     atualizando.value = false;
   }
-}
-
-function calcularNovoPreco(atual) {
-  const v = parseFloat(atual || 0);
-  const ajuste = parseFloat(valorAjuste.value || 0);
-
-  if (metodo.value === 'percentual_aumento') return v * (1 + ajuste / 100);
-  if (metodo.value === 'percentual_desconto') return v * (1 - ajuste / 100);
-  if (metodo.value === 'valor_fixo') return ajuste;
-  return v;
 }
 
 // Helpers Visuais

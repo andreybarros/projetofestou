@@ -397,8 +397,8 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, watch } from 'vue';
-import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
+import api from '../services/api';
 
 const sessaoStore = useSessaoStore();
 
@@ -493,13 +493,9 @@ onMounted(() => {
 });
 
 async function carregarContas() {
-  const fil = sessaoStore.filial?.pk;
-  const [{ data: contasData }, { data: formasData }] = await Promise.all([
-    supabase.from('contas_bancarias').select('pk, nome').eq('filial_pk', fil).order('nome'),
-    supabase.from('formas_pagamento').select('pk, forma, label').eq('filial_pk', fil).eq('ativo', true).order('ordem'),
-  ]);
-  contas.value = contasData || [];
-  formas.value = formasData || [];
+  const { data } = await api.get('/api/consolidacao/auxiliares', { params: { filial_pk: sessaoStore.filial?.pk } });
+  contas.value = data.contas || [];
+  formas.value = data.formas || [];
 }
 
 async function carregar() {
@@ -513,110 +509,27 @@ async function carregar() {
 }
 
 async function carregarPendentes() {
-  const de  = filtro.value.de  + 'T00:00:00';
-  const ate = filtro.value.ate + 'T23:59:59';
-
-  let q = supabase
-    .from('pagamentos_venda')
-    .select('pk, venda_pk, forma, valor, vendas!inner(pk, numero, criado_em, cliente_pk, filial_pk)')
-    .eq('vendas.filial_pk', sessaoStore.filial?.pk)
-    .eq('vendas.ativo', true)
-    .gte('vendas.criado_em', de)
-    .lte('vendas.criado_em', ate);
-
-  if (filtro.value.forma) q = q.eq('forma', filtro.value.forma);
-
-  const { data: pagamentos, error } = await q;
-  if (error) throw error;
-
-  // Resolve nomes dos clientes pelo cadastro
-  const clientePks = [...new Set((pagamentos || []).map(p => p.vendas?.cliente_pk).filter(Boolean))];
-  const clienteMap = {};
-  if (clientePks.length) {
-    const { data: clis } = await supabase.from('clientes').select('pk, nome').in('pk', clientePks);
-    (clis || []).forEach(c => { clienteMap[c.pk] = c.nome; });
-  }
-
-  const pks = (pagamentos || []).map(p => p.pk);
-  let jaConfirmados = new Set();
-  if (pks.length) {
-    const { data: recExist } = await supabase
-      .from('recebimentos')
-      .select('pagamento_pk')
-      .in('pagamento_pk', pks);
-    jaConfirmados = new Set((recExist || []).map(r => r.pagamento_pk));
-  }
-
-  const pendentes = (pagamentos || [])
-    .filter(p => !jaConfirmados.has(p.pk))
-    .map(p => {
-      const v  = p.vendas;
-      const dt = v?.criado_em ? new Date(v.criado_em) : new Date();
-      return {
-        pk:            p.pk,
-        venda_pk:      p.venda_pk,
-        venda_numero:  v?.numero,
-        venda_cliente: v?.cliente_pk ? (clienteMap[v.cliente_pk] || null) : null,
-        venda_data:    fmtDataSimples(dt.toISOString().slice(0, 10)),
-        venda_hora:    dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        forma:         p.forma,
-        valor:         p.valor,
-        data_prevista: fmtDataSimples(dataPrevisao(p.forma, dt)),
-      };
-    })
-    .sort((a, b) => b.venda_data.localeCompare(a.venda_data));
-
-  listaPendentes.value = pendentes;
-
-  pendentes.forEach(p => {
+  const { data } = await api.get('/api/consolidacao/pendentes', {
+    params: { filial_pk: sessaoStore.filial?.pk, de: filtro.value.de, ate: filtro.value.ate, forma: filtro.value.forma || undefined },
+  });
+  const raw = data.data || [];
+  listaPendentes.value = raw.map(p => ({
+    ...p,
+    venda_data:    fmtDataSimples(p.venda_data),
+    data_prevista: fmtDataSimples(p.data_prevista),
+  }));
+  raw.forEach(p => {
     if (!formPend[p.pk]) {
-      formPend[p.pk] = {
-        data_recebimento: dataPrevisao(p.forma, new Date()),
-        conta_pk: null,
-        descricao: '',
-      };
+      formPend[p.pk] = { data_recebimento: p.data_prevista, conta_pk: null, descricao: '' };
     }
   });
 }
 
 async function carregarRecebimentos() {
-  let q = supabase
-    .from('recebimentos')
-    .select('*')
-    .eq('filial_pk', sessaoStore.filial?.pk)
-    .gte('data_recebimento', filtro.value.de)
-    .lte('data_recebimento', filtro.value.ate)
-    .order('data_recebimento', { ascending: false });
-
-  if (filtro.value.forma) q = q.eq('forma', filtro.value.forma);
-
-  const { data, error } = await q;
-  if (error) throw error;
-
-  const items    = data || [];
-  const vendaPks = [...new Set(items.filter(r => r.venda_pk).map(r => r.venda_pk))];
-  if (vendaPks.length) {
-    const { data: vendas } = await supabase.from('vendas').select('pk, numero, cliente_pk').eq('ativo', true).in('pk', vendaPks);
-
-    // Resolve nomes dos clientes pelo cadastro
-    const clientePks = [...new Set((vendas || []).map(v => v.cliente_pk).filter(Boolean))];
-    const clienteMap = {};
-    if (clientePks.length) {
-      const { data: clis } = await supabase.from('clientes').select('pk, nome').in('pk', clientePks);
-      (clis || []).forEach(c => { clienteMap[c.pk] = c.nome; });
-    }
-
-    const vm = {};
-    (vendas || []).forEach(v => { vm[v.pk] = v; });
-    items.forEach(r => {
-      if (r.venda_pk && vm[r.venda_pk]) {
-        r.venda_numero  = vm[r.venda_pk].numero;
-        r.venda_cliente = vm[r.venda_pk].cliente_pk ? (clienteMap[vm[r.venda_pk].cliente_pk] || null) : null;
-      }
-    });
-  }
-
-  listaRec.value = items;
+  const { data } = await api.get('/api/consolidacao/recebimentos', {
+    params: { filial_pk: sessaoStore.filial?.pk, de: filtro.value.de, ate: filtro.value.ate, forma: filtro.value.forma || undefined },
+  });
+  listaRec.value = data.data || [];
 }
 
 function toggleExpand(p) {
@@ -642,7 +555,7 @@ async function confirmarPendente(p) {
   if (!f?.data_recebimento) return;
   salvando[p.pk] = true;
   try {
-    const { error } = await supabase.from('recebimentos').insert({
+    await api.post('/api/consolidacao/confirmar', {
       filial_pk:        sessaoStore.filial?.pk,
       pagamento_pk:     p.pk,
       venda_pk:         p.venda_pk,
@@ -652,15 +565,11 @@ async function confirmarPendente(p) {
       forma:            p.forma,
       descricao:        f.descricao || null,
     });
-    if (error) throw error;
-    if (f.conta_pk) {
-      await supabase.rpc('ajustar_saldo_conta', { p_conta_pk: f.conta_pk, p_delta: p.valor });
-    }
     showToast('Recebimento confirmado!', 'ok');
     expandido.value = null;
     await carregar();
   } catch (e) {
-    showToast('Erro: ' + e.message, 'err');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     salvando[p.pk] = false;
   }
@@ -671,25 +580,19 @@ async function salvarManual() {
   if (!m.data_recebimento || !m.valor) return;
   salvandoManual.value = true;
   try {
-    const { error } = await supabase.from('recebimentos').insert({
+    await api.post('/api/consolidacao/avulso', {
       filial_pk:        sessaoStore.filial?.pk,
-      pagamento_pk:     null,
-      venda_pk:         null,
       conta_pk:         m.conta_pk || null,
       data_recebimento: m.data_recebimento,
       valor:            parseFloat(m.valor),
       forma:            m.forma || null,
       descricao:        m.descricao || null,
     });
-    if (error) throw error;
-    if (m.conta_pk) {
-      await supabase.rpc('ajustar_saldo_conta', { p_conta_pk: m.conta_pk, p_delta: parseFloat(m.valor) });
-    }
     showToast('Recebimento lançado!', 'ok');
     manual.value = { data_recebimento: hoje, valor: '', forma: '', conta_pk: null, descricao: '' };
     await carregarRecebimentos();
   } catch (e) {
-    showToast('Erro: ' + e.message, 'err');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     salvandoManual.value = false;
   }
@@ -700,41 +603,18 @@ function excluirRec(r) { excluindo.value = r; }
 async function confirmarExclusao() {
   removendo.value = true;
   try {
-    const rec = excluindo.value;
-    const { error } = await supabase.from('recebimentos').delete().eq('pk', rec.pk);
-    if (error) throw error;
-    if (rec.conta_pk) {
-      await supabase.rpc('ajustar_saldo_conta', { p_conta_pk: rec.conta_pk, p_delta: -rec.valor });
-    }
+    await api.delete(`/api/consolidacao/${excluindo.value.pk}`);
     showToast('Excluído.', 'ok');
     excluindo.value = null;
     await carregar();
   } catch (e) {
-    showToast('Erro: ' + e.message, 'err');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     removendo.value = false;
   }
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-function dataPrevisao(forma, base) {
-  const f = forma?.toLowerCase();
-  const d = new Date(base);
-  if (f === 'dinheiro' || f === 'pix') return d.toISOString().slice(0, 10);
-  if (f === 'debito' || f === 'credito') return proximoDiaUtil(d, 1).toISOString().slice(0, 10);
-  return d.toISOString().slice(0, 10);
-}
-
-function proximoDiaUtil(base, dias) {
-  const d = new Date(base);
-  let n = 0;
-  while (n < dias) {
-    d.setDate(d.getDate() + 1);
-    if (d.getDay() !== 0 && d.getDay() !== 6) n++;
-  }
-  return d;
-}
-
 const FORMAS_SLUG = ['dinheiro', 'pix', 'debito', 'credito', 'crediario'];
 function normForma(f) {
   const slug = (f || '').toLowerCase().replace(/\s+/g, '-');
