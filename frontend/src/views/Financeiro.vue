@@ -313,8 +313,8 @@
 
 <script setup>
 import { ref, reactive, onMounted, inject } from 'vue';
-import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
+import apiClient from '../services/api';
 
 const sessaoStore = useSessaoStore();
 const showToast = inject('showToast');
@@ -330,48 +330,36 @@ const emojisDisponiveis = [
   '🤝','💼','🏷️','🎟️','🎫','🛒','📊','📈','🏪','🔑',
 ];
 
-const carregandoContas = ref(false);
+const carregandoContas  = ref(false);
 const carregandoExtrato = ref(false);
-const carregandoFormas = ref(false);
-const carregandoCats   = ref(false);
-const processando = ref(false);
+const carregandoFormas  = ref(false);
+const carregandoCats    = ref(false);
+const processando       = ref(false);
 
-// Categorias de despesa
-const categorias          = ref([]);
+const categorias    = ref([]);
 const novaCategoria = ref('');
 
-// Editar saldo
-const modalEditSaldo  = ref(false);
-const contaEditando   = ref(null);
-const novoSaldo       = ref(0);
+const modalEditSaldo = ref(false);
+const contaEditando  = ref(null);
+const novoSaldo      = ref(0);
 
 const filtroContaPk = ref(null);
 
-const formConta = reactive({
-  nome: '',
-  tipo: 'pix',
-  saldo: 0
-});
+const formConta = reactive({ nome: '', tipo: 'pix', saldo: 0 });
 
-const formForma = reactive({
-  forma: '',
-  label: '',
-  icone: '💳'
-});
+const formForma = reactive({ forma: '', label: '', icone: '💳' });
 const mostrandoNovaForma = ref(false);
 
 const formEditar = reactive({ pk: null, forma: '', label: '', icone: '💳' });
 const mostrandoEditForma = ref(false);
 
-onMounted(() => {
-  carregarContas();
-});
+onMounted(() => { carregarContas(); });
 
 function mudarTab(tab) {
   tabAtiva.value = tab;
-  if (tab === 'contas') carregarContas();
-  if (tab === 'extrato') carregarExtrato();
-  if (tab === 'formas') carregarFormas();
+  if (tab === 'contas')     carregarContas();
+  if (tab === 'extrato')    carregarExtrato();
+  if (tab === 'formas')     carregarFormas();
   if (tab === 'categorias') carregarCategorias();
 }
 
@@ -380,11 +368,10 @@ async function carregarContas() {
   if (!fil) return;
   carregandoContas.value = true;
   try {
-    const { data, error } = await supabase.from('contas_bancarias').select('*').eq('filial_pk', fil).eq('ativo', true).order('nome');
-    if (error) throw error;
-    contas.value = data || [];
+    const { data } = await apiClient.get('/api/financeiro/contas', { params: { filial_pk: fil } });
+    contas.value = data.data || [];
   } catch (e) {
-    showToast('Erro ao carregar contas: ' + e.message, 'error');
+    showToast('Erro ao carregar contas: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     carregandoContas.value = false;
   }
@@ -395,19 +382,13 @@ async function salvarConta() {
   if (!fil) return;
   processando.value = true;
   try {
-    const { error } = await supabase.from('contas_bancarias').insert([{
-      filial_pk: fil,
-      nome: formConta.nome,
-      tipo: formConta.tipo,
-      saldo: formConta.saldo
-    }]);
-    if (error) throw error;
+    await apiClient.post('/api/financeiro/contas', { filial_pk: fil, nome: formConta.nome, tipo: formConta.tipo, saldo: formConta.saldo });
     showToast('Conta bancária cadastrada!');
     formConta.nome = '';
     formConta.saldo = 0;
     mudarTab('contas');
   } catch (e) {
-    showToast('Erro ao salvar conta: ' + e.message, 'error');
+    showToast('Erro ao salvar conta: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     processando.value = false;
   }
@@ -418,26 +399,12 @@ async function carregarExtrato() {
   if (!fil) return;
   carregandoExtrato.value = true;
   try {
-    let q = supabase.from('movimentacoes_financeiras')
-      .select('*, contas_bancarias(nome, filial_pk)')
-      .order('data_movimento', { ascending: false })
-      .limit(100);
-
-    if (filtroContaPk.value) {
-      q = q.eq('conta_pk', filtroContaPk.value);
-    } else {
-      // Filtrar apenas contas da filial logada
-      const { data: contasFilial } = await supabase.from('contas_bancarias').select('pk').eq('filial_pk', fil);
-      const pks = (contasFilial || []).map(c => c.pk);
-      if (pks.length) q = q.in('conta_pk', pks);
-      else { extrato.value = []; return; }
-    }
-
-    const { data, error } = await q;
-    if (error) throw error;
-    extrato.value = data || [];
+    const params = { filial_pk: fil };
+    if (filtroContaPk.value) params.conta_pk = filtroContaPk.value;
+    const { data } = await apiClient.get('/api/financeiro/extrato', { params });
+    extrato.value = data.data || [];
   } catch (e) {
-    showToast('Erro ao carregar extrato: ' + e.message, 'error');
+    showToast('Erro ao carregar extrato: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     carregandoExtrato.value = false;
   }
@@ -448,26 +415,10 @@ async function carregarFormas() {
   if (!fil) return;
   carregandoFormas.value = true;
   try {
-    const { data, error } = await supabase.from('formas_pagamento').select('*').eq('filial_pk', fil).order('ordem');
-    if (error) throw error;
-    
-    if (!data || data.length === 0) {
-      // Seed default forms if none
-      const defaults = [
-        { forma: 'dinheiro', label: 'Dinheiro', icone: '💵', ordem: 0, ativo: true, filial_pk: fil },
-        { forma: 'pix', label: 'Pix', icone: '📱', ordem: 1, ativo: true, filial_pk: fil },
-        { forma: 'credito', label: 'Crédito', icone: '💳', ordem: 2, ativo: true, filial_pk: fil },
-        { forma: 'debito', label: 'Débito', icone: '💳', ordem: 3, ativo: true, filial_pk: fil },
-        { forma: 'crediario', label: 'Crediário', icone: '📒', ordem: 4, ativo: true, filial_pk: fil }
-      ];
-      await supabase.from('formas_pagamento').insert(defaults);
-      const { data: fresh } = await supabase.from('formas_pagamento').select('*').eq('filial_pk', fil).order('ordem');
-      formas.value = fresh || [];
-    } else {
-      formas.value = data;
-    }
+    const { data } = await apiClient.get('/api/financeiro/formas', { params: { filial_pk: fil } });
+    formas.value = data.data || [];
   } catch (e) {
-    showToast('Erro ao carregar formas: ' + e.message, 'error');
+    showToast('Erro ao carregar formas: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     carregandoFormas.value = false;
   }
@@ -475,27 +426,25 @@ async function carregarFormas() {
 
 async function toggleForma(f) {
   try {
-    const { error } = await supabase.from('formas_pagamento').update({ ativo: !f.ativo }).eq('pk', f.pk);
-    if (error) throw error;
+    await apiClient.patch(`/api/financeiro/formas/${f.pk}`, { ativo: !f.ativo });
     f.ativo = !f.ativo;
   } catch (e) {
-    showToast('Erro ao atualizar forma: ' + e.message, 'error');
+    showToast('Erro ao atualizar forma: ' + (e.response?.data?.erro || e.message), 'error');
   }
 }
 
 async function excluirForma(f) {
   if (!confirm(`Deseja excluir a forma "${f.label}"?`)) return;
   try {
-    const { error } = await supabase.from('formas_pagamento').delete().eq('pk', f.pk);
-    if (error) throw error;
+    await apiClient.delete(`/api/financeiro/formas/${f.pk}`);
     formas.value = formas.value.filter(item => item.pk !== f.pk);
   } catch (e) {
-    showToast('Erro ao excluir: ' + e.message, 'error');
+    showToast('Erro ao excluir: ' + (e.response?.data?.erro || e.message), 'error');
   }
 }
 
 function abrirEditarForma(f) {
-  formEditar.pk = f.pk;
+  formEditar.pk    = f.pk;
   formEditar.forma = f.forma;
   formEditar.label = f.label;
   formEditar.icone = f.icone;
@@ -505,19 +454,21 @@ function abrirEditarForma(f) {
 async function salvarEdicaoForma() {
   processando.value = true;
   try {
-    const formaId = formEditar.forma.trim().toLowerCase().replace(/\s+/g, '_');
-    const { error } = await supabase.from('formas_pagamento').update({
-      forma: formaId,
+    await apiClient.patch(`/api/financeiro/formas/${formEditar.pk}`, {
+      forma: formEditar.forma,
       label: formEditar.label,
-      icone: formEditar.icone
-    }).eq('pk', formEditar.pk);
-    if (error) throw error;
+      icone: formEditar.icone,
+    });
     const f = formas.value.find(x => x.pk === formEditar.pk);
-    if (f) { f.forma = formaId; f.label = formEditar.label; f.icone = formEditar.icone; }
+    if (f) {
+      f.forma = formEditar.forma.trim().toLowerCase().replace(/\s+/g, '_');
+      f.label = formEditar.label;
+      f.icone = formEditar.icone;
+    }
     mostrandoEditForma.value = false;
     showToast('Forma de pagamento atualizada!');
   } catch (e) {
-    showToast('Erro ao salvar: ' + e.message, 'error');
+    showToast('Erro ao salvar: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     processando.value = false;
   }
@@ -534,21 +485,18 @@ async function salvarNovaForma() {
   const fil = sessaoStore.filial?.pk;
   processando.value = true;
   try {
-    const formaId = formForma.forma.trim().toLowerCase().replace(/\s+/g,'_');
-    const { error } = await supabase.from('formas_pagamento').insert([{
+    await apiClient.post('/api/financeiro/formas', {
       filial_pk: fil,
-      forma: formaId,
-      label: formForma.label,
-      icone: formForma.icone,
-      ativo: true,
-      ordem: formas.value.length
-    }]);
-    if (error) throw error;
+      forma:     formForma.forma,
+      label:     formForma.label,
+      icone:     formForma.icone,
+      ordem:     formas.value.length,
+    });
     showToast('Nova forma adicionada!');
     mostrandoNovaForma.value = false;
     carregarFormas();
   } catch (e) {
-    showToast('Erro ao salvar: ' + e.message, 'error');
+    showToast('Erro ao salvar: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     processando.value = false;
   }
@@ -556,23 +504,19 @@ async function salvarNovaForma() {
 
 function abrirEditSaldo(c) {
   contaEditando.value = c;
-  novoSaldo.value = c.saldo;
+  novoSaldo.value     = c.saldo;
   modalEditSaldo.value = true;
 }
 
 async function salvarSaldo() {
   processando.value = true;
   try {
-    const { error } = await supabase
-      .from('contas_bancarias')
-      .update({ saldo: novoSaldo.value })
-      .eq('pk', contaEditando.value.pk);
-    if (error) throw error;
+    await apiClient.patch(`/api/financeiro/contas/${contaEditando.value.pk}/saldo`, { saldo: novoSaldo.value });
     contaEditando.value.saldo = novoSaldo.value;
     modalEditSaldo.value = false;
     showToast('Saldo atualizado!');
   } catch (e) {
-    showToast('Erro ao salvar: ' + e.message, 'error');
+    showToast('Erro ao salvar: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     processando.value = false;
   }
@@ -583,29 +527,28 @@ async function carregarCategorias() {
   if (!fil) return;
   carregandoCats.value = true;
   try {
-    const { data, error } = await supabase.from('categorias_despesa').select('*').eq('filial_pk', fil).eq('ativo', true).order('nome');
-    if (error) throw error;
-    categorias.value = data || [];
+    const { data } = await apiClient.get('/api/financeiro/categorias', { params: { filial_pk: fil } });
+    categorias.value = data.data || [];
   } catch (e) {
-    showToast('Erro ao carregar categorias: ' + e.message, 'error');
+    showToast('Erro ao carregar categorias: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     carregandoCats.value = false;
   }
 }
 
 async function salvarCategoria() {
-  const fil = sessaoStore.filial?.pk;
+  const fil  = sessaoStore.filial?.pk;
   const nome = novaCategoria.value.trim();
   if (!nome || !fil) return;
   processando.value = true;
   try {
-    const { error } = await supabase.from('categorias_despesa').insert([{ filial_pk: fil, nome }]);
-    if (error) throw error;
+    const { data } = await apiClient.post('/api/financeiro/categorias', { filial_pk: fil, nome });
     novaCategoria.value = '';
-    await carregarCategorias();
+    categorias.value.push(data.data);
+    categorias.value.sort((a, b) => a.nome.localeCompare(b.nome));
     showToast('Categoria adicionada!');
   } catch (e) {
-    showToast('Erro: ' + e.message, 'error');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     processando.value = false;
   }
@@ -614,35 +557,27 @@ async function salvarCategoria() {
 async function excluirCategoria(c) {
   if (!confirm(`Excluir categoria "${c.nome}"?`)) return;
   try {
-    const { error } = await supabase.from('categorias_despesa').update({ ativo: false }).eq('pk', c.pk);
-    if (error) throw error;
+    await apiClient.delete(`/api/financeiro/categorias/${c.pk}`);
     categorias.value = categorias.value.filter(x => x.pk !== c.pk);
     showToast('Categoria excluída.');
   } catch (e) {
-    showToast('Erro: ' + e.message, 'error');
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'error');
   }
 }
 
 async function excluirConta(c) {
   if (!confirm(`Deseja realmente excluir a conta "${c.nome}"? Movimentações antigas não serão apagadas.`)) return;
   try {
-    const { error } = await supabase.from('contas_bancarias').update({ ativo: false }).eq('pk', c.pk);
-    if (error) throw error;
+    await apiClient.delete(`/api/financeiro/contas/${c.pk}`);
     showToast('Conta excluída.');
     carregarContas();
   } catch (e) {
-    showToast('Erro ao excluir: ' + e.message, 'error');
+    showToast('Erro ao excluir: ' + (e.response?.data?.erro || e.message), 'error');
   }
 }
 
 function getContaIcon(tipo) {
-  const map = {
-    pix: 'qr_code',
-    dinheiro: 'payments',
-    debito: 'credit_card',
-    credito: 'add_card',
-    caixa: 'point_of_sale'
-  };
+  const map = { pix: 'qr_code', dinheiro: 'payments', debito: 'credit_card', credito: 'add_card', caixa: 'point_of_sale' };
   return map[tipo] || 'account_balance_wallet';
 }
 

@@ -1012,7 +1012,8 @@ function processar(a1, m1, q1, dataIni, dataFim) {
     const bats = diasMap[dtStr] || [];
 
     let previsto = (func.diarista || isDomingo) ? 0 : cargaSec;
-    if (just || isDomingo) previsto = 0;
+    // "Falta" mantém previsto para que o saldo do dia fique negativo e desconte do salário
+    if ((just && just.tipo !== 'Falta') || isDomingo) previsto = 0;
 
     let trabalhado = 0;
     if (bats.length >= 2) {
@@ -1049,9 +1050,9 @@ function processar(a1, m1, q1, dataIni, dataFim) {
       extraSecNormal += diff;
     }
 
-    // Faltas mensalistas
+    // Faltas mensalistas — desconta se não há justificativa paga ("Falta" registrada conta igual a sem justificativa)
     if (!func.diarista && !isDomingo && trabalhado < cargaSec) {
-      if (!isPaidJust && !just) {
+      if (!isPaidJust) {
         missingSec += (cargaSec - trabalhado);
       }
     }

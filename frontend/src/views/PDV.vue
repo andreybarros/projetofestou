@@ -1573,8 +1573,8 @@ function categoriaRestritoDecorador(categoria_pk) {
 }
 
 function validarDescontoCategoria(categoria_pk, pct) {
-  if (!parametrosStore.getParam('pdv_desconto_decorador_balao', false)) return true;
-  if (!categoriaRestritoDecorador(categoria_pk)) return true;
+  const restricaoAtiva = parametrosStore.getParam('pdv_desconto_decorador_balao', false);
+  if (!restricaoAtiva || !categoriaRestritoDecorador(categoria_pk)) return true;
   if (!clienteSel.value?.decorador) {
     const nomeCat = categoriasMap.value[categoria_pk] || 'categoria restrita';
     toast(`Desconto em "${nomeCat}" é exclusivo para clientes decoradores.`, 'err'); return false;
@@ -1593,12 +1593,20 @@ function aplicarDescCat(cd) {
   if (descontoMax > 0 && 10 > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
   }
-  const emPromo = vendaStore.itens.some(it => it.categoria_pk === cd.pk && itemEmPromo(it));
-  if (emPromo) {
-    toast('Categoria contém produto em promoção — desconto adicional não permitido.', 'err'); return;
-  }
   if (!validarDescontoCategoria(cd.pk, 10)) return;
-  vendaStore.aplicarDescontoCategoria(cd.pk, 10);
+
+  let algumSkip = false;
+  vendaStore.itens.forEach(it => {
+    if (Number(it.categoria_pk) !== Number(cd.pk)) return;
+    if (itemEmPromo(it)) { algumSkip = true; return; }
+    const uni = parseFloat(it.preco_unitario);
+    const qty = parseFloat(it.qtd);
+    it.desconto_pct = 10;
+    it.desconto_val = parseFloat((qty * uni * 0.10).toFixed(2));
+    it.preco_total  = (qty * uni * 0.90).toFixed(2);
+  });
+
+  if (algumSkip) toast('Desconto aplicado. Itens em promoção foram mantidos com o preço promocional.');
 }
 
 function toggleDescItem(i, tipo = 'pct') {

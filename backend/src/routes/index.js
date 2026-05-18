@@ -14,6 +14,8 @@ const pedidosCompraRoutes   = require('./pedidosCompra');
 const contasReceberRoutes   = require('./contasReceber');
 const pdvRoutes             = require('./pdv');
 const clientesRoutes        = require('./clientes');
+const financeiroRoutes      = require('./financeiro');
+const despesasRoutes        = require('./despesas');
 
 function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   // Health
@@ -40,6 +42,8 @@ function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   app.use('/api/contas-receber', authMiddleware, permissoesMiddleware, contasReceberRoutes);
   app.use('/api/pdv',           authMiddleware, permissoesMiddleware, pdvRoutes);
   app.use('/api/clientes',      authMiddleware, clientesRoutes);
+  app.use('/api/financeiro',    authMiddleware, permissoesMiddleware, financeiroRoutes);
+  app.use('/api/despesas',      authMiddleware, permissoesMiddleware, despesasRoutes);
 }
 
 module.exports = setupRoutes;

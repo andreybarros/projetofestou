@@ -1,14 +1,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useSupabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
+import { useParametrosStore } from '../stores/parametros';
 import api from '../services/api';
 
-const route   = useRoute();
-const router  = useRouter();
-const { supabase } = useSupabase();
-const sessao  = useSessaoStore();
+const route           = useRoute();
+const router          = useRouter();
+const sessao          = useSessaoStore();
+const parametrosStore = useParametrosStore();
 
 const venda_pk = parseInt(route.params.pk);
 
@@ -100,66 +100,43 @@ const temCrediario    = computed(() =>
 );
 
 onMounted(async () => {
+  const filial_pk = sessao.filial?.pk;
   try {
-    const { data: v } = await supabase.from('vendas').select('*').eq('pk', venda_pk).single();
-    if (!v) { toast('Venda não encontrada', 'err'); carregando.value = false; return; }
+    const [editRes, prodsRes, formasRes] = await Promise.all([
+      api.get(`/api/vendas/${venda_pk}/editar-dados`, { params: { filial_pk } }),
+      api.get('/api/pdv/produtos',          { params: { filial_pk } }),
+      api.get('/api/pdv/formas-pagamento',  { params: { filial_pk } }),
+    ]);
 
+    const d = editRes.data;
+    const v = d.venda;
     venda.value          = v;
-    cliente_pk.value     = v.cliente_pk   || null;
-    cliente_codigo.value = v.cliente_codigo || null;
-    // Busca nome atualizado do cadastro; fallback para o nome salvo na venda
-    if (v.cliente_pk) {
-      const { data: cli } = await supabase.from('clientes').select('nome, codigo').eq('pk', v.cliente_pk).single();
-      cliente.value        = cli?.nome   || v.cliente || '';
-      cliente_codigo.value = cli?.codigo || v.cliente_codigo || null;
-    } else {
-      cliente.value = v.cliente || '';
-    }
-    vendedor.value     = v.vendedor || '';
+    cliente_pk.value     = v.cliente_pk        || null;
+    cliente_codigo.value = d.cliente_codigo    || null;
+    cliente.value        = d.cliente_nome      || '';
+    clienteDecorador.value = d.cliente_decorador || false;
+    vendedor.value     = v.vendedor    || '';
     vendedor_pk.value  = v.vendedor_pk || null;
-    tipoVenda.value    = v.tipo_venda   || 'venda';
-    canalVenda.value   = v.canal_venda  || 'presencial';
-    dataLocacao.value    = v.data_locacao            ? v.data_locacao.slice(0, 16)            : '';
-    dataDevolucao.value  = v.data_devolucao_prevista ? v.data_devolucao_prevista.slice(0, 16) : '';
+    tipoVenda.value    = v.tipo_venda  || 'venda';
+    canalVenda.value   = v.canal_venda || 'presencial';
+    dataLocacao.value       = v.data_locacao              ? v.data_locacao.slice(0, 16)              : '';
+    dataDevolucao.value     = v.data_devolucao_prevista   ? v.data_devolucao_prevista.slice(0, 16)   : '';
     dataVencCrediario.value = v.data_vencimento_crediario || '';
     acrescimo.value = parseFloat(v.acrescimo || 0);
     if (acrescimo.value > 0)
       acrescimoDisplay.value = acrescimo.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const [{ data: iData }, { data: pData }, { data: fData }, { data: cats }, { data: prods }] = await Promise.all([
-      supabase.from('itens_venda').select('*').eq('venda_pk', venda_pk),
-      supabase.from('pagamentos_venda').select('*').eq('venda_pk', venda_pk),
-      supabase.from('formas_pagamento').select('forma, label, icone').eq('filial_pk', sessao.filial?.pk).order('label'),
-      supabase.from('categorias').select('pk, nome, desconto_somente_decorador').eq('filial_pk', sessao.filial?.pk),
-      supabase.from('produtos').select('pk, descricao, codigo, valor_venda, saldo, categoria_pk').eq('filial_pk', sessao.filial?.pk).order('descricao'),
-    ]);
-    todosProdutos.value = prods || [];
-    formasPagamento.value = fData || [];
-    categorias.value = (cats || []).filter(c => c.desconto_somente_decorador);
-
-    itens.value = (iData || []).map(i => {
+    itens.value = (d.itens || []).map(i => {
       const bruto = parseFloat(i.qtd || 0) * parseFloat(i.preco_unit || 0);
       const pct   = bruto > 0 ? Math.round(parseFloat(i.desconto_val || 0) / bruto * 10000) / 100 : 0;
-      return { ...i, desconto_pct: pct, modo_desc: 'val', categoria_pk: null };
+      return { ...i, desconto_pct: pct, modo_desc: 'val' };
     });
-    pagamentos.value = (pData || []).map(p => ({ ...p }));
-
-    // Busca categoria_pk dos produtos nos itens
-    const pksItens = [...new Set(itens.value.filter(i => i.produto_pk).map(i => i.produto_pk))];
-    if (pksItens.length) {
-      const { data: prods } = await supabase.from('produtos').select('pk, categoria_pk').in('pk', pksItens);
-      const prodMap = {};
-      (prods || []).forEach(p => { prodMap[p.pk] = p.categoria_pk; });
-      itens.value.forEach(item => { if (item.produto_pk) item.categoria_pk = prodMap[item.produto_pk] || null; });
-    }
-
-    // Verifica se o cliente já carregado é decorador
-    if (v.cliente_pk) {
-      const { data: cli } = await supabase.from('clientes').select('decorador').eq('pk', v.cliente_pk).single();
-      clienteDecorador.value = cli?.decorador || false;
-    }
+    pagamentos.value      = (d.pagamentos  || []).map(p => ({ ...p }));
+    categorias.value      = d.categorias   || [];
+    todosProdutos.value   = prodsRes.data.data  || [];
+    formasPagamento.value = formasRes.data.data || [];
   } catch (e) {
-    toast('Erro ao carregar: ' + e.message, 'err');
+    toast('Erro ao carregar: ' + (e.response?.data?.erro || e.message), 'err');
   } finally {
     carregando.value = false;
   }
@@ -205,22 +182,30 @@ async function buscarClientes() {
   if (!q) { clientesRes.value = []; return; }
   clearTimeout(cliTimer);
   cliTimer = setTimeout(async () => {
-    const { data } = await supabase.from('clientes').select('pk, nome, codigo, decorador').eq('filial_pk', sessao.filial.pk).eq('ativo', true).ilike('nome', `%${q}%`).limit(8);
-    clientesRes.value = data || [];
+    try {
+      const { data } = await api.get('/api/clientes', { params: { busca: q, filial_pk: sessao.filial?.pk } });
+      clientesRes.value = data.data || [];
+    } catch { clientesRes.value = []; }
   }, 280);
 }
 function selecionarCliente(c) { cliente.value = c.nome; cliente_pk.value = c.pk; cliente_codigo.value = c.codigo || null; clienteDecorador.value = c.decorador || false; buscaCliente.value = ''; clientesRes.value = []; }
 function limparCliente()       { cliente.value = ''; cliente_pk.value = null; cliente_codigo.value = null; clienteDecorador.value = false; }
 
+let todosVendedores = [];
 let vendTimer = null;
 async function buscarVendedores() {
-  const q = buscaVendedor.value.trim();
+  const q = buscaVendedor.value.trim().toLowerCase();
   if (!q) { vendedoresRes.value = []; return; }
+  if (!todosVendedores.length) {
+    try {
+      const { data } = await api.get('/api/pdv/vendedores', { params: { filial_pk: sessao.filial?.pk } });
+      todosVendedores = data.data || [];
+    } catch { todosVendedores = []; }
+  }
   clearTimeout(vendTimer);
-  vendTimer = setTimeout(async () => {
-    const { data } = await supabase.from('vendedores').select('pk, nome').eq('filial_pk', sessao.filial.pk).ilike('nome', `%${q}%`).limit(8);
-    vendedoresRes.value = data || [];
-  }, 280);
+  vendTimer = setTimeout(() => {
+    vendedoresRes.value = todosVendedores.filter(v => v.nome.toLowerCase().includes(q)).slice(0, 8);
+  }, 200);
 }
 function selecionarVendedor(v) { vendedor.value = v.nome; vendedor_pk.value = v.pk; buscaVendedor.value = ''; vendedoresRes.value = []; }
 function limparVendedor()       { vendedor.value = ''; vendedor_pk.value = null; }
@@ -282,12 +267,13 @@ async function salvar() {
 }
 
 const catsDecorador = computed(() => {
-  const pksNoCarrinho = new Set(itens.value.filter(i => i.categoria_pk).map(i => i.categoria_pk));
-  return categorias.value.filter(c => pksNoCarrinho.has(c.pk));
+  const pksNoCarrinho = new Set(itens.value.filter(i => i.categoria_pk).map(i => Number(i.categoria_pk)));
+  return categorias.value.filter(c => pksNoCarrinho.has(Number(c.pk)));
 });
 
 function aplicarDescCat(cat) {
-  if (!clienteDecorador.value) {
+  const restricaoAtiva = parametrosStore.getParam('pdv_desconto_decorador_balao', false);
+  if (restricaoAtiva && cat.desconto_somente_decorador && !clienteDecorador.value) {
     toast(`Desconto em "${cat.nome}" é exclusivo para clientes decoradores.`, 'err');
     return;
   }

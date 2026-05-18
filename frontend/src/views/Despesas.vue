@@ -190,8 +190,8 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, inject } from 'vue';
-import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
+import apiClient from '../services/api';
 
 const sessaoStore = useSessaoStore();
 const showToast = inject('showToast');
@@ -202,72 +202,54 @@ const salvando = ref(false);
 const modalAberto = ref(false);
 const modalBaixar = ref(false);
 
-const fornecedores  = ref([]);
-const contas        = ref([]);
+const fornecedores      = ref([]);
+const contas            = ref([]);
 const categoriasDespesa = ref([]);
 
-const filtros = reactive({
-  ini: '',
-  fim: '',
-  status: ''
-});
+const filtros = reactive({ ini: '', fim: '', status: '' });
 
-// Formulário
 const f = reactive({
-  pk: null,
-  descricao: '',
-  fornecedor_pk: null,
-  valor: 0,
-  vencimento: new Date().toISOString().split('T')[0],
-  categoria: '',
-  status: 'pendente',
-  conta_pk: null
+  pk: null, descricao: '', fornecedor_pk: null,
+  valor: 0, vencimento: new Date().toISOString().split('T')[0],
+  categoria: '', status: 'pendente', conta_pk: null,
 });
 
-// Baixar
 const despesaBaixar = ref(null);
 const contaBaixarPk = ref(null);
 
 onMounted(async () => {
-  // Set default filter: current month
   const hj = new Date();
   const y = hj.getFullYear(), m = hj.getMonth();
   filtros.ini = new Date(y, m, 1).toISOString().split('T')[0];
   filtros.fim = new Date(y, m + 1, 0).toISOString().split('T')[0];
-
   await Promise.all([carregar(), carregarAuxiliares()]);
 });
 
 async function carregarAuxiliares() {
   const filial_pk = sessaoStore.filial?.pk;
-
-  const [{ data: forn }, { data: ct }, { data: cats }] = await Promise.all([
-    supabase.from('fornecedores').select('pk, nome').eq('ativo', true).order('nome'),
-    supabase.from('contas_bancarias').select('pk, nome').eq('ativo', true).order('nome'),
-    supabase.from('categorias_despesa').select('pk, nome, cor').eq('filial_pk', filial_pk).order('nome'),
-  ]);
-  fornecedores.value  = forn  || [];
-  contas.value        = ct    || [];
-  categoriasDespesa.value = cats || [];
+  try {
+    const { data } = await apiClient.get('/api/despesas/auxiliares', { params: { filial_pk } });
+    fornecedores.value      = data.fornecedores || [];
+    contas.value            = data.contas       || [];
+    categoriasDespesa.value = data.categorias   || [];
+  } catch (e) {
+    showToast('Erro ao carregar auxiliares: ' + (e.response?.data?.erro || e.message), 'error');
+  }
 }
 
 async function carregar() {
   carregando.value = true;
   const filial_pk = sessaoStore.filial?.pk;
   if (!filial_pk) return;
-
   try {
-    let q = supabase.from('despesas').select('*, fornecedores(nome)').eq('filial_pk', filial_pk).order('vencimento', { ascending: true });
-    
-    if (filtros.ini) q = q.gte('vencimento', filtros.ini);
-    if (filtros.fim) q = q.lte('vencimento', filtros.fim);
-    if (filtros.status) q = q.eq('status', filtros.status);
-
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
+    const params = { filial_pk };
+    if (filtros.ini)    params.ini    = filtros.ini;
+    if (filtros.fim)    params.fim    = filtros.fim;
+    if (filtros.status) params.status = filtros.status;
+    const { data } = await apiClient.get('/api/despesas', { params });
+    lista.value = data.data || [];
   } catch (e) {
-    showToast('Erro ao carregar despesas: ' + e.message, 'error');
+    showToast('Erro ao carregar despesas: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     carregando.value = false;
   }
@@ -280,79 +262,39 @@ const podeSalvar = computed(() => {
 });
 
 function abrirNovo() {
-  Object.assign(f, {
-    pk: null,
-    descricao: '',
-    fornecedor_pk: null,
-    valor: 0,
-    vencimento: new Date().toISOString().split('T')[0],
-    categoria: '',
-    status: 'pendente',
-    conta_pk: null
-  });
+  Object.assign(f, { pk: null, descricao: '', fornecedor_pk: null, valor: 0, vencimento: new Date().toISOString().split('T')[0], categoria: '', status: 'pendente', conta_pk: null });
   modalAberto.value = true;
 }
 
 function abrirEditar(d) {
-  Object.assign(f, {
-    pk: d.pk,
-    descricao: d.descricao,
-    fornecedor_pk: d.fornecedor_pk,
-    valor: d.valor,
-    vencimento: d.vencimento,
-    categoria: d.categoria || '',
-    status: d.status,
-    conta_pk: d.conta_pk
-  });
+  Object.assign(f, { pk: d.pk, descricao: d.descricao, fornecedor_pk: d.fornecedor_pk, valor: d.valor, vencimento: d.vencimento, categoria: d.categoria || '', status: d.status, conta_pk: d.conta_pk });
   modalAberto.value = true;
 }
 
 async function salvar() {
   if (!podeSalvar.value) return;
   salvando.value = true;
-
-  const payload = {
-    descricao: f.descricao,
-    fornecedor_pk: f.fornecedor_pk,
-    valor: f.valor,
-    vencimento: f.vencimento,
-    categoria: f.categoria || null,
-    filial_pk: sessaoStore.filial.pk
-  };
-
-  const isoNow = new Date().toISOString();
-
   try {
     if (f.pk) {
-      const { error } = await supabase.from('despesas').update(payload).eq('pk', f.pk);
-      if (error) throw error;
+      await apiClient.put(`/api/despesas/${f.pk}`, {
+        descricao: f.descricao, fornecedor_pk: f.fornecedor_pk,
+        valor: f.valor, vencimento: f.vencimento, categoria: f.categoria || null,
+      });
       showToast('Despesa atualizada com sucesso!');
     } else {
-      payload.status = f.status;
-      if (f.status === 'pago') {
-        payload.conta_pk = f.conta_pk;
-        payload.data_pagamento = isoNow;
-      }
-      
-      const { data, error } = await supabase.from('despesas').insert([payload]).select();
-      if (error) throw error;
-
-      // Se já marcou como pago, gera movimentação financeira
-      if (f.status === 'pago') {
-        await supabase.from('movimentacoes_financeiras').insert([{
-          conta_pk: f.conta_pk,
-          tipo_movimento: 'saida',
-          valor: f.valor,
-          descricao: 'Pagamento de Despesa: ' + f.descricao,
-          data_movimento: isoNow
-        }]);
-      }
+      await apiClient.post('/api/despesas', {
+        filial_pk: sessaoStore.filial.pk,
+        descricao: f.descricao, fornecedor_pk: f.fornecedor_pk,
+        valor: f.valor, vencimento: f.vencimento,
+        categoria: f.categoria || null, status: f.status,
+        conta_pk: f.status === 'pago' ? f.conta_pk : null,
+      });
       showToast('Despesa cadastrada!');
     }
     modalAberto.value = false;
     carregar();
   } catch (e) {
-    showToast('Erro ao salvar: ' + e.message, 'error');
+    showToast('Erro ao salvar: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     salvando.value = false;
   }
@@ -367,32 +309,17 @@ function abrirBaixar(d) {
 async function confirmarPagamento() {
   if (!despesaBaixar.value || !contaBaixarPk.value) return;
   salvando.value = true;
-
-  const isoNow = new Date().toISOString();
   try {
-    // 1. Criar saída no financeiro
-    const { error: em } = await supabase.from('movimentacoes_financeiras').insert([{
+    await apiClient.patch(`/api/despesas/${despesaBaixar.value.pk}/baixar`, {
       conta_pk: contaBaixarPk.value,
-      tipo_movimento: 'saida',
+      descricao: despesaBaixar.value.descricao,
       valor: despesaBaixar.value.valor,
-      descricao: 'Pagamento de Despesa: ' + despesaBaixar.value.descricao,
-      data_movimento: isoNow
-    }]);
-    if (em) throw em;
-
-    // 2. Atualizar status da despesa
-    const { error: ed } = await supabase.from('despesas').update({
-      status: 'pago',
-      conta_pk: contaBaixarPk.value,
-      data_pagamento: isoNow
-    }).eq('pk', despesaBaixar.value.pk);
-    if (ed) throw ed;
-
+    });
     showToast('Baixa de despesa efetuada com sucesso!');
     modalBaixar.value = false;
     carregar();
   } catch (e) {
-    showToast('Erro ao processar baixa: ' + e.message, 'error');
+    showToast('Erro ao processar baixa: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
     salvando.value = false;
   }
@@ -401,27 +328,24 @@ async function confirmarPagamento() {
 async function excluir(d) {
   if (!confirm(`Deseja realmente excluir a despesa "${d.descricao}"?`)) return;
   try {
-    const { error } = await supabase.from('despesas').delete().eq('pk', d.pk);
-    if (error) throw error;
+    await apiClient.delete(`/api/despesas/${d.pk}`);
     showToast('Despesa excluída.');
     carregar();
   } catch (e) {
-    showToast('Erro ao excluir: ' + e.message, 'error');
+    showToast('Erro ao excluir: ' + (e.response?.data?.erro || e.message), 'error');
   }
 }
 
 function getStatusClass(d) {
   if (d.status === 'pago') return 'pago';
-  const venc = d.vencimento;
   const hoje = new Date().toISOString().split('T')[0];
-  return venc < hoje ? 'vencido' : 'pendente';
+  return d.vencimento < hoje ? 'vencido' : 'pendente';
 }
 
 function getStatusLabel(d) {
   if (d.status === 'pago') return '✔️ Paga';
-  const venc = d.vencimento;
   const hoje = new Date().toISOString().split('T')[0];
-  return venc < hoje ? '⚠️ Vencida' : '⏳ Pendente';
+  return d.vencimento < hoje ? '⚠️ Vencida' : '⏳ Pendente';
 }
 
 function fmt(v) {

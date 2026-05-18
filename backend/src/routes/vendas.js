@@ -541,4 +541,57 @@ router.patch('/:pk/locacao', async (req, res) => {
   }
 });
 
+// ── Dados para edição de venda ────────────────────────────────────────────────
+router.get('/:pk/editar-dados', async (req, res) => {
+  const venda_pk = parseInt(req.params.pk);
+  const { filial_pk } = req.query;
+  try {
+    const { data: venda, error: ve } = await supabase
+      .from('vendas').select('*').eq('pk', venda_pk).single();
+    if (ve || !venda) return res.status(404).json({ erro: 'Venda não encontrada' });
+
+    const [{ data: itens }, { data: pagamentos }, { data: categorias }] = await Promise.all([
+      supabase.from('itens_venda').select('*').eq('venda_pk', venda_pk),
+      supabase.from('pagamentos_venda').select('*').eq('venda_pk', venda_pk),
+      supabase.from('categorias').select('pk, nome, desconto_somente_decorador')
+        .eq('filial_pk', filial_pk),
+    ]);
+
+    let cliente_nome      = venda.cliente        || '';
+    let cliente_codigo    = venda.cliente_codigo || null;
+    let cliente_decorador = false;
+    if (venda.cliente_pk) {
+      const { data: cli } = await supabase
+        .from('clientes').select('nome, codigo, decorador').eq('pk', venda.cliente_pk).single();
+      if (cli) {
+        cliente_nome      = cli.nome      || venda.cliente        || '';
+        cliente_codigo    = cli.codigo    || venda.cliente_codigo || null;
+        cliente_decorador = cli.decorador || false;
+      }
+    }
+
+    const pksItens = [...new Set((itens || []).filter(i => i.produto_pk).map(i => i.produto_pk))];
+    const prodCatMap = {};
+    if (pksItens.length) {
+      const { data: prods } = await supabase
+        .from('produtos').select('pk, categoria_pk').in('pk', pksItens);
+      (prods || []).forEach(p => { prodCatMap[p.pk] = p.categoria_pk; });
+    }
+
+    res.json({
+      ok: true,
+      venda,
+      itens: (itens || []).map(i => ({ ...i, categoria_pk: prodCatMap[i.produto_pk] || null })),
+      pagamentos: pagamentos || [],
+      cliente_nome,
+      cliente_codigo,
+      cliente_decorador,
+      categorias: categorias || [],
+    });
+  } catch (e) {
+    console.error('[Vendas/editar-dados]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
 module.exports = router;
