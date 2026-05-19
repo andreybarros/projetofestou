@@ -12,6 +12,7 @@ router.get('/produtos', async (req, res) => {
       .select('pk, codigo, descricao, valor_venda, preco_promo, promo_inicio, promo_fim, saldo, categoria_pk, foto_url, codigo_barras, ncm, cfop, csosn, unidade_comercial')
       .order('descricao');
     if (filial_pk) q = q.eq('filial_pk', parseInt(filial_pk));
+    q = q.eq('ativo', true);
     const { data, error } = await q;
     if (error) throw error;
     res.json({ ok: true, data: data || [] });
@@ -66,6 +67,20 @@ router.get('/formas-pagamento', async (req, res) => {
     res.json({ ok: true, data: data || [] });
   } catch (err) {
     console.error('[PDV/FormasPagamento] Erro:', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// DELETE /api/pdv/produto/:pk  — soft delete (marca ativo = false)
+router.delete('/produto/:pk', async (req, res) => {
+  try {
+    const pk = parseInt(req.params.pk);
+    if (!pk) return res.status(400).json({ erro: 'pk inválido' });
+    const { error } = await supabase.from('produtos').update({ ativo: false }).eq('pk', pk);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[PDV/Produto/Delete] Erro:', err.message);
     res.status(500).json({ erro: err.message });
   }
 });

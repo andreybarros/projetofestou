@@ -43,6 +43,7 @@ const rotasPermissoes = {
   'GET /api/pdv/categorias':                       'acesso_pdv',
   'GET /api/pdv/vendedores':                       'acesso_pdv',
   'GET /api/pdv/formas-pagamento':                 'acesso_pdv',
+  'DELETE /api/pdv/produto/:pk':                   'acesso_produtos',
 };
 
 async function permissoesMiddleware(req, res, next) {
@@ -89,6 +90,9 @@ async function permissoesMiddleware(req, res, next) {
   }
   if (rotaKey.match(/^DELETE \/api\/pedidos-compra\/\d+$/)) {
     rotaKey = 'DELETE /api/pedidos-compra/:pk';
+  }
+  if (rotaKey.match(/^DELETE \/api\/pdv\/produto\/\d+$/)) {
+    rotaKey = 'DELETE /api/pdv/produto/:pk';
   }
 
   const permissaoRequerida = rotasPermissoes[rotaKey];

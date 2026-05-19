@@ -1266,6 +1266,10 @@ let _realtimeChannel = null;
 let _refreshTimer    = null;
 
 function _aplicarSaldoProduto(updated) {
+  if (updated.ativo === false) {
+    todos.value = todos.value.filter(p => p.pk !== updated.pk);
+    return;
+  }
   const idx = todos.value.findIndex(p => p.pk === updated.pk);
   if (idx !== -1) todos.value[idx].saldo = updated.saldo;
   vendaStore.itens.forEach(item => {

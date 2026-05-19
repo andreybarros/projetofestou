@@ -81,6 +81,9 @@
             <span :class="['saldo-badge', p.saldo <= 0 ? 'zero' : p.saldo < 5 ? 'baixo' : 'ok']">
               {{ p.saldo != null ? p.saldo : '∞' }}
             </span>
+            <button class="btn-del-card" title="Excluir" @click.stop="produtoParaExcluir = p">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
           </div>
           <div class="card-info">
             <p class="card-desc">{{ p.descricao }}</p>
@@ -137,6 +140,9 @@
                 <button class="btn-edit" title="Editar">
                   <span class="material-symbols-outlined">edit</span>
                 </button>
+                <button class="btn-del" title="Excluir" @click.stop="produtoParaExcluir = p">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -181,6 +187,33 @@
     </div>
   </div>
 
+  <!-- Modal confirmação exclusão -->
+  <Teleport to="body">
+    <div v-if="produtoParaExcluir" class="modal-backdrop" @click.self="produtoParaExcluir = null">
+      <div class="modal-box" style="max-width:420px">
+        <div class="modal-header">
+          <span class="material-symbols-outlined" style="color:#ef4444">delete</span>
+          <h3>Excluir produto</h3>
+          <button class="modal-close" @click="produtoParaExcluir = null">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Tem certeza que deseja excluir <strong>{{ produtoParaExcluir.descricao }}</strong>?</p>
+          <p style="font-size:.85rem;color:var(--text2);margin-top:6px">O produto não aparecerá mais no sistema, mas o histórico de vendas será preservado.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="produtoParaExcluir = null" :disabled="excluindo">Cancelar</button>
+          <button class="btn-danger" @click="confirmarExclusao" :disabled="excluindo">
+            <span v-if="excluindo" class="spin" style="width:14px;height:14px"></span>
+            <span v-else class="material-symbols-outlined" style="font-size:18px">delete</span>
+            Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
   <!-- Scanner de código de barras -->
   <Teleport to="body">
     <div v-if="scannerAberto" class="prod-scanner-overlay">
@@ -213,6 +246,7 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useSessaoStore } from "../stores/sessao";
 import { supabase } from "../composables/useSupabase";
+import apiClient from "../services/api";
 import * as XLSX from "xlsx";
 
 const router      = useRouter();
@@ -226,6 +260,8 @@ const pagina       = ref(1);
 const POR_PAGINA   = 48;
 const showAcoes    = ref(false);
 const filtroPromo  = ref(false);
+const produtoParaExcluir = ref(null);
+const excluindo          = ref(false);
 const scannerAberto     = ref(false);
 const scannerStatus     = ref('');
 const scannerStatusTipo = ref('');
@@ -352,6 +388,7 @@ async function carregar() {
     let q = supabase
       .from("produtos")
       .select("pk, codigo, codigo_barras, descricao, valor_venda, preco_custo, saldo, ncm, cfop, csosn, unidade_comercial, categoria_pk, foto_url, preco_promo, promo_inicio, promo_fim")
+      .eq("ativo", true)
       .order("descricao");
     if (sessaoStore.filial?.pk) q = q.eq("filial_pk", sessaoStore.filial.pk);
     const { data, error } = await q;
@@ -399,6 +436,20 @@ function exportarProdutos() {
   const data = new Date().toLocaleDateString('en-CA');
   XLSX.writeFile(wb, `produtos_${data}.xlsx`);
   showAcoes.value = false;
+}
+
+async function confirmarExclusao() {
+  if (!produtoParaExcluir.value) return;
+  excluindo.value = true;
+  try {
+    await apiClient.delete(`/api/pdv/produto/${produtoParaExcluir.value.pk}`);
+    produtos.value = produtos.value.filter(p => p.pk !== produtoParaExcluir.value.pk);
+    produtoParaExcluir.value = null;
+  } catch (e) {
+    console.error("Erro ao excluir produto:", e.message);
+  } finally {
+    excluindo.value = false;
+  }
 }
 
 function fmt(v) {
@@ -528,9 +579,33 @@ function fmt(v) {
 .saldo.baixo { color: #f59e0b; font-weight: 700; }
 .saldo.zero  { color: #ef4444; font-weight: 700; }
 
-.acoes     { text-align: right !important; }
+.acoes     { text-align: right !important; white-space: nowrap; }
 .btn-edit  { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; border-radius: 8px; transition: all .2s; }
 .btn-edit:hover { background: rgba(99,102,241,.1); color: #6366f1; }
+.btn-del   { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; border-radius: 8px; transition: all .2s; }
+.btn-del:hover { background: rgba(239,68,68,.1); color: #ef4444; }
+.btn-del-card {
+  position: absolute; bottom: 8px; left: 8px; opacity: 0;
+  background: rgba(239,68,68,.88); border: none; color: #fff;
+  width: 28px; height: 28px; border-radius: 8px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-del-card .material-symbols-outlined { font-size: 16px; }
+.btn-del-card:hover { background: #ef4444; }
+.prod-card:hover .btn-del-card { opacity: 1; }
+.btn-danger { display: flex; align-items: center; gap: 5px; padding: .55rem 1.1rem; background: #ef4444; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .9rem; transition: opacity .15s; }
+.btn-danger:hover:not(:disabled) { opacity: .88; }
+.btn-danger:disabled { opacity: .5; cursor: default; }
+/* Modal */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.25); display: flex; flex-direction: column; }
+.modal-header { display: flex; align-items: center; gap: 10px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.modal-header h3 { flex: 1; margin: 0; font-size: 1rem; font-weight: 800; color: var(--text); }
+.modal-close { background: none; border: none; color: var(--text2); cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; }
+.modal-close:hover { background: var(--bg3); }
+.modal-body { padding: 18px 20px; font-size: .9rem; color: var(--text); }
+.modal-footer { padding: 14px 20px 18px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); }
 .resumo { font-size: .82rem; color: var(--text2); padding: .6rem .9rem; text-align: right; }
 
 /* ── Loading / Vazio ──────────────────────── */

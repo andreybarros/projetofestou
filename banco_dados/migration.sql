@@ -1074,6 +1074,7 @@ ALTER TABLE projetos         ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT tru
 ALTER TABLE armazem          ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
 ALTER TABLE categorias_despesa ADD COLUMN IF NOT EXISTS ativo boolean DEFAULT true;
 ALTER TABLE contas_bancarias ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
+ALTER TABLE produtos         ADD COLUMN IF NOT EXISTS ativo  boolean DEFAULT true;
 ALTER TABLE vendas   ADD COLUMN IF NOT EXISTS cliente_codigo text;
 
 DO $$ BEGIN
