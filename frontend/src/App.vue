@@ -297,18 +297,6 @@ function fecharMenus(e) {
 onMounted(async () => {
   document.addEventListener('click', fecharMenus, true);
   if (sessao.isAutenticado) {
-    // Valida token com o backend antes de prosseguir
-    try {
-      const { data } = await apiClient.post('/api/auth/renovar');
-      if (data?.token) authStore.setAuth(data.token, authStore.user);
-    } catch (e) {
-      // Token inválido ou expirado — força logout limpo
-      if (e.response?.status === 401) {
-        authStore.logout();
-        sessao.logout();
-        return;
-      }
-    }
     await carregarFiliais();
     // Recarregar módulos da filial atual para refletir alterações feitas no cadastro
     if (sessao.filial?.pk) {

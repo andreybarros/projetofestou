@@ -7,28 +7,26 @@ const supabase = require('../supabase');
 
 function gerarToken(operadorPk) {
   const secret = process.env.JWT_SECRET || 'festou_secret_2024';
-  const ts     = Math.floor(Date.now() / 1000);
   const hash   = crypto
     .createHmac('sha256', secret)
-    .update(`${operadorPk}:${ts}`)
+    .update(String(operadorPk))
     .digest('hex');
-  return Buffer.from(`${operadorPk}:${ts}:${hash}`).toString('base64url');
+  return Buffer.from(`${operadorPk}:${hash}`).toString('base64url');
 }
 
 function validarToken(token) {
   try {
-    const decoded = Buffer.from(token, 'base64url').toString('utf8');
-    const parts = decoded.split(':');
-    if (parts.length < 3) return null;
-    const hash  = parts[parts.length - 1];
-    const tsStr = parts[parts.length - 2];
-    const pkStr = parts.slice(0, parts.length - 2).join(':');
-    if (!pkStr || !tsStr || !hash) return null;
+    const decoded    = Buffer.from(token, 'base64url').toString('utf8');
+    const lastColon  = decoded.lastIndexOf(':');
+    if (lastColon === -1) return null;
+    const pkStr = decoded.substring(0, lastColon);
+    const hash  = decoded.substring(lastColon + 1);
+    if (!pkStr || !hash) return null;
 
     const secret   = process.env.JWT_SECRET || 'festou_secret_2024';
     const esperado = crypto
       .createHmac('sha256', secret)
-      .update(`${pkStr}:${tsStr}`)
+      .update(pkStr)
       .digest('hex');
 
     const bufHash = Buffer.from(hash,    'hex');
@@ -36,10 +34,9 @@ function validarToken(token) {
     if (bufHash.length !== bufEsp.length) return null;
     if (!crypto.timingSafeEqual(bufHash, bufEsp)) return null;
 
-    const ts = parseInt(tsStr, 10);
-    if (Date.now() / 1000 - ts > 86400) return null; // 24h
-
-    return parseInt(pkStr, 10);
+    // Extrai o pk: se pkStr contém ':', é token antigo (pk:timestamp) → pega só o pk
+    const pk = parseInt(pkStr.split(':')[0], 10);
+    return isNaN(pk) ? null : pk;
   } catch {
     return null;
   }
@@ -195,14 +192,6 @@ router.get('/filiais', async (_req, res) => {
   }
 });
 
-// POST /api/auth/renovar — renova token se ainda válido
-router.post('/renovar', (req, res) => {
-  const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
-  if (!token) return res.status(401).json({ erro: 'Token não fornecido' });
-  const operadorPk = validarToken(token);
-  if (!operadorPk) return res.status(401).json({ erro: 'Token inválido ou expirado' });
-  res.json({ ok: true, token: gerarToken(operadorPk) });
-});
 
 module.exports = router;
 module.exports.validarToken = validarToken;
