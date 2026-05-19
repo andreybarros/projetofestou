@@ -220,7 +220,7 @@ const sessaoStore = useSessaoStore();
 const produtos    = ref([]);
 const categorias  = ref([]);
 const carregando  = ref(true);
-const busca        = ref("");
+const busca        = ref(sessionStorage.getItem('produtos_busca') || "");
 const viewMode     = ref("grid");
 const pagina       = ref(1);
 const POR_PAGINA   = 48;
@@ -334,7 +334,7 @@ const totais = computed(() => {
   }
 });
 
-watch(busca,       () => { pagina.value = 1; });
+watch(busca, (v) => { pagina.value = 1; sessionStorage.setItem('produtos_busca', v); });
 watch(filtroPromo, () => { pagina.value = 1; });
 
 onMounted(async () => { 

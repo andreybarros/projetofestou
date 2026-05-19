@@ -1,216 +1,237 @@
 <template>
-  <div class="form-page">
-    <div class="form-header">
-      <button class="btn-back" @click="$router.push('/produtos')">
-        <span class="material-symbols-outlined">arrow_back</span>
-        Produtos
-      </button>
-      <div>
-        <h1 class="page-title">{{ pk ? 'Editar Produto' : 'Novo Produto' }}</h1>
-        <p class="page-sub">{{ pk ? 'Atualize as informações do produto' : 'Preencha os dados para cadastrar um novo produto' }}</p>
+  <div class="fp-root">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="fp-header">
+      <div class="fp-breadcrumb">
+        <button class="fp-back" @click="$router.push('/produtos')">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <span class="fp-crumb-sep">/</span>
+        <span class="fp-crumb-link" @click="$router.push('/produtos')">Produtos</span>
+        <span class="fp-crumb-sep">/</span>
+        <span class="fp-crumb-current">{{ pk ? form.descricao || 'Editar Produto' : 'Novo Produto' }}</span>
+      </div>
+      <div class="fp-header-right">
+        <span v-if="pk" class="fp-badge-edit">Editando</span>
+        <span v-else class="fp-badge-new">Novo</span>
       </div>
     </div>
 
-    <div v-if="carregando" class="loading">
-      <div class="spin"></div>
-      <span>Carregando...</span>
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div v-if="carregando" class="fp-loading">
+      <div class="fp-spinner"></div>
+      <span>Carregando produto…</span>
     </div>
 
-    <form v-else @submit.prevent="salvar" @keydown.enter.prevent="focusProximo" class="form-body">
+    <!-- ── Formulário ─────────────────────────────────────────── -->
+    <form v-else @submit.prevent="salvar" @keydown.enter.prevent="focusProximo" class="fp-form">
 
-      <!-- ── Seção: Identificação ────────────────────────────── -->
-      <div class="form-section">
-        <div class="section-header">
-          <span class="material-symbols-outlined section-icon" style="color:#6366f1">label</span>
-          <h3 class="section-title">Identificação</h3>
-        </div>
-        <div class="form-grid">
-          <div class="field">
-            <label>Código Interno</label>
-            <input v-model="form.codigo" type="text" :readonly="!pk" :style="!pk ? 'opacity:.6;cursor:not-allowed;' : ''" />
-          </div>
-          <div class="field">
-            <label>Código de Barras (EAN)</label>
-            <input v-model="form.codigo_barras" type="text" placeholder="Ex: 7891234567890" />
-          </div>
-          <div class="field full">
-            <label>Descrição *</label>
-            <input v-model="form.descricao" type="text" required autofocus placeholder="Nome completo do produto" />
-          </div>
-          <div class="field">
-            <label>Categoria</label>
-            <select v-model="form.categoria_pk">
-              <option value="">— Sem categoria —</option>
-              <option v-for="c in categorias" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Unidade</label>
-            <input v-model="form.unidade_comercial" type="text" placeholder="UN" />
-          </div>
-        </div>
-      </div>
+      <div class="fp-cols">
 
-      <!-- ── Seção: Preços e Estoque ───────────────────────── -->
-      <div class="form-section">
-        <div class="section-header">
-          <span class="material-symbols-outlined section-icon" style="color:#10b981">payments</span>
-          <h3 class="section-title">Preços & Estoque</h3>
-        </div>
-        <div class="form-grid">
-          <div class="field">
-            <label>Preço de Venda (R$)</label>
-            <input :value="valorVendaDisplay" @input="mascaraPreco($event, 'valor_venda')" type="text" inputmode="numeric" placeholder="0,00" />
-          </div>
-          <div class="field">
-            <label>Preço de Custo (R$)</label>
-            <input :value="precoCustoDisplay" @input="mascaraPreco($event, 'preco_custo')" type="text" inputmode="numeric" placeholder="0,00" />
-          </div>
-          <div class="field">
-            <label>Saldo em Estoque</label>
-            <input
-              :value="form.saldo"
-              @input="e => form.saldo = parseInt(e.target.value.replace(/\D/g, '') || '0', 10)"
-              type="text"
-              inputmode="numeric"
-              placeholder="0"
-            />
-          </div>
-          <div class="field" v-if="form.valor_venda > 0 && form.preco_custo > 0">
-            <label>Margem Lucro</label>
-            <div class="margem-display" :class="margemClass">
-              {{ margem }}%
+        <!-- Coluna principal -->
+        <div class="fp-col-main">
+
+          <!-- Identificação -->
+          <div class="fp-card fp-card--indigo">
+            <div class="fp-card-head">
+              <span class="material-symbols-outlined fp-card-icon">label</span>
+              <h3 class="fp-card-title">Identificação</h3>
+            </div>
+            <div class="fp-card-body">
+              <div class="fp-grid fp-grid--3">
+                <div class="fp-field">
+                  <label class="fp-label">Código Interno</label>
+                  <input v-model="form.codigo" type="text" :readonly="!pk" class="fp-input" :class="{ 'fp-input--locked': !pk }" />
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">Código de Barras (EAN)</label>
+                  <input v-model="form.codigo_barras" type="text" placeholder="7891234567890" class="fp-input" />
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">Unidade</label>
+                  <input v-model="form.unidade_comercial" type="text" placeholder="UN" class="fp-input" />
+                </div>
+              </div>
+              <div class="fp-field">
+                <label class="fp-label">Descrição <span class="fp-required">*</span></label>
+                <input v-model="form.descricao" type="text" required autofocus placeholder="Nome completo do produto" class="fp-input fp-input--lg" />
+              </div>
+              <div class="fp-field">
+                <label class="fp-label">Categoria</label>
+                <select v-model="form.categoria_pk" class="fp-input">
+                  <option value="">— Sem categoria —</option>
+                  <option v-for="c in categorias" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- ── Seção: Promoção Relâmpago (NOVO) ──────────────── -->
-      <div class="form-section promo-section">
-        <div class="section-header">
-          <span class="material-symbols-outlined section-icon" style="color:#ef4444">bolt</span>
-          <h3 class="section-title">Promoção Relâmpago</h3>
-          <span class="badge-novo">OPCIONAL</span>
-        </div>
-        <p class="section-sub">Defina um preço especial que entrará em vigor automaticamente no período selecionado.</p>
-        
-        <div class="form-grid">
-          <div class="field">
-            <label>Preço Promocional (R$)</label>
-            <input :value="precoPromoDisplay" @input="mascaraPreco($event, 'preco_promo')" type="text" inputmode="numeric" placeholder="0,00" />
-          </div>
-          <div class="field">
-            <label>Início da Promoção</label>
-            <input v-model="form.promo_inicio" type="datetime-local" />
-          </div>
-          <div class="field">
-            <label>Fim da Promoção</label>
-            <input v-model="form.promo_fim" type="datetime-local" />
-          </div>
-          <div class="field" v-if="form.preco_promo > 0">
-            <label>Economia para o Cliente</label>
-            <div class="economy-display" v-if="form.valor_venda > form.preco_promo">
-              {{ Math.round((1 - form.preco_promo / form.valor_venda) * 100) }}% de desconto
+          <!-- Preços -->
+          <div class="fp-card fp-card--emerald">
+            <div class="fp-card-head">
+              <span class="material-symbols-outlined fp-card-icon">payments</span>
+              <h3 class="fp-card-title">Preços & Estoque</h3>
+            </div>
+            <div class="fp-card-body">
+              <div class="fp-grid fp-grid--3">
+                <div class="fp-field">
+                  <label class="fp-label">Preço de Venda</label>
+                  <div class="fp-input-prefix-wrap">
+                    <span class="fp-prefix">R$</span>
+                    <input :value="valorVendaDisplay" @input="mascaraPreco($event, 'valor_venda')" type="text" inputmode="numeric" placeholder="0,00" class="fp-input fp-input--has-prefix" />
+                  </div>
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">Preço de Custo</label>
+                  <div class="fp-input-prefix-wrap">
+                    <span class="fp-prefix">R$</span>
+                    <input :value="precoCustoDisplay" @input="mascaraPreco($event, 'preco_custo')" type="text" inputmode="numeric" placeholder="0,00" class="fp-input fp-input--has-prefix" />
+                  </div>
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">Saldo em Estoque</label>
+                  <input :value="form.saldo" @input="e => form.saldo = parseInt(e.target.value.replace(/\D/g, '') || '0', 10)" type="text" inputmode="numeric" placeholder="0" class="fp-input" />
+                </div>
+              </div>
+              <div v-if="form.valor_venda > 0 && form.preco_custo > 0" class="fp-margem" :class="margemClass">
+                <span class="fp-margem-label">Margem de lucro</span>
+                <span class="fp-margem-val">{{ margem }}%</span>
+                <span class="fp-margem-hint">{{ parseFloat(margem) >= 30 ? 'Excelente' : parseFloat(margem) >= 10 ? 'Moderada' : 'Baixa' }}</span>
+              </div>
             </div>
           </div>
+
+          <!-- Promoção -->
+          <div class="fp-card fp-card--rose">
+            <div class="fp-card-head">
+              <span class="material-symbols-outlined fp-card-icon">bolt</span>
+              <h3 class="fp-card-title">Promoção Relâmpago</h3>
+              <span class="fp-tag">Opcional</span>
+            </div>
+            <div class="fp-card-body">
+              <p class="fp-card-sub">Preço especial ativado automaticamente no período selecionado.</p>
+              <div class="fp-grid fp-grid--3">
+                <div class="fp-field">
+                  <label class="fp-label">Preço Promocional</label>
+                  <div class="fp-input-prefix-wrap">
+                    <span class="fp-prefix">R$</span>
+                    <input :value="precoPromoDisplay" @input="mascaraPreco($event, 'preco_promo')" type="text" inputmode="numeric" placeholder="0,00" class="fp-input fp-input--has-prefix" />
+                  </div>
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">Início</label>
+                  <input v-model="form.promo_inicio" type="datetime-local" class="fp-input" />
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">Fim</label>
+                  <input v-model="form.promo_fim" type="datetime-local" class="fp-input" />
+                </div>
+              </div>
+              <div v-if="form.preco_promo > 0 && form.valor_venda > form.preco_promo" class="fp-economy">
+                <span class="material-symbols-outlined" style="font-size:16px">local_offer</span>
+                Cliente economiza <strong>{{ Math.round((1 - form.preco_promo / form.valor_venda) * 100) }}%</strong> em relação ao preço normal
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Coluna secundária -->
+        <div class="fp-col-side">
+
+          <!-- Localização -->
+          <div class="fp-card fp-card--amber">
+            <div class="fp-card-head">
+              <span class="material-symbols-outlined fp-card-icon">warehouse</span>
+              <h3 class="fp-card-title">Localização no Estoque</h3>
+            </div>
+            <div class="fp-card-body">
+              <div class="fp-field">
+                <label class="fp-label">Armazém</label>
+                <select v-model="form.armazem_pk" @change="form.endereco_armazem_pk = ''" class="fp-input">
+                  <option value="">— Selecionar —</option>
+                  <option v-for="a in armazens" :key="a.pk" :value="a.pk">{{ a.id }} — {{ a.localizacao }}</option>
+                </select>
+              </div>
+              <div class="fp-field">
+                <label class="fp-label">Posição</label>
+                <select v-model="form.endereco_armazem_pk" :disabled="!form.armazem_pk || enderecosFiltrados.length === 0" class="fp-input">
+                  <option value="">— Selecionar —</option>
+                  <option v-for="e in enderecosFiltrados" :key="e.pk" :value="e.pk">
+                    {{ e.codigo }}{{ e.descricao ? ` — ${e.descricao}` : '' }}
+                  </option>
+                </select>
+                <small v-if="form.armazem_pk && enderecosFiltrados.length === 0" class="fp-hint">
+                  Nenhum endereço cadastrado.
+                  <router-link :to="`/armazens/${form.armazem_pk}/editar`" class="fp-link">Cadastrar agora</router-link>
+                </small>
+              </div>
+              <div v-if="enderecoPreview" class="fp-location-preview">
+                <span class="material-symbols-outlined" style="font-size:16px;color:#f59e0b">location_on</span>
+                <span>
+                  <strong>{{ enderecoPreview.armazem_id }}</strong>
+                  <span class="fp-location-sep"> / </span>
+                  <span>{{ enderecoPreview.codigo }}</span>
+                  <span v-if="enderecoPreview.descricao" class="fp-location-desc"> — {{ enderecoPreview.descricao }}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fiscal -->
+          <div class="fp-card fp-card--violet">
+            <div class="fp-card-head">
+              <span class="material-symbols-outlined fp-card-icon">receipt_long</span>
+              <h3 class="fp-card-title">Dados Fiscais</h3>
+            </div>
+            <div class="fp-card-body">
+              <div class="fp-field">
+                <label class="fp-label">NCM</label>
+                <input v-model="form.ncm" type="text" maxlength="8" placeholder="00000000" class="fp-input fp-input--mono" />
+              </div>
+              <div class="fp-grid fp-grid--2">
+                <div class="fp-field">
+                  <label class="fp-label">CFOP</label>
+                  <input v-model="form.cfop" type="text" maxlength="4" placeholder="5102" class="fp-input fp-input--mono" />
+                </div>
+                <div class="fp-field">
+                  <label class="fp-label">CSOSN</label>
+                  <input v-model="form.csosn" type="text" maxlength="3" placeholder="400" class="fp-input fp-input--mono" />
+                </div>
+              </div>
+              <details class="fp-ncm-details">
+                <summary class="fp-ncm-summary">NCMs padrão da loja</summary>
+                <div class="fp-ncm-list">
+                  <button v-for="n in ncmsPadrao" :key="n.ncm" type="button" class="fp-ncm-item" @click="usarNcm(n)">
+                    <span class="fp-ncm-cod">{{ n.ncm }}</span>
+                    <span class="fp-ncm-desc">{{ n.descricao }}</span>
+                    <span class="fp-ncm-use">Usar</span>
+                  </button>
+                </div>
+              </details>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- ── Seção: Localização no Estoque (NOVO) ──────────── -->
-      <div class="form-section">
-        <div class="section-header">
-          <span class="material-symbols-outlined section-icon" style="color:#f59e0b">warehouse</span>
-          <h3 class="section-title">Localização no Estoque</h3>
-        </div>
-        <div class="form-grid">
-          <div class="field">
-            <label>Armazém</label>
-            <select v-model="form.armazem_pk" @change="form.endereco_armazem_pk = ''">
-              <option value="">— Selecionar armazém —</option>
-              <option v-for="a in armazens" :key="a.pk" :value="a.pk">
-                {{ a.id }} — {{ a.localizacao }}
-              </option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Endereço (Posição)</label>
-            <select v-model="form.endereco_armazem_pk" :disabled="!form.armazem_pk || enderecosFiltrados.length === 0">
-              <option value="">— Selecionar endereço —</option>
-              <option v-for="e in enderecosFiltrados" :key="e.pk" :value="e.pk">
-                {{ e.codigo }}{{ e.descricao ? ` — ${e.descricao}` : '' }}
-              </option>
-            </select>
-            <small v-if="form.armazem_pk && enderecosFiltrados.length === 0" class="field-hint">
-              Nenhum endereço cadastrado. 
-              <router-link :to="`/armazens/${form.armazem_pk}/editar`" class="link-cadastrar">Cadastrar agora</router-link>
-            </small>
-          </div>
-        </div>
-        <!-- Preview -->
-        <div v-if="enderecoPreview" class="armazem-preview">
-          <span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b">location_on</span>
-          <span>
-            <strong>{{ enderecoPreview.armazem_id }}</strong>
-            <span style="color:var(--text2)"> / {{ enderecoPreview.codigo }}</span>
-            <span v-if="enderecoPreview.descricao" class="preview-addr"> — {{ enderecoPreview.descricao }}</span>
-          </span>
-        </div>
+      <!-- ── Erro ──────────────────────────────────────────────── -->
+      <div v-if="erro" class="fp-erro">
+        <span class="material-symbols-outlined" style="font-size:18px">error</span>
+        {{ erro }}
       </div>
 
-      <!-- ── Seção: Fiscal ──────────────────────────────────── -->
-      <div class="form-section">
-        <div class="section-header">
-          <span class="material-symbols-outlined section-icon" style="color:#818cf8">receipt_long</span>
-          <h3 class="section-title">Dados Fiscais</h3>
-        </div>
-        <div class="form-grid">
-          <div class="field">
-            <label>NCM</label>
-            <input v-model="form.ncm" type="text" maxlength="8" placeholder="00000000" />
-          </div>
-          <div class="field">
-            <label>CFOP</label>
-            <input v-model="form.cfop" type="text" maxlength="4" placeholder="5102" />
-          </div>
-          <div class="field">
-            <label>CSOSN</label>
-            <input v-model="form.csosn" type="text" maxlength="3" placeholder="400" />
-          </div>
-        </div>
-      </div>
-
-      <!-- ── NCMs padrão da loja ────────────────────────────── -->
-      <div class="form-section">
-        <div class="section-header">
-          <span class="material-symbols-outlined section-icon" style="color:#818cf8">receipt</span>
-          <h3 class="section-title">NCMs padrão da loja</h3>
-        </div>
-        <table class="ncm-ref-table">
-          <thead>
-            <tr><th>NCM</th><th>Descrição</th><th></th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="n in ncmsPadrao" :key="n.ncm">
-              <td class="ncm-cod">{{ n.ncm }}</td>
-              <td class="ncm-desc">{{ n.descricao }}</td>
-              <td class="ncm-acao"><button type="button" class="ncm-usar" @click="usarNcm(n)">Usar</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="erro" class="erro">{{ erro }}</div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-cancel" @click="$router.push('/produtos')">Cancelar</button>
-        <button type="submit" class="btn-primary" :disabled="salvando">
-          <span v-if="salvando" class="spin-xs"></span>
-          {{ salvando ? 'Salvando...' : (pk ? 'Salvar Alterações' : 'Cadastrar Produto') }}
+      <!-- ── Ações ─────────────────────────────────────────────── -->
+      <div class="fp-actions">
+        <button type="button" class="fp-btn-cancel" @click="$router.push('/produtos')">Cancelar</button>
+        <button type="submit" class="fp-btn-save" :disabled="salvando">
+          <span v-if="salvando" class="fp-spin-xs"></span>
+          <span class="material-symbols-outlined" v-else style="font-size:18px">save</span>
+          {{ salvando ? 'Salvando…' : (pk ? 'Salvar Alterações' : 'Cadastrar Produto') }}
         </button>
       </div>
-      <div 
-          style="margin-bottom: 20px;">
-      </div>
+
     </form>
   </div>
 </template>
@@ -282,12 +303,7 @@ const form = ref({
   endereco_armazem_pk: '',
 });
 
-const armazemSelecionado = computed(() =>
-  armazens.value.find(a => a.pk === form.value.armazem_pk) || null
-);
-
 const enderecosFiltrados = computed(() =>
-  // usa == para tolerar diferença de tipo (integer do banco vs string do select)
   todosEnderecos.value.filter(e => e.armazem_pk == form.value.armazem_pk)
 );
 
@@ -307,19 +323,17 @@ const margem = computed(() => {
 
 const margemClass = computed(() => {
   const m = parseFloat(margem.value);
-  if (m >= 30) return 'margem-ok';
-  if (m >= 10) return 'margem-med';
-  return 'margem-baixa';
+  if (m >= 30) return 'fp-margem--ok';
+  if (m >= 10) return 'fp-margem--med';
+  return 'fp-margem--baixa';
 });
 
 onMounted(async () => {
-  // Carrega categorias
   let qCat = supabase.from('categorias').select('pk, nome').order('nome');
   if (sessaoStore.filial?.pk) qCat = qCat.eq('filial_pk', sessaoStore.filial.pk);
   const { data: cats } = await qCat;
   categorias.value = cats || [];
 
-  // Carrega armazéns e seus endereços
   let qArm = supabase.from('armazem').select('pk, id, localizacao').order('id');
   if (sessaoStore.filial?.codigo) qArm = qArm.eq('filial', sessaoStore.filial.codigo);
   const { data: arms } = await qArm;
@@ -328,14 +342,12 @@ onMounted(async () => {
   const { data: ends } = await supabase.from('endereco_armazem').select('pk, armazem_pk, codigo, descricao').order('codigo');
   todosEnderecos.value = ends || [];
 
-  // Auto-gera código interno via função atômica do banco (evita corrida entre usuários)
   if (!pk) {
     const filialPk = sessaoStore.filial?.pk || null;
     const { data: cod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
     form.value.codigo = cod || '0001';
   }
 
-  // Carrega produto se edição
   if (pk) {
     const { data, error } = await supabase.from('produtos').select('*').eq('pk', Number(pk)).single();
     if (error || !data) { erro.value = 'Produto não encontrado.'; carregando.value = false; return; }
@@ -393,7 +405,6 @@ async function salvar() {
       ({ error } = await supabase.from('produtos').update(payload).eq('pk', Number(pk)));
     } else {
       ({ error } = await supabase.from('produtos').insert(payload));
-      // Conflito de código: outro usuário cadastrou ao mesmo tempo — busca próximo e tenta de novo
       if (error?.code === '23505' && error.message.includes('codigo')) {
         const filialPk = sessaoStore.filial?.pk || null;
         const { data: novoCod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
@@ -413,87 +424,398 @@ async function salvar() {
 </script>
 
 <style scoped>
-.form-page   { display: flex; flex-direction: column; gap: 1.5rem; max-width: 820px; }
-.form-header { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-.page-title  { margin: 0; font-size: 1.4rem; font-weight: 800; color: var(--text); }
-.page-sub    { margin: 3px 0 0; font-size: .85rem; color: var(--text2); }
-
-.btn-back { display: flex; align-items: center; gap: .4rem; padding: .5rem .9rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; color: var(--text2); font-size: .85rem; cursor: pointer; transition: all .15s; flex-shrink: 0; }
-.btn-back:hover { color: var(--text); border-color: #6366f1; }
-
-.loading  { display: flex; align-items: center; gap: 12px; padding: 3rem; color: var(--text2); }
-
-/* Seções */
-.form-body    { display: flex; flex-direction: column; gap: 16px; }
-.form-section { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
-
-.section-header { display: flex; align-items: center; gap: 10px; }
-.section-icon   { font-size: 22px; }
-.section-title  { margin: 0; font-size: 1rem; font-weight: 700; color: var(--text); }
-
-/* Grid de campos */
-.form-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.field      { display: flex; flex-direction: column; gap: 5px; }
-.field.full { grid-column: 1 / -1; }
-.field label { font-size: .75rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .3px; }
-.field input, .field select {
-  padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 9px;
-  font-size: .9rem; background: var(--bg3); color: var(--text); outline: none;
-  transition: border-color .15s;
-}
-.field input:focus, .field select:focus { border-color: #6366f1; }
-
-/* Margem de lucro */
-.margem-display { padding: .55rem .8rem; border-radius: 9px; font-size: 1rem; font-weight: 800; text-align: center; border: 2px solid; }
-.margem-ok    { background: rgba(16,185,129,.1); color: #10b981; border-color: rgba(16,185,129,.3); }
-.margem-med   { background: rgba(245,158,11,.1); color: #f59e0b; border-color: rgba(245,158,11,.3); }
-.margem-baixa { background: rgba(239,68,68,.1);  color: #ef4444; border-color: rgba(239,68,68,.3); }
-
-/* Preview armazém */
-.armazem-preview {
-  display: flex; align-items: center; gap: 10px;
-  background: rgba(245,158,11,.06); border: 1px solid rgba(245,158,11,.2);
-  border-radius: 10px; padding: 10px 14px; font-size: .88rem; color: var(--text);
-}
-.preview-addr { color: #6366f1; font-weight: 600; }
-
-/* Ações */
-.form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
-.btn-primary  { display: flex; align-items: center; gap: 7px; padding: .6rem 1.6rem; background: #6366f1; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .9rem; transition: opacity .15s; }
-.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
-.btn-primary:hover:not(:disabled) { opacity: .88; }
-.btn-cancel   { padding: .6rem 1.2rem; background: var(--bg2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: .9rem; transition: all .15s; }
-.btn-cancel:hover { border-color: #6366f1; color: #6366f1; }
-
-.erro { color: #f87171; font-size: .85rem; background: rgba(220,38,38,.08); padding: .7rem 1rem; border-radius: 9px; border: 1px solid rgba(220,38,38,.2); }
-
-.spin { width: 22px; height: 22px; border: 3px solid rgba(99,102,241,.2); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
-.spin-xs { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Promoção */
-.promo-section { border: 2px solid rgba(239,68,68,.15); background: rgba(239,68,68,.02); }
-.section-sub { font-size: .82rem; color: var(--text2); margin: -5px 0 15px 34px; }
-.badge-novo { font-size: .65rem; padding: 2px 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-weight: 700; margin-left: 8px; }
-.economy-display { padding: .55rem .8rem; background: rgba(16,185,129,.1); color: #10b981; border-radius: 9px; font-weight: 800; font-size: .9rem; text-align: center; border: 1px solid rgba(16,185,129,.2); }
-
-@media (max-width: 600px) {
-  .form-grid { grid-template-columns: 1fr; }
-  .field.full { grid-column: 1; }
+/* ── Root ─────────────────────────────────────────────────────── */
+.fp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1060px;
 }
 
-/* NCMs padrão */
-.ncm-ref-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.ncm-ref-table th { padding: 7px 10px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; background: var(--bg3); border-bottom: 1px solid var(--border); }
-.ncm-ref-table td { padding: 8px 10px; border-top: 1px solid var(--border); color: var(--text); }
-.ncm-ref-table tr:hover td { background: var(--bg3); }
-.ncm-cod { font-family: monospace; font-weight: 700; color: #818cf8; white-space: nowrap; width: 110px; }
-.ncm-desc { color: var(--text2); }
-.ncm-acao { text-align: right; width: 70px; }
-.ncm-usar {
-  padding: 3px 12px; background: rgba(129,140,248,.12); border: 1px solid rgba(129,140,248,.3);
-  border-radius: 6px; color: #818cf8; font-size: 12px; font-weight: 700; cursor: pointer;
-  white-space: nowrap; transition: all .15s;
+/* ── Header ───────────────────────────────────────────────────── */
+.fp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
-.ncm-usar:hover { background: #818cf8; color: #fff; }
+.fp-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fp-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .15s;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+[data-theme="dark"] .fp-back { background: var(--bg2); }
+.fp-back:hover { border-color: #6366f1; color: #6366f1; background: rgba(99,102,241,.06); }
+.fp-crumb-sep  { color: var(--border); font-size: .9rem; }
+.fp-crumb-link {
+  font-size: .875rem;
+  color: var(--text2);
+  cursor: pointer;
+  transition: color .15s;
+}
+.fp-crumb-link:hover { color: #6366f1; }
+.fp-crumb-current {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fp-badge-edit {
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(99,102,241,.12);
+  color: #6366f1;
+  border: 1px solid rgba(99,102,241,.25);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.fp-badge-new {
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(16,185,129,.12);
+  color: #10b981;
+  border: 1px solid rgba(16,185,129,.25);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+/* ── Loading ──────────────────────────────────────────────────── */
+.fp-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4rem 2rem;
+  color: var(--text2);
+  font-size: .9rem;
+}
+.fp-spinner {
+  width: 22px; height: 22px;
+  border: 2.5px solid rgba(99,102,241,.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: fp-spin .7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+.fp-form  { display: flex; flex-direction: column; gap: 16px; }
+.fp-cols  { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+.fp-col-main { display: flex; flex-direction: column; gap: 16px; }
+.fp-col-side { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Cards ────────────────────────────────────────────────────── */
+.fp-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+[data-theme="dark"] .fp-card { background: var(--bg2); }
+
+/* Cabeçalho colorido do card */
+.fp-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.fp-card--indigo  .fp-card-head { background: rgba(99,102,241,.07); }
+.fp-card--emerald .fp-card-head { background: rgba(16,185,129,.07); }
+.fp-card--rose    .fp-card-head { background: rgba(244,63,94,.07); }
+.fp-card--amber   .fp-card-head { background: rgba(245,158,11,.07); }
+.fp-card--violet  .fp-card-head { background: rgba(139,92,246,.07); }
+
+/* Corpo do card */
+.fp-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+}
+
+.fp-card-icon { font-size: 20px; }
+.fp-card--indigo .fp-card-icon  { color: #6366f1; }
+.fp-card--emerald .fp-card-icon { color: #10b981; }
+.fp-card--rose    .fp-card-icon { color: #f43f5e; }
+.fp-card--amber   .fp-card-icon { color: #f59e0b; }
+.fp-card--violet  .fp-card-icon { color: #8b5cf6; }
+
+.fp-card-title {
+  margin: 0;
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.fp-card-sub {
+  font-size: .8rem;
+  color: var(--text2);
+  line-height: 1.5;
+}
+.fp-tag {
+  font-size: .62rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(99,102,241,.1);
+  border: 1px solid rgba(99,102,241,.2);
+  color: #6366f1;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-left: auto;
+}
+
+/* ── Grids ────────────────────────────────────────────────────── */
+.fp-grid { display: grid; gap: 12px; }
+.fp-grid--2 { grid-template-columns: 1fr 1fr; }
+.fp-grid--3 { grid-template-columns: 1fr 1fr 1fr; }
+
+
+/* ── Fields & Inputs ──────────────────────────────────────────── */
+.fp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fp-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.fp-required { color: #f43f5e; }
+.fp-input {
+  padding: .52rem .8rem;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: .88rem;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+[data-theme="dark"] .fp-input { background: var(--bg3); }
+.fp-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+}
+.fp-input--lg   { font-size: .95rem; padding: .6rem .85rem; }
+.fp-input--mono { font-family: monospace; letter-spacing: .5px; }
+.fp-input--locked {
+  opacity: .55;
+  cursor: not-allowed;
+  background: var(--bg2) !important;
+}
+select.fp-input { cursor: pointer; }
+select.fp-input:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Prefix (R$) */
+.fp-input-prefix-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.fp-prefix {
+  position: absolute;
+  left: .75rem;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text2);
+  pointer-events: none;
+  user-select: none;
+}
+.fp-input--has-prefix { padding-left: 2.1rem; }
+
+.fp-hint { font-size: .75rem; color: var(--text2); margin-top: 2px; }
+.fp-link { color: #6366f1; text-decoration: none; }
+.fp-link:hover { text-decoration: underline; }
+
+/* ── Margem de lucro ──────────────────────────────────────────── */
+.fp-margem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid;
+}
+.fp-margem--ok    { background: rgba(16,185,129,.07); border-color: rgba(16,185,129,.25); color: #059669; }
+.fp-margem--med   { background: rgba(245,158,11,.07); border-color: rgba(245,158,11,.25); color: #d97706; }
+.fp-margem--baixa { background: rgba(244,63,94,.07);  border-color: rgba(244,63,94,.25);  color: #e11d48; }
+.fp-margem-label  { font-size: .75rem; font-weight: 600; opacity: .75; flex: 1; }
+.fp-margem-val    { font-size: 1.15rem; font-weight: 800; font-family: monospace; }
+.fp-margem-hint   { font-size: .75rem; font-weight: 700; }
+
+/* ── Economy display ──────────────────────────────────────────── */
+.fp-economy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  background: rgba(16,185,129,.07);
+  border: 1px solid rgba(16,185,129,.2);
+  border-radius: 10px;
+  font-size: .82rem;
+  color: #059669;
+}
+
+/* ── Location preview ─────────────────────────────────────────── */
+.fp-location-preview {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  background: rgba(245,158,11,.06);
+  border: 1px solid rgba(245,158,11,.2);
+  border-radius: 10px;
+  font-size: .85rem;
+  color: var(--text);
+}
+.fp-location-sep  { color: var(--text2); }
+.fp-location-desc { color: #6366f1; font-weight: 600; }
+
+/* ── NCM colapsável ───────────────────────────────────────────── */
+.fp-ncm-details { margin-top: 2px; }
+.fp-ncm-summary {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fp-ncm-summary::before {
+  content: '▸';
+  font-size: .7rem;
+  transition: transform .15s;
+}
+details[open] .fp-ncm-summary::before { transform: rotate(90deg); }
+.fp-ncm-list  { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.fp-ncm-item  {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+  width: 100%;
+}
+.fp-ncm-item:hover { border-color: #8b5cf6; background: rgba(139,92,246,.04); }
+.fp-ncm-cod  { font-family: monospace; font-size: .8rem; font-weight: 700; color: #8b5cf6; white-space: nowrap; min-width: 72px; }
+.fp-ncm-desc { font-size: .78rem; color: var(--text2); flex: 1; line-height: 1.35; }
+.fp-ncm-use  { font-size: .7rem; font-weight: 700; color: #8b5cf6; white-space: nowrap; opacity: 0; transition: opacity .15s; }
+.fp-ncm-item:hover .fp-ncm-use { opacity: 1; }
+
+/* ── Erro ─────────────────────────────────────────────────────── */
+.fp-erro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e11d48;
+  font-size: .85rem;
+  background: rgba(244,63,94,.07);
+  padding: .75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(244,63,94,.2);
+}
+
+/* ── Ações ────────────────────────────────────────────────────── */
+.fp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+  padding-bottom: 24px;
+}
+.fp-btn-cancel {
+  padding: .6rem 1.3rem;
+  background: #fff;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: .88rem;
+  font-weight: 600;
+  transition: all .15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+[data-theme="dark"] .fp-btn-cancel { background: var(--bg2); }
+.fp-btn-cancel:hover { border-color: #6366f1; color: #6366f1; }
+.fp-btn-save {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: .6rem 1.6rem;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: .88rem;
+  transition: opacity .15s, transform .1s;
+}
+.fp-btn-save:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+.fp-btn-save:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Spinner ──────────────────────────────────────────────────── */
+.fp-spin-xs {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: fp-spin .7s linear infinite;
+}
+@keyframes fp-spin { to { transform: rotate(360deg); } }
+
+/* ── Responsivo ───────────────────────────────────────────────── */
+@media (max-width: 780px) {
+  .fp-cols  { grid-template-columns: 1fr; }
+  .fp-grid--3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+  .fp-grid--2,
+  .fp-grid--3 { grid-template-columns: 1fr; }
+}
 </style>

@@ -13,7 +13,12 @@ export const useSessaoStore = defineStore('sessao', () => {
   const operador = ref(readStorage('festou_operador', null));
   const modulos  = ref(new Set(readStorage('festou_modulos', [])));
 
-  const isAutenticado = computed(() => !!operador.value);
+  const isAutenticado = computed(() => {
+    if (!operador.value) return false;
+    // Garante que o token JWT também existe — evita tela inicial sem token
+    const token = localStorage.getItem('token');
+    return !!token;
+  });
 
   function setSessao(f, op, mods) {
     filial.value   = f;

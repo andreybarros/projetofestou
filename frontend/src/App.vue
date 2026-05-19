@@ -217,12 +217,14 @@
 import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSessaoStore } from './stores/sessao';
+import { useAuthStore }   from './stores/auth';
 import { useParametrosStore } from './stores/parametros';
 import { useVendaStore } from './stores/venda';
 import apiClient from './services/api';
 import LoginView from './views/Login.vue';
 
 const sessao      = useSessaoStore();
+const authStore   = useAuthStore();
 const parametros  = useParametrosStore();
 const vendaStore  = useVendaStore();
 const router      = useRouter();
@@ -295,6 +297,18 @@ function fecharMenus(e) {
 onMounted(async () => {
   document.addEventListener('click', fecharMenus, true);
   if (sessao.isAutenticado) {
+    // Valida token com o backend antes de prosseguir
+    try {
+      const { data } = await apiClient.post('/api/auth/renovar');
+      if (data?.token) authStore.setAuth(data.token, authStore.user);
+    } catch (e) {
+      // Token inválido ou expirado — força logout limpo
+      if (e.response?.status === 401) {
+        authStore.logout();
+        sessao.logout();
+        return;
+      }
+    }
     await carregarFiliais();
     // Recarregar módulos da filial atual para refletir alterações feitas no cadastro
     if (sessao.filial?.pk) {
