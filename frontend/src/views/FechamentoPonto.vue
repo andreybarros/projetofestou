@@ -1106,7 +1106,7 @@ function buildPayload(saldoFinal, isBloqueado, espStatus, espObs) {
     mes:                 mes.value,
     ano:                 ano.value,
     quinzena:            quinzena.value,
-    salario_base:        summaries.value.baseSalary,
+    salario_base:        summaries.value.salarioProporcional,
     horas_previstas:     summaries.value.previsto / 3600,
     horas_trabalhadas:   summaries.value.trabalhado / 3600,
     saldo_anterior:      summaries.value.saldoAnt,

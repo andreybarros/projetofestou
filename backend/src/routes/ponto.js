@@ -477,7 +477,141 @@ router.patch('/desbloquear', async (req, res) => {
   }
 });
 
-// 12. Vales de um funcionário (aprovado/pago)
+// 12. Meus Holerites — lista (autoatendimento do funcionário)
+router.get('/meus-holerites', async (req, res) => {
+  try {
+    const { data: op } = await supabase
+      .from('operadores').select('matricula').eq('id', req.user.pk).maybeSingle();
+    if (!op?.matricula) return res.status(404).json({ erro: 'Operador sem matrícula vinculada.' });
+
+    const { data: func } = await supabase
+      .from('funcionarios').select('pk, nome, matricula, salario_mensal, diarista, valor_diaria')
+      .eq('matricula', op.matricula).eq('ativo', true).maybeSingle();
+    if (!func) return res.status(404).json({ erro: 'Funcionário não encontrado para esta matrícula.' });
+
+    const { data: fechamentos, error } = await supabase
+      .from('fechamento_ponto')
+      .select('pk, mes, ano, quinzena, horas_trabalhadas, horas_extras, horas_previstas, saldo_mes, saldo_acumulado, valor_descontos, valor_horas_extras, qtd_horas_pagas, valor_hora_extra_pago, total_liquido, espelho_status, espelho_aprovado_em, criado_em')
+      .eq('funcionario_pk', func.pk).eq('bloqueado', true)
+      .order('ano', { ascending: false }).order('mes', { ascending: false }).order('quinzena', { ascending: false });
+
+    if (error) throw error;
+
+    const salBaseQ = func.diarista ? null : parseFloat(((func.salario_mensal || 0) / 2).toFixed(2));
+    const data = (fechamentos || []).map(h => ({
+      ...h,
+      salario_base_quinzena: salBaseQ,
+      total_bruto: parseFloat(((salBaseQ || 0) + (h.valor_horas_extras || 0)).toFixed(2)),
+    }));
+
+    res.json({ ok: true, funcionario: func, data });
+  } catch (err) {
+    console.error('[Ponto/MeusHolerites] Erro:', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// 13. Meus Holerites — detalhe de um período
+router.get('/meus-holerites/:pk', async (req, res) => {
+  try {
+    const fchPk = parseInt(req.params.pk);
+    if (!fchPk) return res.status(400).json({ erro: 'pk inválido' });
+
+    const { data: op } = await supabase
+      .from('operadores').select('matricula').eq('id', req.user.pk).maybeSingle();
+    if (!op?.matricula) return res.status(403).json({ erro: 'Sem matrícula vinculada.' });
+
+    const { data: func } = await supabase
+      .from('funcionarios').select('*').eq('matricula', op.matricula).eq('ativo', true).maybeSingle();
+    if (!func) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+
+    const { data: fch } = await supabase
+      .from('fechamento_ponto').select('*')
+      .eq('pk', fchPk).eq('funcionario_pk', func.pk).maybeSingle();
+    if (!fch) return res.status(404).json({ erro: 'Holerite não encontrado.' });
+
+    const diaIni = fch.quinzena === 1 ? '01' : '16';
+    const mesStr = String(fch.mes).padStart(2, '0');
+    const dataIni = `${fch.ano}-${mesStr}-${diaIni}`;
+    const dataFim = fch.quinzena === 1
+      ? `${fch.ano}-${mesStr}-15`
+      : new Date(fch.ano, fch.mes, 0).toISOString().split('T')[0];
+
+    const antQ = fch.quinzena === 1 ? 2 : 1;
+    const antM = fch.quinzena === 1 ? (fch.mes === 1 ? 12 : fch.mes - 1) : fch.mes;
+    const antA = fch.quinzena === 1 ? (fch.mes === 1 ? fch.ano - 1 : fch.ano) : fch.ano;
+
+    const [resDesc, resP, resJ, resParams, resFchAnt] = await Promise.all([
+      supabase.from('descontos_fechamento').select('*').eq('fechamento_pk', fchPk).order('criado_em'),
+      supabase.from('registro_ponto').select('*').eq('funcionario_pk', func.pk)
+        .gte('data', dataIni).lte('data', dataFim).order('data').order('hora'),
+      supabase.from('justificativas_ponto').select('*').eq('funcionario_pk', func.pk)
+        .gte('data', dataIni).lte('data', dataFim),
+      supabase.from('parametros_sistema').select('chave, valor, filial_pk')
+        .in('chave', ['ponto_tolerancia_minutos'])
+        .or(func.filial_pk ? `filial_pk.is.null,filial_pk.eq.${func.filial_pk}` : 'filial_pk.is.null'),
+      supabase.from('fechamento_ponto').select('saldo_acumulado')
+        .eq('funcionario_pk', func.pk).eq('mes', antM).eq('ano', antA).eq('quinzena', antQ).maybeSingle(),
+    ]);
+
+    const getParam = (chave, def) => {
+      const rows = (resParams.data || []).filter(r => r.chave === chave);
+      const row  = rows.find(r => r.filial_pk !== null) || rows.find(r => r.filial_pk === null);
+      return row ? parseFloat(row.valor) : def;
+    };
+    const toleranciaMin = getParam('ponto_tolerancia_minutos', 15);
+    const saldoAnt = Math.max(0, resFchAnt.data?.saldo_acumulado ?? (func.saldo_inicial_banco || 0));
+
+    const { summaries, dias } = calcularPeriodo({
+      func, punches: resP.data || [], justs: resJ.data || [],
+      saldoAnt, toleranciaMin, dataIni, dataFim,
+    });
+
+    const tolerSec  = toleranciaMin * 60;
+    const normTime  = t => t ? String(t).trim().substring(0, 5) : null;
+    const entPrevStr = normTime(func.hora_entrada);
+    const entPrevSec = entPrevStr ? timeToSec(entPrevStr) : null;
+
+    const atrasos = dias.filter(d => {
+      if (!d.batidas.length || d.isDomingo || d.previsto === 0 || entPrevSec === null) return false;
+      return timeToSec(d.batidas[0]) > entPrevSec + tolerSec;
+    }).map(d => ({
+      data: d.dtStr, dia: d.dia, dayName: d.dayName, batidas: d.batidas,
+      minutos: Math.round((timeToSec(d.batidas[0]) - entPrevSec) / 60),
+    }));
+
+    const faltas = dias.filter(d => {
+      if (d.previsto === 0) return false;
+      if (d.just && ['Abono', 'Atestado Médico', 'Folga'].includes(d.just.tipo)) return false;
+      return d.trabalhado === 0;
+    }).map(d => ({ data: d.dtStr, dia: d.dia, dayName: d.dayName, just: d.just }));
+
+    const salarioBaseQuinzena = func.diarista
+      ? parseFloat(((summaries.diasPagos || 0) * (func.valor_diaria || 0)).toFixed(2))
+      : parseFloat(((func.salario_mensal || 0) / 2).toFixed(2));
+
+    const totalBruto = parseFloat((salarioBaseQuinzena + (fch.valor_horas_extras || 0)).toFixed(2));
+
+    res.json({
+      ok: true,
+      funcionario: { pk: func.pk, nome: func.nome, matricula: func.matricula, salario_mensal: func.salario_mensal, diarista: func.diarista, valor_diaria: func.valor_diaria, hora_entrada: func.hora_entrada, hora_saida: func.hora_saida },
+      fechamento: fch,
+      descontos: resDesc.data || [],
+      dias,
+      atrasos,
+      faltas,
+      salarioBaseQuinzena,
+      totalBruto,
+      dataIni,
+      dataFim,
+    });
+  } catch (err) {
+    console.error('[Ponto/MeusHolerites/Detalhe] Erro:', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// 14. Vales de um funcionário (aprovado/pago)
 router.get('/vales-funcionario', async (req, res) => {
   try {
     const { funcionario_pk, nome } = req.query;

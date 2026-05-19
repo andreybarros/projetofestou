@@ -75,7 +75,7 @@
             <p class="section-title">Recursos Humanos</p>
             <RouterLink v-if="pode('funcionarios')" to="/funcionarios"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#2dd4bf">badge</span><span class="nav-label">Funcionários</span></RouterLink>
             <RouterLink v-if="pode('ponto')"        to="/ponto"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">schedule</span><span class="nav-label">Ponto Eletrônico</span></RouterLink>
-            <RouterLink v-if="op?.matricula"        to="/holerites"      class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">description</span><span class="nav-label">Meus Holerites</span></RouterLink>
+            <RouterLink v-if="pode('holerite')"      to="/holerites"      class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">description</span><span class="nav-label">Meus Holerites</span></RouterLink>
             <RouterLink v-if="op?.matricula || pode('espelho')" to="/espelho-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f472b6">calendar_view_month</span><span class="nav-label">Espelho de Ponto</span></RouterLink>
             <RouterLink v-if="pode('gestao_ponto')" to="/ajuste-batidas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">location_on</span><span class="nav-label">Gestão de Batidas</span></RouterLink>
             <RouterLink v-if="pode('fech_ponto')" to="/fechamento-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">lock_clock</span><span class="nav-label">Fechamento de Ponto</span></RouterLink>
@@ -345,7 +345,7 @@ function pode(modulo) {
     caixa: 'pdv', rel_vendas: 'historico', rel_caixa: 'fechamento',
     dashboard: 'pdv', fornecedores: 'clientes',
     espelho: 'ponto', gestao_ponto: 'ponto', fech_ponto: 'funcionarios',
-    criar_ordem: 'separacao', vales: 'funcionarios',
+    criar_ordem: 'separacao', vales: 'funcionarios', holerite: 'ponto',
     entrada_nfe:    'produtos',
     projetos:       'agenda',
     pedidos_compra: 'produtos',
@@ -387,6 +387,7 @@ function pode(modulo) {
     fech_ponto:   o.acesso_fechamento_ponto || o.acesso_funcionarios,
     rel_vendas:   o.acesso_relatorio_vendas || o.acesso_historico || o.acesso_pdv,
     vales:        o.acesso_vales,
+    holerite:     o.acesso_holerite,
     entrada_nfe:    o.acesso_entrada_nfe,
     projetos:       o.acesso_projetos,
     pedidos_compra: o.acesso_pedidos_compra,
@@ -399,7 +400,7 @@ const podeAdmin  = computed(() => !!op.value?.admin);
 const podeRH     = computed(() => {
   const temRHnaFilial = sessao.temModulo('ponto') || sessao.temModulo('funcionarios');
   if (!temRHnaFilial) return false;
-  return pode('funcionarios') || pode('ponto') || !!op.value?.matricula || !!op.value?.acesso_espelho_ponto;
+  return pode('funcionarios') || pode('ponto') || pode('holerite') || !!op.value?.acesso_espelho_ponto;
 });
 
 // Toast

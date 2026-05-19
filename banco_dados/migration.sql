@@ -788,6 +788,7 @@ ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_relatorio_caixa  boolean 
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_gestao_ponto     boolean DEFAULT false;
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_relatorio_vendas boolean DEFAULT false;
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_vales            boolean DEFAULT false;
+ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_holerite         boolean DEFAULT false;
 
 
 
@@ -815,6 +816,9 @@ UPDATE operadores SET acesso_gestao_ponto = true WHERE acesso_ponto = true AND a
 
 -- acesso_funcionarios → acesso_fechamento_ponto
 UPDATE operadores SET acesso_fechamento_ponto = true WHERE acesso_funcionarios = true AND acesso_fechamento_ponto IS NOT TRUE;
+
+-- matricula preenchida → acesso_holerite (autoatendimento)
+UPDATE operadores SET acesso_holerite = true WHERE matricula IS NOT NULL AND matricula <> '' AND acesso_holerite IS NOT TRUE;
 
 
 
