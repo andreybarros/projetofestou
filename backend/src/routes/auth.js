@@ -18,7 +18,11 @@ function gerarToken(operadorPk) {
 function validarToken(token) {
   try {
     const decoded = Buffer.from(token, 'base64url').toString('utf8');
-    const [pkStr, tsStr, hash] = decoded.split(':');
+    const parts = decoded.split(':');
+    if (parts.length < 3) return null;
+    const hash  = parts[parts.length - 1];
+    const tsStr = parts[parts.length - 2];
+    const pkStr = parts.slice(0, parts.length - 2).join(':');
     if (!pkStr || !tsStr || !hash) return null;
 
     const secret   = process.env.JWT_SECRET || 'festou_secret_2024';
@@ -27,10 +31,13 @@ function validarToken(token) {
       .update(`${pkStr}:${tsStr}`)
       .digest('hex');
 
-    if (!crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(esperado))) return null;
+    const bufHash = Buffer.from(hash,    'hex');
+    const bufEsp  = Buffer.from(esperado,'hex');
+    if (bufHash.length !== bufEsp.length) return null;
+    if (!crypto.timingSafeEqual(bufHash, bufEsp)) return null;
 
     const ts = parseInt(tsStr, 10);
-    if (Date.now() / 1000 - ts > 43200) return null;
+    if (Date.now() / 1000 - ts > 86400) return null; // 24h
 
     return parseInt(pkStr, 10);
   } catch {
@@ -186,6 +193,15 @@ router.get('/filiais', async (_req, res) => {
   } catch (err) {
     return res.status(500).json({ erro: err.message });
   }
+});
+
+// POST /api/auth/renovar — renova token se ainda válido
+router.post('/renovar', (req, res) => {
+  const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+  if (!token) return res.status(401).json({ erro: 'Token não fornecido' });
+  const operadorPk = validarToken(token);
+  if (!operadorPk) return res.status(401).json({ erro: 'Token inválido ou expirado' });
+  res.json({ ok: true, token: gerarToken(operadorPk) });
 });
 
 module.exports = router;

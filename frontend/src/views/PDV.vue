@@ -1263,9 +1263,55 @@ function onHotkey(e) {
 }
 
 let _realtimeChannel = null;
+let _refreshTimer    = null;
+
+function _aplicarSaldoProduto(updated) {
+  const idx = todos.value.findIndex(p => p.pk === updated.pk);
+  if (idx !== -1) todos.value[idx].saldo = updated.saldo;
+  vendaStore.itens.forEach(item => {
+    if (item.produto_pk === updated.pk) item.saldo = updated.saldo;
+  });
+}
+
+function _iniciarRealtime() {
+  if (_realtimeChannel) supabase.removeChannel(_realtimeChannel);
+  _realtimeChannel = supabase
+    .channel(`pdv-produtos-saldo-${Date.now()}`)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'produtos' }, (payload) => {
+      _aplicarSaldoProduto(payload.new);
+    })
+    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        // Reconecta após 3s em caso de erro
+        setTimeout(_iniciarRealtime, 3000);
+      }
+    });
+}
+
+async function _sincronizarSaldos() {
+  // Recarrega só os saldos sem derrubar a lista inteira
+  try {
+    const filial_pk = sessaoStore.filial?.pk;
+    const { data } = await api.get('/api/pdv/produtos', { params: { filial_pk } });
+    const novos = data?.data || data || [];
+    novos.forEach(p => _aplicarSaldoProduto(p));
+  } catch { /* silencioso */ }
+}
+
+function _onVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    // Ao voltar para a aba: sincroniza saldos e reinicia canal se necessário
+    _sincronizarSaldos();
+    const estado = _realtimeChannel?.state;
+    if (!estado || estado === 'closed' || estado === 'errored') {
+      _iniciarRealtime();
+    }
+  }
+}
 
 onMounted(async () => {
   window.addEventListener('keydown', onHotkey);
+  document.addEventListener('visibilitychange', _onVisibilityChange);
 
   // Restaura estado de venda finalizada após reload
   const _fin = sessionStorage.getItem('pdv_finalizada');
@@ -1286,22 +1332,17 @@ onMounted(async () => {
   await Promise.all([loadProdutos(), loadCategorias(), loadVendedores(), loadFormasPagamento()]);
   if (vendaStore.cliente) clienteSel.value = vendaStore.cliente;
 
-  _realtimeChannel = supabase
-    .channel('pdv-produtos-saldo')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'produtos' }, (payload) => {
-      const updated = payload.new;
-      const idx = todos.value.findIndex(p => p.pk === updated.pk);
-      if (idx !== -1) todos.value[idx].saldo = updated.saldo;
-      vendaStore.itens.forEach(item => {
-        if (item.produto_pk === updated.pk) item.saldo = updated.saldo;
-      });
-    })
-    .subscribe();
+  _iniciarRealtime();
+
+  // Sincroniza saldos a cada 5 minutos como fallback do Realtime
+  _refreshTimer = setInterval(_sincronizarSaldos, 5 * 60 * 1000);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onHotkey);
+  document.removeEventListener('visibilitychange', _onVisibilityChange);
   if (_realtimeChannel) supabase.removeChannel(_realtimeChannel);
+  if (_refreshTimer)    clearInterval(_refreshTimer);
 });
 
 async function loadProdutos() {
