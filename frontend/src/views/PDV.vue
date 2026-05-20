@@ -1347,6 +1347,8 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', _onVisibilityChange);
   if (_realtimeChannel) supabase.removeChannel(_realtimeChannel);
   if (_refreshTimer)    clearInterval(_refreshTimer);
+  clearTimeout(_clienteTimer);
+  clearTimeout(_toastTimer);
 });
 
 async function loadProdutos() {

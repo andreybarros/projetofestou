@@ -135,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import api from '../services/api';
@@ -174,6 +174,11 @@ onMounted(() => {
   carregar();
   carregarEstoqueZerado();
   document.addEventListener('click', fecharMenus);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', fecharMenus);
+  clearTimeout(toastTimer);
 });
 
 function fecharMenus() { statusMenuAberto.value = null; }

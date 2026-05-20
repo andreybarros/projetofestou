@@ -298,7 +298,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
@@ -535,6 +535,8 @@ function showToast(msg, tipo = 'ok') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastMsg.value = ''; }, 3500);
 }
+
+onUnmounted(() => { clearTimeout(toastTimer); });
 </script>
 
 <style scoped>

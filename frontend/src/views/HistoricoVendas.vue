@@ -446,7 +446,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSessaoStore }     from "../stores/sessao";
 import { useParametrosStore } from "../stores/parametros";
@@ -877,6 +877,8 @@ function statusCls(s) {
   if (s === "cancelada")  return "err";
   return "muted";
 }
+
+onUnmounted(() => { clearTimeout(toastTimer); });
 </script>
 
 <style scoped>

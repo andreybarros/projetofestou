@@ -184,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore }     from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import { supabase }           from '../composables/useSupabase';
@@ -396,6 +396,8 @@ onMounted(async () => {
   await resolverFuncionario();
   await carregar();
 });
+
+onUnmounted(() => { clearTimeout(_timer); });
 </script>
 
 <style scoped>

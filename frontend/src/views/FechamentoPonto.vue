@@ -575,7 +575,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
@@ -1175,6 +1175,8 @@ onMounted(async () => {
     }
   }
 });
+
+onUnmounted(() => { clearTimeout(_toastTimer); });
 </script>
 
 <style scoped>

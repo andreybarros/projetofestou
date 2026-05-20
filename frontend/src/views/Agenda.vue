@@ -440,7 +440,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../services/api';
 import { useSessaoStore } from '../stores/sessao';
@@ -777,6 +777,10 @@ function showToast(msg, tipo = 'ok') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastMsg.value = ''; }, 3500);
 }
+
+onUnmounted(() => {
+  clearTimeout(toastTimer);
+});
 </script>
 
 <style scoped>

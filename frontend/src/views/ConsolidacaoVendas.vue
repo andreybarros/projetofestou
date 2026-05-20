@@ -396,7 +396,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, watch } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import api from '../services/api';
 
@@ -641,6 +641,10 @@ function showToast(msg, tipo = 'ok') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastMsg.value = ''; }, 3500);
 }
+
+onUnmounted(() => {
+  clearTimeout(toastTimer);
+});
 </script>
 
 <style scoped>

@@ -156,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import apiClient from '../services/api';
@@ -347,6 +347,10 @@ async function inserirManual() {
 onMounted(async () => {
   obterGeo();
   await Promise.all([carregarNomeFuncionario(), carregarHistorico()]);
+});
+
+onUnmounted(() => {
+  clearTimeout(_toastTimer);
 });
 </script>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
@@ -302,6 +302,12 @@ function cancelar() { router.push('/historico-vendas?abrir=' + venda_pk); }
 function fmtVal(v) {
   return parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+onUnmounted(() => {
+  clearTimeout(toastTimer);
+  clearTimeout(cliTimer);
+  clearTimeout(vendTimer);
+});
 </script>
 
 <template>

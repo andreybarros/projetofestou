@@ -291,7 +291,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
@@ -365,6 +365,10 @@ function toast(msg, tipo = 'ok', dur = 4000) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastMsg.value = ''; }, dur);
 }
+
+onUnmounted(() => {
+  clearTimeout(toastTimer);
+});
 
 function onDrop(e) {
   isDragging.value = false;

@@ -254,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 
@@ -400,6 +400,8 @@ function fmtDate(d) {
   const [y, m, dia] = d.split('-');
   return `${dia}/${m}/${y}`;
 }
+
+onUnmounted(() => { clearTimeout(_toastTimer); });
 </script>
 
 <style scoped>

@@ -193,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 import apiClient from '../services/api';
@@ -330,6 +330,8 @@ function fmtDateOnly(d) {
   const [y, m, dia] = d.split('-');
   return `${dia}/${m}/${y}`;
 }
+
+onUnmounted(() => { clearTimeout(_toastTimer); });
 </script>
 
 <style scoped>

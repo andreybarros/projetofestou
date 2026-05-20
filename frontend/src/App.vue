@@ -312,6 +312,7 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', fecharMenus, true);
   clearInterval(_updatePollInterval);
+  clearTimeout(_toastTimer);
 });
 
 watch(() => sessao.isAutenticado, (ok) => { if (ok) carregarFiliais(); });

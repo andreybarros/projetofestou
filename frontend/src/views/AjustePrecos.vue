@@ -202,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../services/api';
 import { useSessaoStore } from '../stores/sessao';
 
@@ -409,6 +409,8 @@ function getMargemClass(p) {
   if (m < 50) return 'margem-media';
   return 'margem-alta';
 }
+
+onUnmounted(() => { clearTimeout(toastTimer); });
 </script>
 
 <style scoped>

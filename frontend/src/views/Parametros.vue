@@ -210,7 +210,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { useParametrosStore } from '../stores/parametros';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
@@ -323,6 +323,10 @@ function showToast(msg, tipo = 'ok') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastMsg.value = ''; }, 2500);
 }
+
+onUnmounted(() => {
+  clearTimeout(toastTimer);
+});
 </script>
 
 <style scoped>

@@ -176,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, inject } from 'vue';
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
@@ -337,6 +337,8 @@ async function salvar() {
     salvando.value = false;
   }
 }
+
+onUnmounted(() => { clearTimeout(buscarTimer); });
 </script>
 
 <style scoped>
