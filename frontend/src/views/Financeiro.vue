@@ -95,6 +95,14 @@
       <!-- ABA: EXTRATO -->
       <div v-if="tabAtiva === 'extrato'" class="animate-fade">
         <div class="mov-filters mb-4">
+          <div class="field mw-160">
+            <label>De</label>
+            <input type="date" v-model="filtroDE" @change="carregarExtrato" />
+          </div>
+          <div class="field mw-160">
+            <label>Até</label>
+            <input type="date" v-model="filtroATE" @change="carregarExtrato" />
+          </div>
           <div class="field mw-200">
             <label>Filtrar por Conta</label>
             <select v-model="filtroContaPk" @change="carregarExtrato">
@@ -102,7 +110,11 @@
               <option v-for="c in contas" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
             </select>
           </div>
-          <button @click="carregarExtrato" class="btn-ghost sm">🔄 Atualizar Extrato</button>
+          <button @click="carregarExtrato" class="btn-ghost sm" :disabled="carregandoExtrato">
+            <span v-if="carregandoExtrato" class="spinner-sm"></span>
+            <span v-else>🔄</span>
+            {{ carregandoExtrato ? 'Carregando...' : 'Atualizar' }}
+          </button>
         </div>
 
         <div class="table-wrap overflow-x">
@@ -122,7 +134,7 @@
                 <td class="bold">{{ m.contas_bancarias?.nome || '—' }}</td>
                 <td>
                   <span :class="['tag-tipo', m.tipo_movimento]">
-                    {{ m.tipo_movimento === 'entrada' ? 'Entrada' : 'Saída' }}
+                    {{ m.tipo_movimento === 'entrada' ? 'Entrada' : m.tipo_movimento === 'previsto' ? 'Previsto' : 'Saída' }}
                   </span>
                 </td>
                 <td class="desc-cell">
@@ -344,6 +356,9 @@ const contaEditando  = ref(null);
 const novoSaldo      = ref(0);
 
 const filtroContaPk = ref(null);
+const _hoje         = new Date().toLocaleDateString('en-CA');
+const filtroDE      = ref(_hoje.slice(0, 8) + '01');
+const filtroATE     = ref(_hoje);
 
 const formConta = reactive({ nome: '', tipo: 'pix', saldo: 0 });
 
@@ -399,7 +414,7 @@ async function carregarExtrato() {
   if (!fil) return;
   carregandoExtrato.value = true;
   try {
-    const params = { filial_pk: fil };
+    const params = { filial_pk: fil, de: filtroDE.value, ate: filtroATE.value };
     if (filtroContaPk.value) params.conta_pk = filtroContaPk.value;
     const { data } = await apiClient.get('/api/financeiro/extrato', { params });
     extrato.value = data.data || [];
@@ -643,14 +658,19 @@ function fmt(v) {
 .tabela td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
 
 .tag-tipo { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; }
-.tag-tipo.entrada { background: #d1fae5; color: #065f46; }
-.tag-tipo.saida { background: #fee2e2; color: #991b1b; }
+.tag-tipo.entrada   { background: #d1fae5; color: #065f46; }
+.tag-tipo.saida     { background: #fee2e2; color: #991b1b; }
+.tag-tipo.previsto  { background: #fef3c7; color: #92400e; }
 
 .desc-cell { color: var(--text); }
 .desc-cell .ref { display: block; font-size: 10px; color: var(--text2); }
 
-.text-right.entrada { color: #10b981; }
-.text-right.saida { color: #ef4444; }
+.text-right.entrada  { color: #10b981; }
+.text-right.saida    { color: #ef4444; }
+.text-right.previsto { color: #f59e0b; }
+
+.spinner-sm { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin-sm 0.7s linear infinite; vertical-align: middle; }
+@keyframes spin-sm { to { transform: rotate(360deg); } }
 
 .formas-grid { display: flex; flex-direction: column; gap: 8px; max-width: 600px; }
 .forma-card { display: flex; align-items: center; gap: 12px; padding: 1rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; transition: all 0.2s; }

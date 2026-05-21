@@ -88,12 +88,13 @@ router.get('/pendentes', async (req, res) => {
           venda_cliente: v?.cliente_pk ? (clienteMap[v.cliente_pk] || null) : null,
           venda_data:    dt.toISOString().slice(0, 10),
           venda_hora:    dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Manaus' }),
+          venda_criado_em: v?.criado_em || dt.toISOString(),
           forma:         p.forma,
           valor:         p.valor,
           data_prevista: dataPrevisao(p.forma, dt),
         };
       })
-      .sort((a, b) => b.venda_data.localeCompare(a.venda_data));
+      .sort((a, b) => new Date(a.venda_criado_em) - new Date(b.venda_criado_em));
 
     res.json({ ok: true, data: pendentes });
   } catch (e) {

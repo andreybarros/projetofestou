@@ -56,31 +56,85 @@ router.delete('/contas/:pk', async (req, res) => {
 // ── Extrato ───────────────────────────────────────────────────────────────────
 
 router.get('/extrato', async (req, res) => {
-  const { filial_pk, conta_pk } = req.query;
+  const { filial_pk, conta_pk, de, ate } = req.query;
   if (!filial_pk) return res.status(400).json({ erro: 'filial_pk obrigatório' });
   try {
-    let q = supabase
+    const hoje    = new Date().toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10);
+    const dataIni = de  || hoje.slice(0, 8) + '01';
+    const dataFim = ate || hoje;
+
+    // Resolve contas da filial
+    const { data: contasFilial, error: ce } = await supabase
+      .from('contas_bancarias').select('pk, nome').eq('filial_pk', filial_pk).eq('ativo', true);
+    if (ce) throw ce;
+    const contaMap  = Object.fromEntries((contasFilial || []).map(c => [c.pk, c.nome]));
+    const contaPks  = (contasFilial || []).map(c => c.pk);
+    const filtroContaPks = conta_pk ? [parseInt(conta_pk)] : contaPks;
+
+    if (!filtroContaPks.length) return res.json({ ok: true, data: [] });
+
+    // 1. Movimentações financeiras confirmadas no período
+    // data_movimento é UTC — compensamos +4h (Manaus) ampliando o range 1 dia para cada lado
+    const { data: movs, error: em } = await supabase
       .from('movimentacoes_financeiras')
-      .select('*, contas_bancarias(nome, filial_pk)')
-      .order('data_movimento', { ascending: false })
-      .limit(100);
+      .select('pk, conta_pk, tipo_movimento, valor, descricao, data_movimento, venda_pk')
+      .in('conta_pk', filtroContaPks)
+      .gte('data_movimento', dataIni + 'T00:00:00')
+      .lte('data_movimento', dataFim + 'T23:59:59');
+    if (em) throw em;
 
-    if (conta_pk) {
-      q = q.eq('conta_pk', conta_pk);
-    } else {
-      const { data: contasFilial, error: ce } = await supabase
-        .from('contas_bancarias')
-        .select('pk')
-        .eq('filial_pk', filial_pk);
-      if (ce) throw ce;
-      const pks = (contasFilial || []).map(c => c.pk);
-      if (!pks.length) return res.json({ ok: true, data: [] });
-      q = q.in('conta_pk', pks);
-    }
+    // Filtra movimentações pela data em Manaus (converte UTC → America/Manaus)
+    const movsNoPeriodo = (movs || []).filter(m => {
+      const dataManaus = new Date(m.data_movimento).toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10);
+      return dataManaus >= dataIni && dataManaus <= dataFim;
+    });
 
-    const { data, error } = await q;
-    if (error) throw error;
-    res.json({ ok: true, data });
+    // 2. Todas as despesas da filial — filtramos em JS para cobrir dois casos:
+    //    pagas: usa data_pagamento (timestamp UTC → converte para Manaus)
+    //    pendentes: usa vencimento (date)
+    let qDesp = supabase
+      .from('despesas')
+      .select('pk, descricao, valor, conta_pk, status, vencimento, data_pagamento')
+      .eq('filial_pk', filial_pk);
+    if (conta_pk) qDesp = qDesp.or(`conta_pk.eq.${conta_pk},conta_pk.is.null`);
+    const { data: todasDespesas, error: ed } = await qDesp;
+    if (ed) throw ed;
+
+    // Filtra por período respeitando o tipo de data de cada despesa
+    const despesas = (todasDespesas || []).filter(d => {
+      const dataRef = d.status === 'pago' && d.data_pagamento
+        ? new Date(d.data_pagamento).toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10)
+        : d.vencimento;
+      return dataRef >= dataIni && dataRef <= dataFim;
+    });
+
+    // Despesas pagas já têm entrada em movimentacoes — evita duplicar
+    const movDescricoes = new Set(movsNoPeriodo.map(m => m.descricao));
+
+    const linhasDespesas = despesas
+      .filter(d => !movDescricoes.has('Pagamento de Despesa: ' + d.descricao))
+      .map(d => {
+        const dataRef = d.status === 'pago' && d.data_pagamento
+          ? new Date(d.data_pagamento).toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10)
+          : d.vencimento;
+        return {
+          pk:               `desp-${d.pk}`,
+          conta_pk:         d.conta_pk,
+          contas_bancarias: d.conta_pk ? { nome: contaMap[d.conta_pk] || '—' } : null,
+          tipo_movimento:   d.status === 'pago' ? 'saida' : 'previsto',
+          valor:            d.valor,
+          descricao:        d.descricao,
+          data_movimento:   dataRef,
+          _origem:          'despesa',
+        };
+      });
+
+    const lista = [
+      ...movsNoPeriodo.map(m => ({ ...m, contas_bancarias: { nome: contaMap[m.conta_pk] || '—' }, _origem: 'mov' })),
+      ...linhasDespesas,
+    ].sort((a, b) => new Date(b.data_movimento) - new Date(a.data_movimento));
+
+    res.json({ ok: true, data: lista });
   } catch (e) {
     console.error('[Financeiro/extrato]', e.message);
     res.status(500).json({ erro: e.message });

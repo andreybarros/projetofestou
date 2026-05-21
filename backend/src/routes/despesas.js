@@ -75,14 +75,43 @@ router.post('/', async (req, res) => {
 // ── Atualizar despesa ─────────────────────────────────────────────────────────
 router.put('/:pk', async (req, res) => {
   const { pk } = req.params;
-  const { descricao, fornecedor_pk, valor, vencimento, categoria } = req.body;
+  const { descricao, fornecedor_pk, valor, vencimento, categoria, status, conta_pk } = req.body;
   if (!descricao || !vencimento || valor === undefined)
     return res.status(400).json({ erro: 'descricao, vencimento e valor obrigatórios' });
   try {
-    const { error } = await supabase.from('despesas').update({
+    // Busca estado atual para saber se está sendo baixada agora
+    const { data: atual } = await supabase.from('despesas').select('status, conta_pk').eq('pk', pk).single();
+
+    const payload = {
       descricao, fornecedor_pk: fornecedor_pk || null, valor, vencimento, categoria: categoria || null,
-    }).eq('pk', pk);
+    };
+
+    const estaBaixando = status === 'pago' && atual?.status !== 'pago';
+    if (status) payload.status = status;
+    if (status === 'pago') {
+      payload.conta_pk      = conta_pk || null;
+      payload.data_pagamento = atual?.status === 'pago' ? undefined : new Date().toISOString();
+    } else {
+      payload.conta_pk      = null;
+      payload.data_pagamento = null;
+    }
+    // Remove campo undefined
+    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+    const { error } = await supabase.from('despesas').update(payload).eq('pk', pk);
     if (error) throw error;
+
+    // Se está sendo baixada pela primeira vez via edição, registra movimentação
+    if (estaBaixando && conta_pk) {
+      await supabase.from('movimentacoes_financeiras').insert([{
+        conta_pk,
+        tipo_movimento: 'saida',
+        valor,
+        descricao:      'Pagamento de Despesa: ' + descricao,
+        data_movimento: new Date().toISOString(),
+      }]);
+    }
+
     res.json({ ok: true });
   } catch (e) {
     console.error('[Despesas/atualizar]', e.message);

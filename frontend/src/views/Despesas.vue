@@ -125,24 +125,22 @@
             </select>
           </div>
 
-          <template v-if="!f.pk">
-            <div class="two-cols">
-              <div class="field">
-                <label>Status Inicial</label>
-                <select v-model="f.status">
-                  <option value="pendente">Pendente (A Pagar)</option>
-                  <option value="pago">Já Pago (Baixar Agora)</option>
-                </select>
-              </div>
-              <div v-if="f.status === 'pago'" class="field animate-fade-in">
-                <label>Conta da Saída *</label>
-                <select v-model="f.conta_pk">
-                  <option :value="null" disabled>-- Escolha a Conta --</option>
-                  <option v-for="c in contas" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
-                </select>
-              </div>
+          <div class="two-cols">
+            <div class="field">
+              <label>{{ f.pk ? 'Status' : 'Status Inicial' }}</label>
+              <select v-model="f.status">
+                <option value="pendente">Pendente (A Pagar)</option>
+                <option value="pago">Pago</option>
+              </select>
             </div>
-          </template>
+            <div v-if="f.status === 'pago'" class="field animate-fade-in">
+              <label>Conta da Saída *</label>
+              <select v-model="f.conta_pk">
+                <option :value="null" disabled>-- Escolha a Conta --</option>
+                <option v-for="c in contas" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button @click="modalAberto = false" class="btn-ghost" :disabled="salvando">Cancelar</button>
@@ -257,7 +255,7 @@ async function carregar() {
 
 const podeSalvar = computed(() => {
   if (!f.descricao || !f.vencimento || f.valor <= 0) return false;
-  if (!f.pk && f.status === 'pago' && !f.conta_pk) return false;
+  if (f.status === 'pago' && !f.conta_pk) return false;
   return true;
 });
 
@@ -279,6 +277,7 @@ async function salvar() {
       await apiClient.put(`/api/despesas/${f.pk}`, {
         descricao: f.descricao, fornecedor_pk: f.fornecedor_pk,
         valor: f.valor, vencimento: f.vencimento, categoria: f.categoria || null,
+        status: f.status, conta_pk: f.status === 'pago' ? f.conta_pk : null,
       });
       showToast('Despesa atualizada com sucesso!');
     } else {
