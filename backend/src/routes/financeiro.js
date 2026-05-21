@@ -73,8 +73,13 @@ router.get('/extrato', async (req, res) => {
 
     if (!filtroContaPks.length) return res.json({ ok: true, data: [] });
 
-    // 1. Movimentações financeiras confirmadas no período
-    // data_movimento é UTC — compensamos +4h (Manaus) ampliando o range 1 dia para cada lado
+    // 1. Formas de pagamento — mapa forma → label para exibir nome amigável
+    const { data: formasPag } = await supabase
+      .from('formas_pagamento').select('forma, label').eq('filial_pk', filial_pk);
+    const formaLabelMap = Object.fromEntries((formasPag || []).map(f => [f.forma, f.label]));
+
+    // 2. Movimentações financeiras (apenas entradas/saídas que NÃO sejam pagamentos de despesa,
+    //    pois despesas virão da tabela despesas para preservar categoria)
     const { data: movs, error: em } = await supabase
       .from('movimentacoes_financeiras')
       .select('pk, conta_pk, tipo_movimento, valor, descricao, data_movimento, venda_pk')
@@ -83,54 +88,80 @@ router.get('/extrato', async (req, res) => {
       .lte('data_movimento', dataFim + 'T23:59:59');
     if (em) throw em;
 
-    // Filtra movimentações pela data em Manaus (converte UTC → America/Manaus)
     const movsNoPeriodo = (movs || []).filter(m => {
       const dataManaus = new Date(m.data_movimento).toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10);
-      return dataManaus >= dataIni && dataManaus <= dataFim;
+      // Exclui pagamentos de despesa — eles vêm da tabela despesas com categoria preservada
+      return dataManaus >= dataIni && dataManaus <= dataFim
+        && !m.descricao?.startsWith('Pagamento de Despesa:');
     });
 
-    // 2. Todas as despesas da filial — filtramos em JS para cobrir dois casos:
-    //    pagas: usa data_pagamento (timestamp UTC → converte para Manaus)
-    //    pendentes: usa vencimento (date)
+    // 3. Despesas (pagas e pendentes) — TODAS trazem categoria
     let qDesp = supabase
       .from('despesas')
-      .select('pk, descricao, valor, conta_pk, status, vencimento, data_pagamento')
+      .select('pk, descricao, valor, conta_pk, status, vencimento, data_pagamento, categoria')
       .eq('filial_pk', filial_pk);
     if (conta_pk) qDesp = qDesp.or(`conta_pk.eq.${conta_pk},conta_pk.is.null`);
     const { data: todasDespesas, error: ed } = await qDesp;
     if (ed) throw ed;
 
-    // Filtra por período respeitando o tipo de data de cada despesa
-    const despesas = (todasDespesas || []).filter(d => {
-      const dataRef = d.status === 'pago' && d.data_pagamento
-        ? new Date(d.data_pagamento).toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10)
-        : d.vencimento;
-      return dataRef >= dataIni && dataRef <= dataFim;
-    });
-
-    // Despesas pagas já têm entrada em movimentacoes — evita duplicar
-    const movDescricoes = new Set(movsNoPeriodo.map(m => m.descricao));
-
-    const linhasDespesas = despesas
-      .filter(d => !movDescricoes.has('Pagamento de Despesa: ' + d.descricao))
+    const linhasDespesas = (todasDespesas || [])
       .map(d => {
         const dataRef = d.status === 'pago' && d.data_pagamento
           ? new Date(d.data_pagamento).toLocaleString('en-CA', { timeZone: 'America/Manaus' }).slice(0, 10)
           : d.vencimento;
-        return {
-          pk:               `desp-${d.pk}`,
-          conta_pk:         d.conta_pk,
-          contas_bancarias: d.conta_pk ? { nome: contaMap[d.conta_pk] || '—' } : null,
-          tipo_movimento:   d.status === 'pago' ? 'saida' : 'previsto',
-          valor:            d.valor,
-          descricao:        d.descricao,
-          data_movimento:   dataRef,
-          _origem:          'despesa',
-        };
-      });
+        return { dataRef, d };
+      })
+      .filter(({ dataRef }) => dataRef >= dataIni && dataRef <= dataFim)
+      .map(({ dataRef, d }) => ({
+        pk:               `desp-${d.pk}`,
+        conta_pk:         d.conta_pk,
+        contas_bancarias: d.conta_pk ? { nome: contaMap[d.conta_pk] || '—' } : null,
+        tipo_movimento:   d.status === 'pago' ? 'saida' : 'previsto',
+        valor:            d.valor,
+        descricao:        d.descricao,
+        categoria:        d.categoria || null,
+        data_movimento:   dataRef,
+        _origem:          'despesa',
+      }));
+
+    // 4. Recebimentos da consolidação (entradas) com nome da forma de pagamento
+    let qRec = supabase
+      .from('recebimentos')
+      .select('pk, conta_pk, data_recebimento, valor, forma, descricao, venda_pk')
+      .eq('filial_pk', filial_pk)
+      .eq('ativo', true)
+      .gte('data_recebimento', dataIni)
+      .lte('data_recebimento', dataFim);
+    if (conta_pk) qRec = qRec.eq('conta_pk', parseInt(conta_pk));
+    const { data: recebimentos, error: er } = await qRec;
+    if (er) throw er;
+
+    // Busca números das vendas vinculadas
+    const vendaPksRec = [...new Set((recebimentos || []).filter(r => r.venda_pk).map(r => r.venda_pk))];
+    const vendaNumMap = {};
+    if (vendaPksRec.length) {
+      const { data: vds } = await supabase.from('vendas').select('pk, numero').in('pk', vendaPksRec);
+      (vds || []).forEach(v => { vendaNumMap[v.pk] = v.numero; });
+    }
+
+    const linhasRecebimentos = (recebimentos || [])
+      .filter(r => filtroContaPks.includes(r.conta_pk) || !r.conta_pk)
+      .map(r => ({
+        pk:               `rec-${r.pk}`,
+        conta_pk:         r.conta_pk,
+        contas_bancarias: r.conta_pk ? { nome: contaMap[r.conta_pk] || '—' } : null,
+        tipo_movimento:   'entrada',
+        valor:            r.valor,
+        descricao:        r.descricao || (r.venda_pk ? `Recebimento Venda #${vendaNumMap[r.venda_pk] || r.venda_pk}` : 'Recebimento avulso'),
+        // Exibe o NOME da forma de pagamento, não o identificador interno
+        categoria:        r.forma ? (formaLabelMap[r.forma] || r.forma) : null,
+        data_movimento:   r.data_recebimento,
+        _origem:          'recebimento',
+      }));
 
     const lista = [
-      ...movsNoPeriodo.map(m => ({ ...m, contas_bancarias: { nome: contaMap[m.conta_pk] || '—' }, _origem: 'mov' })),
+      ...movsNoPeriodo.map(m => ({ ...m, contas_bancarias: { nome: contaMap[m.conta_pk] || '—' }, _origem: 'mov', categoria: null })),
+      ...linhasRecebimentos,
       ...linhasDespesas,
     ].sort((a, b) => new Date(b.data_movimento) - new Date(a.data_movimento));
 
