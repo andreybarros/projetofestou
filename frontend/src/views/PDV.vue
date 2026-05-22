@@ -1264,6 +1264,8 @@ function onHotkey(e) {
 
 let _realtimeChannel = null;
 let _refreshTimer    = null;
+let _retryTimer      = null;
+let _desmontado      = false;
 
 function _aplicarSaldoProduto(updated) {
   if (updated.ativo === false) {
@@ -1271,49 +1273,63 @@ function _aplicarSaldoProduto(updated) {
     return;
   }
   const idx = todos.value.findIndex(p => p.pk === updated.pk);
-  if (idx !== -1) todos.value[idx].saldo = updated.saldo;
+  if (idx !== -1) todos.value[idx] = { ...todos.value[idx], saldo: updated.saldo };
   vendaStore.itens.forEach(item => {
     if (item.produto_pk === updated.pk) item.saldo = updated.saldo;
   });
 }
 
+function _pararRealtime() {
+  clearTimeout(_retryTimer);
+  _retryTimer = null;
+  if (_realtimeChannel) {
+    supabase.removeChannel(_realtimeChannel);
+    _realtimeChannel = null;
+  }
+}
+
 function _iniciarRealtime() {
-  if (_realtimeChannel) supabase.removeChannel(_realtimeChannel);
+  if (_desmontado) return;
+  _pararRealtime();
   _realtimeChannel = supabase
     .channel(`pdv-produtos-saldo-${Date.now()}`)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'produtos' }, (payload) => {
-      _aplicarSaldoProduto(payload.new);
+      if (!_desmontado) _aplicarSaldoProduto(payload.new);
     })
     .subscribe((status) => {
+      if (_desmontado) return;
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        // Reconecta após 3s em caso de erro
-        setTimeout(_iniciarRealtime, 3000);
+        clearTimeout(_retryTimer);
+        _retryTimer = setTimeout(_iniciarRealtime, 5000);
       }
     });
 }
 
 async function _sincronizarSaldos() {
-  // Recarrega só os saldos sem derrubar a lista inteira
+  if (_desmontado) return;
   try {
     const filial_pk = sessaoStore.filial?.pk;
     const { data } = await api.get('/api/pdv/produtos', { params: { filial_pk } });
     const novos = data?.data || data || [];
     novos.forEach(p => _aplicarSaldoProduto(p));
   } catch { /* silencioso */ }
+  // Se canal caiu silenciosamente, reinicia
+  if (!_desmontado && _realtimeChannel?.state !== 'joined') {
+    _iniciarRealtime();
+  }
 }
 
 function _onVisibilityChange() {
   if (document.visibilityState === 'visible') {
-    // Ao voltar para a aba: sincroniza saldos e reinicia canal se necessário
     _sincronizarSaldos();
-    const estado = _realtimeChannel?.state;
-    if (!estado || estado === 'closed' || estado === 'errored') {
+    if (_realtimeChannel?.state !== 'joined') {
       _iniciarRealtime();
     }
   }
 }
 
 onMounted(async () => {
+  _desmontado = false;
   window.addEventListener('keydown', onHotkey);
   document.addEventListener('visibilitychange', _onVisibilityChange);
 
@@ -1338,15 +1354,16 @@ onMounted(async () => {
 
   _iniciarRealtime();
 
-  // Sincroniza saldos a cada 5 minutos como fallback do Realtime
-  _refreshTimer = setInterval(_sincronizarSaldos, 5 * 60 * 1000);
+  // Fallback: sincroniza saldos a cada 90s caso o Realtime caia sem notificação
+  _refreshTimer = setInterval(_sincronizarSaldos, 90 * 1000);
 });
 
 onUnmounted(() => {
+  _desmontado = true;
   window.removeEventListener('keydown', onHotkey);
   document.removeEventListener('visibilitychange', _onVisibilityChange);
-  if (_realtimeChannel) supabase.removeChannel(_realtimeChannel);
-  if (_refreshTimer)    clearInterval(_refreshTimer);
+  _pararRealtime();
+  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
   clearTimeout(_clienteTimer);
   clearTimeout(_toastTimer);
 });
