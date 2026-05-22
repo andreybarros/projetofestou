@@ -103,6 +103,13 @@
             <option value="pago">Pagas</option>
           </select>
         </div>
+        <div class="filter-field">
+          <label>Categoria</label>
+          <select v-model="filtroCatPk">
+            <option :value="null">Todas</option>
+            <option v-for="c in categoriasDespesa" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -110,7 +117,8 @@
     <div class="table-card">
       <div class="table-header">
         <span class="table-count">
-          {{ lista.length }} registro{{ lista.length !== 1 ? 's' : '' }}
+          {{ listaFiltrada.length }} registro{{ listaFiltrada.length !== 1 ? 's' : '' }}
+          <span v-if="filtroCatPk" class="table-page-info"> (filtrado por categoria)</span>
           <span v-if="totalPaginas > 1" class="table-page-info"> — página {{ paginaAtual }} de {{ totalPaginas }}</span>
         </span>
       </div>
@@ -149,7 +157,7 @@
               <td>
                 <div class="desc-cell">
                   <span class="desc-text">{{ d.descricao }}</span>
-                  <span v-if="d.categoria" class="cat-tag">{{ d.categoria }}</span>
+                  <span v-if="d.categorias_despesa" class="cat-tag" :style="{ background: d.categorias_despesa.cor + '22', color: d.categorias_despesa.cor }">{{ d.categorias_despesa.nome }}</span>
                 </div>
               </td>
               <td class="fornecedor-cell">{{ d.fornecedores?.nome || '—' }}</td>
@@ -277,9 +285,9 @@
                   <span class="material-symbols-outlined field-icon">label</span>
                   Categoria
                 </label>
-                <select v-model="f.categoria">
-                  <option value="">Sem categoria</option>
-                  <option v-for="c in categoriasDespesa" :key="c.pk" :value="c.nome">{{ c.nome }}</option>
+                <select v-model="f.categoria_pk">
+                  <option :value="null">Sem categoria</option>
+                  <option v-for="c in categoriasDespesa" :key="c.pk" :value="c.pk">{{ c.nome }}</option>
                 </select>
               </div>
             </div>
@@ -392,6 +400,7 @@
       </div>
     </Teleport>
 
+
   </div>
 </template>
 
@@ -409,6 +418,7 @@ const salvando   = ref(false);
 const modalAberto = ref(false);
 const modalBaixar = ref(false);
 
+
 const fornecedores      = ref([]);
 const contas            = ref([]);
 const categoriasDespesa = ref([]);
@@ -418,7 +428,7 @@ const filtros = reactive({ ini: '', fim: '', status: '' });
 const f = reactive({
   pk: null, descricao: '', fornecedor_pk: null,
   valor: 0, vencimento: new Date().toISOString().split('T')[0],
-  categoria: '', status: 'pendente', conta_pk: null,
+  categoria_pk: null, status: 'pendente', conta_pk: null,
 });
 
 const despesaBaixar = ref(null);
@@ -426,21 +436,28 @@ const contaBaixarPk = ref(null);
 
 // ── Paginação ───────────────────────────────────────────────────
 const ITEMS_POR_PAGINA = 15;
+const filtroCatPk = ref(null);
 
 let _filterTimer = null;
 watch(() => ({ ...filtros }), () => {
   clearTimeout(_filterTimer);
   _filterTimer = setTimeout(carregar, 350);
 });
+watch(filtroCatPk, () => { paginaAtual.value = 1; });
 const paginaAtual = ref(1);
 
-const totalPaginas = computed(() => Math.max(1, Math.ceil(lista.value.length / ITEMS_POR_PAGINA)));
+const listaFiltrada = computed(() => {
+  if (!filtroCatPk.value) return lista.value;
+  return lista.value.filter(d => d.categoria_pk === filtroCatPk.value);
+});
+
+const totalPaginas = computed(() => Math.max(1, Math.ceil(listaFiltrada.value.length / ITEMS_POR_PAGINA)));
 const itensDe = computed(() => (paginaAtual.value - 1) * ITEMS_POR_PAGINA + 1);
-const itensAte = computed(() => Math.min(paginaAtual.value * ITEMS_POR_PAGINA, lista.value.length));
+const itensAte = computed(() => Math.min(paginaAtual.value * ITEMS_POR_PAGINA, listaFiltrada.value.length));
 
 const listaPaginada = computed(() => {
   const ini = (paginaAtual.value - 1) * ITEMS_POR_PAGINA;
-  return lista.value.slice(ini, ini + ITEMS_POR_PAGINA);
+  return listaFiltrada.value.slice(ini, ini + ITEMS_POR_PAGINA);
 });
 
 const paginasVisiveis = computed(() => {
@@ -532,12 +549,12 @@ const podeSalvar = computed(() => {
 });
 
 function abrirNovo() {
-  Object.assign(f, { pk: null, descricao: '', fornecedor_pk: null, valor: 0, vencimento: new Date().toISOString().split('T')[0], categoria: '', status: 'pendente', conta_pk: null });
+  Object.assign(f, { pk: null, descricao: '', fornecedor_pk: null, valor: 0, vencimento: new Date().toISOString().split('T')[0], categoria_pk: null, status: 'pendente', conta_pk: null });
   modalAberto.value = true;
 }
 
 function abrirEditar(d) {
-  Object.assign(f, { pk: d.pk, descricao: d.descricao, fornecedor_pk: d.fornecedor_pk, valor: d.valor, vencimento: d.vencimento, categoria: d.categoria || '', status: d.status, conta_pk: d.conta_pk });
+  Object.assign(f, { pk: d.pk, descricao: d.descricao, fornecedor_pk: d.fornecedor_pk, valor: d.valor, vencimento: d.vencimento, categoria_pk: d.categoria_pk || null, status: d.status, conta_pk: d.conta_pk });
   modalAberto.value = true;
 }
 
@@ -548,7 +565,7 @@ async function salvar() {
     if (f.pk) {
       await apiClient.put(`/api/despesas/${f.pk}`, {
         descricao: f.descricao, fornecedor_pk: f.fornecedor_pk,
-        valor: f.valor, vencimento: f.vencimento, categoria: f.categoria || null,
+        valor: f.valor, vencimento: f.vencimento, categoria_pk: f.categoria_pk || null,
         status: f.status, conta_pk: f.status === 'pago' ? f.conta_pk : null,
       });
       showToast('Despesa atualizada com sucesso!');
@@ -557,7 +574,7 @@ async function salvar() {
         filial_pk: sessaoStore.filial.pk,
         descricao: f.descricao, fornecedor_pk: f.fornecedor_pk,
         valor: f.valor, vencimento: f.vencimento,
-        categoria: f.categoria || null, status: f.status,
+        categoria_pk: f.categoria_pk || null, status: f.status,
         conta_pk: f.status === 'pago' ? f.conta_pk : null,
       });
       showToast('Despesa cadastrada!');
@@ -779,9 +796,9 @@ function fmt(v) {
 .desc-text { font-weight: 600; color: var(--text); line-height: 1.3; }
 .cat-tag {
   display: inline-block; font-size: 0.68rem; font-weight: 700;
-  padding: 2px 9px; border-radius: 20px; background: #eff6ff; color: #3b82f6; width: fit-content;
+  padding: 2px 9px; border-radius: 20px; width: fit-content;
+  /* cor vem via style inline — background e color definidos pelo campo cor da categoria */
 }
-[data-theme="dark"] .cat-tag { background: rgba(59,130,246,.15); color: #60a5fa; }
 
 .fornecedor-cell { color: var(--text2); font-size: 0.85rem; }
 

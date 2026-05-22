@@ -250,15 +250,27 @@ router.get('/categorias', async (req, res) => {
 });
 
 router.post('/categorias', async (req, res) => {
-  const { filial_pk, nome } = req.body;
+  const { filial_pk, nome, cor } = req.body;
   if (!filial_pk || !nome) return res.status(400).json({ erro: 'filial_pk e nome obrigatórios' });
   const { data, error } = await supabase
     .from('categorias_despesa')
-    .insert([{ filial_pk, nome }])
+    .insert([{ filial_pk, nome, cor: cor || '#6366f1' }])
     .select()
     .single();
   if (error) { console.error('[Financeiro/categorias POST]', error.message); return res.status(500).json({ erro: error.message }); }
   res.json({ ok: true, data });
+});
+
+router.put('/categorias/:pk', async (req, res) => {
+  const { pk } = req.params;
+  const { nome, cor } = req.body;
+  if (!nome?.trim()) return res.status(400).json({ erro: 'nome obrigatório' });
+  const { error } = await supabase
+    .from('categorias_despesa')
+    .update({ nome: nome.trim(), cor: cor || '#6366f1' })
+    .eq('pk', pk);
+  if (error) { console.error('[Financeiro/categorias PUT]', error.message); return res.status(500).json({ erro: error.message }); }
+  res.json({ ok: true });
 });
 
 router.delete('/categorias/:pk', async (req, res) => {

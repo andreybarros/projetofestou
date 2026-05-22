@@ -178,6 +178,46 @@ router.post('/trocar-senha', async (req, res) => {
   }
 });
 
+// PUT /api/auth/minha-senha (autenticado via token no header)
+router.put('/minha-senha', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ erro: 'Token obrigatório' });
+  const opPk = validarToken(authHeader.slice(7));
+  if (!opPk) return res.status(401).json({ erro: 'Token inválido ou expirado' });
+
+  const { senha_atual, nova_senha } = req.body;
+  if (!senha_atual || !nova_senha)
+    return res.status(400).json({ erro: 'senha_atual e nova_senha são obrigatórios' });
+  if (String(nova_senha).trim().length < 4)
+    return res.status(400).json({ erro: 'Nova senha deve ter pelo menos 4 caracteres' });
+
+  try {
+    const { data: op, error } = await supabase
+      .from('operadores')
+      .select('id, pk, senha')
+      .or(`id.eq.${opPk},pk.eq.${opPk}`)
+      .maybeSingle();
+    if (error) throw error;
+    if (!op) return res.status(404).json({ erro: 'Operador não encontrado' });
+
+    if (String(op.senha).trim() !== String(senha_atual).trim())
+      return res.status(401).json({ erro: 'Senha atual incorreta' });
+
+    const idCol = op.id ? 'id' : 'pk';
+    const idVal = op.id || op.pk;
+    const { error: errUpd } = await supabase
+      .from('operadores')
+      .update({ senha: String(nova_senha).trim() })
+      .eq(idCol, idVal);
+    if (errUpd) throw errUpd;
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[Auth/minha-senha]', err.message);
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
 // GET /api/auth/filiais  (publico)
 router.get('/filiais', async (_req, res) => {
   try {

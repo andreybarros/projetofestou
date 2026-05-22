@@ -666,7 +666,7 @@ onUnmounted(() => { clearTimeout(_toastTimer); });
 [data-theme="dark"] .vencido-badge  { background: rgba(239,68,68,.15); color: #f87171; }
 [data-theme="dark"] .recebido-badge { background: rgba(16,185,129,.15); color: #34d399; }
 
-.rc-value { font-size: 1.65rem; font-weight: 800; color: var(--text); line-height: 1; font-family: 'Courier New', monospace; }
+.rc-value { font-size: 1.65rem; font-weight: 800; color: var(--text); line-height: 1; }
 .rc-value.danger  { color: #ef4444; }
 .rc-value.success { color: #10b981; }
 .rc-label { font-size: 0.72rem; font-weight: 800; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; }

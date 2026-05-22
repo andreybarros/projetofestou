@@ -401,9 +401,14 @@
                   <div class="cat-icon-circle">
                     <span class="material-symbols-outlined">{{ catIcon(c.nome) }}</span>
                   </div>
-                  <button class="icon-btn danger cat-del-btn" @click="excluirCategoria(c)">
-                    <span class="material-symbols-outlined">delete</span>
-                  </button>
+                  <div class="cat-card-actions">
+                    <button class="icon-btn cat-edit-btn" @click="abrirEditarCategoria(c)" title="Editar">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="icon-btn danger cat-del-btn" @click="excluirCategoria(c)" title="Excluir">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
                 </div>
                 <div class="cat-card-mid">
                   <h4 class="cat-card-nome">{{ c.nome }}</h4>
@@ -460,7 +465,7 @@
     </div>
 
     <!-- ══ MODAL: NOVA CONTA ══════════════════════════════════════ -->
-    <Teleport to="body">
+    <Teleport to=".festou-root">
       <div v-if="modalNovaConta" class="modal-backdrop" @click.self="modalNovaConta = false">
         <div class="modal-box animate-slide-up">
           <div class="modal-header">
@@ -497,7 +502,7 @@
     </Teleport>
 
     <!-- ══ MODAL: EDITAR SALDO ════════════════════════════════════ -->
-    <Teleport to="body">
+    <Teleport to=".festou-root">
       <div v-if="modalEditSaldo" class="modal-backdrop" @click.self="modalEditSaldo = false">
         <div class="modal-box animate-slide-up" style="max-width:380px">
           <div class="modal-header">
@@ -519,9 +524,9 @@
     </Teleport>
 
     <!-- ══ MODAL: NOVA CATEGORIA ════════════════════════════════════ -->
-    <Teleport to="body">
+    <Teleport to=".festou-root">
       <div v-if="modalNovaCategoria" class="modal-backdrop" @click.self="modalNovaCategoria = false">
-        <div class="modal-box animate-slide-up" style="max-width:400px">
+        <div class="modal-box animate-slide-up" style="max-width:420px">
           <div class="modal-header">
             <h3>Nova Categoria</h3>
             <button @click="modalNovaCategoria = false" class="close-btn"><span class="material-symbols-outlined">close</span></button>
@@ -530,6 +535,13 @@
             <div class="field">
               <label>Nome da Categoria *</label>
               <input v-model="novaCategoria" type="text" placeholder="Ex: Energia, Aluguel, Transporte..." @keydown.enter="salvarCategoria" autofocus />
+            </div>
+            <div class="field">
+              <label>Cor</label>
+              <div class="cat-color-row">
+                <input type="color" v-model="novaCategoriaCor" class="cat-color-picker" />
+                <span class="cat-color-preview" :style="{ background: novaCategoriaCor + '22', color: novaCategoriaCor }">{{ novaCategoria || 'Prévia' }}</span>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -542,8 +554,39 @@
       </div>
     </Teleport>
 
+    <!-- ══ MODAL: EDITAR CATEGORIA ═══════════════════════════════════ -->
+    <Teleport to=".festou-root">
+      <div v-if="modalEditCategoria" class="modal-backdrop" @click.self="modalEditCategoria = false">
+        <div class="modal-box animate-slide-up" style="max-width:420px">
+          <div class="modal-header">
+            <h3>Editar Categoria</h3>
+            <button @click="modalEditCategoria = false" class="close-btn"><span class="material-symbols-outlined">close</span></button>
+          </div>
+          <div class="modal-body">
+            <div class="field">
+              <label>Nome da Categoria *</label>
+              <input v-model="formEditCat.nome" type="text" placeholder="Nome da categoria..." @keydown.enter="salvarEdicaoCategoria" autofocus />
+            </div>
+            <div class="field">
+              <label>Cor</label>
+              <div class="cat-color-row">
+                <input type="color" v-model="formEditCat.cor" class="cat-color-picker" />
+                <span class="cat-color-preview" :style="{ background: formEditCat.cor + '22', color: formEditCat.cor }">{{ formEditCat.nome || 'Prévia' }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="modalEditCategoria = false" class="btn-ghost">Cancelar</button>
+            <button @click="salvarEdicaoCategoria" class="btn-primary" :disabled="!formEditCat.nome.trim() || processando">
+              {{ processando ? 'Salvando...' : 'Salvar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ══ MODAL: EDITAR FORMA ════════════════════════════════════ -->
-    <Teleport to="body">
+    <Teleport to=".festou-root">
       <div v-if="mostrandoEditForma" class="modal-backdrop" @click.self="mostrandoEditForma = false">
         <div class="modal-box animate-slide-up">
           <div class="modal-header">
@@ -579,7 +622,7 @@
     </Teleport>
 
     <!-- ══ MODAL: NOVA FORMA ══════════════════════════════════════ -->
-    <Teleport to="body">
+    <Teleport to=".festou-root">
       <div v-if="mostrandoNovaForma" class="modal-backdrop" @click.self="mostrandoNovaForma = false">
         <div class="modal-box animate-slide-up">
           <div class="modal-header">
@@ -642,11 +685,15 @@ const carregandoFormas  = ref(false);
 const carregandoCats    = ref(false);
 const processando       = ref(false);
 
-const categorias       = ref([]);
-const novaCategoria    = ref('');
-const pendenciasHoje   = ref([]);
-const catStats         = ref({});
+const categorias         = ref([]);
+const novaCategoria      = ref('');
+const novaCategoriaCor   = ref('#6366f1');
+const pendenciasHoje     = ref([]);
+const catStats           = ref({});
 const modalNovaCategoria = ref(false);
+const modalEditCategoria = ref(false);
+const catEditando        = ref(null);
+const formEditCat        = reactive({ nome: '', cor: '#6366f1' });
 const formaUsageData   = ref({});
 const carregandoFormaUso = ref(false);
 
@@ -738,7 +785,8 @@ function mudarTab(tab) {
 }
 
 function abrirModalNovaCategoria() {
-  novaCategoria.value = '';
+  novaCategoria.value    = '';
+  novaCategoriaCor.value = '#6366f1';
   modalNovaCategoria.value = true;
 }
 
@@ -992,12 +1040,40 @@ async function salvarCategoria() {
   if (!nome || !fil) return;
   processando.value = true;
   try {
-    const { data } = await apiClient.post('/api/financeiro/categorias', { filial_pk: fil, nome });
-    novaCategoria.value = '';
+    const { data } = await apiClient.post('/api/financeiro/categorias', { filial_pk: fil, nome, cor: novaCategoriaCor.value });
+    novaCategoria.value    = '';
+    novaCategoriaCor.value = '#6366f1';
     modalNovaCategoria.value = false;
     categorias.value.push(data.data);
     categorias.value.sort((a, b) => a.nome.localeCompare(b.nome));
     showToast('Categoria adicionada!');
+  } catch (e) {
+    showToast('Erro: ' + (e.response?.data?.erro || e.message), 'error');
+  } finally {
+    processando.value = false;
+  }
+}
+
+function abrirEditarCategoria(c) {
+  catEditando.value  = c;
+  formEditCat.nome   = c.nome;
+  formEditCat.cor    = c.cor || '#6366f1';
+  modalEditCategoria.value = true;
+}
+
+async function salvarEdicaoCategoria() {
+  if (!formEditCat.nome.trim()) return;
+  processando.value = true;
+  try {
+    await apiClient.put(`/api/financeiro/categorias/${catEditando.value.pk}`, {
+      nome: formEditCat.nome.trim(),
+      cor:  formEditCat.cor,
+    });
+    catEditando.value.nome = formEditCat.nome.trim();
+    catEditando.value.cor  = formEditCat.cor;
+    modalEditCategoria.value = false;
+    showToast('Categoria atualizada!');
+    carregarCategorias();
   } catch (e) {
     showToast('Erro: ' + (e.response?.data?.erro || e.message), 'error');
   } finally {
@@ -1082,10 +1158,11 @@ async function carregarCatStats() {
     const { data } = await apiClient.get('/api/despesas', { params: { filial_pk: fil, ini, fim: hoje } });
     const map = {};
     for (const d of (data.data || [])) {
-      if (d.categoria) {
-        if (!map[d.categoria]) map[d.categoria] = { count: 0, total: 0 };
-        map[d.categoria].count++;
-        map[d.categoria].total += d.valor || 0;
+      const nome = d.categorias_despesa?.nome;
+      if (nome) {
+        if (!map[nome]) map[nome] = { count: 0, total: 0 };
+        map[nome].count++;
+        map[nome].total += d.valor || 0;
       }
     }
     catStats.value = map;
@@ -1540,8 +1617,13 @@ function fmt(v) {
 .cat-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
 .cat-icon-circle { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--cat-clr, var(--primary)) 15%, transparent); color: var(--cat-clr, var(--primary)); }
 .cat-icon-circle .material-symbols-outlined { font-size: 22px; }
-.cat-del-btn { opacity: 0; transition: opacity 0.18s; }
-.cat-card:hover .cat-del-btn { opacity: 1; }
+.cat-card-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.18s; }
+.cat-card:hover .cat-card-actions { opacity: 1; }
+.cat-edit-btn:hover { background: rgba(99,102,241,.12); color: #818cf8; border-color: rgba(99,102,241,.25) !important; }
+
+.cat-color-row { display: flex; align-items: center; gap: 0.75rem; }
+.cat-color-picker { width: 42px; height: 38px; border-radius: 8px; border: 1px solid var(--border); padding: 2px; cursor: pointer; background: none; flex-shrink: 0; }
+.cat-color-preview { font-size: 0.82rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; }
 
 .cat-card-mid { flex: 1; }
 .cat-card-nome { margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--text); }

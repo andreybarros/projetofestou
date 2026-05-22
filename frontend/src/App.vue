@@ -152,11 +152,13 @@
 
           <!-- Usuário -->
           <div class="sf-user" v-if="op">
-            <div class="sf-avatar" :style="{ background: navAvatarColor(op.nome) }">{{ navInitials(op.nome) }}</div>
-            <div class="sf-user-info">
-              <span class="sf-user-name">{{ op.nome }}</span>
-              <span class="sf-user-role">{{ op.admin ? 'Administrador' : 'Operador' }}</span>
-            </div>
+            <button class="sf-user-info-btn" @click="abrirModalSenha" title="Configurações da conta">
+              <div class="sf-avatar" :style="{ background: navAvatarColor(op.nome) }">{{ navInitials(op.nome) }}</div>
+              <div class="sf-user-info">
+                <span class="sf-user-name">{{ op.nome }}</span>
+                <span class="sf-user-role">{{ op.admin ? 'Administrador' : 'Operador' }}</span>
+              </div>
+            </button>
             <button class="sf-logout-btn" @click="doLogout" title="Sair do sistema">
               <span class="material-symbols-outlined">logout</span>
             </button>
@@ -178,30 +180,39 @@
         <nav class="mini-nav">
           <RouterLink to="/" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'home' }]" data-tip="Início">
             <span class="material-symbols-outlined">home</span>
+            <span class="mini-label">Início</span>
           </RouterLink>
           <RouterLink v-if="pode('produtos') || pode('clientes') || pode('armazens')" to="/produtos" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'estoque' }]" data-tip="Estoque">
             <span class="material-symbols-outlined">inventory_2</span>
+            <span class="mini-label">Estoque</span>
           </RouterLink>
           <RouterLink v-if="pode('pdv') || pode('vendedores') || pode('historico')" to="/pdv" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'vendas' }]" data-tip="Vendas">
             <span class="material-symbols-outlined">point_of_sale</span>
+            <span class="mini-label">PDV</span>
           </RouterLink>
           <RouterLink v-if="pode('agenda') || pode('projetos')" to="/agenda" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'agenda' }]" data-tip="Agenda">
             <span class="material-symbols-outlined">calendar_month</span>
+            <span class="mini-label">Agenda</span>
           </RouterLink>
           <RouterLink v-if="pode('caixa') || pode('receitas') || pode('despesas') || pode('financeiro')" to="/caixa" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'financeiro' }]" data-tip="Financeiro">
             <span class="material-symbols-outlined">payments</span>
+            <span class="mini-label">Financeiro</span>
           </RouterLink>
           <RouterLink v-if="podeRH" to="/funcionarios" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'rh' }]" data-tip="Recursos Humanos">
             <span class="material-symbols-outlined">badge</span>
+            <span class="mini-label">RH</span>
           </RouterLink>
           <RouterLink v-if="pode('separacao')" to="/separacao" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'operacao' }]" data-tip="Operação">
             <span class="material-symbols-outlined">inventory</span>
+            <span class="mini-label">Operação</span>
           </RouterLink>
           <RouterLink v-if="op?.admin || pode('rel_vendas') || pode('rel_caixa') || pode('financeiro')" to="/relatorio-vendas" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'relatorios' }]" data-tip="Relatórios">
             <span class="material-symbols-outlined">analytics</span>
+            <span class="mini-label">Relatórios</span>
           </RouterLink>
           <RouterLink v-if="op?.admin" to="/parametros" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'admin' }]" data-tip="Administração">
             <span class="material-symbols-outlined">tune</span>
+            <span class="mini-label">Parâmetros</span>
           </RouterLink>
         </nav>
 
@@ -305,6 +316,86 @@
       </div>
     </div>
 
+    <!-- ══ MODAL: ALTERAR SENHA ══════════════════════════════════ -->
+    <Transition name="modal-fade">
+      <div v-if="modalSenha" class="gs-backdrop" @click.self="fecharModalSenha">
+        <div class="gs-box">
+          <div class="gs-header">
+            <div class="gs-header-icon">
+              <span class="material-symbols-outlined">lock</span>
+            </div>
+            <div>
+              <h3 class="gs-title">Alterar Senha</h3>
+              <p class="gs-sub">{{ op?.nome }}</p>
+            </div>
+            <button class="gs-close" @click="fecharModalSenha">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="gs-body">
+            <div class="gs-field">
+              <label>Senha Atual</label>
+              <div class="gs-input-wrap">
+                <span class="material-symbols-outlined gs-input-icon">lock_open</span>
+                <input
+                  :type="mostrarSenha.atual ? 'text' : 'password'"
+                  v-model="formSenha.atual"
+                  placeholder="Digite sua senha atual"
+                  autocomplete="current-password"
+                />
+                <button type="button" class="gs-eye" @click="mostrarSenha.atual = !mostrarSenha.atual">
+                  <span class="material-symbols-outlined">{{ mostrarSenha.atual ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="gs-field">
+              <label>Nova Senha</label>
+              <div class="gs-input-wrap">
+                <span class="material-symbols-outlined gs-input-icon">lock</span>
+                <input
+                  :type="mostrarSenha.nova ? 'text' : 'password'"
+                  v-model="formSenha.nova"
+                  placeholder="Mínimo 4 caracteres"
+                  autocomplete="new-password"
+                />
+                <button type="button" class="gs-eye" @click="mostrarSenha.nova = !mostrarSenha.nova">
+                  <span class="material-symbols-outlined">{{ mostrarSenha.nova ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="gs-field">
+              <label>Confirmar Nova Senha</label>
+              <div class="gs-input-wrap" :class="{ 'gs-mismatch': formSenha.confirmar && formSenha.nova !== formSenha.confirmar }">
+                <span class="material-symbols-outlined gs-input-icon">lock</span>
+                <input
+                  :type="mostrarSenha.confirmar ? 'text' : 'password'"
+                  v-model="formSenha.confirmar"
+                  placeholder="Repita a nova senha"
+                  autocomplete="new-password"
+                  @keydown.enter="salvarSenha"
+                />
+                <button type="button" class="gs-eye" @click="mostrarSenha.confirmar = !mostrarSenha.confirmar">
+                  <span class="material-symbols-outlined">{{ mostrarSenha.confirmar ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+              <span v-if="formSenha.confirmar && formSenha.nova !== formSenha.confirmar" class="gs-hint-err">As senhas não coincidem</span>
+            </div>
+          </div>
+          <div class="gs-footer">
+            <button class="gs-btn-cancel" @click="fecharModalSenha" :disabled="salvandoSenha">Cancelar</button>
+            <button
+              class="gs-btn-save"
+              @click="salvarSenha"
+              :disabled="salvandoSenha || !formSenha.atual || !formSenha.nova || formSenha.nova !== formSenha.confirmar"
+            >
+              <span class="material-symbols-outlined">{{ salvandoSenha ? 'hourglass_empty' : 'save' }}</span>
+              {{ salvandoSenha ? 'Salvando...' : 'Salvar Senha' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Toast global -->
     <div id="toast" :class="['toast', { show: toast.visible, success: toast.tipo === 'success', error: toast.tipo === 'error' }]">
       {{ toast.tipo === 'success' ? '✅' : '❌' }} {{ toast.msg }}
@@ -314,7 +405,7 @@
 </template>
 
 <script setup>
-import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue';
+import { ref, reactive, computed, provide, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSessaoStore } from './stores/sessao';
 import { useAuthStore }   from './stores/auth';
@@ -524,6 +615,34 @@ const podeRH     = computed(() => {
   return pode('funcionarios') || pode('ponto') || pode('holerite') || !!op.value?.acesso_espelho_ponto;
 });
 
+// Modal: alterar senha
+const modalSenha    = ref(false);
+const salvandoSenha = ref(false);
+const formSenha     = reactive({ atual: '', nova: '', confirmar: '' });
+const mostrarSenha  = reactive({ atual: false, nova: false, confirmar: false });
+
+function abrirModalSenha() {
+  Object.assign(formSenha, { atual: '', nova: '', confirmar: '' });
+  Object.assign(mostrarSenha, { atual: false, nova: false, confirmar: false });
+  modalSenha.value = true;
+}
+function fecharModalSenha() { modalSenha.value = false; }
+
+async function salvarSenha() {
+  if (!formSenha.atual || !formSenha.nova || formSenha.nova !== formSenha.confirmar) return;
+  if (formSenha.nova.length < 4) { showToast('Nova senha deve ter pelo menos 4 caracteres.', 'error'); return; }
+  salvandoSenha.value = true;
+  try {
+    await apiClient.put('/api/auth/minha-senha', { senha_atual: formSenha.atual, nova_senha: formSenha.nova });
+    showToast('Senha alterada com sucesso!');
+    fecharModalSenha();
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao alterar senha.', 'error');
+  } finally {
+    salvandoSenha.value = false;
+  }
+}
+
 // Toast
 const toast = ref({ visible: false, msg: '', tipo: 'success' });
 let _toastTimer = null;
@@ -647,7 +766,7 @@ body {
   .mini-sidebar {
     display: flex;
     position: fixed; top: 0; left: 0;
-    width: 72px; height: 100dvh;
+    width: 82px; height: 100dvh;
     background: #0c0f14;
     border-right: 1px solid rgba(255,255,255,0.06);
     flex-direction: column;
@@ -674,15 +793,19 @@ body {
   flex: 1; width: 100%;
   display: flex; flex-direction: column;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   gap: 2px;
-  overflow: hidden;
+  overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: none;
 }
+.mini-nav::-webkit-scrollbar { display: none; }
 
 .mini-btn {
   position: relative;
-  width: 46px; height: 46px;
-  display: flex; align-items: center; justify-content: center;
+  width: 70px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  padding: 7px 4px;
   border-radius: 10px; flex-shrink: 0;
   color: rgba(255,255,255,0.36);
   text-decoration: none;
@@ -690,6 +813,14 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 .mini-btn .material-symbols-outlined { font-size: 22px; color: inherit; }
+.mini-label {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 9px; font-weight: 600;
+  color: inherit; line-height: 1;
+  text-align: center;
+  max-width: 68px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .mini-btn:hover {
   background: rgba(255,255,255,0.06);
   color: rgba(255,255,255,0.76);
@@ -906,9 +1037,16 @@ body {
 
 /* User row */
 .sf-user {
-  display: flex; align-items: center; gap: 9px;
-  padding: 7px 4px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 0;
 }
+.sf-user-info-btn {
+  display: flex; align-items: center; gap: 9px;
+  flex: 1; min-width: 0; padding: 6px 8px; border-radius: 8px;
+  background: none; border: none; cursor: pointer; text-align: left;
+  transition: background .15s;
+}
+.sf-user-info-btn:hover { background: rgba(255,255,255,0.06); }
 .sf-avatar {
   width: 32px; height: 32px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -991,7 +1129,7 @@ body {
 .app-main   { display: flex; flex-direction: column; flex: 1; min-width: 0; height: 100dvh; overflow: hidden; }
 @media(min-width:1024px) {
   .app-main   { margin-left: 260px; }
-  .app-main.sidebar-collapsed { margin-left: 72px; }
+  .app-main.sidebar-collapsed { margin-left: 82px; }
 }
 
 /* ── Topbar ────────────────────────────────────────────── */
@@ -1148,8 +1286,8 @@ body {
 .toast.success { background: #065f46; }
 .toast.error   { background: #991b1b; }
 
-.material-symbols-outlined { 
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; 
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   display: inline-block;
   width: 1em;
   height: 1em;
@@ -1161,4 +1299,129 @@ body {
   -webkit-font-smoothing: antialiased;
   line-height: 1;
 }
+
+/* ── Modal Alterar Senha ───────────────────────────────── */
+.gs-backdrop {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.gs-box {
+  background: #111318; border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 18px; width: 100%; max-width: 420px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+[data-theme="light"] .gs-box { background: #ffffff; border-color: rgba(0,0,0,0.1); }
+
+.gs-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 1.25rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+[data-theme="light"] .gs-header { border-bottom-color: rgba(0,0,0,0.08); }
+.gs-header-icon {
+  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+  background: rgba(0,200,83,0.14); color: #00c853;
+  display: flex; align-items: center; justify-content: center;
+}
+.gs-header-icon .material-symbols-outlined { font-size: 22px; }
+.gs-title { margin: 0; font-size: 1rem; font-weight: 800; color: #e3e5ef; }
+[data-theme="light"] .gs-title { color: #0f172a; }
+.gs-sub   { margin: 2px 0 0; font-size: 0.78rem; color: rgba(255,255,255,0.38); }
+[data-theme="light"] .gs-sub { color: #64748b; }
+.gs-close {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.3); padding: 5px; border-radius: 7px;
+  display: flex; align-items: center; transition: all .15s; flex-shrink: 0;
+}
+.gs-close:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.75); }
+[data-theme="light"] .gs-close { color: #94a3b8; }
+[data-theme="light"] .gs-close:hover { background: rgba(0,0,0,0.06); color: #374151; }
+.gs-close .material-symbols-outlined { font-size: 20px; }
+
+.gs-body {
+  padding: 1.4rem; display: flex; flex-direction: column; gap: 1rem;
+}
+.gs-field { display: flex; flex-direction: column; gap: 6px; }
+.gs-field label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: rgba(255,255,255,0.38);
+}
+[data-theme="light"] .gs-field label { color: #64748b; }
+
+.gs-input-wrap {
+  display: flex; align-items: center; gap: 0;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; overflow: hidden; transition: border-color .15s;
+}
+.gs-input-wrap:focus-within { border-color: #00c853; box-shadow: 0 0 0 3px rgba(0,200,83,0.12); }
+.gs-input-wrap.gs-mismatch { border-color: #f87171; }
+.gs-input-wrap.gs-mismatch:focus-within { box-shadow: 0 0 0 3px rgba(248,113,113,0.15); }
+[data-theme="light"] .gs-input-wrap { background: #f8fafc; border-color: rgba(0,0,0,0.12); }
+
+.gs-input-icon {
+  font-size: 18px; padding: 0 10px; color: rgba(255,255,255,0.28); flex-shrink: 0;
+}
+[data-theme="light"] .gs-input-icon { color: #94a3b8; }
+
+.gs-input-wrap input {
+  flex: 1; background: none; border: none; outline: none;
+  padding: 0.7rem 0.25rem; font-size: 0.9rem; font-weight: 500;
+  color: #e3e5ef; font-family: 'Hanken Grotesk', sans-serif;
+}
+[data-theme="light"] .gs-input-wrap input { color: #0f172a; }
+.gs-input-wrap input::placeholder { color: rgba(255,255,255,0.2); }
+[data-theme="light"] .gs-input-wrap input::placeholder { color: #94a3b8; }
+
+.gs-eye {
+  background: none; border: none; cursor: pointer; padding: 0 12px;
+  color: rgba(255,255,255,0.28); display: flex; align-items: center;
+  transition: color .15s; flex-shrink: 0;
+}
+.gs-eye:hover { color: rgba(255,255,255,0.7); }
+.gs-eye .material-symbols-outlined { font-size: 18px; }
+[data-theme="light"] .gs-eye { color: #94a3b8; }
+[data-theme="light"] .gs-eye:hover { color: #374151; }
+
+.gs-hint-err {
+  font-size: 0.72rem; color: #f87171; font-weight: 600; padding-left: 2px;
+}
+
+.gs-footer {
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  padding: 1rem 1.4rem; border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+}
+[data-theme="light"] .gs-footer { border-top-color: rgba(0,0,0,0.08); background: #f8fafc; }
+
+.gs-btn-cancel {
+  background: transparent; border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6); padding: 0.6rem 1.2rem;
+  border-radius: 9px; cursor: pointer; font-size: 0.875rem;
+  font-weight: 600; font-family: 'Hanken Grotesk', sans-serif;
+  transition: all .15s;
+}
+.gs-btn-cancel:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: #e3e5ef; }
+.gs-btn-cancel:disabled { opacity: 0.45; cursor: not-allowed; }
+[data-theme="light"] .gs-btn-cancel { border-color: rgba(0,0,0,0.15); color: #374151; }
+[data-theme="light"] .gs-btn-cancel:hover:not(:disabled) { background: rgba(0,0,0,0.05); }
+
+.gs-btn-save {
+  display: flex; align-items: center; gap: 6px;
+  background: #00c853; color: #fff; border: none;
+  padding: 0.6rem 1.3rem; border-radius: 9px; cursor: pointer;
+  font-size: 0.875rem; font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+  box-shadow: 0 2px 10px rgba(0,200,83,0.3);
+  transition: background .15s, box-shadow .15s;
+}
+.gs-btn-save:hover:not(:disabled) { background: #00b548; box-shadow: 0 4px 14px rgba(0,200,83,0.4); }
+.gs-btn-save:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.gs-btn-save .material-symbols-outlined { font-size: 17px; }
+
+/* Transição modal */
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .gs-box, .modal-fade-leave-to .gs-box { transform: scale(0.95) translateY(12px); }
 </style>

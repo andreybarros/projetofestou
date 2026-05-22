@@ -19,6 +19,73 @@ router.get('/auxiliares', async (req, res) => {
   }
 });
 
+// ── Categorias de despesa ─────────────────────────────────────────────────────
+router.get('/categorias', async (req, res) => {
+  const { filial_pk } = req.query;
+  if (!filial_pk) return res.status(400).json({ erro: 'filial_pk obrigatório' });
+  try {
+    const { data, error } = await supabase
+      .from('categorias_despesa')
+      .select('pk, nome, cor')
+      .eq('filial_pk', filial_pk)
+      .eq('ativo', true)
+      .order('nome');
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (e) {
+    console.error('[Despesas/categorias/listar]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+router.post('/categorias', async (req, res) => {
+  const { filial_pk, nome, cor } = req.body;
+  if (!filial_pk || !nome?.trim()) return res.status(400).json({ erro: 'filial_pk e nome obrigatórios' });
+  try {
+    const { data, error } = await supabase
+      .from('categorias_despesa')
+      .insert([{ filial_pk, nome: nome.trim(), cor: cor || '#6366f1', ativo: true }])
+      .select().single();
+    if (error) throw error;
+    res.json({ ok: true, data });
+  } catch (e) {
+    console.error('[Despesas/categorias/criar]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+router.put('/categorias/:pk', async (req, res) => {
+  const { pk } = req.params;
+  const { nome, cor } = req.body;
+  if (!nome?.trim()) return res.status(400).json({ erro: 'nome obrigatório' });
+  try {
+    const { error } = await supabase
+      .from('categorias_despesa')
+      .update({ nome: nome.trim(), cor: cor || '#6366f1' })
+      .eq('pk', pk);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[Despesas/categorias/atualizar]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+router.delete('/categorias/:pk', async (req, res) => {
+  const { pk } = req.params;
+  try {
+    const { error } = await supabase
+      .from('categorias_despesa')
+      .update({ ativo: false })
+      .eq('pk', pk);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[Despesas/categorias/excluir]', e.message);
+    res.status(500).json({ erro: e.message });
+  }
+});
+
 // ── Listar despesas ───────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   const { filial_pk, ini, fim, status } = req.query;
@@ -26,7 +93,7 @@ router.get('/', async (req, res) => {
   try {
     let q = supabase
       .from('despesas')
-      .select('*, fornecedores(nome)')
+      .select('*, fornecedores(nome), categorias_despesa(pk, nome, cor)')
       .eq('filial_pk', filial_pk)
       .order('vencimento', { ascending: true });
     if (ini)    q = q.gte('vencimento', ini);
@@ -43,12 +110,12 @@ router.get('/', async (req, res) => {
 
 // ── Criar despesa ─────────────────────────────────────────────────────────────
 router.post('/', async (req, res) => {
-  const { filial_pk, descricao, fornecedor_pk, valor, vencimento, categoria, status, conta_pk } = req.body;
+  const { filial_pk, descricao, fornecedor_pk, valor, vencimento, categoria_pk, status, conta_pk } = req.body;
   if (!filial_pk || !descricao || !vencimento || valor === undefined)
     return res.status(400).json({ erro: 'filial_pk, descricao, vencimento e valor obrigatórios' });
   try {
     const isoNow = new Date().toISOString();
-    const payload = { filial_pk, descricao, fornecedor_pk: fornecedor_pk || null, valor, vencimento, categoria: categoria || null, status: status || 'pendente' };
+    const payload = { filial_pk, descricao, fornecedor_pk: fornecedor_pk || null, valor, vencimento, categoria_pk: categoria_pk || null, status: status || 'pendente' };
     if (status === 'pago') {
       payload.conta_pk      = conta_pk || null;
       payload.data_pagamento = isoNow;
@@ -75,7 +142,7 @@ router.post('/', async (req, res) => {
 // ── Atualizar despesa ─────────────────────────────────────────────────────────
 router.put('/:pk', async (req, res) => {
   const { pk } = req.params;
-  const { descricao, fornecedor_pk, valor, vencimento, categoria, status, conta_pk } = req.body;
+  const { descricao, fornecedor_pk, valor, vencimento, categoria_pk, status, conta_pk } = req.body;
   if (!descricao || !vencimento || valor === undefined)
     return res.status(400).json({ erro: 'descricao, vencimento e valor obrigatórios' });
   try {
@@ -83,7 +150,7 @@ router.put('/:pk', async (req, res) => {
     const { data: atual } = await supabase.from('despesas').select('status, conta_pk').eq('pk', pk).single();
 
     const payload = {
-      descricao, fornecedor_pk: fornecedor_pk || null, valor, vencimento, categoria: categoria || null,
+      descricao, fornecedor_pk: fornecedor_pk || null, valor, vencimento, categoria_pk: categoria_pk || null,
     };
 
     const estaBaixando = status === 'pago' && atual?.status !== 'pago';
