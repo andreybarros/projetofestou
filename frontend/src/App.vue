@@ -16,8 +16,12 @@
 
       <!-- Sidebar -->
       <aside :class="['nav-drawer', { open: sidebarAberta, collapsed: sidebarCollapsed }]">
+
+        <!-- Brand Header -->
         <div class="drawer-header">
-          <img src="/img/logo_fundo_transp.png" alt="Logo" class="drawer-logo" />
+          <div class="drawer-brand">
+            <img src="/img/logo_fundo_transp.png" alt="BarroStock" class="brand-logo-img" />
+          </div>
           <button class="drawer-close lg-hide" @click="fecharSidebar">
             <span class="material-symbols-outlined">close</span>
           </button>
@@ -28,92 +32,188 @@
 
         <nav class="drawer-nav">
 
-          <!-- Início -->
-          <RouterLink to="/" class="nav-btn" @click="fecharSidebar">
-            <span class="material-symbols-outlined nav-icon home-icon">home</span>
-            <span class="nav-label">Início</span>
-          </RouterLink>
+          <!-- PRINCIPAL -->
+          <div class="nav-section nav-section-first">
+            <p class="section-title">Principal</p>
+            <RouterLink to="/" class="nav-btn" @click="fecharSidebar">
+              <span class="material-symbols-outlined nav-icon" style="color:#60a5fa">home</span>
+              <span class="nav-label">Início</span>
+            </RouterLink>
+            <RouterLink v-if="pode('pdv') && op?.acesso_dashboard" to="/dashboard" class="nav-btn" @click="fecharSidebar">
+              <span class="material-symbols-outlined nav-icon" style="color:#fb7185">bar_chart</span>
+              <span class="nav-label">Dashboard</span>
+            </RouterLink>
+            <RouterLink v-if="pode('pdv')" to="/pdv" class="nav-btn" @click="fecharSidebar">
+              <span class="material-symbols-outlined nav-icon" style="color:#4ade80">point_of_sale</span>
+              <span class="nav-label">Ponto de Venda</span>
+            </RouterLink>
+            <RouterLink v-if="pode('agenda')" to="/agenda" class="nav-btn" @click="fecharSidebar">
+              <span class="material-symbols-outlined nav-icon" style="color:#38bdf8">calendar_month</span>
+              <span class="nav-label">Agenda</span>
+            </RouterLink>
+          </div>
 
-          <!-- Estoque -->
+          <!-- ESTOQUE -->
           <div v-if="pode('produtos') || pode('categorias') || pode('clientes') || pode('fornecedores') || pode('armazens') || pode('entrada_nfe') || pode('pedidos_compra')" class="nav-section">
             <p class="section-title">Estoque</p>
-            <RouterLink v-if="pode('produtos')"     to="/produtos"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">inventory_2</span><span class="nav-label">Produtos</span></RouterLink>
-            <RouterLink v-if="pode('categorias')"   to="/categorias"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#facc15">label</span><span class="nav-label">Categorias</span></RouterLink>
-            <RouterLink v-if="pode('clientes')"     to="/clientes"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#c084fc">group</span><span class="nav-label">Clientes</span></RouterLink>
-            <RouterLink v-if="pode('fornecedores')" to="/fornecedores" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f59e0b">handshake</span><span class="nav-label">Fornecedores</span></RouterLink>
-            <RouterLink v-if="pode('armazens')"     to="/armazens"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#22d3ee">warehouse</span><span class="nav-label">Armazéns</span></RouterLink>
-            <RouterLink v-if="pode('entrada_nfe')" to="/entrada-nfe"  class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">move_to_inbox</span><span class="nav-label">Entrada de NF-e</span></RouterLink>
-            <RouterLink v-if="pode('pedidos_compra')" to="/pedidos-compra" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f59e0b">shopping_cart</span><span class="nav-label">Pedidos de Compra</span></RouterLink>
+            <RouterLink v-if="pode('produtos')"       to="/produtos"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">inventory_2</span><span class="nav-label">Produtos</span></RouterLink>
+            <RouterLink v-if="pode('categorias')"     to="/categorias"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#facc15">label</span><span class="nav-label">Categorias</span></RouterLink>
+            <RouterLink v-if="pode('clientes')"       to="/clientes"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#c084fc">group</span><span class="nav-label">Clientes</span></RouterLink>
+            <RouterLink v-if="pode('fornecedores')"   to="/fornecedores"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f59e0b">handshake</span><span class="nav-label">Fornecedores</span></RouterLink>
+            <RouterLink v-if="pode('armazens')"       to="/armazens"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#22d3ee">warehouse</span><span class="nav-label">Armazéns</span></RouterLink>
+            <RouterLink v-if="pode('entrada_nfe')"    to="/entrada-nfe"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">move_to_inbox</span><span class="nav-label">Entrada de NF-e</span></RouterLink>
+            <RouterLink v-if="pode('pedidos_compra')" to="/pedidos-compra" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fbbf24">shopping_cart</span><span class="nav-label">Pedidos de Compra</span></RouterLink>
           </div>
 
-          <!-- Agenda e Projetos -->
-          <div v-if="pode('agenda') || pode('projetos')" class="nav-section">
-            <p class="section-title">Agenda</p>
-            <RouterLink v-if="pode('agenda')"   to="/agenda"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">calendar_month</span><span class="nav-label">Eventos</span></RouterLink>
-            <RouterLink v-if="pode('projetos')" to="/projetos" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a855f7">design_services</span><span class="nav-label">Projetos</span></RouterLink>
-          </div>
-
-          <!-- Vendas -->
-          <div v-if="pode('pdv') || pode('vendedores') || pode('historico')" class="nav-section">
+          <!-- VENDAS -->
+          <div v-if="pode('vendedores') || pode('historico') || pode('projetos')" class="nav-section">
             <p class="section-title">Vendas</p>
-            <RouterLink v-if="pode('pdv')"        to="/pdv"              class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">point_of_sale</span><span class="nav-label">Ponto de Venda</span></RouterLink>
             <RouterLink v-if="pode('vendedores')" to="/vendedores"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#818cf8">person</span><span class="nav-label">Vendedores</span></RouterLink>
             <RouterLink v-if="pode('historico')"  to="/historico-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">history</span><span class="nav-label">Histórico de Vendas</span></RouterLink>
+            <RouterLink v-if="pode('projetos')"   to="/projetos"         class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a855f7">design_services</span><span class="nav-label">Projetos</span></RouterLink>
           </div>
 
+          <!-- FINANCEIRO -->
           <div v-if="pode('caixa') || (pode('pdv') && op?.acesso_dashboard) || pode('receitas') || pode('despesas') || pode('financeiro')" class="nav-section">
             <p class="section-title">Financeiro</p>
-            <RouterLink v-if="pode('caixa')"                        to="/caixa"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#10b981">payments</span><span class="nav-label">Caixa (Operação)</span></RouterLink>
-            <RouterLink v-if="pode('pdv') && op?.acesso_dashboard"  to="/dashboard"      class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">bar_chart</span><span class="nav-label">Dashboard</span></RouterLink>
-            <RouterLink v-if="pode('receitas')"                     to="/contas-receber" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">receipt_long</span><span class="nav-label">Contas a Receber</span></RouterLink>
-            <RouterLink v-if="pode('despesas')"                     to="/despesas"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Contas a Pagar</span></RouterLink>
-            <RouterLink v-if="pode('financeiro')"                   to="/financeiro"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Cadastro de Contas</span></RouterLink>
+            <RouterLink v-if="pode('caixa')"                       to="/caixa"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#10b981">payments</span><span class="nav-label">Caixa (Operação)</span></RouterLink>
+            <RouterLink v-if="pode('receitas')"                    to="/contas-receber" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">receipt_long</span><span class="nav-label">Contas a Receber</span></RouterLink>
+            <RouterLink v-if="pode('despesas')"                    to="/despesas"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f87171">money_off</span><span class="nav-label">Contas a Pagar</span></RouterLink>
+            <RouterLink v-if="pode('financeiro')"                  to="/financeiro"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a3e635">account_balance_wallet</span><span class="nav-label">Cadastro de Contas</span></RouterLink>
           </div>
 
-          <!-- RH -->
+          <!-- RECURSOS HUMANOS -->
           <div v-if="podeRH" class="nav-section">
             <p class="section-title">Recursos Humanos</p>
-            <RouterLink v-if="pode('funcionarios')" to="/funcionarios"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#2dd4bf">badge</span><span class="nav-label">Funcionários</span></RouterLink>
-            <RouterLink v-if="pode('ponto')"        to="/ponto"          class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">schedule</span><span class="nav-label">Ponto Eletrônico</span></RouterLink>
-            <RouterLink v-if="pode('holerite')"      to="/holerites"      class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">description</span><span class="nav-label">Meus Holerites</span></RouterLink>
-            <RouterLink v-if="op?.matricula || pode('espelho')" to="/espelho-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f472b6">calendar_view_month</span><span class="nav-label">Espelho de Ponto</span></RouterLink>
-            <RouterLink v-if="pode('gestao_ponto')" to="/ajuste-batidas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">location_on</span><span class="nav-label">Gestão de Batidas</span></RouterLink>
-            <RouterLink v-if="pode('fech_ponto')" to="/fechamento-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">lock_clock</span><span class="nav-label">Fechamento de Ponto</span></RouterLink>
-            <RouterLink v-if="pode('vales')" to="/vales" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">request_quote</span><span class="nav-label">Vales</span></RouterLink>
+            <RouterLink v-if="pode('funcionarios')"             to="/funcionarios"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#2dd4bf">badge</span><span class="nav-label">Funcionários</span></RouterLink>
+            <RouterLink v-if="pode('ponto')"                    to="/ponto"           class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">schedule</span><span class="nav-label">Ponto Eletrônico</span></RouterLink>
+            <RouterLink v-if="pode('holerite')"                 to="/holerites"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">description</span><span class="nav-label">Meus Holerites</span></RouterLink>
+            <RouterLink v-if="op?.matricula || pode('espelho')" to="/espelho-ponto"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#f472b6">calendar_view_month</span><span class="nav-label">Espelho de Ponto</span></RouterLink>
+            <RouterLink v-if="pode('gestao_ponto')"             to="/ajuste-batidas"  class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb7185">location_on</span><span class="nav-label">Gestão de Batidas</span></RouterLink>
+            <RouterLink v-if="pode('fech_ponto')"               to="/fechamento-ponto" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fb923c">lock_clock</span><span class="nav-label">Fechamento de Ponto</span></RouterLink>
+            <RouterLink v-if="pode('vales')"                    to="/vales"           class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a78bfa">request_quote</span><span class="nav-label">Vales</span></RouterLink>
           </div>
 
-
-
-          <!-- Operação -->
+          <!-- OPERAÇÃO -->
           <div v-if="pode('separacao')" class="nav-section">
             <p class="section-title">Operação</p>
             <RouterLink to="/separacao" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fdba74">inventory</span><span class="nav-label">Separação</span></RouterLink>
           </div>
 
-          
-
-  
-
-          <!-- Relatórios -->
+          <!-- RELATÓRIOS -->
           <div v-if="op?.admin || pode('fechamento') || pode('rel_vendas') || pode('rel_caixa') || pode('financeiro')" class="nav-section">
             <p class="section-title">Relatórios</p>
-            <RouterLink v-if="pode('financeiro')" to="/consolidacao-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">account_balance</span><span class="nav-label">Consolidação de Recebimentos</span></RouterLink>
-            <RouterLink v-if="pode('rel_vendas')" to="/relatorio-vendas"   class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fbbf24">analytics</span><span class="nav-label">Relatório de Vendas</span></RouterLink>
-            <RouterLink v-if="pode('rel_caixa')" to="/relatorio-caixa"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">summarize</span><span class="nav-label">Relatório de Caixa</span></RouterLink>
+            <RouterLink v-if="pode('financeiro')" to="/consolidacao-vendas" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#34d399">account_balance</span><span class="nav-label">Consolidação</span></RouterLink>
+            <RouterLink v-if="pode('rel_vendas')" to="/relatorio-vendas"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fbbf24">analytics</span><span class="nav-label">Rel. Vendas</span></RouterLink>
+            <RouterLink v-if="pode('rel_caixa')"  to="/relatorio-caixa"     class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#38bdf8">summarize</span><span class="nav-label">Rel. Caixa</span></RouterLink>
             <RouterLink v-if="pode('fechamento')" to="/fechamento-caixa"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fde047">lock</span><span class="nav-label">Fechamento de Caixa</span></RouterLink>
           </div>
 
-          <!-- Administração -->
+          <!-- ADMINISTRAÇÃO -->
           <div v-if="op?.admin" class="nav-section">
             <p class="section-title">Administração</p>
             <RouterLink to="/parametros" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#94a3b8">tune</span><span class="nav-label">Parâmetros</span></RouterLink>
             <RouterLink to="/filiais"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#60a5fa">corporate_fare</span><span class="nav-label">Filiais</span></RouterLink>
             <RouterLink to="/operadores" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#a5b4fc">manage_accounts</span><span class="nav-label">Operadores</span></RouterLink>
           </div>
-          
+
         </nav>
 
-        <!-- Drawer footer vazio (logout/manual movidos para o topbar) -->
+        <!-- Sidebar Footer: Filial + Usuário -->
+        <div class="drawer-footer">
+
+          <!-- Seletor de filial -->
+          <div class="sf-filial-wrap" v-if="sessao.filial" ref="sidebarFilialRef">
+            <button class="sf-filial-btn" @click="sidebarFilialAberto = !sidebarFilialAberto">
+              <div class="sf-filial-icon-wrap">
+                <span class="material-symbols-outlined">corporate_fare</span>
+              </div>
+              <div class="sf-filial-text">
+                <span class="sf-filial-code">Filial {{ sessao.filial.codigo }}</span>
+                <span class="sf-filial-nome">{{ sessao.filial.nome }}</span>
+              </div>
+              <span class="material-symbols-outlined sf-filial-arrow">unfold_more</span>
+            </button>
+            <Transition name="dropdown">
+              <div v-if="sidebarFilialAberto" class="sf-filial-dropdown">
+                <div class="sf-drop-title">Trocar Filial</div>
+                <button
+                  v-for="f in todasFiliais"
+                  :key="f.pk"
+                  :class="['sf-drop-item', { active: f.pk === sessao.filial?.pk }]"
+                  @click="trocarFilial(f); sidebarFilialAberto = false"
+                >
+                  <span class="material-symbols-outlined" style="font-size:14px">{{ f.pk === sessao.filial?.pk ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
+                  [{{ f.codigo }}] {{ f.nome }}
+                </button>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Usuário -->
+          <div class="sf-user" v-if="op">
+            <div class="sf-avatar" :style="{ background: navAvatarColor(op.nome) }">{{ navInitials(op.nome) }}</div>
+            <div class="sf-user-info">
+              <span class="sf-user-name">{{ op.nome }}</span>
+              <span class="sf-user-role">{{ op.admin ? 'Administrador' : 'Operador' }}</span>
+            </div>
+            <button class="sf-logout-btn" @click="doLogout" title="Sair do sistema">
+              <span class="material-symbols-outlined">logout</span>
+            </button>
+          </div>
+
+        </div>
+
+      </aside>
+
+      <!-- Mini Sidebar (desktop, collapsed mode) -->
+      <aside v-if="sidebarCollapsed" class="mini-sidebar">
+
+        <div class="mini-header">
+          <button class="mini-btn mini-expand-btn" @click="toggleCollapse" data-tip="Expandir menu">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+
+        <nav class="mini-nav">
+          <RouterLink to="/" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'home' }]" data-tip="Início">
+            <span class="material-symbols-outlined">home</span>
+          </RouterLink>
+          <RouterLink v-if="pode('produtos') || pode('clientes') || pode('armazens')" to="/produtos" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'estoque' }]" data-tip="Estoque">
+            <span class="material-symbols-outlined">inventory_2</span>
+          </RouterLink>
+          <RouterLink v-if="pode('pdv') || pode('vendedores') || pode('historico')" to="/pdv" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'vendas' }]" data-tip="Vendas">
+            <span class="material-symbols-outlined">point_of_sale</span>
+          </RouterLink>
+          <RouterLink v-if="pode('agenda') || pode('projetos')" to="/agenda" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'agenda' }]" data-tip="Agenda">
+            <span class="material-symbols-outlined">calendar_month</span>
+          </RouterLink>
+          <RouterLink v-if="pode('caixa') || pode('receitas') || pode('despesas') || pode('financeiro')" to="/caixa" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'financeiro' }]" data-tip="Financeiro">
+            <span class="material-symbols-outlined">payments</span>
+          </RouterLink>
+          <RouterLink v-if="podeRH" to="/funcionarios" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'rh' }]" data-tip="Recursos Humanos">
+            <span class="material-symbols-outlined">badge</span>
+          </RouterLink>
+          <RouterLink v-if="pode('separacao')" to="/separacao" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'operacao' }]" data-tip="Operação">
+            <span class="material-symbols-outlined">inventory</span>
+          </RouterLink>
+          <RouterLink v-if="op?.admin || pode('rel_vendas') || pode('rel_caixa') || pode('financeiro')" to="/relatorio-vendas" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'relatorios' }]" data-tip="Relatórios">
+            <span class="material-symbols-outlined">analytics</span>
+          </RouterLink>
+          <RouterLink v-if="op?.admin" to="/parametros" :class="['mini-btn', { 'mini-active': miniActiveGroup === 'admin' }]" data-tip="Administração">
+            <span class="material-symbols-outlined">tune</span>
+          </RouterLink>
+        </nav>
+
+        <div class="mini-footer">
+          <div class="mini-avatar-wrap" v-if="op">
+            <div class="mini-avatar" :style="{ background: navAvatarColor(op.nome) }">{{ navInitials(op.nome) }}</div>
+          </div>
+          <button class="mini-btn mini-logout-btn" @click="doLogout" data-tip="Sair do sistema">
+            <span class="material-symbols-outlined">logout</span>
+          </button>
+        </div>
+
       </aside>
 
       <!-- Main -->
@@ -230,6 +330,20 @@ const vendaStore  = useVendaStore();
 const router      = useRouter();
 const route       = useRoute();
 const isPDV       = computed(() => route.name === 'PDV');
+
+const miniActiveGroup = computed(() => {
+  const p = route.path;
+  if (p === '/') return 'home';
+  if (['/pdv','/vendedores','/historico-vendas','/dashboard'].some(x => p.startsWith(x))) return 'vendas';
+  if (['/produtos','/categorias','/clientes','/fornecedores','/armazens','/entrada-nfe','/pedidos-compra'].some(x => p.startsWith(x))) return 'estoque';
+  if (['/agenda','/projetos'].some(x => p.startsWith(x))) return 'agenda';
+  if (['/caixa','/contas-receber','/despesas','/financeiro'].some(x => p.startsWith(x))) return 'financeiro';
+  if (['/funcionarios','/ponto','/holerites','/espelho-ponto','/ajuste-batidas','/fechamento-ponto','/vales'].some(x => p.startsWith(x))) return 'rh';
+  if (p.startsWith('/separacao')) return 'operacao';
+  if (['/relatorio-vendas','/relatorio-caixa','/fechamento-caixa','/consolidacao-vendas'].some(x => p.startsWith(x))) return 'relatorios';
+  if (['/parametros','/filiais','/operadores'].some(x => p.startsWith(x))) return 'admin';
+  return '';
+});
 const op          = computed(() => sessao.operador);
 
 // Carrega parâmetros assim que a sessão estiver autenticada
@@ -259,9 +373,24 @@ const userMenuAberto = ref(false);
 const userMenuRef    = ref(null);
 
 // Dropdown de filial
-const filialMenuAberto = ref(false);
-const filialMenuRef    = ref(null);
-const todasFiliais     = ref([]);
+const filialMenuAberto    = ref(false);
+const filialMenuRef       = ref(null);
+const sidebarFilialAberto = ref(false);
+const sidebarFilialRef    = ref(null);
+const todasFiliais        = ref([]);
+
+const NAV_AVATAR_COLORS = ['#00c853','#2563eb','#7c3aed','#db2777','#ea580c','#0891b2','#d97706'];
+function navInitials(nome) {
+  if (!nome) return '?';
+  const parts = nome.trim().split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+function navAvatarColor(nome) {
+  if (!nome) return NAV_AVATAR_COLORS[0];
+  let sum = 0; for (const c of nome) sum += c.charCodeAt(0);
+  return NAV_AVATAR_COLORS[sum % NAV_AVATAR_COLORS.length];
+}
 
 let _carregandoFiliais = false;
 async function carregarFiliais() {
@@ -292,6 +421,9 @@ function fecharMenus(e) {
   }
   if (filialMenuRef.value && !filialMenuRef.value.contains(e.target)) {
     filialMenuAberto.value = false;
+  }
+  if (sidebarFilialRef.value && !sidebarFilialRef.value.contains(e.target)) {
+    sidebarFilialAberto.value = false;
   }
 }
 onMounted(async () => {
@@ -439,6 +571,7 @@ function abrirManual() { window.open('/manual.html', '_blank'); }
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
 
 /* ── Reset e base ──────────────────────────────────────── */
@@ -492,50 +625,321 @@ body {
 
 /* ── Sidebar ───────────────────────────────────────────── */
 .nav-drawer {
-  position: fixed; top: 0; left: 0; height: 100dvh; width: 280px;
-  background: #111318; border-right: 1px solid rgba(255,255,255,.07);
+  position: fixed; top: 0; left: 0; height: 100dvh; width: 268px;
+  background: #0c0f14;
+  border-right: 1px solid rgba(255,255,255,0.06);
   display: flex; flex-direction: column; z-index: 65;
   transform: translateX(-100%); transition: transform .3s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
   color: #e3e5ef;
+  font-family: 'Hanken Grotesk', sans-serif;
 }
 .nav-drawer.open { transform: translateX(0); }
 @media(min-width:1024px) {
-  .nav-drawer { width: 256px; transform: translateX(0) !important; }
-  .nav-drawer.collapsed { width: 64px; }
-  .nav-drawer.collapsed .nav-label,
-  .nav-drawer.collapsed .section-title { display: none; }
-  .nav-drawer.collapsed .nav-btn { justify-content: center; padding: 8px; }
-  .nav-drawer.collapsed .drawer-logo { display: none; }
-  .nav-drawer.collapsed .drawer-header { justify-content: center; }
-  .nav-drawer.collapsed .drawer-footer { display: none; }
+  .nav-drawer { width: 260px; transform: translateX(0) !important; }
+  .nav-drawer.collapsed { display: none; }
 }
 
-.drawer-header {
-  padding: 16px; display: flex; align-items: center;
-  justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0;
+/* ── Mini Sidebar ──────────────────────────────────────── */
+.mini-sidebar { display: none; }
+
+@media(min-width:1024px) {
+  .mini-sidebar {
+    display: flex;
+    position: fixed; top: 0; left: 0;
+    width: 72px; height: 100dvh;
+    background: #0c0f14;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    flex-direction: column;
+    align-items: center;
+    z-index: 65;
+  }
 }
-.drawer-logo  { max-height: 42px; max-width: 120px; object-fit: contain; }
-.drawer-close, .drawer-collapse {
-  background: none; border: none; color: var(--text2);
-  cursor: pointer; padding: 4px; border-radius: 8px;
+
+.mini-header {
+  width: 100%;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 0 14px;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  flex-shrink: 0;
+}
+.mini-logo {
+  width: 40px; height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,200,83,0.25));
+}
+
+.mini-nav {
+  flex: 1; width: 100%;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.mini-btn {
+  position: relative;
+  width: 46px; height: 46px;
   display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; flex-shrink: 0;
+  color: rgba(255,255,255,0.36);
+  text-decoration: none;
+  border: none; background: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
-.drawer-close:hover, .drawer-collapse:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.mini-btn .material-symbols-outlined { font-size: 22px; color: inherit; }
+.mini-btn:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.76);
+}
+.mini-btn.mini-active {
+  background: rgba(0,200,83,0.13);
+  color: #00c853;
+}
+.mini-btn.mini-active .material-symbols-outlined {
+  filter: drop-shadow(0 0 5px rgba(0,200,83,0.45));
+}
 
-.drawer-nav   { flex: 1; overflow-y: auto; padding: 12px 12px 25px; display: flex; flex-direction: column; gap: 4px; }
-.nav-section  { margin-top: 16px; }
-.section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a8abb5; padding: 0 8px 6px; }
+/* Tooltip via ::after + data-tip */
+.mini-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%; transform: translateY(-50%) translateX(-4px);
+  background: #161d2e;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.92);
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 12px; font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 2000;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.55);
+}
+.mini-btn:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Footer mini */
+.mini-footer {
+  width: 100%;
+  display: flex; flex-direction: column;
+  align-items: center;
+  padding: 10px 0 16px;
+  gap: 6px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  flex-shrink: 0;
+}
+.mini-expand-btn { color: rgba(255,255,255,0.32); }
+.mini-expand-btn .material-symbols-outlined { font-size: 20px; }
+
+.mini-avatar-wrap {
+  position: relative;
+  width: 36px; height: 36px;
+}
+.mini-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 13px; font-weight: 800; color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+.mini-avatar-wrap::after {
+  content: '';
+  position: absolute; bottom: 0; right: 0;
+  width: 9px; height: 9px;
+  background: #00c853;
+  border: 2px solid #0c0f14;
+  border-radius: 50%;
+}
+.mini-logout-btn { color: rgba(255,255,255,0.28); }
+.mini-logout-btn .material-symbols-outlined { font-size: 19px; }
+.mini-logout-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+/* Brand header */
+.drawer-header {
+  padding: 18px 14px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  flex-shrink: 0;
+}
+.drawer-brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo-img {
+  height: 52px; width: auto; max-width: 160px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 10px rgba(0,200,83,0.2));
+}
+.brand-name {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 17px; font-weight: 800;
+  color: #00c853;
+  letter-spacing: -0.3px;
+}
+.drawer-close, .drawer-collapse {
+  background: none; border: none; color: rgba(255,255,255,0.3);
+  cursor: pointer; padding: 4px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .15s, background .15s;
+}
+.drawer-close:hover, .drawer-collapse:hover {
+  color: rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.07);
+}
+
+/* Nav */
+.drawer-nav {
+  flex: 1; overflow-y: auto;
+  padding: 8px 10px 16px;
+  display: flex; flex-direction: column;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.07) transparent;
+}
+.nav-section { margin-top: 18px; }
+.nav-section-first { margin-top: 4px; }
+.section-title {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.3px;
+  color: rgba(255,255,255,0.27);
+  padding: 0 10px 5px;
+}
 
 .nav-btn {
-  display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 9px 10px; border-radius: 8px;
-  font-size: 13.5px; font-weight: 500; color: #a8abb5;
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 8px 10px 8px 12px;
+  border-radius: 8px; margin-bottom: 1px;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 13.5px; font-weight: 500;
+  color: rgba(255,255,255,0.48);
   text-decoration: none; border: none; background: none; cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, box-shadow .15s;
 }
-.nav-btn:hover { background: rgba(255,255,255,.05); color: #e3e5ef; }
-.nav-btn.router-link-active { background: rgba(255,255,255,.1); color: #fff; font-weight: 600; }
+.nav-btn:hover {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.82);
+}
+.nav-btn.router-link-active {
+  background: rgba(0,200,83,0.09);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 #00c853;
+}
+.nav-icon { font-size: 19px; flex-shrink: 0; }
+
+/* ── Drawer Footer ─────────────────────────────────────── */
+.drawer-footer {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 10px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Filial selector */
+.sf-filial-wrap { position: relative; }
+.sf-filial-btn {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; padding: 8px 9px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 9px; cursor: pointer; text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.sf-filial-btn:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(0,200,83,0.28);
+}
+.sf-filial-icon-wrap {
+  width: 28px; height: 28px;
+  background: rgba(0,200,83,0.12);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sf-filial-icon-wrap .material-symbols-outlined { font-size: 15px; color: #00c853; }
+.sf-filial-text { flex: 1; min-width: 0; }
+.sf-filial-code {
+  display: block;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 9.5px; font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+.sf-filial-nome {
+  display: block;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 12.5px; font-weight: 600;
+  color: rgba(255,255,255,0.72);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sf-filial-arrow { font-size: 16px; color: rgba(255,255,255,0.28); flex-shrink: 0; }
+.sf-filial-dropdown {
+  position: absolute; bottom: calc(100% + 6px); left: 0; right: 0;
+  background: #161b22;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; padding: 6px; z-index: 300;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+}
+.sf-drop-title {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.9px; color: rgba(255,255,255,0.28);
+  padding: 4px 10px 7px;
+}
+.sf-drop-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 10px; border-radius: 7px;
+  background: none; border: none; cursor: pointer;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 12.5px; font-weight: 500;
+  color: rgba(255,255,255,0.6);
+  transition: background .13s; text-align: left;
+}
+.sf-drop-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); }
+.sf-drop-item.active { color: #00c853; font-weight: 700; }
+
+/* User row */
+.sf-user {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 4px;
+}
+.sf-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 11.5px; font-weight: 800; color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.sf-user-info { flex: 1; min-width: 0; }
+.sf-user-name {
+  display: block;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 12.5px; font-weight: 600;
+  color: rgba(255,255,255,0.78);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sf-user-role {
+  display: block;
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 9.5px; font-weight: 600;
+  color: rgba(255,255,255,0.32);
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.sf-logout-btn {
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.28); padding: 5px;
+  border-radius: 6px; display: flex; align-items: center;
+  transition: color .15s, background .15s; flex-shrink: 0;
+}
+.sf-logout-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+.sf-logout-btn .material-symbols-outlined { font-size: 17px; }
 [data-theme="light"] .topbar { background: #f0f2fa; border-bottom-color: rgba(0,0,0,.12); }
 [data-theme="light"] .filial-badge { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.12); color: var(--text2); }
 [data-theme="light"] .user-chip { color: var(--text); }
@@ -586,8 +990,8 @@ body {
 /* ── Main area ─────────────────────────────────────────── */
 .app-main   { display: flex; flex-direction: column; flex: 1; min-width: 0; height: 100dvh; overflow: hidden; }
 @media(min-width:1024px) {
-  .app-main   { margin-left: 256px; }
-  .app-main.sidebar-collapsed { margin-left: 64px; }
+  .app-main   { margin-left: 260px; }
+  .app-main.sidebar-collapsed { margin-left: 72px; }
 }
 
 /* ── Topbar ────────────────────────────────────────────── */

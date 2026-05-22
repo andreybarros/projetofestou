@@ -381,7 +381,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 import apiClient from '../services/api';
@@ -434,13 +434,14 @@ const formaLabel = computed(() => {
 });
 
 const filtrados = computed(() => {
-  paginaAtual.value = 1;
   let l = lista.value;
   const q = busca.value.trim().toLowerCase();
   if (q) l = l.filter(v => (v.cliente_nome || '').toLowerCase().includes(q) || String(v.numero).includes(q));
   if (filtroStatus.value) l = l.filter(v => v.status_calc === filtroStatus.value);
   return l;
 });
+
+watch([busca, filtroStatus], () => { paginaAtual.value = 1; });
 
 const totalPendente = computed(() => totais.value.totalPendente);
 const totalVencido  = computed(() => totais.value.totalVencido);
