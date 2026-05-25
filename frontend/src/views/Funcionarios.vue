@@ -609,10 +609,77 @@ onUnmounted(() => { clearTimeout(_toastTimer); });
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── TABLET ≤ 1200px: tabela vira cards ───────── */
+@media (max-width: 1200px) {
+
+  /* Filtros em coluna */
+  .fn-filtros { flex-direction: column; align-items: stretch; }
+  .search-wrap { min-width: unset; }
+  .filtro-tabs { overflow-x: auto; }
+
+  /* Resumo: 2 colunas no tablet */
+  .resumo-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Container: remove overflow hidden para não cortar cards */
+  .tabela-wrap { background: transparent; border: none; border-radius: 0; overflow: visible; }
+  .tabela-rodape { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; text-align: center; margin-top: 4px; }
+
+  /* Esconde cabeçalho da tabela */
+  .tabela thead { display: none; }
+
+  /* Cada linha vira card */
+  .tabela tbody { display: flex; flex-direction: column; gap: 10px; }
+  .tabela tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .tabela tbody tr:hover td { background: transparent; }
+  .tabela tbody tr:hover { background: var(--bg3); }
+  .tabela tbody td { padding: 0; border: none; min-width: 0; }
+
+  /* Nome + avatar — linha 1, coluna 1 */
+  .tabela tbody td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  /* Matrícula — ocultar */
+  .tabela tbody td:nth-child(2) { display: none; }
+  /* CPF — ocultar */
+  .tabela tbody td:nth-child(3) { display: none; }
+  /* Tipo badge — linha 2, coluna 1 */
+  .tabela tbody td:nth-child(4) { grid-column: 1; grid-row: 2; display: flex; align-items: center; }
+  /* Salário — linha 2, coluna 2 */
+  .tabela tbody td:nth-child(5) { grid-column: 2; grid-row: 2; text-align: right; font-size: .88rem; display: flex; align-items: center; justify-content: flex-end; }
+  /* Horário — linha 3, coluna 1 */
+  .tabela tbody td:nth-child(6) { grid-column: 1; grid-row: 3; font-size: .8rem; display: flex; align-items: center; }
+  /* Status badge — linha 1, coluna 2 */
+  .tabela tbody td:nth-child(7) { grid-column: 2; grid-row: 1; text-align: right; display: flex; align-items: flex-start; justify-content: flex-end; }
+  /* Ações — linha 4, largura total */
+  .tabela tbody td:nth-child(8) {
+    grid-column: 1 / -1; grid-row: 4;
+    border-top: 1px solid var(--border);
+    margin-top: 4px; padding-top: 10px;
+    display: flex; gap: 8px;
+  }
+  .td-acoes { width: 100%; }
+  .btn-editar, .btn-toggle { width: 36px; height: 36px; }
+
+  /* fn-nome-cell não precisa de ajuste, já é flex */
+  .fn-nome { font-size: .9rem; }
+}
+
+/* ── MOBILE ≤ 700px ───────────────────────────── */
 @media (max-width: 700px) {
   .resumo-grid { grid-template-columns: repeat(2, 1fr); }
   .form-grid   { grid-template-columns: 1fr; }
   .form-field.span2 { grid-column: span 1; }
-  .filtro-tabs { overflow-x: auto; }
+
+  /* Modal bottom sheet */
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+  .modal-box { border-radius: 20px 20px 0 0; max-height: 95vh; }
 }
 </style>
