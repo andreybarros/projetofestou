@@ -1103,8 +1103,8 @@ onUnmounted(() => { clearTimeout(toastTimer); });
 [data-theme="light"] .sel-input-v2:focus { border-color: #6366f1; }
 [data-theme="light"] .date-input-v2 { color: #111827; }
 
-/* ── DESKTOP COMPACTO 901-1100px ─────────────── */
-@media (min-width: 901px) and (max-width: 1100px) {
+/* ── DESKTOP COMPACTO 1201-1400px ─────────────── */
+@media (min-width: 1201px) and (max-width: 1400px) {
   .filtros-bar { gap: .75rem; padding: .875rem 1rem; }
   .search-group { min-width: 180px; }
   .date-input-v2 { width: 108px; }
@@ -1121,8 +1121,8 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .det-modal { max-width: 780px; }
 }
 
-/* ── TABLET + MOBILE ≤ 900px: tabela vira cards ─── */
-@media (max-width: 900px) {
+/* ── TABLET + MOBILE ≤ 1200px: tabela vira cards ─── */
+@media (max-width: 1200px) {
 
   /* Filtros compactos */
   .filtros-bar { flex-direction: column; gap: .65rem; padding: .75rem; }
