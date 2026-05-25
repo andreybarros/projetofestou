@@ -1139,13 +1139,14 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .tabela-v2 thead { display: none; }
   .tabela-v2 tbody { display: flex; flex-direction: column; gap: 10px; }
   .tabela-v2 tr {
-    display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto;
     gap: 4px 8px; background: var(--bg2); border: 1px solid var(--border);
     border-radius: 14px; padding: 14px; cursor: pointer;
+    width: 100%; box-sizing: border-box;
   }
   .tabela-v2 tr:hover td { background: transparent; }
   .tabela-v2 tr:hover { background: var(--bg3); }
-  .tabela-v2 td { padding: 0; border: none; font-size: .9rem; }
+  .tabela-v2 td { padding: 0; border: none; font-size: .9rem; min-width: 0; }
 
   .col-num   { font-size: 1.05rem; font-weight: 900; grid-column: 1; grid-row: 1; }
   .col-date  { font-size: .8rem; color: var(--text2); grid-column: 1; grid-row: 2; }
@@ -1175,7 +1176,11 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .det-body { grid-template-columns: 1fr 240px; }
   .det-modal-header { padding: 1.25rem 1.4rem 1rem; }
   .det-section-block { padding: 1rem 1.25rem; }
-  .det-actions { padding: .875rem 1.25rem; }
+  .det-actions { padding: .875rem 1.25rem; gap: .5rem; flex-direction: column; align-items: stretch; }
+  .det-btn-fechar { text-align: center; justify-content: center; }
+  .det-actions-right { gap: .4rem; width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .det-btn-editar, .det-btn-loc-dev, .det-btn-loc-taxa,
+  .det-btn-print, .det-btn-nfce { font-size: .82rem; padding: .55rem .95rem; }
 }
 
 /* ── MOBILE APENAS ≤ 700px ───────────────────── */
