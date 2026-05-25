@@ -1103,48 +1103,74 @@ onUnmounted(() => { clearTimeout(toastTimer); });
 [data-theme="light"] .sel-input-v2:focus { border-color: #6366f1; }
 [data-theme="light"] .date-input-v2 { color: #111827; }
 
-/* ── DESKTOP COMPACTO ≤ 1100px ─────────────────── */
-@media (min-width: 701px) and (max-width: 1100px) {
+/* ── DESKTOP COMPACTO 901-1100px ─────────────── */
+@media (min-width: 901px) and (max-width: 1100px) {
   .filtros-bar { gap: .75rem; padding: .875rem 1rem; }
   .search-group { min-width: 180px; }
   .date-input-v2 { width: 108px; }
   .sel-input-v2 { min-width: 130px; font-size: .85rem; padding: .65rem .85rem; }
   .btn-refresh, .btn-clear { width: 44px; height: 44px; }
 
-  /* Tabela: padding menor, fonte menor */
   .tabela-v2 th { padding: .75rem .65rem; font-size: .68rem; }
   .tabela-v2 td { padding: .75rem .65rem; font-size: .88rem; }
 
-  /* Ocultar coluna NFC-e (8ª) */
+  /* Ocultar coluna NFC-e */
   .tabela-v2 th:nth-child(8),
   .tabela-v2 td:has(.nfce-status) { display: none; }
 
-  /* Modal: evitar colar nas bordas */
   .det-modal { max-width: 780px; }
 }
 
-/* ── DESKTOP MUITO COMPACTO ≤ 900px ─────────────── */
-@media (min-width: 701px) and (max-width: 900px) {
-  /* Busca em linha própria, filtros abaixo */
-  .filtros-bar { flex-direction: column; align-items: stretch; gap: .65rem; padding: .75rem; }
+/* ── TABLET + MOBILE ≤ 900px: tabela vira cards ─── */
+@media (max-width: 900px) {
+
+  /* Filtros compactos */
+  .filtros-bar { gap: .65rem; padding: .75rem; }
   .search-group { min-width: unset; }
   .filter-group { gap: .5rem; flex-wrap: wrap; }
-  .date-input-v2 { width: 98px; font-size: .82rem; }
   .date-range-group { height: 44px; padding: 0 10px; }
+  .date-input-v2 { width: 98px; font-size: .82rem; }
   .sel-input-v2 { flex: 1; min-width: 110px; font-size: .82rem; padding: .6rem .75rem; }
   .btn-refresh, .btn-clear { width: 42px; height: 42px; flex-shrink: 0; }
 
-  /* Tabela: ocultar também Vendedor (4ª) */
-  .tabela-v2 th:nth-child(4),
-  .col-op { display: none; }
-  .tabela-v2 th { padding: .65rem .55rem; }
-  .tabela-v2 td { padding: .65rem .55rem; }
+  /* Tabela → cards */
+  .tabela-container { background: transparent; border: none; border-radius: 0; gap: 10px; }
+  .tabela-v2 { display: flex; flex-direction: column; gap: 10px; }
+  .tabela-v2 thead { display: none; }
+  .tabela-v2 tbody { display: flex; flex-direction: column; gap: 10px; }
+  .tabela-v2 tr {
+    display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto;
+    gap: 4px 8px; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px; cursor: pointer;
+  }
+  .tabela-v2 tr:hover td { background: transparent; }
+  .tabela-v2 tr:hover { background: var(--bg3); }
+  .tabela-v2 td { padding: 0; border: none; font-size: .9rem; }
 
-  /* Actions: botões menores */
-  .action-btn { width: 30px; height: 30px; }
-  .action-btn .material-symbols-outlined { font-size: 15px; }
+  .col-num   { font-size: 1.05rem; font-weight: 900; grid-column: 1; grid-row: 1; }
+  .col-date  { font-size: .8rem; color: var(--text2); grid-column: 1; grid-row: 2; }
+  .col-client {
+    font-size: .88rem; grid-column: 1; grid-row: 3; color: var(--text2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 200px);
+  }
+  .col-op    { display: none; }
+  .col-total { font-size: 1.05rem; font-weight: 900; color: #10b981; grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap; }
 
-  /* Modal compacto */
+  .tabela-v2 td:has(.type-pill)     { grid-column: 2; grid-row: 2; text-align: right; }
+  .tabela-v2 td:has(.status-badge)  { grid-column: 2; grid-row: 3; text-align: right; }
+  .tabela-v2 td:has(.nfce-status)   { display: none; }
+  .tabela-v2 td:has(.actions-group) {
+    grid-column: 1 / -1; grid-row: 4;
+    border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px;
+  }
+  .actions-group { justify-content: flex-start; flex-wrap: wrap; gap: .4rem; }
+
+  /* Paginação */
+  .pagination-bar { gap: 1.25rem; padding: 1rem; }
+  .pag-btn { padding: .5rem .9rem; font-size: .82rem; }
+  .pag-info { font-size: .85rem; }
+
+  /* Modal */
   .det-modal { max-width: 680px; }
   .det-body { grid-template-columns: 1fr 240px; }
   .det-modal-header { padding: 1.25rem 1.4rem 1rem; }
@@ -1152,17 +1178,14 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .det-actions { padding: .875rem 1.25rem; }
 }
 
-/* ── MOBILE ──────────────────────────────────── */
+/* ── MOBILE APENAS ≤ 700px ───────────────────── */
 @media (max-width: 700px) {
 
   /* Header */
   .page-title { font-size: 1.25rem; }
 
-  /* Filtros */
+  /* Filtros: data ocupa linha inteira, select + botões abaixo */
   .filtros-bar { flex-direction: column; gap: .75rem; padding: .75rem; }
-  .search-group { min-width: unset; }
-
-  /* Grid: data (linha inteira) + select + 2 botões */
   .filter-group {
     display: grid;
     grid-template-columns: 1fr 42px 42px;
@@ -1182,44 +1205,9 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .sel-input-v2 { font-size: .82rem; padding: .6rem .75rem; min-width: unset; grid-column: 1; }
   .btn-refresh, .btn-clear { width: 42px; height: 42px; border-radius: 10px; }
 
-  /* Lista de vendas → cards */
-  .tabela-container { background: transparent; border: none; border-radius: 0; gap: 10px; }
-  .tabela-v2 { display: flex; flex-direction: column; gap: 10px; }
-  .tabela-v2 thead { display: none; }
-  .tabela-v2 tbody { display: flex; flex-direction: column; gap: 10px; }
-  .tabela-v2 tr {
-    display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto;
-    gap: 4px 8px; background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 14px; padding: 14px; cursor: pointer;
-  }
-  .tabela-v2 tr:hover td { background: transparent; }
-  .tabela-v2 tr:hover { background: var(--bg3); }
-  .tabela-v2 td { padding: 0; border: none; font-size: .88rem; }
+  .col-client { max-width: calc(100vw - 180px); }
 
-  .col-num    { font-size: 1rem; font-weight: 900; grid-column: 1; grid-row: 1; }
-  .col-date   { font-size: .78rem; color: var(--text2); grid-column: 1; grid-row: 2; }
-  .col-client {
-    font-size: .85rem; grid-column: 1; grid-row: 3; color: var(--text2);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 180px);
-  }
-  .col-op   { display: none; }
-  .col-total { font-size: 1rem; font-weight: 900; color: #10b981; grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap; }
-
-  .tabela-v2 td:has(.type-pill)    { grid-column: 2; grid-row: 2; text-align: right; }
-  .tabela-v2 td:has(.status-badge) { grid-column: 2; grid-row: 3; text-align: right; }
-  .tabela-v2 td:has(.nfce-status)  { display: none; }
-  .tabela-v2 td:has(.actions-group) {
-    grid-column: 1 / -1; grid-row: 4;
-    border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px;
-  }
-  .actions-group { justify-content: flex-start; }
-
-  /* Paginação */
-  .pagination-bar { gap: 1rem; padding: 1rem; }
-  .pag-btn { padding: .5rem .9rem; font-size: .8rem; }
-  .pag-info { font-size: .82rem; }
-
-  /* Modal de detalhe — bottom sheet */
+  /* Modal → bottom sheet */
   .modal-bg { padding: 0; align-items: flex-end; }
   .det-modal { max-width: 100%; width: 100%; max-height: 96vh; border-radius: 20px 20px 0 0; }
 
@@ -1240,7 +1228,7 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .det-section-block + .det-section-block { border-left: none; border-top: 1px solid var(--border); }
   .det-pag-block { background: var(--bg3); }
 
-  /* Tabela de itens → cards empilhados */
+  /* Itens do modal → cards */
   .det-table { display: block; }
   .det-table thead { display: none; }
   .det-table tbody { display: flex; flex-direction: column; gap: 8px; }
@@ -1258,12 +1246,10 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .det-table td:nth-child(4) { grid-column: 1; font-size: .82rem; text-align: left; }
   .det-table td:nth-child(5) { grid-column: 2; grid-row: 2 / 5; align-self: center; font-size: 1rem; }
 
-  /* Ações do modal — fechar ocupa linha inteira, ações ficam abaixo */
+  /* Ações do modal */
   .det-actions { padding: .75rem 1rem; gap: .5rem; flex-direction: column; align-items: stretch; }
   .det-btn-fechar { text-align: center; justify-content: center; }
-  .det-actions-right {
-    gap: .4rem; width: 100%; justify-content: flex-start; flex-wrap: wrap;
-  }
+  .det-actions-right { gap: .4rem; width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   .det-btn-editar, .det-btn-loc-dev, .det-btn-loc-taxa,
   .det-btn-print, .det-btn-nfce { font-size: .8rem; padding: .55rem .9rem; }
 
