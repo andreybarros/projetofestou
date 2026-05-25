@@ -1103,6 +1103,55 @@ onUnmounted(() => { clearTimeout(toastTimer); });
 [data-theme="light"] .sel-input-v2:focus { border-color: #6366f1; }
 [data-theme="light"] .date-input-v2 { color: #111827; }
 
+/* ── DESKTOP COMPACTO ≤ 1100px ─────────────────── */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .filtros-bar { gap: .75rem; padding: .875rem 1rem; }
+  .search-group { min-width: 180px; }
+  .date-input-v2 { width: 108px; }
+  .sel-input-v2 { min-width: 130px; font-size: .85rem; padding: .65rem .85rem; }
+  .btn-refresh, .btn-clear { width: 44px; height: 44px; }
+
+  /* Tabela: padding menor, fonte menor */
+  .tabela-v2 th { padding: .75rem .65rem; font-size: .68rem; }
+  .tabela-v2 td { padding: .75rem .65rem; font-size: .88rem; }
+
+  /* Ocultar coluna NFC-e (8ª) */
+  .tabela-v2 th:nth-child(8),
+  .tabela-v2 td:has(.nfce-status) { display: none; }
+
+  /* Modal: evitar colar nas bordas */
+  .det-modal { max-width: 780px; }
+}
+
+/* ── DESKTOP MUITO COMPACTO ≤ 900px ─────────────── */
+@media (min-width: 701px) and (max-width: 900px) {
+  /* Busca em linha própria, filtros abaixo */
+  .filtros-bar { flex-direction: column; align-items: stretch; gap: .65rem; padding: .75rem; }
+  .search-group { min-width: unset; }
+  .filter-group { gap: .5rem; flex-wrap: wrap; }
+  .date-input-v2 { width: 98px; font-size: .82rem; }
+  .date-range-group { height: 44px; padding: 0 10px; }
+  .sel-input-v2 { flex: 1; min-width: 110px; font-size: .82rem; padding: .6rem .75rem; }
+  .btn-refresh, .btn-clear { width: 42px; height: 42px; flex-shrink: 0; }
+
+  /* Tabela: ocultar também Vendedor (4ª) */
+  .tabela-v2 th:nth-child(4),
+  .col-op { display: none; }
+  .tabela-v2 th { padding: .65rem .55rem; }
+  .tabela-v2 td { padding: .65rem .55rem; }
+
+  /* Actions: botões menores */
+  .action-btn { width: 30px; height: 30px; }
+  .action-btn .material-symbols-outlined { font-size: 15px; }
+
+  /* Modal compacto */
+  .det-modal { max-width: 680px; }
+  .det-body { grid-template-columns: 1fr 240px; }
+  .det-modal-header { padding: 1.25rem 1.4rem 1rem; }
+  .det-section-block { padding: 1rem 1.25rem; }
+  .det-actions { padding: .875rem 1.25rem; }
+}
+
 /* ── MOBILE ──────────────────────────────────── */
 @media (max-width: 700px) {
 
