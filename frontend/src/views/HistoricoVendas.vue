@@ -1125,7 +1125,7 @@ onUnmounted(() => { clearTimeout(toastTimer); });
 @media (max-width: 900px) {
 
   /* Filtros compactos */
-  .filtros-bar { gap: .65rem; padding: .75rem; }
+  .filtros-bar { flex-direction: column; gap: .65rem; padding: .75rem; }
   .search-group { min-width: unset; }
   .filter-group { gap: .5rem; flex-wrap: wrap; }
   .date-range-group { height: 44px; padding: 0 10px; }
@@ -1134,7 +1134,7 @@ onUnmounted(() => { clearTimeout(toastTimer); });
   .btn-refresh, .btn-clear { width: 42px; height: 42px; flex-shrink: 0; }
 
   /* Tabela → cards */
-  .tabela-container { background: transparent; border: none; border-radius: 0; gap: 10px; }
+  .tabela-container { background: transparent; border: none; border-radius: 0; overflow: visible; gap: 10px; }
   .tabela-v2 { display: flex; flex-direction: column; gap: 10px; }
   .tabela-v2 thead { display: none; }
   .tabela-v2 tbody { display: flex; flex-direction: column; gap: 10px; }
