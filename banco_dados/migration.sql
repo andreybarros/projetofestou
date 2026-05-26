@@ -1128,12 +1128,36 @@ CREATE TABLE IF NOT EXISTS pedidos_compra (
 );
 
 CREATE TABLE IF NOT EXISTS pedidos_compra_itens (
-  pk             bigserial PRIMARY KEY,
-  pedido_pk      bigint REFERENCES pedidos_compra(pk),
-  produto_pk     bigint REFERENCES produtos(pk),
-  quantidade     numeric(12,3) DEFAULT 0,
-  preco_unitario numeric(12,2) DEFAULT 0
+  pk              bigserial PRIMARY KEY,
+  pedido_pk       bigint REFERENCES pedidos_compra(pk),
+  produto_pk      bigint REFERENCES produtos(pk),
+  descricao_livre text,
+  quantidade      numeric(12,3) DEFAULT 0,
+  preco_unitario  numeric(12,2) DEFAULT 0
 );
+
+ALTER TABLE pedidos_compra_itens ADD COLUMN IF NOT EXISTS descricao_livre text;
+
+ALTER TABLE pedidos_compra ADD COLUMN IF NOT EXISTS nf_numero text;
+ALTER TABLE pedidos_compra ADD COLUMN IF NOT EXISTS nf_serie text;
+ALTER TABLE pedidos_compra ADD COLUMN IF NOT EXISTS nf_chave text;
+ALTER TABLE pedidos_compra ADD COLUMN IF NOT EXISTS nf_fornecedor text;
+ALTER TABLE pedidos_compra ADD COLUMN IF NOT EXISTS nf_data_entrada date;
+ALTER TABLE pedidos_compra ADD COLUMN IF NOT EXISTS nf_valor numeric(12,2);
+
+ALTER TABLE pedidos_compra ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='pedidos_compra' AND policyname='pedidos_compra_all') THEN
+    CREATE POLICY "pedidos_compra_all" ON pedidos_compra USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+ALTER TABLE pedidos_compra_itens ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='pedidos_compra_itens' AND policyname='pedidos_compra_itens_all') THEN
+    CREATE POLICY "pedidos_compra_itens_all" ON pedidos_compra_itens USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 ALTER TABLE operadores ADD COLUMN IF NOT EXISTS acesso_pedidos_compra boolean DEFAULT false;
 

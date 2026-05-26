@@ -36,6 +36,7 @@ const rotasPermissoes = {
   'PUT /api/pedidos-compra/:pk':                   'acesso_pedidos_compra',
   'PATCH /api/pedidos-compra/:pk/status':          'acesso_pedidos_compra',
   'DELETE /api/pedidos-compra/:pk':                'acesso_pedidos_compra',
+  'POST /api/pedidos-compra/:pk/entrada':          'acesso_pedidos_compra',
   'GET /api/contas-receber':                       'acesso_receitas',
   'PATCH /api/contas-receber/:pk/receber':         'acesso_receitas',
   'PATCH /api/contas-receber/:pk/desfazer':        'acesso_receitas',
@@ -92,6 +93,9 @@ async function permissoesMiddleware(req, res, next) {
   }
   if (rotaKey.match(/^DELETE \/api\/pedidos-compra\/\d+$/)) {
     rotaKey = 'DELETE /api/pedidos-compra/:pk';
+  }
+  if (rotaKey.match(/^POST \/api\/pedidos-compra\/\d+\/entrada$/)) {
+    rotaKey = 'POST /api/pedidos-compra/:pk/entrada';
   }
   if (rotaKey.match(/^DELETE \/api\/pdv\/produto\/\d+$/)) {
     rotaKey = 'DELETE /api/pdv/produto/:pk';

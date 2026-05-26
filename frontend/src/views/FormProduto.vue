@@ -4,11 +4,11 @@
     <!-- ── Header ─────────────────────────────────────────────── -->
     <div class="fp-header">
       <div class="fp-breadcrumb">
-        <button class="fp-back" @click="$router.push('/produtos')">
+        <button class="fp-back" @click="$router.push(rotaVoltar)">
           <span class="material-symbols-outlined">arrow_back</span>
         </button>
         <span class="fp-crumb-sep">/</span>
-        <span class="fp-crumb-link" @click="$router.push('/produtos')">Produtos</span>
+        <span class="fp-crumb-link" @click="$router.push(rotaVoltar)">{{ route.query.pedido_pk ? 'Pedido de Compra' : 'Produtos' }}</span>
         <span class="fp-crumb-sep">/</span>
         <span class="fp-crumb-current">{{ pk ? form.descricao || 'Editar Produto' : 'Novo Produto' }}</span>
       </div>
@@ -224,7 +224,7 @@
 
       <!-- ── Ações ─────────────────────────────────────────────── -->
       <div class="fp-actions">
-        <button type="button" class="fp-btn-cancel" @click="$router.push('/produtos')">Cancelar</button>
+        <button type="button" class="fp-btn-cancel" @click="$router.push(rotaVoltar)">Cancelar</button>
         <button type="submit" class="fp-btn-save" :disabled="salvando">
           <span v-if="salvando" class="fp-spin-xs"></span>
           <span class="material-symbols-outlined" v-else style="font-size:18px">save</span>
@@ -249,6 +249,10 @@ const sessaoStore = useSessaoStore();
 const pk         = route.params.pk || null;
 const carregando = ref(!!pk);
 const salvando   = ref(false);
+
+const rotaVoltar = route.query.pedido_pk
+  ? `/pedidos-compra/${route.query.pedido_pk}/editar`
+  : '/produtos';
 const erro       = ref('');
 const categorias = ref([]);
 const armazens   = ref([]);
@@ -346,6 +350,9 @@ onMounted(async () => {
     const filialPk = sessaoStore.filial?.pk || null;
     const { data: cod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
     form.value.codigo = cod || '0001';
+    if (route.query.descricao) {
+      form.value.descricao = String(route.query.descricao);
+    }
   }
 
   if (pk) {
@@ -400,21 +407,34 @@ async function salvar() {
       promo_fim:    form.value.promo_fim    ? new Date(form.value.promo_fim).toISOString()    : null,
     };
 
-    let error;
+    let error, novoPk;
     if (pk) {
       ({ error } = await supabase.from('produtos').update(payload).eq('pk', Number(pk)));
     } else {
-      ({ error } = await supabase.from('produtos').insert(payload));
+      let inserted;
+      ({ data: inserted, error } = await supabase.from('produtos').insert(payload).select('pk').single());
       if (error?.code === '23505' && error.message.includes('codigo')) {
         const filialPk = sessaoStore.filial?.pk || null;
         const { data: novoCod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
         payload.codigo = novoCod || payload.codigo;
         form.value.codigo = payload.codigo;
-        ({ error } = await supabase.from('produtos').insert(payload));
+        ({ data: inserted, error } = await supabase.from('produtos').insert(payload).select('pk').single());
       }
+      novoPk = inserted?.pk;
     }
     if (error) throw error;
-    router.push('/produtos');
+
+    const pedidoItemPk = route.query.pedido_item_pk;
+    const pedidoPk    = route.query.pedido_pk;
+    if (!pk && novoPk && pedidoItemPk) {
+      await supabase
+        .from('pedidos_compra_itens')
+        .update({ produto_pk: novoPk, descricao_livre: null })
+        .eq('pk', Number(pedidoItemPk));
+      router.push(pedidoPk ? `/pedidos-compra/${pedidoPk}/editar` : '/pedidos-compra');
+    } else {
+      router.push('/produtos');
+    }
   } catch (e) {
     erro.value = e.message;
   } finally {

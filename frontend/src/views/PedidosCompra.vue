@@ -29,26 +29,6 @@
       </button>
     </div>
 
-    <!-- Alerta: produtos com estoque zerado -->
-    <div v-if="produtosZerados.length" class="alerta-estoque" :class="{ collapsed: alertaRecolhido }">
-      <div class="alerta-header" @click="alertaRecolhido = !alertaRecolhido">
-        <span class="material-symbols-outlined alerta-ico">warning</span>
-        <span class="alerta-titulo">
-          {{ produtosZerados.length }} produto{{ produtosZerados.length !== 1 ? 's' : '' }} com estoque zerado ou negativo
-        </span>
-        <span class="material-symbols-outlined alerta-chevron">
-          {{ alertaRecolhido ? 'expand_more' : 'expand_less' }}
-        </span>
-      </div>
-      <div v-if="!alertaRecolhido" class="alerta-lista">
-        <div v-for="p in produtosZerados" :key="p.pk" class="alerta-item">
-          <span class="alerta-cod">{{ p.codigo || '—' }}</span>
-          <span class="alerta-desc">{{ p.descricao }}</span>
-          <span :class="['alerta-saldo', p.saldo < 0 ? 'negativo' : 'zero']">{{ p.saldo }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Loading -->
     <div v-if="carregando" class="state-center"><span class="spin"></span></div>
 
@@ -67,7 +47,6 @@
             <th>Fornecedor</th>
             <th class="text-center">Itens</th>
             <th>Status</th>
-            <th>NF Entrada</th>
             <th>Data</th>
             <th class="text-right">Ações</th>
           </tr>
@@ -83,13 +62,6 @@
               <span :class="['badge-status', `bs-${p.status}`]">
                 {{ labelStatus(p.status) }}
               </span>
-            </td>
-            <td class="td-nf">
-              <template v-if="p.nf_numero">
-                <span class="nf-num">NF {{ p.nf_numero }}</span>
-                <span class="nf-forn">{{ p.nf_fornecedor || '—' }}</span>
-              </template>
-              <span v-else class="muted-dash">—</span>
             </td>
             <td class="text-muted">{{ fmtData(p.criado_em) }}</td>
             <td class="text-right">
@@ -139,7 +111,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import api from '../services/api';
-import { supabase } from '../composables/useSupabase';
 
 const router = useRouter();
 const sessaoStore = useSessaoStore();
@@ -154,11 +125,9 @@ const STATUS_TABS = [
 
 const STATUS_OPCOES = STATUS_TABS.filter(s => s.val !== '');
 
-const lista          = ref([]);
-const produtosZerados = ref([]);
-const carregando     = ref(true);
-const filtroStatus   = ref('');
-const alertaRecolhido = ref(false);
+const lista            = ref([]);
+const carregando       = ref(true);
+const filtroStatus     = ref('');
 const statusMenuAberto = ref(null);
 const toastMsg  = ref('');
 const toastTipo = ref('ok');
@@ -172,7 +141,6 @@ const contagemStatus = computed(() => {
 
 onMounted(() => {
   carregar();
-  carregarEstoqueZerado();
   document.addEventListener('click', fecharMenus);
 });
 
@@ -200,18 +168,6 @@ async function carregar() {
   } finally {
     carregando.value = false;
   }
-}
-
-async function carregarEstoqueZerado() {
-  const fil = sessaoStore.filial?.pk;
-  if (!fil) return;
-  const { data } = await supabase
-    .from('produtos')
-    .select('pk, codigo, descricao, saldo')
-    .eq('filial_pk', fil)
-    .lte('saldo', 0)
-    .order('descricao');
-  produtosZerados.value = data || [];
 }
 
 async function atualizarStatus(pedido, novoStatus) {
@@ -281,23 +237,8 @@ function showToast(msg, tipo = 'ok') {
 .stab-count { background: rgba(255,255,255,.2); border-radius: 10px; font-size: 11px; padding: 1px 7px; }
 .stab:not(.active) .stab-count { background: var(--bg3); color: var(--text2); }
 
-/* Alerta estoque */
-.alerta-estoque { background: rgba(251,146,60,.07); border: 1px solid rgba(251,146,60,.35); border-radius: 12px; overflow: hidden; }
-.alerta-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; }
-.alerta-ico { color: #fb923c; font-size: 20px; }
-.alerta-titulo { flex: 1; font-size: 13px; font-weight: 700; color: var(--text); }
-.alerta-chevron { color: var(--text2); font-size: 20px; }
-.alerta-lista { border-top: 1px solid rgba(251,146,60,.2); max-height: 240px; overflow-y: auto; }
-.alerta-item { display: grid; grid-template-columns: 70px 1fr 60px; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.alerta-item:last-child { border-bottom: none; }
-.alerta-cod { font-family: monospace; font-size: 12px; color: var(--text2); }
-.alerta-desc { color: var(--text); }
-.alerta-saldo { text-align: right; font-weight: 800; font-family: monospace; }
-.alerta-saldo.zero { color: #fb923c; }
-.alerta-saldo.negativo { color: #f87171; }
-
 /* Tabela */
-.tabela-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.tabela-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: visible; }
 .tabela { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
 .tabela th { background: var(--bg3); padding: 10px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2); border-bottom: 1px solid var(--border); }
 .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -323,11 +264,6 @@ function showToast(msg, tipo = 'ok') {
 [data-theme="light"] .bs-comprado     { color: #9a3412; }
 [data-theme="light"] .bs-cancelado    { color: #b91c1c; }
 [data-theme="light"] .bs-finalizado   { color: #15803d; }
-
-/* NF */
-.td-nf { display: flex; flex-direction: column; }
-.nf-num  { font-size: 12px; font-weight: 700; color: var(--text); font-family: monospace; }
-.nf-forn { font-size: 11px; color: var(--text2); }
 
 /* Ações */
 .acoes { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }

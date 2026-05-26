@@ -4,6 +4,16 @@ const express  = require('express');
 const router   = express.Router();
 const supabase = require('../supabase');
 
+async function insertItens(rows) {
+  const { error } = await supabase.from('pedidos_compra_itens').insert(rows);
+  if (error) {
+    // fallback sem descricao_livre caso a coluna ainda não exista no banco
+    const rowsSem = rows.map(({ descricao_livre, ...r }) => r);
+    const { error: err2 } = await supabase.from('pedidos_compra_itens').insert(rowsSem);
+    if (err2) throw err2;
+  }
+}
+
 // ── GET / — listar pedidos da filial ────────────────────────────
 router.get('/', async (req, res) => {
   try {
@@ -12,7 +22,7 @@ router.get('/', async (req, res) => {
 
     let q = supabase
       .from('pedidos_compra')
-      .select('pk, numero, status, observacao, nf_numero, nf_fornecedor, nf_data_entrada, nf_valor, criado_em, fornecedores(pk, nome)')
+      .select('pk, numero, status, observacao, criado_em, fornecedores(pk, nome)')
       .eq('filial_pk', filial_pk)
       .eq('ativo', true)
       .order('criado_em', { ascending: false });
@@ -58,13 +68,46 @@ router.get('/:pk', async (req, res) => {
       .single();
     if (error) throw error;
 
-    const { data: itens } = await supabase
+    // Busca itens sem FK join para evitar falha caso constraint não exista
+    let { data: itens, error: errItens } = await supabase
       .from('pedidos_compra_itens')
-      .select('pk, quantidade, preco_unitario, produtos(pk, descricao, codigo, saldo, unidade)')
+      .select('pk, produto_pk, quantidade, preco_unitario, descricao_livre')
       .eq('pedido_pk', pk)
       .order('pk');
 
-    return res.json({ ok: true, data: { ...pedido, itens: itens || [] } });
+    if (errItens) {
+      console.error('[PedidosCompra/GET/:pk/itens]', errItens.message);
+      // descricao_livre pode não existir ainda no banco
+      const res2 = await supabase
+        .from('pedidos_compra_itens')
+        .select('pk, produto_pk, quantidade, preco_unitario')
+        .eq('pedido_pk', pk)
+        .order('pk');
+      if (res2.error) console.error('[PedidosCompra/GET/:pk/itens-fallback]', res2.error.message);
+      itens = res2.data;
+    }
+
+    // Busca dados dos produtos em query separada
+    const prodPks = [...new Set((itens || []).map(i => i.produto_pk).filter(Boolean))];
+    console.log('[PedidosCompra/GET/:pk] prodPks:', prodPks, '| total itens:', (itens || []).length);
+
+    let produtosMap = {};
+    if (prodPks.length) {
+      const { data: prods, error: errProds } = await supabase
+        .from('produtos')
+        .select('pk, descricao, codigo, saldo')
+        .in('pk', prodPks);
+      if (errProds) console.error('[PedidosCompra/GET/:pk/produtos]', errProds.message);
+      console.log('[PedidosCompra/GET/:pk] prods retornados:', (prods || []).length);
+      (prods || []).forEach(p => { produtosMap[p.pk] = p; });
+    }
+
+    const itensFormatados = (itens || []).map(it => ({
+      ...it,
+      produtos: produtosMap[it.produto_pk] || null,
+    }));
+
+    return res.json({ ok: true, data: { ...pedido, itens: itensFormatados } });
   } catch (err) {
     console.error('[PedidosCompra/GET/:pk]', err.message);
     return res.status(500).json({ erro: err.message });
@@ -94,13 +137,13 @@ router.post('/', async (req, res) => {
 
     if (itens?.length) {
       const rows = itens.map(it => ({
-        pedido_pk:      pedido.pk,
-        produto_pk:     it.produto_pk,
-        quantidade:     parseFloat(it.quantidade     || 0),
-        preco_unitario: parseFloat(it.preco_unitario || 0),
+        pedido_pk:       pedido.pk,
+        produto_pk:      it.produto_pk      || null,
+        descricao_livre: it.descricao_livre || null,
+        quantidade:      parseFloat(it.quantidade     || 0),
+        preco_unitario:  parseFloat(it.preco_unitario || 0),
       }));
-      const { error: errItens } = await supabase.from('pedidos_compra_itens').insert(rows);
-      if (errItens) throw errItens;
+      await insertItens(rows);
     }
 
     return res.json({ ok: true, data: pedido });
@@ -144,13 +187,13 @@ router.put('/:pk', async (req, res) => {
 
     if (itens?.length) {
       const rows = itens.map(it => ({
-        pedido_pk:      Number(pk),
-        produto_pk:     it.produto_pk,
-        quantidade:     parseFloat(it.quantidade     || 0),
-        preco_unitario: parseFloat(it.preco_unitario || 0),
+        pedido_pk:       Number(pk),
+        produto_pk:      it.produto_pk      || null,
+        descricao_livre: it.descricao_livre || null,
+        quantidade:      parseFloat(it.quantidade     || 0),
+        preco_unitario:  parseFloat(it.preco_unitario || 0),
       }));
-      const { error: errItens } = await supabase.from('pedidos_compra_itens').insert(rows);
-      if (errItens) throw errItens;
+      await insertItens(rows);
     }
 
     return res.json({ ok: true, data: pedido });
@@ -180,6 +223,56 @@ router.patch('/:pk/status', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('[PedidosCompra/PATCH/status]', err.message);
+    return res.status(500).json({ erro: err.message });
+  }
+});
+
+// ── POST /:pk/entrada — dar entrada no estoque ─────────────────
+router.post('/:pk/entrada', async (req, res) => {
+  try {
+    const { pk } = req.params;
+    const { modo, nf_numero, nf_serie, nf_chave, nf_fornecedor, nf_data_entrada, nf_valor } = req.body;
+
+    const { data: itens, error: errItens } = await supabase
+      .from('pedidos_compra_itens')
+      .select('produto_pk, quantidade')
+      .eq('pedido_pk', pk)
+      .not('produto_pk', 'is', null);
+    if (errItens) throw errItens;
+
+    let atualizados = 0;
+    for (const it of itens || []) {
+      const { data: prod, error: errProd } = await supabase
+        .from('produtos')
+        .select('saldo')
+        .eq('pk', it.produto_pk)
+        .single();
+      if (errProd || !prod) continue;
+
+      const { error: errUpd } = await supabase
+        .from('produtos')
+        .update({ saldo: (prod.saldo || 0) + parseFloat(it.quantidade || 0) })
+        .eq('pk', it.produto_pk);
+      if (!errUpd) atualizados++;
+    }
+
+    const novoStatus = modo === 'com_nf' ? 'finalizado' : 'comprado';
+    const payload = { status: novoStatus };
+    if (modo === 'com_nf') {
+      if (nf_numero)      payload.nf_numero      = nf_numero;
+      if (nf_serie)       payload.nf_serie       = nf_serie;
+      if (nf_chave)       payload.nf_chave       = nf_chave;
+      if (nf_fornecedor)  payload.nf_fornecedor  = nf_fornecedor;
+      if (nf_data_entrada) payload.nf_data_entrada = nf_data_entrada;
+      if (nf_valor)       payload.nf_valor       = parseFloat(nf_valor);
+    }
+
+    const { error: errPed } = await supabase.from('pedidos_compra').update(payload).eq('pk', pk);
+    if (errPed) throw errPed;
+
+    return res.json({ ok: true, qtd_itens: atualizados });
+  } catch (err) {
+    console.error('[PedidosCompra/POST/entrada]', err.message);
     return res.status(500).json({ erro: err.message });
   }
 });
