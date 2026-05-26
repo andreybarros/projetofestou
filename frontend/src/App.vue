@@ -19,7 +19,7 @@
 
         <!-- Brand Header -->
         <div class="drawer-header">
-          <div class="drawer-brand">
+          <div class="drawer-brand" @click="$router.push('/')" style="cursor:pointer">
             <img src="/img/logo_fundo_transp.png" alt="BarroStock" class="brand-logo-img" />
           </div>
           <button class="drawer-close lg-hide" @click="fecharSidebar">
@@ -247,27 +247,6 @@
           <div class="topbar-right">
             <!-- Badge de filial + toggle tema -->
             <div class="filial-area" v-if="sessao.filial">
-              <div class="filial-switch-wrap" ref="filialMenuRef">
-                <button class="filial-badge filial-badge-btn" @click="filialMenuAberto = !filialMenuAberto" :title="'Trocar filial'">
-                  <span class="sm-hide">{{ sessao.filial.codigo }} · {{ sessao.filial.nome }}</span>
-                  <span class="lg-hide">{{ sessao.filial.codigo }}</span>
-                  <span class="material-symbols-outlined" style="font-size:14px;opacity:.6;margin-left:4px">unfold_more</span>
-                </button>
-                <Transition name="dropdown">
-                  <div v-if="filialMenuAberto" class="filial-dropdown">
-                    <div class="filial-drop-title">Trocar Filial</div>
-                    <button
-                      v-for="f in todasFiliais"
-                      :key="f.pk"
-                      :class="['filial-drop-item', { active: f.pk === sessao.filial?.pk }]"
-                      @click="trocarFilial(f)"
-                    >
-                      <span class="material-symbols-outlined" style="font-size:16px">{{ f.pk === sessao.filial?.pk ? 'radio_button_checked' : 'radio_button_unchecked' }}</span>
-                      [{{ f.codigo }}] {{ f.nome }}
-                    </button>
-                  </div>
-                </Transition>
-              </div>
               <button class="tema-toggle" @click="toggleTema" :title="tema === 'dark' ? 'Mudar para Light' : 'Mudar para Dark'">
                 <span class="material-symbols-outlined">{{ tema === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
               </button>
@@ -1096,8 +1075,8 @@ body {
   cursor: pointer; transition: all .15s;
 }
 .filial-badge-btn:hover { background: rgba(255,255,255,.1); color: var(--text); border-color: var(--primary); }
-[data-theme="light"] .filial-badge-btn { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.12); color: var(--text); }
-[data-theme="light"] .filial-badge-btn:hover { background: rgba(0,0,0,.1); color: var(--text); border-color: var(--primary-c); }
+[data-theme="light"] .filial-badge-btn { background: #fff; border-color: rgba(0,0,0,.18); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+[data-theme="light"] .filial-badge-btn:hover { background: #fff; border-color: var(--primary); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
 
 .filial-dropdown {
   position: absolute; top: calc(100% + 8px); right: 0;
@@ -1190,9 +1169,11 @@ body {
 /* Filial + tema */
 .filial-area   { display: flex; align-items: center; gap: 6px; }
 .filial-badge  { padding: 4px 12px; background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--text2); }
-.tema-toggle   { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text2); cursor: pointer; padding: 4px 6px; display: flex; align-items: center; transition: all .15s; }
+.tema-toggle { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text2); cursor: pointer; padding: 4px 6px; display: flex; align-items: center; transition: all .15s; }
 .tema-toggle:hover { background: rgba(255,255,255,.06); color: var(--text); border-color: var(--primary); }
 .tema-toggle .material-symbols-outlined { font-size: 18px; }
+[data-theme="light"] .tema-toggle { background: #fff; border-color: rgba(0,0,0,.15); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
+[data-theme="light"] .tema-toggle:hover { background: #fff; border-color: var(--primary); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
 
 /* User menu */
 .user-menu-wrap { position: relative; }
