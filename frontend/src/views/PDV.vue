@@ -292,7 +292,7 @@
               </div>
               <div v-if="showClienteDrop && clienteResultados.length" class="cliente-drop">
                 <button v-for="c in clienteResultados" :key="c.pk" class="cliente-drop-item" @mousedown.prevent="selecionarCliente(c)">
-                  <span class="drop-nome">{{ c.nome }}</span>
+                  <span class="drop-nome">{{ c.nome }}<span v-if="c.razao_social" class="drop-razao"> · {{ c.razao_social }}</span></span>
                   <span class="drop-sub">
                     <span v-if="c.cpf">{{ c.cpf }}</span>
                     <span v-if="c.telefone"> · {{ c.telefone }}</span>
@@ -501,6 +501,11 @@
 
           <!-- ⑤ Finalizar -->
           <div class="pag-footer">
+            <div v-if="erroFinalizar" class="erro-finalizar">
+              <span class="material-symbols-outlined">error</span>
+              {{ erroFinalizar }}
+              <button class="erro-finalizar-close" @click="erroFinalizar = ''">×</button>
+            </div>
             <button class="btn-finalizar pag-btn-finalizar" :disabled="!podeFinalizar || processando" @click="finalizar">
               <span v-if="processando" class="spin-sm"></span>
               <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1007,6 +1012,7 @@ const acrescimoConfirmado = ref(false);
 const processando = ref(false);
 const emitindo    = ref(false);
 const vendaFinalizada = ref(false);
+const erroFinalizar   = ref('');
 const vendaPk     = ref(null);
 const vendaNumero = ref(null);
 const resultNfce  = ref(null);
@@ -2024,9 +2030,9 @@ async function copiarOrcamento() {
   toast(`Orçamento ${codigo} copiado! Cole o código na busca para importar.`);
 }
 
-// Detecta "ORC-XXXX" colado na barra de busca
+// Detecta "ORC-XXXX" colado na barra de busca (exige exatamente 4 dígitos)
 watch(busca, async (val) => {
-  const match = val.trim().match(/^ORC-\d+$/i);
+  const match = val.trim().match(/^ORC-\d{4}$/i);
   if (!match) return;
   busca.value = '';
   await processarImport(val.trim().toUpperCase());
@@ -2077,6 +2083,7 @@ async function processarImport(codigo) {
 async function finalizar() {
   if (!podeFinalizar.value) return;
   processando.value = true;
+  erroFinalizar.value = '';
   try {
     const payload = {
       filial_pk:      sessaoStore.filial?.pk || null,
@@ -2124,7 +2131,9 @@ async function finalizar() {
       imprimirRecibo();
     }, 500);
   } catch (e) {
-    toast('Erro: ' + (e.response?.data?.erro || e.message), 'err', 6000);
+    const msg = e.response?.data?.erro || e.message || 'Erro ao finalizar venda.';
+    erroFinalizar.value = msg;
+    toast('Erro: ' + msg, 'err', 6000);
   } finally {
     processando.value = false;
   }
@@ -2979,7 +2988,19 @@ async function emitirNFCe() {
 .pac-val { font-family: var(--mono); font-size: 13px; font-weight: 700; color: #34d399; }
 
 /* ⑤ Footer finalizar */
-.pag-footer { padding: 10px 14px 14px; flex-shrink: 0; border-top: 1px solid var(--line); }
+.pag-footer { padding: 10px 14px 14px; flex-shrink: 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.erro-finalizar {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.35);
+  border-radius: 8px; padding: 9px 12px;
+  font-size: 12.5px; font-weight: 600; color: #f87171; line-height: 1.4;
+}
+.erro-finalizar .material-symbols-outlined { font-size: 17px; flex-shrink: 0; }
+.erro-finalizar-close {
+  margin-left: auto; background: none; border: none; color: #f87171;
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; flex-shrink: 0;
+}
+.erro-finalizar-close:hover { color: #fca5a5; }
 .pag-btn-finalizar {
   width: 100%; font-size: 17px !important; padding: 15px !important;
   border-radius: 12px !important; letter-spacing: .4px;
@@ -3600,8 +3621,9 @@ async function emitirNFCe() {
 }
 .cliente-drop-item:last-child { border-bottom: none; }
 .cliente-drop-item:hover { background: rgba(255,255,255,.04); }
-.drop-nome { font-size: 13px; font-weight: 500; color: var(--text); }
-.drop-sub  { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.drop-nome  { font-size: 13px; font-weight: 500; color: var(--text); }
+.drop-razao { font-size: 12px; font-weight: 400; color: var(--text2); }
+.drop-sub   { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
 .drop-empty { display: block; padding: 12px; text-align: center; font-size: 12px; color: var(--muted); }
 
 /* Desconto */

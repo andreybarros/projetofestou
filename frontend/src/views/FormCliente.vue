@@ -19,9 +19,11 @@
             <input :value="form.codigo || '—'" type="text" readonly style="opacity:.6;cursor:not-allowed;font-family:monospace" />
           </div>
           <div class="field"><label>Nome *</label><input v-model="form.nome" type="text" required autofocus /></div>
+          <div class="field full"><label>Razão Social</label><input v-model="form.razao_social" type="text" placeholder="Para pessoa jurídica" /></div>
           <div class="field"><label>CPF / CNPJ</label><input v-model="form.cpf" type="text" placeholder="CPF ou CNPJ" maxlength="18" @input="maskDocumento" /></div>
           <div class="field"><label>Telefone</label><input v-model="form.telefone" type="text" placeholder="(92) 99999-9999" /></div>
-          <div class="field full"><label>E-mail</label><input v-model="form.email" type="email" /></div>
+          <div class="field"><label>Data de Nascimento</label><input v-model="form.data_nascimento" type="date" /></div>
+          <div class="field"><label>E-mail</label><input v-model="form.email" type="email" /></div>
 
           <div class="field">
             <label>CEP</label>
@@ -130,6 +132,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
+import api from '../services/api';
 
 const route       = useRoute();
 const router      = useRouter();
@@ -167,7 +170,7 @@ async function onEnterForm(e) {
 }
 
 const form = ref({
-  codigo: '', nome: '', cpf: '', telefone: '', email: '',
+  codigo: '', nome: '', razao_social: '', cpf: '', telefone: '', data_nascimento: '', email: '',
   cep: '', logradouro: '', numero: '', bairro: '', cidade: '', uf: '',
   decorador: false,
 });
@@ -196,15 +199,20 @@ async function buscarCep() {
   if (cep?.length !== 8) return;
   buscandoCep.value = true;
   try {
-    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-    const d = await r.json();
-    if (d.erro) return;
-    form.value.logradouro = d.logradouro || form.value.logradouro;
-    form.value.bairro     = d.bairro     || form.value.bairro;
-    form.value.cidade     = d.localidade || form.value.cidade;
-    form.value.uf         = d.uf         || form.value.uf;
-    atualizarMapa();
-  } catch { /* silencioso */ } finally {
+    const { data } = await api.get(`/api/clientes/cep/${cep}`);
+    if (data?.data) {
+      form.value.logradouro = data.data.logradouro || form.value.logradouro;
+      form.value.bairro     = data.data.bairro     || form.value.bairro;
+      form.value.cidade     = data.data.cidade     || form.value.cidade;
+      form.value.uf         = data.data.uf         || form.value.uf;
+      atualizarMapa();
+    }
+  } catch (e) {
+    if (e.response?.status === 404) {
+      erro.value = 'CEP não encontrado.';
+      setTimeout(() => { erro.value = ''; }, 3000);
+    }
+  } finally {
     buscandoCep.value = false;
   }
 }
@@ -266,19 +274,21 @@ async function salvar() {
   try {
     const nomeNovo = form.value.nome.trim();
     const payload = {
-      codigo:     form.value.codigo || null,
-      nome:       nomeNovo,
-      cpf:        form.value.cpf?.trim() || null,
-      telefone:   form.value.telefone?.trim() || null,
-      email:      form.value.email?.trim() || null,
-      decorador:  form.value.decorador || false,
-      cep:        form.value.cep?.trim() || null,
-      logradouro: form.value.logradouro?.trim() || null,
-      numero:     form.value.numero?.trim() || null,
-      bairro:     form.value.bairro?.trim() || null,
-      cidade:     form.value.cidade?.trim() || null,
-      uf:         form.value.uf?.trim()?.toUpperCase() || null,
-      filial_pk:  sessaoStore.filial?.pk || null,
+      codigo:          form.value.codigo || null,
+      nome:            nomeNovo,
+      razao_social:    form.value.razao_social?.trim() || null,
+      cpf:             form.value.cpf?.trim() || null,
+      telefone:        form.value.telefone?.trim() || null,
+      data_nascimento: form.value.data_nascimento || null,
+      email:           form.value.email?.trim() || null,
+      decorador:       form.value.decorador || false,
+      cep:             form.value.cep?.trim() || null,
+      logradouro:      form.value.logradouro?.trim() || null,
+      numero:          form.value.numero?.trim() || null,
+      bairro:          form.value.bairro?.trim() || null,
+      cidade:          form.value.cidade?.trim() || null,
+      uf:              form.value.uf?.trim()?.toUpperCase() || null,
+      filial_pk:       sessaoStore.filial?.pk || null,
     };
     let error;
     if (pk) {

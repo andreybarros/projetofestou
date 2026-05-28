@@ -1175,6 +1175,19 @@ BEGIN
 END;
 $$;
 
+-- RLS para tabelas críticas sem policy definida anteriormente
+ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_produtos" ON produtos;
+CREATE POLICY "anon_all_produtos" ON produtos FOR ALL TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_vendas" ON vendas;
+CREATE POLICY "anon_all_vendas" ON vendas FOR ALL TO anon USING (true) WITH CHECK (true);
+
+ALTER TABLE itens_venda ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_itens_venda" ON itens_venda;
+CREATE POLICY "anon_all_itens_venda" ON itens_venda FOR ALL TO anon USING (true) WITH CHECK (true);
+
 -- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================

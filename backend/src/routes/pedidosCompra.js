@@ -89,16 +89,12 @@ router.get('/:pk', async (req, res) => {
 
     // Busca dados dos produtos em query separada
     const prodPks = [...new Set((itens || []).map(i => i.produto_pk).filter(Boolean))];
-    console.log('[PedidosCompra/GET/:pk] prodPks:', prodPks, '| total itens:', (itens || []).length);
-
     let produtosMap = {};
     if (prodPks.length) {
-      const { data: prods, error: errProds } = await supabase
+      const { data: prods } = await supabase
         .from('produtos')
         .select('pk, descricao, codigo, saldo')
         .in('pk', prodPks);
-      if (errProds) console.error('[PedidosCompra/GET/:pk/produtos]', errProds.message);
-      console.log('[PedidosCompra/GET/:pk] prods retornados:', (prods || []).length);
       (prods || []).forEach(p => { produtosMap[p.pk] = p; });
     }
 
@@ -242,17 +238,11 @@ router.post('/:pk/entrada', async (req, res) => {
 
     let atualizados = 0;
     for (const it of itens || []) {
-      const { data: prod, error: errProd } = await supabase
-        .from('produtos')
-        .select('saldo')
-        .eq('pk', it.produto_pk)
-        .single();
-      if (errProd || !prod) continue;
-
-      const { error: errUpd } = await supabase
-        .from('produtos')
-        .update({ saldo: (prod.saldo || 0) + parseFloat(it.quantidade || 0) })
-        .eq('pk', it.produto_pk);
+      const { error: errUpd } = await supabase.rpc('ajustar_saldo_produto', {
+        p_pk:               it.produto_pk,
+        p_delta:            parseFloat(it.quantidade || 0),
+        p_permitir_negativo: true,
+      });
       if (!errUpd) atualizados++;
     }
 

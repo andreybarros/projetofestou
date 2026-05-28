@@ -178,17 +178,7 @@ router.post('/finalizar', async (req, res) => {
     const { error: erroItens } = await supabase.from('itens_venda').insert(itensPayload);
     if (erroItens) throw erroItens;
 
-    // 5. Inserir pagamentos
-    const pagamentosPayload = pagamentos.map(p => ({
-      venda_pk,
-      forma:  String(p.forma || 'dinheiro'),
-      valor:  parseFloat(p.valor  || 0),
-    }));
-
-    const { error: erroPag } = await supabase.from('pagamentos_venda').insert(pagamentosPayload);
-    if (erroPag) throw erroPag;
-
-    // 6. Decrementar estoque (atômico com FOR UPDATE — sem race condition)
+    // 5. Decrementar estoque ANTES dos pagamentos (rollback se insuficiente)
     const { data: paramEstoque } = await supabase
       .from('parametros')
       .select('valor')
@@ -199,6 +189,7 @@ router.post('/finalizar', async (req, res) => {
       .maybeSingle();
     const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
 
+    const itemsDebitados = [];
     for (const item of itens) {
       if (!item.produto_pk) continue;
       const { data: ok } = await supabase.rpc('ajustar_saldo_produto', {
@@ -207,12 +198,34 @@ router.post('/finalizar', async (req, res) => {
         p_permitir_negativo: permitirNegativo,
       });
       if (ok === false) {
+        // Rollback: restaura estoque dos itens já debitados
+        for (const debited of itemsDebitados) {
+          await supabase.rpc('ajustar_saldo_produto', {
+            p_pk: debited.produto_pk,
+            p_delta: parseFloat(debited.qtd || 0),
+            p_permitir_negativo: true,
+          });
+        }
+        // Remove venda e itens criados
+        await supabase.from('itens_venda').delete().eq('venda_pk', venda_pk);
+        await supabase.from('vendas').delete().eq('pk', venda_pk);
         return res.status(400).json({
           erro: `Estoque insuficiente para o produto ${item.descricao || item.produto_pk}.`,
           produto_pk: item.produto_pk,
         });
       }
+      itemsDebitados.push(item);
     }
+
+    // 6. Inserir pagamentos
+    const pagamentosPayload = pagamentos.map(p => ({
+      venda_pk,
+      forma:  String(p.forma || 'dinheiro'),
+      valor:  parseFloat(p.valor  || 0),
+    }));
+
+    const { error: erroPag } = await supabase.from('pagamentos_venda').insert(pagamentosPayload);
+    if (erroPag) throw erroPag;
 
     // 7. Associar ao caixa
     const { data: caixaAberto } = await supabase

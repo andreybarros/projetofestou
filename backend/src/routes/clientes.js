@@ -1,7 +1,30 @@
 const express  = require('express');
+const https    = require('https');
 const supabase = require('../supabase');
 
 const router = express.Router();
+
+// GET /api/clientes/cep/:cep — proxy ViaCEP para evitar CORS
+router.get('/cep/:cep', (req, res) => {
+  const cleaned = req.params.cep.replace(/\D/g, '');
+  if (cleaned.length !== 8) return res.status(400).json({ erro: 'CEP inválido' });
+  https.get(`https://viacep.com.br/ws/${cleaned}/json/`, (r) => {
+    let body = '';
+    r.on('data', chunk => { body += chunk; });
+    r.on('end', () => {
+      try {
+        const d = JSON.parse(body);
+        if (d.erro) return res.status(404).json({ erro: 'CEP não encontrado' });
+        res.json({ ok: true, data: { logradouro: d.logradouro || '', bairro: d.bairro || '', cidade: d.localidade || '', uf: d.uf || '' } });
+      } catch {
+        res.status(500).json({ erro: 'Erro ao processar resposta' });
+      }
+    });
+  }).on('error', (err) => {
+    console.error('[Clientes/CEP]', err.message);
+    res.status(500).json({ erro: 'Erro ao buscar CEP' });
+  });
+});
 
 // GET /api/clientes?busca=X&filial_pk=X
 router.get('/', async (req, res) => {
@@ -11,9 +34,9 @@ router.get('/', async (req, res) => {
     const q = busca.trim();
     let query = supabase
       .from('clientes')
-      .select('pk, nome, cpf, telefone, decorador, logradouro, numero, bairro, cep')
+      .select('pk, nome, razao_social, cpf, telefone, decorador, logradouro, numero, bairro, cep')
       .eq('ativo', true)
-      .or(`nome.ilike.%${q}%,cpf.ilike.%${q}%,telefone.ilike.%${q}%`)
+      .or(`nome.ilike.%${q}%,razao_social.ilike.%${q}%,cpf.ilike.%${q}%,telefone.ilike.%${q}%`)
       .order('nome')
       .limit(8);
     if (filial_pk) query = query.eq('filial_pk', parseInt(filial_pk));
