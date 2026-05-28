@@ -451,7 +451,65 @@ router.put('/:pk', async (req, res) => {
     const { data: venda } = await supabase.from('vendas').select('*').eq('pk', pk).single();
     if (!venda) return res.status(404).json({ erro: 'Venda não encontrada' });
 
+    // 1. Lê itens antigos e parâmetro de estoque
     const { data: itensAtuais } = await supabase.from('itens_venda').select('*').eq('venda_pk', pk);
+
+    const { data: paramEstoque } = await supabase
+      .from('parametros')
+      .select('valor')
+      .eq('chave', 'pdv_permitir_estoque_negativo')
+      .or(`filial_pk.eq.${venda.filial_pk || 0},filial_pk.is.null`)
+      .order('filial_pk', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
+
+    // 2. Agrega demanda nova e devolução antiga por produto
+    const deducaoMapEdit = {};
+    const nomeMapEdit    = {};
+    for (const item of itens) {
+      if (!item.produto_pk) continue;
+      deducaoMapEdit[item.produto_pk] = (deducaoMapEdit[item.produto_pk] || 0) + parseFloat(item.qtd || 0);
+      if (!nomeMapEdit[item.produto_pk]) nomeMapEdit[item.produto_pk] = item.descricao || String(item.produto_pk);
+    }
+
+    const devolucaoMapEdit = {};
+    for (const item of itensAtuais || []) {
+      if (!item.produto_pk) continue;
+      devolucaoMapEdit[item.produto_pk] = (devolucaoMapEdit[item.produto_pk] || 0) + parseFloat(item.qtd || 0);
+    }
+
+    const prodPksEdit = [...new Set([
+      ...Object.keys(deducaoMapEdit).map(Number),
+      ...Object.keys(devolucaoMapEdit).map(Number),
+    ])];
+
+    // 3. Lê saldo atual de todos os produtos e pré-valida ANTES de qualquer escrita
+    const saldoAtualMap = {};
+    if (prodPksEdit.length) {
+      const { data: prodsAntes } = await supabase
+        .from('produtos').select('pk, descricao, saldo').in('pk', prodPksEdit);
+      (prodsAntes || []).forEach(p => {
+        saldoAtualMap[p.pk] = parseFloat(p.saldo || 0);
+        if (!nomeMapEdit[p.pk]) nomeMapEdit[p.pk] = p.descricao || String(p.pk);
+      });
+
+      if (!permitirNegativo) {
+        for (const [pkStr, qtdNova] of Object.entries(deducaoMapEdit)) {
+          const pkNum = Number(pkStr);
+          // Saldo efetivo = saldo atual + o que será devolvido dos itens antigos
+          const saldoEfetivo = (saldoAtualMap[pkNum] ?? 0) + (devolucaoMapEdit[pkNum] ?? 0);
+          if (saldoEfetivo < qtdNova) {
+            return res.status(400).json({
+              erro: `Estoque insuficiente para "${nomeMapEdit[pkNum]}". Disponível: ${saldoEfetivo}, solicitado: ${qtdNova}.`,
+              produto_pk: pkNum,
+            });
+          }
+        }
+      }
+    }
+
+    // 4. Restaura estoque dos itens antigos
     for (const item of itensAtuais || []) {
       if (!item.produto_pk) continue;
       await supabase.rpc('ajustar_saldo_produto', {
@@ -461,6 +519,7 @@ router.put('/:pk', async (req, res) => {
       });
     }
 
+    // 5. Remove dados antigos e grava novos
     await supabase.from('itens_venda').delete().eq('venda_pk', pk);
     await supabase.from('pagamentos_venda').delete().eq('venda_pk', pk);
 
@@ -511,37 +570,12 @@ router.put('/:pk', async (req, res) => {
     const { error: errPag } = await supabase.from('pagamentos_venda').insert(pagamentosPayload);
     if (errPag) throw errPag;
 
-    const { data: paramEstoque } = await supabase
-      .from('parametros')
-      .select('valor')
-      .eq('chave', 'pdv_permitir_estoque_negativo')
-      .or(`filial_pk.eq.${venda.filial_pk || 0},filial_pk.is.null`)
-      .order('filial_pk', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-    const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
-
-    // Agrega demanda por produto e lê saldo antes
-    const deducaoMapEdit = {};
-    const nomeMapEdit    = {};
-    for (const item of itens) {
-      if (!item.produto_pk) continue;
-      deducaoMapEdit[item.produto_pk] = (deducaoMapEdit[item.produto_pk] || 0) + parseFloat(item.qtd || 0);
-      if (!nomeMapEdit[item.produto_pk]) nomeMapEdit[item.produto_pk] = item.descricao || String(item.produto_pk);
-    }
-    const prodPksEdit = Object.keys(deducaoMapEdit).map(Number);
-
+    // 6. Debita novo estoque: saldo_antes = saldo_atual + devolução antiga
     const saldoAntesEdit = {};
-    if (prodPksEdit.length) {
-      const { data: prodsAntes } = await supabase
-        .from('produtos').select('pk, descricao, saldo').in('pk', prodPksEdit);
-      (prodsAntes || []).forEach(p => {
-        saldoAntesEdit[p.pk] = parseFloat(p.saldo || 0);
-        if (!nomeMapEdit[p.pk]) nomeMapEdit[p.pk] = p.descricao || String(p.pk);
-      });
+    for (const pkNum of Object.keys(deducaoMapEdit).map(Number)) {
+      saldoAntesEdit[pkNum] = (saldoAtualMap[pkNum] ?? 0) + (devolucaoMapEdit[pkNum] ?? 0);
     }
 
-    // Deduz estoque: uma RPC por produto
     const debitadosEdit = [];
     for (const [pkStr, qtdTotal] of Object.entries(deducaoMapEdit)) {
       const pkNum = Number(pkStr);
@@ -564,7 +598,7 @@ router.put('/:pk', async (req, res) => {
       debitadosEdit.push({ pk: pkNum, qtd: qtdTotal });
     }
 
-    // Grava auditoria com observacao 'Venda alterada'
+    // 7. Grava auditoria com observacao 'Venda alterada'
     if (debitadosEdit.length) {
       const auditoriaRows = debitadosEdit.map(({ pk: pkAud, qtd }) => ({
         venda_pk:     parseInt(pk),
@@ -595,7 +629,30 @@ router.delete('/:pk', async (req, res) => {
 
     if (venda.status === 'finalizada') {
       const { data: itens } = await supabase.from('itens_venda').select('*').eq('venda_pk', pk);
-      if (itens) {
+
+      if (itens && itens.length) {
+        // Agrega devolução por produto
+        const devolucaoMapDel = {};
+        const nomeMapDel      = {};
+        for (const item of itens) {
+          if (!item.produto_pk) continue;
+          devolucaoMapDel[item.produto_pk] = (devolucaoMapDel[item.produto_pk] || 0) + parseFloat(item.qtd || 0);
+          if (!nomeMapDel[item.produto_pk]) nomeMapDel[item.produto_pk] = item.descricao || String(item.produto_pk);
+        }
+
+        const prodPksDel = Object.keys(devolucaoMapDel).map(Number);
+
+        // Lê saldo antes de restaurar
+        const saldoAntesDel = {};
+        if (prodPksDel.length) {
+          const { data: prods } = await supabase.from('produtos').select('pk, descricao, saldo').in('pk', prodPksDel);
+          (prods || []).forEach(p => {
+            saldoAntesDel[p.pk] = parseFloat(p.saldo || 0);
+            if (!nomeMapDel[p.pk]) nomeMapDel[p.pk] = p.descricao || String(p.pk);
+          });
+        }
+
+        // Restaura estoque
         for (const item of itens) {
           if (!item.produto_pk) continue;
           await supabase.rpc('ajustar_saldo_produto', {
@@ -604,6 +661,23 @@ router.delete('/:pk', async (req, res) => {
             p_permitir_negativo: true,
           });
         }
+
+        // Grava auditoria: qtd_debitada negativa = estoque devolvido
+        const auditoriaRows = prodPksDel.map(pkNum => {
+          const qtdDev    = devolucaoMapDel[pkNum];
+          const saldoAntes = saldoAntesDel[pkNum] ?? 0;
+          return {
+            venda_pk:     parseInt(pk),
+            produto_pk:   pkNum,
+            nome:         nomeMapDel[pkNum],
+            saldo_antes:  saldoAntes,
+            qtd_debitada: -qtdDev,
+            saldo_apos:   saldoAntes + qtdDev,
+            observacao:   'Venda cancelada',
+          };
+        });
+        const { error: errAudit } = await supabase.from('auditoria_estoque').insert(auditoriaRows);
+        if (errAudit) console.error('[Vendas/Excluir] Erro ao gravar auditoria:', errAudit.message);
       }
     }
 
