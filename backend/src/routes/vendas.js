@@ -264,7 +264,7 @@ router.post('/finalizar', async (req, res) => {
       }));
       const { error: errAudit } = await supabase.from('auditoria_estoque').insert(auditoriaRows);
       if (errAudit) {
-        console.error('[Vendas/Finalizar] Erro ao gravar auditoria de estoque:', errAudit.message);
+        console.error('[Vendas/Finalizar] Erro ao gravar auditoria de estoque:', JSON.stringify({ code: errAudit.code, message: errAudit.message, details: errAudit.details, hint: errAudit.hint }));
       } else {
         const detalhe = produtosDebitados
           .map(({ pk, qtd }) => `${nomeMap[pk]}: ${saldoAntes[pk] ?? '?'} → ${(saldoAntes[pk] ?? 0) - qtd}`)
