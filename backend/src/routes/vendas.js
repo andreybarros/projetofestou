@@ -805,7 +805,7 @@ router.get('/:pk/detalhe', async (req, res) => {
   try {
     const [{ data: venda, error: ve }, { data: itens }, { data: pagamentos }] = await Promise.all([
       supabase.from('vendas')
-        .select('pk, numero, criado_em, cliente, cliente_pk, operador, vendedor, total, acrescimo, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe, clientes(nome)')
+        .select('pk, numero, criado_em, cliente, cliente_pk, operador, vendedor, subtotal, desconto_total, acrescimo, total, status, tipo_venda, data_locacao, data_devolucao_prevista, data_devolucao_real, status_locacao, taxa_realocacao_cobrada, nfce_chave, nfce_protocolo, nfce_ref, nfce_danfe, clientes(nome)')
         .eq('pk', venda_pk)
         .single(),
       supabase.from('itens_venda').select('*').eq('venda_pk', venda_pk).order('pk'),

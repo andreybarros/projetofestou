@@ -578,6 +578,7 @@ async function abrirDetalhe(v) {
   detalheCarregando.value = true;
   try {
     const resp = await apiClient.get(`/api/vendas/${v.pk}/detalhe`);
+    if (resp.data.venda) detalhe.value = { ...v, ...resp.data.venda };
     detalheItens.value      = resp.data.itens      || [];
     detalhePagamentos.value = resp.data.pagamentos  || [];
   } catch (e) {
@@ -700,7 +701,8 @@ function reimprimirRecibo() {
   const pags       = detalhePagamentos.value;
   const totalQtd   = itens.reduce((s, i) => s + parseFloat(i.qtd || 1), 0);
   const totalProds = itens.length;
-  const fmtDt = (d) => new Date(d).toLocaleDateString('pt-BR') + ' ' + new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const agora      = new Date(v.criado_em);
+  const fmtDt = (d) => d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   const linhaItens = itens.map(it => {
     const disc = it.desconto_val > 0 ? ` (-${fmt(it.desconto_val)})` : '';
@@ -712,7 +714,7 @@ function reimprimirRecibo() {
   }).join('');
 
   const linhaPags = pags.map(p =>
-    `<tr><td style="text-transform:capitalize">${p.forma}</td><td style="text-align:right">${fmt(p.valor)}</td></tr>`
+    `<tr><td>${formasMap[p.forma] || p.forma}</td><td style="text-align:right">${fmt(p.valor)}</td></tr>`
   ).join('');
 
   const totalPago = pags.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
@@ -722,22 +724,43 @@ function reimprimirRecibo() {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Recibo #${v.numero}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', monospace; font-size: 13px; color: #000; width: 320px; margin: 0 auto; padding: 20px 10px; }
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  html, body {
+    width: 75mm;
+    background: #fff;
+    margin: 0 auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.2;
+    color: #000;
+  }
+  body { padding: 4mm 2mm; -webkit-print-color-adjust: exact; }
   .center { text-align: center; }
-  .sep    { border: none; border-top: 1px dashed #555; margin: 8px 0; }
-  h1 { font-size: 16px; text-align: center; font-family: Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
-  h2 { font-size: 11px; text-align: center; font-weight: bold; color: #000; margin-bottom: 2px; }
-  .dnf { font-size: 11px; text-align: center; border: 1px solid #000; padding: 3px 8px; display: inline-block; margin: 6px auto 2px; letter-spacing: .5px; font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 4px 2px; vertical-align: top; font-size: 13px; font-weight: bold; }
-  .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; }
-  .sub-line   { display: flex; justify-content: space-between; font-size: 12px; color: #000; font-weight: bold; margin-top: 2px; }
-  .qtd-total  { font-size: 12px; font-weight: bold; text-align: right; border-top: 1px dotted #000; padding-top: 3px; margin-top: 4px; }
-  .rodape { font-size: 11px; text-align: center; color: #000; font-weight: bold; margin-top: 10px; line-height: 1.7; }
-  @media print { body { padding: 4px; } }
+  .bold   { font-weight: bold; }
+  .sep    { border: none; border-top: 1px dashed #000; margin: 3mm 0; }
+  h1 { font-size: 16px; text-align: center; font-weight: 900; margin-bottom: 2px; }
+  h2 { font-size: 11px; text-align: center; font-weight: bold; margin-bottom: 1px; }
+  .dnf { font-size: 11px; text-align: center; border: 1px solid #000; padding: 2px 5px; display: inline-block; margin: 4px auto; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin: 2px 0; }
+  td { padding: 3px 0; vertical-align: top; font-size: 12px; font-weight: bold; }
+  .total-line { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 5px; }
+  .sub-line   { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .qtd-total  { font-size: 12px; font-weight: bold; text-align: right; margin-top: 4px; border-top: 1px dotted #000; padding-top: 3px; }
+  .disc-line  { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .troco-line { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-top: 2px; }
+  .rodape { font-size: 11px; text-align: center; font-weight: bold; margin-top: 15px; line-height: 1.4; }
+
+  @media print {
+    html, body { width: 75mm; margin: 0; }
+    .no-print { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -748,29 +771,38 @@ function reimprimirRecibo() {
 <div class="center"><span class="dnf">DOCUMENTO NÃO FISCAL</span></div>
 <hr class="sep"/>
 <div class="sub-line"><span>Nº da venda</span><span>#${v.numero}</span></div>
-<div class="sub-line"><span>Data/hora</span><span>${fmtDt(new Date(v.criado_em))}</span></div>
+<div class="sub-line"><span>Data/hora</span><span>${fmtDt(agora)}</span></div>
 ${v.cliente_nome ? `<div class="sub-line"><span>Cliente</span><span>${v.cliente_nome}</span></div>` : ''}
 <div class="sub-line"><span>Vendedor</span><span>${v.vendedor || v.operador || '—'}</span></div>
 <hr class="sep"/>
 <table>${linhaItens}</table>
-<div class="qtd-total">Total: ${totalProds} produto${totalProds !== 1 ? 's' : ''} / ${totalQtd} un.</div>
+<div class="qtd-total"><span>Total: ${totalProds} produto${totalProds !== 1 ? 's' : ''} / ${totalQtd} un.</span></div>
 <hr class="sep"/>
+${parseFloat(v.desconto_total || 0) > 0 ? `
+  <div class="sub-line"><span>Subtotal</span><span>${fmt(v.subtotal)}</span></div>
+  <div class="disc-line"><span>Desconto</span><span>− ${fmt(v.desconto_total)}</span></div>` : ''}
 <div class="total-line"><span>TOTAL</span><span>${fmt(v.total)}</span></div>
 <hr class="sep"/>
 <table>${linhaPags}</table>
-${troco > 0.009 ? `<div class="sub-line"><span>Troco</span><span>${fmt(troco)}</span></div>` : ''}
+${troco > 0.009 ? `<div class="troco-line"><span>Troco</span><span>${fmt(troco)}</span></div>` : ''}
 <hr class="sep"/>
-<div class="rodape">Obrigado pela preferência!<br/>Este documento não tem valor fiscal.</div>
+<div class="rodape">
+  Obrigado pela preferência!<br/>
+  Este documento não tem valor fiscal.
+</div>
 <script>window.onload = function(){ window.print(); }<\/script>
 </body></html>`;
 
   const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
   document.body.appendChild(iframe);
   iframe.contentWindow.document.open();
   iframe.contentWindow.document.write(html);
   iframe.contentWindow.document.close();
-  setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 10_000);
+  iframe.contentWindow.addEventListener('afterprint', () => {
+    if (iframe.parentNode) document.body.removeChild(iframe);
+  });
+  setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 15_000);
 }
 
 async function emitirNFCeDetalhe() {
