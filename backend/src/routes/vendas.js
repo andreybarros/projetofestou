@@ -153,7 +153,53 @@ router.post('/finalizar', async (req, res) => {
       payloadVenda.status_crediario = 'pendente';
     }
 
-    // 3. Inserir a Venda
+    // 3. Verificar estoque ANTES de qualquer escrita no banco
+    const { data: paramEstoque } = await supabase
+      .from('parametros')
+      .select('valor')
+      .eq('chave', 'pdv_permitir_estoque_negativo')
+      .or(`filial_pk.eq.${filial_pk || 0},filial_pk.is.null`)
+      .order('filial_pk', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
+
+    // 3b. Agrega demanda por produto (mesmo produto pode ter múltiplas linhas)
+    const deducaoMap = {};
+    const nomeMap    = {};
+    for (const item of itens) {
+      if (!item.produto_pk) continue;
+      deducaoMap[item.produto_pk] = (deducaoMap[item.produto_pk] || 0) + parseFloat(item.qtd || 0);
+      if (!nomeMap[item.produto_pk]) nomeMap[item.produto_pk] = item.descricao || item.nome || String(item.produto_pk);
+    }
+    const prodPks = Object.keys(deducaoMap).map(Number);
+
+    // 3c. Lê saldo ANTES da dedução (uma query para todos os produtos)
+    const saldoAntes = {};
+    if (prodPks.length) {
+      const { data: prodsAntes } = await supabase
+        .from('produtos').select('pk, descricao, saldo').in('pk', prodPks);
+      (prodsAntes || []).forEach(p => {
+        saldoAntes[p.pk] = parseFloat(p.saldo || 0);
+        if (!nomeMap[p.pk]) nomeMap[p.pk] = p.descricao || String(p.pk);
+      });
+
+      // Bloqueia se estoque insuficiente (quando negativo não é permitido)
+      if (!permitirNegativo) {
+        for (const [pkStr, qtdTotal] of Object.entries(deducaoMap)) {
+          const pk = Number(pkStr);
+          const saldoAtual = saldoAntes[pk] ?? 0;
+          if (saldoAtual < qtdTotal) {
+            return res.status(400).json({
+              erro: `Estoque insuficiente para "${nomeMap[pk]}". Disponível: ${saldoAtual}, solicitado: ${qtdTotal}.`,
+              produto_pk: pk,
+            });
+          }
+        }
+      }
+    }
+
+    // 4. Inserir a Venda
     const { data: vendaSalva, error: erroVenda } = await supabase
       .from('vendas')
       .insert(payloadVenda)
@@ -163,7 +209,7 @@ router.post('/finalizar', async (req, res) => {
     if (erroVenda) throw erroVenda;
     const venda_pk = vendaSalva.pk;
 
-    // 4. Inserir itens
+    // 5. Inserir itens
     const itensPayload = itens.map(item => ({
       venda_pk,
       produto_pk:   item.produto_pk || null,
@@ -178,46 +224,56 @@ router.post('/finalizar', async (req, res) => {
     const { error: erroItens } = await supabase.from('itens_venda').insert(itensPayload);
     if (erroItens) throw erroItens;
 
-    // 5. Decrementar estoque ANTES dos pagamentos (rollback se insuficiente)
-    const { data: paramEstoque } = await supabase
-      .from('parametros')
-      .select('valor')
-      .eq('chave', 'pdv_permitir_estoque_negativo')
-      .or(`filial_pk.eq.${filial_pk || 0},filial_pk.is.null`)
-      .order('filial_pk', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-    const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
-
-    const itemsDebitados = [];
-    for (const item of itens) {
-      if (!item.produto_pk) continue;
+    // 6. Decrementar estoque: uma RPC por produto (FOR UPDATE — atômico)
+    const produtosDebitados = [];
+    for (const [pkStr, qtdTotal] of Object.entries(deducaoMap)) {
+      const pk = Number(pkStr);
       const { data: ok } = await supabase.rpc('ajustar_saldo_produto', {
-        p_pk: item.produto_pk,
-        p_delta: -parseFloat(item.qtd || 0),
+        p_pk:                pk,
+        p_delta:             -qtdTotal,
         p_permitir_negativo: permitirNegativo,
       });
       if (ok === false) {
-        // Rollback: restaura estoque dos itens já debitados
-        for (const debited of itemsDebitados) {
+        // Race condition: restaura todos os já debitados e desfaz a venda
+        for (const { pk: pkDeb, qtd: qtdDeb } of produtosDebitados) {
           await supabase.rpc('ajustar_saldo_produto', {
-            p_pk: debited.produto_pk,
-            p_delta: parseFloat(debited.qtd || 0),
-            p_permitir_negativo: true,
+            p_pk: pkDeb, p_delta: qtdDeb, p_permitir_negativo: true,
           });
         }
-        // Remove venda e itens criados
         await supabase.from('itens_venda').delete().eq('venda_pk', venda_pk);
         await supabase.from('vendas').delete().eq('pk', venda_pk);
         return res.status(400).json({
-          erro: `Estoque insuficiente para o produto ${item.descricao || item.produto_pk}.`,
-          produto_pk: item.produto_pk,
+          erro: `Estoque insuficiente para "${nomeMap[pk]}". A venda foi cancelada.`,
+          produto_pk: pk,
         });
       }
-      itemsDebitados.push(item);
+      produtosDebitados.push({ pk, qtd: qtdTotal });
     }
 
-    // 6. Inserir pagamentos
+    // 6b. Grava auditoria de estoque (saldo_apos = nossa contribuição exata,
+    // independente de vendas simultâneas que possam ter alterado o saldo entre leituras)
+    if (produtosDebitados.length) {
+      const auditoriaRows = produtosDebitados.map(({ pk, qtd }) => ({
+        venda_pk,
+        produto_pk:   pk,
+        nome:         nomeMap[pk],
+        saldo_antes:  saldoAntes[pk] ?? null,
+        qtd_debitada: qtd,
+        saldo_apos:   (saldoAntes[pk] ?? 0) - qtd,
+        observacao:   'Venda normal',
+      }));
+      const { error: errAudit } = await supabase.from('auditoria_estoque').insert(auditoriaRows);
+      if (errAudit) {
+        console.error('[Vendas/Finalizar] Erro ao gravar auditoria de estoque:', errAudit.message);
+      } else {
+        const detalhe = produtosDebitados
+          .map(({ pk, qtd }) => `${nomeMap[pk]}: ${saldoAntes[pk] ?? '?'} → ${(saldoAntes[pk] ?? 0) - qtd}`)
+          .join(' | ');
+        console.log(`[Vendas/Finalizar] Auditoria gravada venda #${vendaSalva.numero}: ${detalhe}`);
+      }
+    }
+
+    // 7. Inserir pagamentos
     const pagamentosPayload = pagamentos.map(p => ({
       venda_pk,
       forma:  String(p.forma || 'dinheiro'),
@@ -465,19 +521,62 @@ router.put('/:pk', async (req, res) => {
       .maybeSingle();
     const permitirNegativo = paramEstoque ? paramEstoque.valor === 'true' : false;
 
+    // Agrega demanda por produto e lê saldo antes
+    const deducaoMapEdit = {};
+    const nomeMapEdit    = {};
     for (const item of itens) {
       if (!item.produto_pk) continue;
+      deducaoMapEdit[item.produto_pk] = (deducaoMapEdit[item.produto_pk] || 0) + parseFloat(item.qtd || 0);
+      if (!nomeMapEdit[item.produto_pk]) nomeMapEdit[item.produto_pk] = item.descricao || String(item.produto_pk);
+    }
+    const prodPksEdit = Object.keys(deducaoMapEdit).map(Number);
+
+    const saldoAntesEdit = {};
+    if (prodPksEdit.length) {
+      const { data: prodsAntes } = await supabase
+        .from('produtos').select('pk, descricao, saldo').in('pk', prodPksEdit);
+      (prodsAntes || []).forEach(p => {
+        saldoAntesEdit[p.pk] = parseFloat(p.saldo || 0);
+        if (!nomeMapEdit[p.pk]) nomeMapEdit[p.pk] = p.descricao || String(p.pk);
+      });
+    }
+
+    // Deduz estoque: uma RPC por produto
+    const debitadosEdit = [];
+    for (const [pkStr, qtdTotal] of Object.entries(deducaoMapEdit)) {
+      const pkNum = Number(pkStr);
       const { data: ok } = await supabase.rpc('ajustar_saldo_produto', {
-        p_pk: item.produto_pk,
-        p_delta: -parseFloat(item.qtd || 0),
+        p_pk:                pkNum,
+        p_delta:             -qtdTotal,
         p_permitir_negativo: permitirNegativo,
       });
       if (ok === false) {
+        for (const { pk: pkDeb, qtd: qtdDeb } of debitadosEdit) {
+          await supabase.rpc('ajustar_saldo_produto', {
+            p_pk: pkDeb, p_delta: qtdDeb, p_permitir_negativo: true,
+          });
+        }
         return res.status(400).json({
-          erro: `Estoque insuficiente para o produto ${item.descricao || item.produto_pk}.`,
-          produto_pk: item.produto_pk,
+          erro: `Estoque insuficiente para "${nomeMapEdit[pkNum]}".`,
+          produto_pk: pkNum,
         });
       }
+      debitadosEdit.push({ pk: pkNum, qtd: qtdTotal });
+    }
+
+    // Grava auditoria com observacao 'Venda alterada'
+    if (debitadosEdit.length) {
+      const auditoriaRows = debitadosEdit.map(({ pk: pkAud, qtd }) => ({
+        venda_pk:     parseInt(pk),
+        produto_pk:   pkAud,
+        nome:         nomeMapEdit[pkAud],
+        saldo_antes:  saldoAntesEdit[pkAud] ?? null,
+        qtd_debitada: qtd,
+        saldo_apos:   (saldoAntesEdit[pkAud] ?? 0) - qtd,
+        observacao:   'Venda alterada',
+      }));
+      const { error: errAudit } = await supabase.from('auditoria_estoque').insert(auditoriaRows);
+      if (errAudit) console.error('[Vendas/Editar] Erro ao gravar auditoria:', errAudit.message);
     }
 
     res.json({ ok: true, venda_pk: parseInt(pk) });

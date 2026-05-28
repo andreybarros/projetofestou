@@ -2081,7 +2081,7 @@ async function processarImport(codigo) {
 
 // ── Finalizar ─────────────────────────────────────────────────
 async function finalizar() {
-  if (!podeFinalizar.value) return;
+  if (processando.value || vendaFinalizada.value || !podeFinalizar.value) return;
   processando.value = true;
   erroFinalizar.value = '';
   try {

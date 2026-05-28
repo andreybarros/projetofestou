@@ -1175,6 +1175,26 @@ BEGIN
 END;
 $$;
 
+-- ============================================================
+-- Auditoria de movimentações de estoque por venda
+-- ============================================================
+CREATE TABLE IF NOT EXISTS auditoria_estoque (
+  pk           bigserial PRIMARY KEY,
+  venda_pk     bigint     REFERENCES vendas(pk),
+  produto_pk   bigint     REFERENCES produtos(pk),
+  nome         text,
+  saldo_antes  numeric(12,3),
+  qtd_debitada numeric(12,3),
+  saldo_apos   numeric(12,3),
+  observacao   text,
+  criado_em    timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_venda   ON auditoria_estoque(venda_pk);
+CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_produto ON auditoria_estoque(produto_pk);
+ALTER TABLE auditoria_estoque ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_auditoria_estoque" ON auditoria_estoque;
+CREATE POLICY "anon_all_auditoria_estoque" ON auditoria_estoque FOR ALL TO anon USING (true) WITH CHECK (true);
+
 -- RLS para tabelas críticas sem policy definida anteriormente
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all_produtos" ON produtos;
