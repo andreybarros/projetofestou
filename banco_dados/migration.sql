@@ -852,6 +852,80 @@ BEGIN
 END;
 $$;
 
+-- =====================================================================
+--  ajustar_saldos_venda
+--  Ajusta o saldo de VÁRIOS produtos numa ÚNICA transação atômica.
+--  Ou aplica todos os ajustes, ou nenhum (rollback automático no RAISE).
+--
+--  p_ajustes: jsonb no formato [{"pk": 1, "delta": -3}, {"pk": 7, "delta": 2}]
+--             delta negativo  = débito (venda)
+--             delta positivo  = estorno (devolução / exclusão)
+--  p_permitir_negativo: se false, aborta tudo caso algum saldo fique < 0
+--
+--  Retorna: jsonb [{"pk":1,"saldo_antes":10,"saldo_apos":7}, ...]
+--
+--  Em caso de erro lança exceção (PostgREST devolve como { error }):
+--    - 'ESTOQUE_INSUFICIENTE:<pk>'   quando saldo ficaria negativo
+--    - 'PRODUTO_NAO_ENCONTRADO:<pk>' quando o produto não existe
+-- =====================================================================
+CREATE OR REPLACE FUNCTION ajustar_saldos_venda(
+  p_ajustes           jsonb,
+  p_permitir_negativo boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+-- security definer  -- descomente se houver RLS e a função precisar ignorá-la
+AS $$
+DECLARE
+  v_item        jsonb;
+  v_pk          bigint;
+  v_delta       numeric;
+  v_saldo_antes numeric;
+  v_saldo_apos  numeric;
+  v_result      jsonb := '[]'::jsonb;
+BEGIN
+  -- Trava TODAS as linhas SEMPRE em ordem crescente de pk.
+  -- Isso garante que vendas concorrentes que tocam os mesmos produtos
+  -- adquiram os locks na mesma ordem -> impossível haver deadlock.
+  FOR v_item IN
+    SELECT value
+    FROM jsonb_array_elements(p_ajustes) AS t(value)
+    ORDER BY (t.value->>'pk')::bigint
+  LOOP
+    v_pk    := (v_item->>'pk')::bigint;
+    v_delta := (v_item->>'delta')::numeric;
+
+    -- FOR UPDATE: serializa concorrência por produto dentro desta transação
+    SELECT saldo
+      INTO v_saldo_antes
+      FROM produtos
+     WHERE pk = v_pk
+     FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'PRODUTO_NAO_ENCONTRADO:%', v_pk USING ERRCODE = 'P0002';
+    END IF;
+
+    v_saldo_apos := COALESCE(v_saldo_antes, 0) + v_delta;
+
+    IF v_saldo_apos < 0 AND NOT p_permitir_negativo THEN
+      -- aborta a transação inteira: nenhum produto deste lote é alterado
+      RAISE EXCEPTION 'ESTOQUE_INSUFICIENTE:%', v_pk USING ERRCODE = 'P0001';
+    END IF;
+
+    UPDATE produtos SET saldo = v_saldo_apos WHERE pk = v_pk;
+
+    v_result := v_result || jsonb_build_object(
+      'pk',          v_pk,
+      'saldo_antes', COALESCE(v_saldo_antes, 0),
+      'saldo_apos',  v_saldo_apos
+    );
+  END LOOP;
+
+  RETURN v_result;
+END;
+$$;
+
 -- ============================================================
 -- SEÇÃO 13 — ENTRADA DE NF-e (Recebimento de mercadoria)
 -- ============================================================
