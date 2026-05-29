@@ -289,6 +289,7 @@ router.post('/finalizar', async (req, res) => {
     const auditoriaRows = Object.entries(deducaoMap).map(([pkStr, qtd]) => {
       const pk = Number(pkStr);
       return {
+        filial_pk:    filial_pk || null,
         venda_pk,
         produto_pk:   pk,
         nome:         nomeMap[pk],
@@ -616,6 +617,7 @@ router.put('/:pk', async (req, res) => {
     const auditoriaRows = prodPksEdit
       .filter(pkNum => ((devolucaoMapEdit[pkNum] ?? 0) - (deducaoMapEdit[pkNum] ?? 0)) !== 0)
       .map(pkNum => ({
+        filial_pk:    venda.filial_pk || null,
         venda_pk:     parseInt(pk),
         produto_pk:   pkNum,
         nome:         nomeMapEdit[pkNum],
@@ -666,6 +668,7 @@ router.delete('/:pk', async (req, res) => {
         (rDel.resultado || []).forEach(x => { saldoMapDel[x.pk] = x; });
 
         const auditoriaRows = prodPksDel.map(pkNum => ({
+          filial_pk:    venda.filial_pk || null,
           venda_pk:     parseInt(pk),
           produto_pk:   pkNum,
           nome:         nomeMapDel[pkNum],

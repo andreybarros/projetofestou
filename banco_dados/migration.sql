@@ -1254,6 +1254,7 @@ $$;
 -- ============================================================
 CREATE TABLE IF NOT EXISTS auditoria_estoque (
   pk           bigserial PRIMARY KEY,
+  filial_pk    bigint,
   venda_pk     bigint     REFERENCES vendas(pk),
   produto_pk   bigint     REFERENCES produtos(pk),
   nome         text,
@@ -1263,8 +1264,10 @@ CREATE TABLE IF NOT EXISTS auditoria_estoque (
   observacao   text,
   criado_em    timestamptz DEFAULT now()
 );
+ALTER TABLE auditoria_estoque ADD COLUMN IF NOT EXISTS filial_pk bigint;
 CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_venda   ON auditoria_estoque(venda_pk);
 CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_produto ON auditoria_estoque(produto_pk);
+CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_filial  ON auditoria_estoque(filial_pk);
 ALTER TABLE auditoria_estoque ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all_auditoria_estoque" ON auditoria_estoque;
 CREATE POLICY "anon_all_auditoria_estoque" ON auditoria_estoque FOR ALL TO anon USING (true) WITH CHECK (true);
