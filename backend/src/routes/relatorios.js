@@ -28,7 +28,7 @@ router.get('/vendas/:filial_pk', async (req, res) => {
     // 1. Vendas no período
     const { data: vendasPeriodo, error: errV } = await supabase
       .from('vendas')
-      .select('pk, total, criado_em, cliente, vendedor, vendedor_pk')
+      .select('pk, total, criado_em, cliente, cliente_pk, vendedor, vendedor_pk, clientes(nome)')
       .eq('filial_pk', filial_pk)
       .eq('ativo', true)
       .eq('status', 'finalizada')
@@ -74,18 +74,23 @@ router.get('/vendas/:filial_pk', async (req, res) => {
       // Agrupamento por dia
       vendasPorDia[dataV] = (vendasPorDia[dataV] || 0) + valor;
 
-      // Agrupamento por cliente
-      if (v.cliente) {
-        const id = v.cliente;
-        if (!clientesMap[id]) clientesMap[id] = { nome: v.cliente, total: 0 };
-        clientesMap[id].total += valor;
+      // Agrupamento por cliente — usa cliente_pk como chave quando disponível
+      // para unir vendas do mesmo cliente mesmo que o texto snapshot seja diferente
+      const nomeCliente = v.clientes?.nome || v.cliente;
+      if (v.cliente_pk || v.cliente) {
+        const chaveCliente = v.cliente_pk ? `pk:${v.cliente_pk}` : v.cliente;
+        if (!clientesMap[chaveCliente]) clientesMap[chaveCliente] = { nome: nomeCliente, total: 0 };
+        else if (nomeCliente) clientesMap[chaveCliente].nome = nomeCliente;
+        clientesMap[chaveCliente].total += valor;
       }
 
-      // Agrupamento por vendedor
-      const nomeVend = v.vendedor || 'Sem Vendedor';
-      if (!vendedoresMap[nomeVend]) vendedoresMap[nomeVend] = { nome: nomeVend, total: 0, qtd: 0 };
-      vendedoresMap[nomeVend].total += valor;
-      vendedoresMap[nomeVend].qtd += 1;
+      // Agrupamento por vendedor — usa pk como chave quando disponível
+      // para evitar duplicatas quando o nome foi alterado entre vendas
+      const chaveVend = v.vendedor_pk ? `pk:${v.vendedor_pk}` : (v.vendedor || 'Sem Vendedor');
+      if (!vendedoresMap[chaveVend]) vendedoresMap[chaveVend] = { nome: v.vendedor || 'Sem Vendedor', total: 0, qtd: 0 };
+      else if (v.vendedor) vendedoresMap[chaveVend].nome = v.vendedor; // atualiza para o nome mais recente
+      vendedoresMap[chaveVend].total += valor;
+      vendedoresMap[chaveVend].qtd += 1;
     });
 
     // 2. Lucro no Período

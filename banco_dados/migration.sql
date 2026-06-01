@@ -191,6 +191,7 @@ CREATE TABLE IF NOT EXISTS despesas (
   data_pagamento  timestamptz,
   criado_em       timestamptz DEFAULT now()
 );
+ALTER TABLE despesas ADD COLUMN IF NOT EXISTS categoria text;
 ALTER TABLE despesas ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='despesas' AND policyname='desp_all') THEN

@@ -46,7 +46,13 @@
                 </div>
                 <div class="fp-field">
                   <label class="fp-label">Código de Barras (EAN)</label>
-                  <input v-model="form.codigo_barras" type="text" placeholder="7891234567890" class="fp-input" />
+                  <div class="fp-barcode-wrap">
+                    <input v-model="form.codigo_barras" type="text" placeholder="7891234567890" class="fp-input" />
+                    <button type="button" class="fp-btn-gen-barcode" @click="gerarCodigoBarras" :disabled="gerandoBarcode" title="Gerar EAN-13 automático">
+                      <span v-if="gerandoBarcode" class="fp-spin-xs"></span>
+                      <span v-else class="material-symbols-outlined" style="font-size:18px">barcode</span>
+                    </button>
+                  </div>
                 </div>
                 <div class="fp-field">
                   <label class="fp-label">Unidade</label>
@@ -246,9 +252,29 @@ const route       = useRoute();
 const router      = useRouter();
 const sessaoStore = useSessaoStore();
 
-const pk         = route.params.pk || null;
-const carregando = ref(!!pk);
-const salvando   = ref(false);
+const pk             = route.params.pk || null;
+const carregando     = ref(!!pk);
+const salvando       = ref(false);
+const gerandoBarcode = ref(false);
+
+function calcEAN13(cod12) {
+  const sum = [...cod12].reduce((acc, d, i) => acc + parseInt(d) * (i % 2 === 0 ? 1 : 3), 0);
+  return String((10 - (sum % 10)) % 10);
+}
+
+async function gerarCodigoBarras() {
+  gerandoBarcode.value = true;
+  try {
+    for (let i = 0; i < 10; i++) {
+      const parte = '789' + String(Math.floor(Math.random() * 1_000_000_000)).padStart(9, '0');
+      const codigo = parte + calcEAN13(parte);
+      const { data } = await supabase.from('produtos').select('pk').eq('codigo_barras', codigo).maybeSingle();
+      if (!data) { form.value.codigo_barras = codigo; return; }
+    }
+  } finally {
+    gerandoBarcode.value = false;
+  }
+}
 
 const rotaVoltar = route.query.pedido_pk
   ? `/pedidos-compra/${route.query.pedido_pk}/editar`
@@ -651,6 +677,18 @@ async function salvar() {
 }
 .fp-input--lg   { font-size: .95rem; padding: .6rem .85rem; }
 .fp-input--mono { font-family: monospace; letter-spacing: .5px; }
+.fp-barcode-wrap { display: flex; gap: 6px; align-items: center; }
+.fp-barcode-wrap .fp-input { flex: 1; }
+.fp-btn-gen-barcode {
+  flex-shrink: 0; width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--primary); border-radius: 8px;
+  background: transparent; color: var(--primary);
+  cursor: pointer; transition: all .15s;
+}
+.fp-btn-gen-barcode:hover:not(:disabled) { background: var(--primary); color: #fff; }
+.fp-btn-gen-barcode:disabled { opacity: .4; cursor: not-allowed; }
+
 .fp-input--locked {
   opacity: .55;
   cursor: not-allowed;

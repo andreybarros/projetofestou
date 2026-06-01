@@ -47,6 +47,11 @@
                 <span class="material-symbols-outlined">download</span>
                 Exportar Excel
               </button>
+              <div class="drop-sep"></div>
+              <button class="drop-item" @click="abrirEtiquetas">
+                <span class="material-symbols-outlined">label</span>
+                Imprimir Etiquetas
+              </button>
             </div>
           </Transition>
         </div>
@@ -208,6 +213,65 @@
             <span v-if="excluindo" class="spin" style="width:14px;height:14px"></span>
             <span v-else class="material-symbols-outlined" style="font-size:18px">delete</span>
             Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Modal Imprimir Etiquetas -->
+  <Teleport to="body">
+    <div v-if="showEtiquetas" class="etq-bg" @click.self="showEtiquetas = false">
+      <div class="etq-modal">
+        <div class="etq-header">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="material-symbols-outlined" style="color:var(--primary)">label</span>
+            <h3 style="font-size:1rem;font-weight:700">Imprimir Etiquetas</h3>
+          </div>
+          <button class="etq-close" @click="showEtiquetas = false">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="etq-toolbar">
+          <div class="etq-search-wrap">
+            <svg class="etq-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+            <input v-model="etqBusca" type="text" placeholder="Buscar produto, código ou barras..." class="etq-search" autofocus />
+            <button v-if="etqBusca" class="etq-search-clear" @click="etqBusca = ''">×</button>
+          </div>
+          <button class="etq-btn-all" @click="selecionarTodosEtq">
+            {{ produtosEtq.length && produtosEtq.every(p => etqSelecao[p.pk] !== undefined) ? 'Desmarcar todos' : 'Selecionar todos' }}
+          </button>
+        </div>
+        <div class="etq-lista">
+          <div
+            v-for="p in produtosEtq" :key="p.pk"
+            :class="['etq-item', etqSelecao[p.pk] !== undefined ? 'etq-item--sel' : '']"
+            @click="toggleEtq(p)"
+          >
+            <span class="material-symbols-outlined etq-chk">
+              {{ etqSelecao[p.pk] !== undefined ? 'check_box' : 'check_box_outline_blank' }}
+            </span>
+            <div class="etq-info">
+              <span class="etq-desc">{{ p.descricao }}</span>
+              <span class="etq-sub">{{ p.codigo || '—' }} · {{ p.codigo_barras || 'sem código de barras' }}</span>
+            </div>
+            <span class="etq-preco">{{ fmt(p.em_promo && p.preco_promo ? p.preco_promo : p.valor_venda) }}</span>
+            <div v-if="etqSelecao[p.pk] !== undefined" class="etq-qty" @click.stop>
+              <button class="etq-qty-btn" @click="ajustarQtyEtq(p.pk, -1)">−</button>
+              <span class="etq-qty-val">{{ etqSelecao[p.pk] }}</span>
+              <button class="etq-qty-btn" @click="ajustarQtyEtq(p.pk, +1)">+</button>
+            </div>
+            <div v-else class="etq-qty-ph"></div>
+          </div>
+          <div v-if="produtosEtq.length === 0" class="etq-vazio">Nenhum produto encontrado.</div>
+        </div>
+        <div class="etq-footer">
+          <span class="etq-footer-info">
+            {{ Object.keys(etqSelecao).length }} produto(s) selecionado(s) · <strong>{{ totalEtiquetas }} etiqueta(s)</strong>
+          </span>
+          <button class="etq-btn-print" :disabled="totalEtiquetas === 0" @click="imprimirEtiquetas">
+            <span class="material-symbols-outlined">print</span>
+            Imprimir
           </button>
         </div>
       </div>
@@ -459,6 +523,150 @@ function fmt(v) {
     return "R$ 0,00";
   }
 }
+
+// ── Etiquetas ─────────────────────────────────────────────────
+const showEtiquetas = ref(false);
+const etqBusca      = ref('');
+const etqSelecao    = ref({});
+
+const produtosEtq = computed(() => {
+  const q = semAcento(etqBusca.value.trim());
+  if (!q) return produtos.value;
+  return produtos.value.filter(p =>
+    semAcento(p.descricao).includes(q) ||
+    (p.codigo || '').toLowerCase().includes(q) ||
+    (p.codigo_barras || '').includes(q)
+  );
+});
+
+const totalEtiquetas = computed(() =>
+  Object.values(etqSelecao.value).reduce((s, q) => s + (q || 0), 0)
+);
+
+function abrirEtiquetas() {
+  etqBusca.value = '';
+  etqSelecao.value = {};
+  showEtiquetas.value = true;
+  showAcoes.value = false;
+}
+
+function toggleEtq(p) {
+  const novo = { ...etqSelecao.value };
+  if (novo[p.pk] !== undefined) delete novo[p.pk];
+  else novo[p.pk] = 1;
+  etqSelecao.value = novo;
+}
+
+function ajustarQtyEtq(pk, delta) {
+  const atual = etqSelecao.value[pk] || 1;
+  etqSelecao.value = { ...etqSelecao.value, [pk]: Math.max(1, atual + delta) };
+}
+
+function selecionarTodosEtq() {
+  const visiveis = produtosEtq.value;
+  const todosAtivos = visiveis.length > 0 && visiveis.every(p => etqSelecao.value[p.pk] !== undefined);
+  const novo = { ...etqSelecao.value };
+  if (todosAtivos) {
+    visiveis.forEach(p => delete novo[p.pk]);
+  } else {
+    visiveis.forEach(p => { if (novo[p.pk] === undefined) novo[p.pk] = 1; });
+  }
+  etqSelecao.value = novo;
+}
+
+function imprimirEtiquetas() {
+  const selecionados = [];
+  produtos.value.forEach(p => {
+    const qty = etqSelecao.value[p.pk] || 0;
+    for (let i = 0; i < qty; i++) selecionados.push(p);
+  });
+  if (!selecionados.length) return;
+
+  const labels = selecionados.map((p, i) => {
+    const preco = p.em_promo && p.preco_promo ? p.preco_promo : p.valor_venda;
+    return {
+      id:      `bc${i}`,
+      nome:    (p.descricao || '').replace(/</g, '&lt;'),
+      preco:   parseFloat(preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      barcode: p.codigo_barras || '',
+    };
+  });
+
+  const barcodeInits = labels
+    .filter(l => l.barcode)
+    .map(l => {
+      const f = l.barcode.length === 13 ? 'EAN13' : l.barcode.length === 8 ? 'EAN8' : 'CODE128';
+      return `try{JsBarcode('#${l.id}','${l.barcode}',{format:'${f}',width:1.2,height:28,displayValue:true,fontSize:7,margin:0,textMargin:1});}catch(e){}`;
+    }).join('\n');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Etiquetas BarroStock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  @page{size:A4;margin:8mm}
+  body{font-family:'Hanken Grotesk',Arial,sans-serif;background:#fff}
+  .grid{display:flex;flex-wrap:wrap;gap:2mm}
+  .label{
+    width:50mm;height:50mm;
+    border:.3mm solid #ccc;border-radius:2mm;
+    display:flex;flex-direction:column;align-items:center;
+    padding:2mm 1.5mm 1mm;background:#fff;
+    page-break-inside:avoid;overflow:hidden;
+  }
+  .lbl-brand{
+    font-weight:900;font-size:7.5pt;color:#444;
+    text-transform:uppercase;letter-spacing:1.5px;
+    border-bottom:.2mm solid #e0e0e0;
+    width:100%;text-align:center;padding-bottom:1mm;margin-bottom:1.5mm;
+  }
+  .lbl-nome{
+    font-weight:700;font-size:7pt;color:#000;
+    text-align:center;line-height:1.25;
+    flex:1;display:flex;align-items:center;justify-content:center;
+    max-height:14mm;overflow:hidden;
+  }
+  .lbl-preco{
+    font-weight:900;font-size:13pt;color:#00c853;
+    text-align:center;margin:1.5mm 0 1mm;
+  }
+  .lbl-bc{max-width:46mm;display:block}
+</style>
+</head>
+<body>
+<div class="grid">
+${labels.map(l => `
+  <div class="label">
+    <div class="lbl-brand">BarroStock</div>
+    <div class="lbl-nome">${l.nome}</div>
+    <div class="lbl-preco">R$ ${l.preco}</div>
+    ${l.barcode ? `<svg class="lbl-bc" id="${l.id}"></svg>` : ''}
+  </div>`).join('')}
+</div>
+<script>
+window.addEventListener('load',function(){
+  ${barcodeInits}
+  setTimeout(function(){window.print();},800);
+});
+<\/script>
+</body></html>`;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(iframe);
+  iframe.contentWindow.document.open();
+  iframe.contentWindow.document.write(html);
+  iframe.contentWindow.document.close();
+  iframe.contentWindow.addEventListener('afterprint', () => {
+    if (iframe.parentNode) document.body.removeChild(iframe);
+  });
+  setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe); }, 30_000);
+}
 </script>
 
 <style scoped>
@@ -578,6 +786,135 @@ function fmt(v) {
 .saldo.ok    { color: #10b981; font-weight: 700; }
 .saldo.baixo { color: #f59e0b; font-weight: 700; }
 .saldo.zero  { color: #ef4444; font-weight: 700; }
+
+/* ── Modal Etiquetas ─────────────────────────────────────────── */
+.etq-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.etq-modal {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+  width: 700px; max-width: 100%; max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,.35);
+}
+.etq-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 16px; border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.etq-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--text2); padding: 6px; border-radius: 8px;
+  display: flex; align-items: center; transition: all .15s; flex-shrink: 0;
+}
+.etq-close:hover { background: var(--bg3); color: var(--text); }
+
+/* toolbar / search — igual ao PDV */
+.etq-toolbar {
+  display: flex; gap: 10px; align-items: center;
+  padding: 12px 22px; border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.etq-search-wrap { position: relative; flex: 1; display: flex; align-items: center; }
+.etq-search-ico {
+  position: absolute; left: 11px;
+  color: var(--muted, var(--text2)); pointer-events: none; flex-shrink: 0;
+}
+.etq-search {
+  width: 100%; padding: 11px 36px 11px 40px;
+  background: var(--bg3); border: 1px solid var(--line, var(--border));
+  border-radius: var(--radius, 10px); color: var(--text);
+  font-size: 15px; outline: none; transition: border-color .15s;
+}
+.etq-search::placeholder { color: var(--muted, var(--text2)); }
+.etq-search:focus { border-color: rgba(99,102,241,.5); }
+.etq-search-clear {
+  position: absolute; right: 10px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text2); font-size: 18px; line-height: 1; padding: 2px 4px;
+  border-radius: 4px; transition: color .15s;
+}
+.etq-search-clear:hover { color: var(--text); }
+.etq-btn-all {
+  white-space: nowrap; padding: 10px 16px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--bg); color: var(--text2);
+  cursor: pointer; font-size: .83rem; font-weight: 600; transition: all .15s;
+}
+.etq-btn-all:hover { border-color: var(--primary); color: var(--primary); }
+
+/* lista */
+.etq-lista { flex: 1; overflow-y: auto; }
+.etq-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 22px; cursor: pointer; transition: background .12s;
+  border-bottom: 1px solid var(--border);
+}
+.etq-item:last-child { border-bottom: none; }
+.etq-item:hover { background: var(--bg3); }
+.etq-item--sel { background: rgba(99,102,241,.07); }
+.etq-item--sel:hover { background: rgba(99,102,241,.12); }
+.etq-chk { font-size: 21px; color: var(--text2); flex-shrink: 0; transition: color .12s; }
+.etq-item--sel .etq-chk { color: var(--primary); }
+.etq-info { flex: 1; min-width: 0; }
+.etq-desc { display: block; font-size: .9rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.etq-sub  { display: block; font-size: .76rem; color: var(--text2); margin-top: 2px; font-family: monospace; }
+.etq-preco { font-size: .88rem; font-weight: 700; color: var(--text); white-space: nowrap; min-width: 80px; text-align: right; }
+.etq-qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.etq-qty-btn {
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text); cursor: pointer; font-size: 1.1rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s; font-weight: 700;
+}
+.etq-qty-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.etq-qty-val { min-width: 26px; text-align: center; font-weight: 700; font-size: .9rem; }
+.etq-qty-ph { width: 90px; flex-shrink: 0; }
+.etq-vazio { text-align: center; padding: 40px 20px; color: var(--text2); font-size: .9rem; }
+
+/* footer */
+.etq-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 22px; border-top: 1px solid var(--border); gap: 12px;
+  background: var(--bg3);
+}
+.etq-footer-info { font-size: .85rem; color: var(--text2); }
+.etq-footer-info strong { color: var(--text); font-weight: 700; }
+.etq-btn-print {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 22px; border: none; border-radius: 10px;
+  background: var(--primary); color: #fff;
+  font-weight: 700; font-size: .9rem; cursor: pointer; transition: opacity .15s;
+}
+.etq-btn-print:hover:not(:disabled) { opacity: .88; }
+.etq-btn-print:disabled { opacity: .35; cursor: not-allowed; }
+
+/* light mode overrides */
+[data-theme="light"] .etq-modal   { background: #fff; border-color: rgba(0,0,0,.12); }
+[data-theme="light"] .etq-header  { border-color: rgba(0,0,0,.1); }
+[data-theme="light"] .etq-toolbar { background: #f8f9fa; border-color: rgba(0,0,0,.1); }
+[data-theme="light"] .etq-search  { background: #fff; border-color: rgba(0,0,0,.2); color: #0f172a; }
+[data-theme="light"] .etq-search:focus { border-color: #4338ca; }
+[data-theme="light"] .etq-search::placeholder { color: #9ca3af; }
+[data-theme="light"] .etq-search-ico { color: #9ca3af; }
+[data-theme="light"] .etq-btn-all { background: #fff; border-color: rgba(0,0,0,.2); color: #374151; }
+[data-theme="light"] .etq-item    { border-color: rgba(0,0,0,.07); }
+[data-theme="light"] .etq-item:hover { background: rgba(0,0,0,.035); }
+[data-theme="light"] .etq-item--sel { background: rgba(67,56,202,.06); }
+[data-theme="light"] .etq-item--sel:hover { background: rgba(67,56,202,.1); }
+[data-theme="light"] .etq-chk     { color: #9ca3af; }
+[data-theme="light"] .etq-item--sel .etq-chk { color: #4338ca; }
+[data-theme="light"] .etq-desc    { color: #0f172a; }
+[data-theme="light"] .etq-sub     { color: #6b7280; }
+[data-theme="light"] .etq-preco   { color: #0f172a; }
+[data-theme="light"] .etq-qty-btn { background: #f3f4f6; border-color: rgba(0,0,0,.2); color: #374151; }
+[data-theme="light"] .etq-footer  { background: #f8f9fa; border-color: rgba(0,0,0,.1); }
+[data-theme="light"] .etq-footer-info { color: #6b7280; }
+[data-theme="light"] .etq-footer-info strong { color: #0f172a; }
+
+.drop-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
 .acoes     { text-align: right !important; white-space: nowrap; }
 .btn-edit  { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; border-radius: 8px; transition: all .2s; }
