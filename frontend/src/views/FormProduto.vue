@@ -247,6 +247,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
+import api from '../services/api';
 
 const route       = useRoute();
 const router      = useRouter();
@@ -256,6 +257,7 @@ const pk             = route.params.pk || null;
 const carregando     = ref(!!pk);
 const salvando       = ref(false);
 const gerandoBarcode = ref(false);
+const saldoOriginal  = ref(null);
 
 function calcEAN13(cod12) {
   const sum = [...cod12].reduce((acc, d, i) => acc + parseInt(d) * (i % 2 === 0 ? 1 : 3), 0);
@@ -392,6 +394,7 @@ onMounted(async () => {
       promo_inicio:        isoParaDT(data.promo_inicio),
       promo_fim:           isoParaDT(data.promo_fim),
     };
+    saldoOriginal.value = parseFloat(data.saldo || 0);
     const fmtBRL = v => parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     valorVendaDisplay.value = fmtBRL(data.valor_venda);
     precoCustoDisplay.value = fmtBRL(data.preco_custo);
@@ -435,7 +438,12 @@ async function salvar() {
 
     let error, novoPk;
     if (pk) {
-      ({ error } = await supabase.from('produtos').update(payload).eq('pk', Number(pk)));
+      // Update via backend para garantir auditoria de estoque no servidor
+      try {
+        await api.put(`/api/pdv/produto/${pk}`, payload);
+      } catch (e) {
+        error = e.response?.data || e;
+      }
     } else {
       let inserted;
       ({ data: inserted, error } = await supabase.from('produtos').insert(payload).select('pk').single());

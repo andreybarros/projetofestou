@@ -71,6 +71,70 @@ router.get('/formas-pagamento', async (req, res) => {
   }
 });
 
+// PUT /api/pdv/produto/:pk  — atualiza produto + auditoria se saldo mudar
+router.put('/produto/:pk', async (req, res) => {
+  try {
+    const pk = parseInt(req.params.pk);
+    if (!pk) return res.status(400).json({ erro: 'pk inválido' });
+
+    const {
+      codigo, codigo_barras, descricao, valor_venda, preco_custo, saldo,
+      ncm, cfop, csosn, unidade_comercial, categoria_pk,
+      armazem_pk, endereco_armazem_pk, filial_pk,
+      preco_promo, promo_inicio, promo_fim,
+    } = req.body;
+
+    // Lê saldo atual antes de alterar
+    const { data: prodAtual } = await supabase
+      .from('produtos').select('saldo, descricao').eq('pk', pk).single();
+
+    const saldoAntes = parseFloat(prodAtual?.saldo ?? 0);
+    const saldoNovo  = parseFloat(saldo ?? 0);
+
+    const payload = {
+      codigo:            codigo            || null,
+      codigo_barras:     codigo_barras     || null,
+      descricao:         descricao?.trim() || null,
+      valor_venda:       parseFloat(valor_venda  || 0),
+      preco_custo:       parseFloat(preco_custo  || 0),
+      saldo:             saldoNovo,
+      ncm:               ncm               || null,
+      cfop:              cfop              || '5102',
+      csosn:             csosn             || '400',
+      unidade_comercial: unidade_comercial || 'UN',
+      categoria_pk:      categoria_pk      || null,
+      armazem_pk:          armazem_pk          || null,
+      endereco_armazem_pk: endereco_armazem_pk || null,
+      filial_pk:           filial_pk           || null,
+      preco_promo:  preco_promo > 0 ? parseFloat(preco_promo) : null,
+      promo_inicio: promo_inicio || null,
+      promo_fim:    promo_fim    || null,
+    };
+
+    const { error } = await supabase.from('produtos').update(payload).eq('pk', pk);
+    if (error) throw error;
+
+    // Auditoria somente se o saldo mudou
+    if (saldoNovo !== saldoAntes) {
+      const { error: errAudit } = await supabase.from('auditoria_estoque').insert({
+        filial_pk:    filial_pk    || null,
+        produto_pk:   pk,
+        nome:         descricao?.trim() || prodAtual?.descricao || null,
+        saldo_antes:  saldoAntes,
+        qtd_debitada: saldoNovo - saldoAntes,
+        saldo_apos:   saldoNovo,
+        observacao:   'Alterado estoque pelo cadastro de produto',
+      });
+      if (errAudit) console.error('[PDV/Produto/Update] Erro auditoria:', errAudit.message);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[PDV/Produto/Update] Erro:', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // DELETE /api/pdv/produto/:pk  — soft delete (marca ativo = false)
 router.delete('/produto/:pk', async (req, res) => {
   try {
