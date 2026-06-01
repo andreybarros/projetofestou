@@ -82,6 +82,14 @@
                     </button>
                   </div>
                 </div>
+                <button
+                  v-if="p.status === 'em_andamento' || p.status === 'comprado'"
+                  class="btn-act btn-act-receber"
+                  title="Receber Materiais"
+                  @click="abrirReceber(p)"
+                >
+                  <span class="material-symbols-outlined">inventory</span>
+                </button>
                 <button class="btn-act" title="Editar" @click="$router.push(`/pedidos-compra/${p.pk}/editar`)">
                   <span class="material-symbols-outlined">edit</span>
                 </button>
@@ -94,6 +102,101 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Modal Receber Materiais -->
+    <Teleport to="body">
+      <div v-if="modalReceber" class="rec-overlay" @click.self="fecharReceber">
+        <div class="rec-modal">
+          <div class="rec-header">
+            <div>
+              <div class="rec-title">
+                <span class="material-symbols-outlined">inventory</span>
+                Receber Materiais
+              </div>
+              <div class="rec-sub">Pedido #{{ modalReceber.numero }} · {{ modalReceber.fornecedores?.nome || 'Sem fornecedor' }}</div>
+            </div>
+            <button class="rec-close" @click="fecharReceber">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div v-if="receberCarregando" class="rec-state">
+            <span class="spin"></span> Carregando itens...
+          </div>
+
+          <template v-else>
+            <!-- Aviso de itens sem produto -->
+            <div v-if="itensSemProduto.length" class="rec-alerta">
+              <span class="material-symbols-outlined">warning</span>
+              <div>
+                <strong>{{ itensSemProduto.length }} item(s) sem produto vinculado.</strong>
+                <p>Edite o pedido e vincule todos os itens a produtos cadastrados antes de dar entrada.</p>
+              </div>
+            </div>
+
+            <!-- Lista de itens -->
+            <div class="rec-itens">
+              <div v-for="it in receberItens" :key="it.pk" :class="['rec-item', !it.produto_pk ? 'rec-item--erro' : '']">
+                <span class="material-symbols-outlined rec-item-ico">
+                  {{ it.produto_pk ? 'check_circle' : 'cancel' }}
+                </span>
+                <div class="rec-item-info">
+                  <span class="rec-item-nome">{{ it.produtos?.descricao || it.descricao_livre || 'Item avulso' }}</span>
+                  <span class="rec-item-cod" v-if="it.produtos?.codigo">{{ it.produtos.codigo }}</span>
+                </div>
+                <div class="rec-item-nums">
+                  <span class="rec-item-qtd">{{ it.quantidade }} un.</span>
+                  <span v-if="!it.produto_pk" class="rec-item-warn">Não cadastrado</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- NF opcional (apenas se todos ok) -->
+            <div v-if="!itensSemProduto.length" class="rec-nf">
+              <div class="rec-nf-title">
+                <span class="material-symbols-outlined" style="font-size:16px">receipt_long</span>
+                Dados da Nota Fiscal <span class="rec-nf-opt">(opcional)</span>
+              </div>
+              <div class="rec-nf-grid">
+                <div class="rec-nf-field">
+                  <label>Nº NF</label>
+                  <input v-model="nfForm.numero" type="text" class="rec-input" placeholder="000001" />
+                </div>
+                <div class="rec-nf-field">
+                  <label>Série</label>
+                  <input v-model="nfForm.serie" type="text" class="rec-input" placeholder="1" />
+                </div>
+                <div class="rec-nf-field">
+                  <label>Data entrada</label>
+                  <input v-model="nfForm.data_entrada" type="date" class="rec-input" />
+                </div>
+                <div class="rec-nf-field">
+                  <label>Valor total NF</label>
+                  <input v-model="nfForm.valor" type="number" step="0.01" class="rec-input" placeholder="0,00" />
+                </div>
+                <div class="rec-nf-field rec-nf-full">
+                  <label>Chave NF-e</label>
+                  <input v-model="nfForm.chave" type="text" class="rec-input" placeholder="44 dígitos" maxlength="44" />
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <div class="rec-footer">
+            <button class="rec-btn-cancel" @click="fecharReceber">Cancelar</button>
+            <button
+              class="rec-btn-confirm"
+              :disabled="receberCarregando || itensSemProduto.length > 0 || receberSalvando"
+              @click="confirmarReceber"
+            >
+              <span v-if="receberSalvando" class="spin-sm"></span>
+              <span v-else class="material-symbols-outlined" style="font-size:17px">move_to_inbox</span>
+              {{ receberSalvando ? 'Registrando...' : 'Confirmar Entrada' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Toast -->
     <Transition name="toast">
@@ -193,6 +296,63 @@ async function excluir(p) {
   }
 }
 
+// ── Receber Materiais ─────────────────────────────────────────
+const modalReceber     = ref(null);
+const receberItens     = ref([]);
+const receberCarregando = ref(false);
+const receberSalvando  = ref(false);
+const nfForm = ref({ numero: '', serie: '', data_entrada: '', valor: '', chave: '' });
+
+const itensSemProduto = computed(() =>
+  receberItens.value.filter(it => !it.produto_pk)
+);
+
+async function abrirReceber(pedido) {
+  modalReceber.value   = pedido;
+  receberItens.value   = [];
+  receberCarregando.value = true;
+  nfForm.value = { numero: '', serie: '', data_entrada: new Date().toLocaleDateString('en-CA'), valor: '', chave: '' };
+  try {
+    const { data } = await api.get(`/api/pedidos-compra/${pedido.pk}`);
+    receberItens.value = data.data?.itens || [];
+  } catch (e) {
+    showToast('Erro ao carregar itens: ' + (e.response?.data?.erro || e.message), 'err');
+    modalReceber.value = null;
+  } finally {
+    receberCarregando.value = false;
+  }
+}
+
+function fecharReceber() {
+  if (receberSalvando.value) return;
+  modalReceber.value = null;
+  receberItens.value = [];
+}
+
+async function confirmarReceber() {
+  if (itensSemProduto.value.length || receberSalvando.value) return;
+  receberSalvando.value = true;
+  try {
+    const temNf = nfForm.value.numero || nfForm.value.chave;
+    const payload = { modo: temNf ? 'com_nf' : 'sem_nf' };
+    if (temNf) {
+      payload.nf_numero      = nfForm.value.numero      || null;
+      payload.nf_serie       = nfForm.value.serie       || null;
+      payload.nf_chave       = nfForm.value.chave       || null;
+      payload.nf_data_entrada = nfForm.value.data_entrada || null;
+      payload.nf_valor       = nfForm.value.valor ? parseFloat(nfForm.value.valor) : null;
+    }
+    const { data } = await api.post(`/api/pedidos-compra/${modalReceber.value.pk}/entrada`, payload);
+    showToast(`Entrada registrada! ${data.qtd_itens} produto(s) atualizados.`, 'ok');
+    fecharReceber();
+    await carregar();
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao registrar entrada.', 'err');
+  } finally {
+    receberSalvando.value = false;
+  }
+}
+
 function labelStatus(s) {
   const m = { em_andamento: 'Em Andamento', comprado: 'Comprado', cancelado: 'Cancelado', finalizado: 'Finalizado' };
   return m[s] || s;
@@ -271,6 +431,7 @@ function showToast(msg, tipo = 'ok') {
 .btn-act:hover { background: var(--bg3); color: var(--text); border-color: var(--primary); }
 .btn-act.del:hover { background: rgba(239,68,68,.1); border-color: #ef4444; color: #ef4444; }
 .btn-act .material-symbols-outlined { font-size: 16px; }
+.btn-act-receber:hover { background: rgba(0,200,83,.1); border-color: #00c853; color: #00a846; }
 
 /* Status dropdown */
 .status-menu-wrap { position: relative; }
@@ -292,4 +453,52 @@ function showToast(msg, tipo = 'ok') {
 .pc-toast.err { background: #7f1d1d; color: #fecaca; }
 .toast-enter-active, .toast-leave-active { transition: all .25s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+
+/* ── Modal Receber Materiais ── */
+.rec-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.rec-modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; width: 540px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.rec-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); gap: 12px; }
+.rec-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--text); }
+.rec-title .material-symbols-outlined { font-size: 20px; color: #00c853; }
+.rec-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.rec-close { background: none; border: none; cursor: pointer; color: var(--text2); display: flex; padding: 4px; border-radius: 6px; }
+.rec-close:hover { background: var(--bg3); color: var(--text); }
+
+.rec-state { display: flex; align-items: center; gap: 10px; padding: 36px 20px; color: var(--text2); font-size: 13px; justify-content: center; }
+
+.rec-alerta { display: flex; align-items: flex-start; gap: 10px; margin: 14px 20px 0; padding: 12px 14px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: 10px; color: var(--text); }
+.rec-alerta .material-symbols-outlined { font-size: 20px; color: #ef4444; flex-shrink: 0; margin-top: 1px; }
+.rec-alerta strong { font-size: 13px; font-weight: 700; color: #ef4444; display: block; margin-bottom: 3px; }
+.rec-alerta p { font-size: 12px; color: var(--text2); margin: 0; }
+
+.rec-itens { flex: 1; overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; gap: 6px; }
+.rec-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg3); }
+.rec-item--erro { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
+.rec-item-ico { font-size: 18px; flex-shrink: 0; }
+.rec-item:not(.rec-item--erro) .rec-item-ico { color: #00c853; }
+.rec-item--erro .rec-item-ico { color: #ef4444; }
+.rec-item-info { flex: 1; min-width: 0; }
+.rec-item-nome { display: block; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-item-cod  { display: block; font-size: 11px; color: var(--text2); font-family: monospace; }
+.rec-item-nums { text-align: right; flex-shrink: 0; }
+.rec-item-qtd  { display: block; font-size: 13px; font-weight: 700; color: var(--text); }
+.rec-item-warn { display: block; font-size: 10px; font-weight: 700; color: #ef4444; margin-top: 2px; }
+
+.rec-nf { margin: 0 20px 4px; padding: 12px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; }
+.rec-nf-title { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text2); margin-bottom: 10px; }
+.rec-nf-opt { font-weight: 400; opacity: .7; }
+.rec-nf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rec-nf-full { grid-column: 1 / -1; }
+.rec-nf-field { display: flex; flex-direction: column; gap: 4px; }
+.rec-nf-field label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: .04em; }
+.rec-input { padding: 7px 10px; background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 13px; width: 100%; }
+.rec-input:focus { outline: none; border-color: var(--primary); }
+
+.rec-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); }
+.rec-btn-cancel  { padding: 8px 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 13px; font-weight: 600; cursor: pointer; }
+.rec-btn-cancel:hover { background: var(--bg2); }
+.rec-btn-confirm { display: flex; align-items: center; gap: 6px; padding: 8px 18px; background: #00c853; border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.rec-btn-confirm:hover:not(:disabled) { background: #00a846; }
+.rec-btn-confirm:disabled { opacity: .4; cursor: not-allowed; }
+.spin-sm { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
 </style>

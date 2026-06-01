@@ -229,32 +229,93 @@ router.post('/:pk/entrada', async (req, res) => {
     const { pk } = req.params;
     const { modo, nf_numero, nf_serie, nf_chave, nf_fornecedor, nf_data_entrada, nf_valor } = req.body;
 
-    const { data: itens, error: errItens } = await supabase
+    // 1. Busca TODOS os itens (incluindo avulsos sem produto_pk)
+    const { data: todosItens, error: errItens } = await supabase
       .from('pedidos_compra_itens')
-      .select('produto_pk, quantidade')
+      .select('pk, produto_pk, descricao_livre, quantidade')
       .eq('pedido_pk', pk)
-      .not('produto_pk', 'is', null);
+      .order('pk');
     if (errItens) throw errItens;
 
-    let atualizados = 0;
-    for (const it of itens || []) {
-      const { error: errUpd } = await supabase.rpc('ajustar_saldo_produto', {
-        p_pk:               it.produto_pk,
-        p_delta:            parseFloat(it.quantidade || 0),
-        p_permitir_negativo: true,
-      });
-      if (!errUpd) atualizados++;
+    if (!todosItens || todosItens.length === 0) {
+      return res.status(400).json({ erro: 'O pedido não possui itens.' });
     }
 
+    // 2. Bloqueia se qualquer item não tiver produto vinculado
+    const semProduto = todosItens.filter(it => !it.produto_pk);
+    if (semProduto.length > 0) {
+      return res.status(400).json({
+        erro: `${semProduto.length} item(s) não estão vinculados a um produto cadastrado. Edite o pedido e vincule todos os itens antes de dar entrada.`,
+        itens_sem_produto: semProduto.map(it => ({
+          pk: it.pk,
+          descricao_livre: it.descricao_livre || 'Item avulso',
+        })),
+      });
+    }
+
+    // 3. Busca pedido para obter número e filial
+    const { data: pedido } = await supabase
+      .from('pedidos_compra')
+      .select('numero, filial_pk')
+      .eq('pk', pk)
+      .single();
+
+    // 4. Busca saldo atual de todos os produtos antes de ajustar
+    const prodPks = todosItens.map(it => it.produto_pk);
+    const { data: produtosAntes } = await supabase
+      .from('produtos')
+      .select('pk, descricao, saldo')
+      .in('pk', prodPks);
+    const saldoMap = {};
+    const nomeMap  = {};
+    (produtosAntes || []).forEach(p => {
+      saldoMap[p.pk] = parseFloat(p.saldo || 0);
+      nomeMap[p.pk]  = p.descricao || String(p.pk);
+    });
+
+    // 5. Atualiza saldo de todos os produtos via RPC atômica
+    let atualizados = 0;
+    const auditoriaRows = [];
+    for (const it of todosItens) {
+      const qtd        = parseFloat(it.quantidade || 0);
+      const saldoAntes = saldoMap[it.produto_pk] ?? 0;
+      const { error: errUpd } = await supabase.rpc('ajustar_saldo_produto', {
+        p_pk:                it.produto_pk,
+        p_delta:             qtd,
+        p_permitir_negativo: true,
+      });
+      if (!errUpd) {
+        atualizados++;
+        auditoriaRows.push({
+          filial_pk:    pedido?.filial_pk || null,
+          produto_pk:   it.produto_pk,
+          nome:         nomeMap[it.produto_pk] || String(it.produto_pk),
+          saldo_antes:  saldoAntes,
+          qtd_debitada: -qtd, // negativo = entrada (devolução de estoque)
+          saldo_apos:   saldoAntes + qtd,
+          observacao:   `Entrada de pedido de compra #${pedido?.numero || pk}`,
+        });
+      } else {
+        console.error(`[PedidosCompra/entrada] Erro ao ajustar produto ${it.produto_pk}:`, errUpd.message);
+      }
+    }
+
+    // 6. Grava auditoria de estoque
+    if (auditoriaRows.length) {
+      const { error: errAudit } = await supabase.from('auditoria_estoque').insert(auditoriaRows);
+      if (errAudit) console.error('[PedidosCompra/entrada] Erro ao gravar auditoria:', errAudit.message);
+    }
+
+    // 4. Atualiza status do pedido
     const novoStatus = modo === 'com_nf' ? 'finalizado' : 'comprado';
     const payload = { status: novoStatus };
     if (modo === 'com_nf') {
-      if (nf_numero)      payload.nf_numero      = nf_numero;
-      if (nf_serie)       payload.nf_serie       = nf_serie;
-      if (nf_chave)       payload.nf_chave       = nf_chave;
-      if (nf_fornecedor)  payload.nf_fornecedor  = nf_fornecedor;
+      if (nf_numero)       payload.nf_numero       = nf_numero;
+      if (nf_serie)        payload.nf_serie        = nf_serie;
+      if (nf_chave)        payload.nf_chave        = nf_chave;
+      if (nf_fornecedor)   payload.nf_fornecedor   = nf_fornecedor;
       if (nf_data_entrada) payload.nf_data_entrada = nf_data_entrada;
-      if (nf_valor)       payload.nf_valor       = parseFloat(nf_valor);
+      if (nf_valor)        payload.nf_valor        = parseFloat(nf_valor);
     }
 
     const { error: errPed } = await supabase.from('pedidos_compra').update(payload).eq('pk', pk);
