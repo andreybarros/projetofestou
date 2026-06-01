@@ -24,7 +24,7 @@ router.get('/eventos', async (req, res) => {
     const [resAgenda, resLocacoes] = await Promise.all([
       supabase
         .from('agenda')
-        .select('*, vendas(pk, numero, cliente)')
+        .select('*, vendas(pk, numero, cliente, cliente_pk, clientes(nome))')
         .eq('filial_pk', parseInt(filial_pk))
         .gte('data_evento', ini)
         .lte('data_evento', fim)
@@ -32,7 +32,7 @@ router.get('/eventos', async (req, res) => {
 
       supabase
         .from('vendas')
-        .select('pk, numero, cliente, data_locacao, data_devolucao_prevista, status_locacao, observacao')
+        .select('pk, numero, cliente, cliente_pk, data_locacao, data_devolucao_prevista, status_locacao, observacao, clientes(nome)')
         .eq('filial_pk', parseInt(filial_pk))
         .eq('ativo', true)
         .eq('tipo_venda', 'locacao')
@@ -43,6 +43,7 @@ router.get('/eventos', async (req, res) => {
     const evs = [];
 
     for (const ev of resAgenda.data || []) {
+      const vendaCliente = ev.vendas?.clientes?.nome || ev.vendas?.cliente || null;
       evs.push({
         id:         'ag-' + ev.pk,
         pk:         ev.pk,
@@ -54,20 +55,22 @@ router.get('/eventos', async (req, res) => {
         descricao:  ev.descricao,
         cor:        ev.cor || COR_TIPOS[ev.tipo] || COR_TIPOS.manual,
         venda_pk:   ev.venda_pk,
-        venda_info: ev.vendas || null,
+        venda_info: ev.vendas ? { ...ev.vendas, cliente: vendaCliente } : null,
         projeto_pk: ev.projeto_pk || null,
         observacao: null,
       });
     }
 
     for (const loc of resLocacoes.data || []) {
+      const nomeCliente = loc.clientes?.nome || loc.cliente || null;
+
       if (loc.data_locacao) {
         const d = loc.data_locacao.slice(0, 10);
         if (d >= ini && d <= fim) {
           evs.push({
             id:             'ret-' + loc.pk,
             source:         'locacao',
-            titulo:         `Retirada #${loc.numero}${loc.cliente ? ' · ' + loc.cliente : ''}`,
+            titulo:         `Retirada #${loc.numero}`,
             tipo:           'locacao_retirada',
             date:           d,
             hora:           loc.data_locacao.slice(11, 16) !== '00:00' ? loc.data_locacao.slice(11, 16) : null,
@@ -76,7 +79,7 @@ router.get('/eventos', async (req, res) => {
             status_locacao: loc.status_locacao,
             cor:            COR_TIPOS.locacao_retirada,
             venda_pk:       loc.pk,
-            venda_info:     { numero: loc.numero, cliente: loc.cliente },
+            venda_info:     { numero: loc.numero, cliente: nomeCliente },
             pk:             null,
           });
         }
@@ -87,7 +90,7 @@ router.get('/eventos', async (req, res) => {
           evs.push({
             id:             'dev-' + loc.pk,
             source:         'locacao',
-            titulo:         `Devolução #${loc.numero}${loc.cliente ? ' · ' + loc.cliente : ''}`,
+            titulo:         `Devolução #${loc.numero}`,
             tipo:           'locacao_devolucao',
             date:           d,
             hora:           null,
@@ -96,7 +99,7 @@ router.get('/eventos', async (req, res) => {
             status_locacao: loc.status_locacao,
             cor:            COR_TIPOS.locacao_devolucao,
             venda_pk:       loc.pk,
-            venda_info:     { numero: loc.numero, cliente: loc.cliente },
+            venda_info:     { numero: loc.numero, cliente: nomeCliente },
             pk:             null,
           });
         }

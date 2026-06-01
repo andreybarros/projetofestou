@@ -185,7 +185,7 @@
               </div>
               <div class="ag-tl-card" @click="abrirDetalheEvento(ev)">
                 <div class="ag-tl-card-top">
-                  <span class="ag-tl-hora">{{ ev.hora || 'Dia todo' }}</span>
+                  <span class="ag-tl-hora">{{ ev.hora || '' }}</span>
                   <div class="ag-tl-btns" @click.stop>
                     <template v-if="ev.source === 'agenda'">
                       <button class="ag-tl-btn" @click="abrirModal(ev.date, ev)" title="Editar">
@@ -199,12 +199,28 @@
                 </div>
                 <div class="ag-tl-titulo">{{ ev.titulo }}</div>
                 <div v-if="ev.venda_info?.cliente" class="ag-tl-cliente">
-                  <span class="material-symbols-outlined" style="font-size:12px">person</span>
-                  {{ ev.venda_info.cliente }}
+                  <span class="material-symbols-outlined ag-tl-cliente-ico">person</span>
+                  <span class="ag-tl-cliente-nome">{{ ev.venda_info.cliente }}</span>
                 </div>
-                <span class="ag-tl-tipo" :style="{ background: ev.cor + '20', color: ev.cor }">
-                  {{ labelTipo(ev.tipo) }}
-                </span>
+                <div class="ag-tl-badges">
+                  <span class="ag-tl-tipo" :style="{ background: ev.cor + '20', color: ev.cor }">
+                    {{ labelTipo(ev.tipo) }}
+                  </span>
+                  <span v-if="ev.source === 'locacao' && ev.tipo === 'locacao_retirada'"
+                    :class="['ag-tl-status', ev.status_locacao === 'devolvida' ? 'ag-tl-status--ok' : 'ag-tl-status--pend']">
+                    <span class="material-symbols-outlined" style="font-size:11px">
+                      {{ ev.status_locacao === 'devolvida' ? 'check_circle' : 'schedule' }}
+                    </span>
+                    {{ ev.status_locacao === 'devolvida' ? 'Já entregue' : 'Pendente retirada' }}
+                  </span>
+                  <span v-if="ev.source === 'locacao' && ev.tipo === 'locacao_devolucao'"
+                    :class="['ag-tl-status', ev.status_locacao === 'devolvida' ? 'ag-tl-status--ok' : 'ag-tl-status--pend']">
+                    <span class="material-symbols-outlined" style="font-size:11px">
+                      {{ ev.status_locacao === 'devolvida' ? 'check_circle' : 'schedule' }}
+                    </span>
+                    {{ ev.status_locacao === 'devolvida' ? 'Já recebida' : 'Aguardando devolução' }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1108,13 +1124,24 @@ onUnmounted(() => { clearTimeout(toastTimer); });
 .ag-tl-hora   { font-size: 11px; font-weight: 700; color: var(--text2); }
 .ag-tl-titulo { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; margin-bottom: 4px; }
 .ag-tl-cliente {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--text2); margin-bottom: 5px;
+  display: flex; align-items: center; gap: 5px;
+  margin-bottom: 5px;
+  background: var(--bg3); border-radius: 6px;
+  padding: 3px 8px; width: fit-content;
 }
+.ag-tl-cliente-ico  { font-size: 13px; color: var(--text2); flex-shrink: 0; }
+.ag-tl-cliente-nome { font-size: 12px; font-weight: 700; color: var(--text); }
+.ag-tl-badges { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 1px; }
 .ag-tl-tipo {
-  display: inline-block; font-size: 10px; font-weight: 700;
+  display: inline-flex; align-items: center; font-size: 10px; font-weight: 700;
   padding: 2px 8px; border-radius: 20px;
 }
+.ag-tl-status {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+}
+.ag-tl-status--ok   { background: rgba(0,200,83,.15); color: #00a846; }
+.ag-tl-status--pend { background: rgba(245,158,11,.15); color: #d97706; }
 .ag-tl-btns { display: flex; gap: 3px; }
 .ag-tl-btn {
   width: 24px; height: 24px; border-radius: 6px;
@@ -1278,7 +1305,9 @@ onUnmounted(() => { clearTimeout(toastTimer); });
 [data-theme="light"] .ag-tl-line { background: rgba(0,200,83,.2); }
 [data-theme="light"] .ag-tl-hora { color: #00a846; font-weight: 700; }
 [data-theme="light"] .ag-tl-titulo { color: #0f172a; }
-[data-theme="light"] .ag-tl-cliente { color: #4b5563; }
+[data-theme="light"] .ag-tl-cliente { background: #f0faf4; }
+[data-theme="light"] .ag-tl-cliente-ico  { color: #00a846; }
+[data-theme="light"] .ag-tl-cliente-nome { color: #0f172a; }
 [data-theme="light"] .ag-tl-btn {
   border-color: rgba(0,0,0,.12); color: #6b7280; background: #fff;
 }
