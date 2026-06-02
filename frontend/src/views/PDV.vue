@@ -757,9 +757,13 @@
                 <label>Telefone</label>
                 <input v-model="ncli.telefone" type="text" class="ncli-input" placeholder="(92) 99999-9999" @keydown.enter.prevent="ncliNextField" />
               </div>
-              <div class="ncli-field full">
+              <div class="ncli-field">
                 <label>E-mail</label>
                 <input v-model="ncli.email" type="email" class="ncli-input" placeholder="email@exemplo.com" @keydown.enter.prevent="ncliNextField" />
+              </div>
+              <div class="ncli-field">
+                <label>Data de Nascimento</label>
+                <input v-model="ncli.data_nascimento" type="date" class="ncli-input" @keydown.enter.prevent="ncliNextField" />
               </div>
               <div class="ncli-field">
                 <label>CEP</label>
@@ -1092,7 +1096,7 @@ const ncliBuscandoCep  = ref(false);
 const ncliErro         = ref('');
 const ncliMapUrl       = ref('');
 const ncliBodyRef      = ref(null);
-const ncli = ref({ nome: '', cpf: '', telefone: '', email: '', cep: '', logradouro: '', numero: '', bairro: '', cidade: '', uf: '', decorador: false });
+const ncli = ref({ nome: '', cpf: '', telefone: '', email: '', data_nascimento: '', cep: '', logradouro: '', numero: '', bairro: '', cidade: '', uf: '', decorador: false });
 
 function ncliNextField(e) {
   const inputs = Array.from(ncliBodyRef.value?.querySelectorAll('input, select, textarea') || []);
@@ -1156,8 +1160,9 @@ async function ncliSalvar() {
       nome:       ncli.value.nome.trim(),
       cpf:        ncli.value.cpf?.trim() || null,
       telefone:   ncli.value.telefone?.trim() || null,
-      email:      ncli.value.email?.trim() || null,
-      decorador:  ncli.value.decorador || false,
+      email:           ncli.value.email?.trim() || null,
+      data_nascimento: ncli.value.data_nascimento || null,
+      decorador:       ncli.value.decorador || false,
       cep:        ncli.value.cep?.trim() || null,
       logradouro: ncli.value.logradouro?.trim() || null,
       numero:     ncli.value.numero?.trim() || null,
