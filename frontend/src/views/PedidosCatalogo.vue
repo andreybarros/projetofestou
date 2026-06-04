@@ -133,7 +133,7 @@
             <td>
               <div class="td-acoes">
                 <span class="td-arrow material-symbols-outlined">chevron_right</span>
-                <button class="td-del-btn" @click.stop="excluirPedido(p)" title="Excluir pedido">
+                <button class="td-del-btn" @click.stop="pedirExclusao(p)" title="Excluir pedido">
                   <span class="material-symbols-outlined">delete</span>
                 </button>
               </div>
@@ -168,13 +168,26 @@
                 </div>
               </div>
               <div class="modal-hero-right">
-                <span :class="['mh-badge', `mh-${pedidoSelecionado.status}`]">{{ labelStatus(pedidoSelecionado.status) }}</span>
-                <button class="mh-del-btn" @click="excluirPedido(pedidoSelecionado)" title="Excluir pedido">
-                  <span class="material-symbols-outlined">delete</span>
-                </button>
-                <button class="modal-close" @click="fecharPedido">
-                  <span class="material-symbols-outlined">close</span>
-                </button>
+                <Transition name="del-conf">
+                  <div v-if="confirmandoExclusao" class="mh-del-confirm">
+                    <span class="mh-del-confirm-txt">Excluir pedido de <strong>{{ pedidoSelecionado.nome_cliente }}</strong>?</span>
+                    <button class="mh-del-cancel" @click="confirmandoExclusao = false">Cancelar</button>
+                    <button class="mh-del-ok" :disabled="excluindo" @click="confirmarExclusao">
+                      <span v-if="excluindo" class="spin-sm"></span>
+                      <span v-else class="material-symbols-outlined">delete</span>
+                      {{ excluindo ? 'Excluindo…' : 'Excluir' }}
+                    </button>
+                  </div>
+                  <div v-else class="mh-del-actions">
+                    <span :class="['mh-badge', `mh-${pedidoSelecionado.status}`]">{{ labelStatus(pedidoSelecionado.status) }}</span>
+                    <button class="mh-del-btn" @click="pedirExclusao(pedidoSelecionado)" title="Excluir pedido">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                    <button class="modal-close" @click="fecharPedido">
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                </Transition>
               </div>
             </div>
 
@@ -217,6 +230,20 @@
                   </div>
                 </div>
 
+                <!-- Aviso de orçamento recusado -->
+                <div v-if="pedidoSelecionado.recusado_em" class="mc-recusa-strip">
+                  <span class="material-symbols-outlined">thumb_down</span>
+                  <div>
+                    <div class="mc-recusa-titulo">Orçamento recusado pelo cliente</div>
+                    <div class="mc-recusa-sub">
+                      Em {{ fmtData(pedidoSelecionado.recusado_em) }}
+                      <span v-if="pedidoSelecionado.valor_orcamento_recusado">
+                        — valor recusado: <strong>{{ fmtMoeda(pedidoSelecionado.valor_orcamento_recusado) }}</strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Itens -->
                 <div class="mc-block">
                   <div class="mc-block-title">
@@ -233,11 +260,19 @@
                       </div>
                       <div class="mc-item-body">
                         <div class="mc-item-row">
-                          <div class="mc-item-qty">{{ it.quantidade }}</div>
+                          <!-- Controle de quantidade inline -->
+                          <div class="mc-item-qty-ctrl">
+                            <button class="mc-qty-mini" @click.stop="alterarQtdItem(it, i, -1)" :disabled="it.quantidade <= 1">−</button>
+                            <span class="mc-item-qty">{{ it.quantidade }}</span>
+                            <button class="mc-qty-mini" @click.stop="alterarQtdItem(it, i, 1)">+</button>
+                          </div>
                           <div class="mc-item-nome">{{ it.nome }}</div>
                           <span :class="['mc-saldo', saldoCls(it.saldo)]" :title="`Saldo: ${it.saldo ?? 'N/D'}`">
                             {{ it.saldo === null ? '—' : it.saldo <= 0 ? 'Sem estoque' : `${it.saldo} disp.` }}
                           </span>
+                          <button class="mc-item-del" @click.stop="removerItemPedido(it, i)" title="Remover item">
+                            <span class="material-symbols-outlined">close</span>
+                          </button>
                         </div>
                         <!-- Substituto atual -->
                         <div v-if="it.nome_produto_substituto" class="mc-subst-atual">
@@ -256,6 +291,10 @@
                       </div>
                     </div>
                   </div>
+                  <button class="mc-add-item-btn" @click="abrirPickerAdicionar">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    Adicionar produto ao pedido
+                  </button>
                 </div>
 
                 <!-- Observações -->
@@ -271,6 +310,34 @@
 
               <!-- Coluna direita: orçamento -->
               <div class="modal-col modal-col--orc">
+
+                <!-- Aviso de conflito de disponibilidade -->
+                <div v-if="carregandoConflitos" class="mc-conflito-load">
+                  <span class="spin-sm" style="border-top-color:#f59e0b"></span>
+                  Verificando disponibilidade…
+                </div>
+                <div v-else-if="conflitos.length" class="mc-conflito-card">
+                  <div class="mc-conflito-titulo">
+                    <span class="material-symbols-outlined">warning</span>
+                    Produto(s) indisponível(is) nesta data
+                  </div>
+                  <div class="mc-conflito-lista">
+                    <div v-for="c in conflitos" :key="c.produto_pk" class="mc-conflito-item">
+                      <div class="mc-conflito-prod">
+                        <span class="material-symbols-outlined">inventory_2</span>
+                        {{ c.nome_produto }}
+                      </div>
+                      <div v-for="p in c.pedidos" :key="p.pk" class="mc-conflito-ref">
+                        <span class="material-symbols-outlined">person</span>
+                        {{ p.nome_cliente }} — Pedido #{{ String(p.pk).padStart(4,'0') }}
+                        <span :class="['ps-badge', `ps-${p.status}`]" style="font-size:9px;padding:2px 7px">{{ labelStatus(p.status) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mc-conflito-hint">
+                    Considere substituir os produtos conflitantes antes de enviar o orçamento.
+                  </div>
+                </div>
 
                 <!-- Orçamento -->
                 <div class="mc-orc-card">
@@ -295,8 +362,14 @@
                     <div v-if="pedidoSelecionado.obs_orcamento" class="mc-orc-desc">{{ pedidoSelecionado.obs_orcamento }}</div>
                   </div>
 
+                  <!-- Bloqueio por conflito -->
+                  <div v-if="conflitos.length && (!pedidoSelecionado.valor_orcamento || editandoOrc)" class="mc-orc-bloqueado">
+                    <span class="material-symbols-outlined">block</span>
+                    Resolva os conflitos de disponibilidade acima antes de enviar o orçamento.
+                  </div>
+
                   <!-- Formulário -->
-                  <div v-if="!pedidoSelecionado.valor_orcamento || editandoOrc" class="mc-orc-form">
+                  <div v-if="(!pedidoSelecionado.valor_orcamento || editandoOrc) && !conflitos.length" class="mc-orc-form">
                     <div v-if="!pedidoSelecionado.valor_orcamento" class="mc-orc-empty">
                       <span class="material-symbols-outlined" style="font-size:28px;opacity:.3">request_quote</span>
                       <span>Nenhum orçamento enviado ainda</span>
@@ -317,7 +390,7 @@
                     </div>
                     <div class="mc-orc-btns">
                       <button v-if="editandoOrc" class="btn-cancel" @click="editandoOrc = false">Cancelar</button>
-                      <button class="btn-orc-send" :disabled="orcSalvando" @click="enviarOrcamento">
+                      <button class="btn-orc-send" :disabled="orcSalvando || conflitos.length > 0" @click="enviarOrcamento">
                         <span v-if="orcSalvando" class="spin-sm"></span>
                         <span v-else class="material-symbols-outlined">send</span>
                         {{ pedidoSelecionado.valor_orcamento ? 'Salvar' : 'Enviar Orçamento' }}
@@ -383,9 +456,20 @@
             <Transition name="picker">
               <div v-if="pickerAberto" class="subst-picker">
                 <div class="subst-picker-hd">
-                  <div>
-                    <div class="subst-picker-titulo">Substituir produto</div>
-                    <div class="subst-picker-sub">Substituindo: <strong>{{ itemParaSubstituir?.nome }}</strong></div>
+                  <div class="subst-picker-hd-left">
+                    <div class="subst-picker-titulo">{{ pickerModo === 'adicionar' ? 'Adicionar produto' : 'Substituir produto' }}</div>
+                    <div class="subst-picker-sub">
+                      <template v-if="pickerModo === 'adicionar'">Selecione o produto a adicionar ao pedido</template>
+                      <template v-else>Substituindo: <strong>{{ itemParaSubstituir?.nome }}</strong></template>
+                    </div>
+                    <div class="subst-picker-qty-row">
+                      <span class="subst-picker-qty-label">Quantidade:</span>
+                      <div class="subst-picker-qty-ctrl">
+                        <button class="subst-qty-btn" @click="pickerQtd > 1 && pickerQtd--">−</button>
+                        <span class="subst-qty-val">{{ pickerQtd }}</span>
+                        <button class="subst-qty-btn" @click="pickerQtd++">+</button>
+                      </div>
+                    </div>
                   </div>
                   <button class="subst-picker-close" @click="fecharPicker">
                     <span class="material-symbols-outlined">close</span>
@@ -440,9 +524,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../services/api';
+import { supabase } from '../composables/useSupabase';
 
 const route  = useRoute();
 const router = useRouter();
@@ -457,12 +542,18 @@ const pedidoSelecionado  = ref(null);
 const editandoOrc        = ref(false);
 const orcForm            = ref({ valor: '', obs: '' });
 const orcSalvando        = ref(false);
-const marcandoStatus     = ref(false);
-const confirmandoStatus  = ref(null);
+const marcandoStatus      = ref(false);
+const confirmandoStatus   = ref(null);
+const conflitos           = ref([]);
+const carregandoConflitos = ref(false);
+const confirmandoExclusao = ref(false);
+const excluindo           = ref(false);
 const produtosCatalogo   = ref([]);
 const pickerAberto       = ref(false);
 const pickerCarregando   = ref(false);
 const pickerBusca        = ref('');
+const pickerQtd          = ref(1);
+const pickerModo         = ref('substituir'); // 'substituir' | 'adicionar'
 const itemParaSubstituir = ref(null);  // { pk, nome, idxLocal, produto_substituto_pk }
 const toastMsg        = ref('');
 const toastTipo       = ref('ok');
@@ -503,13 +594,88 @@ onMounted(async () => {
   } finally {
     carregando.value = false;
   }
+
+  // Fallback de foco
+  document.addEventListener('visibilitychange', onFoco);
+
+  // Realtime: atualiza pedidos em tempo real (novos e atualizados)
+  realtimeChannel = supabase
+    .channel(`pedidos-catalogo-${pk}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'pedidos_catalogo', filter: `catalogo_pk=eq.${pk}` },
+      ({ new: novo }) => {
+        const idx = pedidos.value.findIndex(p => p.pk === novo.pk);
+        if (idx !== -1) {
+          pedidos.value[idx] = { ...pedidos.value[idx], ...novo };
+          if (pedidoSelecionado.value?.pk === novo.pk)
+            pedidoSelecionado.value = { ...pedidoSelecionado.value, ...novo };
+        }
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'pedidos_catalogo', filter: `catalogo_pk=eq.${pk}` },
+      async ({ new: novo }) => {
+        // Evita duplicata (pode já ter sido carregado antes)
+        if (pedidos.value.some(p => p.pk === novo.pk)) return;
+        // Busca os itens do novo pedido
+        try {
+          const { data: res } = await api.get(`/api/catalogos/${pk}/pedidos`);
+          const novoPedido = (res.data || []).find(p => p.pk === novo.pk);
+          if (novoPedido) pedidos.value.unshift(novoPedido);
+        } catch { /* silencioso */ }
+      }
+    )
+    .subscribe();
+});
+
+let realtimeChannel = null;
+
+// Fallback: recarrega pedidos quando a aba volta ao foco
+function onFoco() {
+  if (document.visibilityState === 'visible') recarregarStatus();
+}
+async function recarregarStatus() {
+  try {
+    const { data } = await api.get(`/api/catalogos/${pk}/pedidos`);
+    const novos = data.data || [];
+    // Atualiza somente status e valor dos pedidos já carregados
+    novos.forEach(n => {
+      const idx = pedidos.value.findIndex(p => p.pk === n.pk);
+      if (idx !== -1) {
+        pedidos.value[idx] = { ...pedidos.value[idx], status: n.status, valor_orcamento: n.valor_orcamento };
+        if (pedidoSelecionado.value?.pk === n.pk) {
+          pedidoSelecionado.value = { ...pedidoSelecionado.value, status: n.status, valor_orcamento: n.valor_orcamento };
+        }
+      }
+    });
+  } catch { /* silencioso */ }
+}
+
+onUnmounted(() => {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+  document.removeEventListener('visibilitychange', onFoco);
 });
 
 function abrirPedido(p) {
-  pedidoSelecionado.value = p;
-  editandoOrc.value       = false;
+  pedidoSelecionado.value  = p;
+  editandoOrc.value        = false;
+  confirmandoStatus.value  = null;
+  conflitos.value          = [];
   const v = p.valor_orcamento ? Number(p.valor_orcamento).toFixed(2).replace('.', ',') : '';
   orcForm.value = { valor: p.valor_orcamento || '', valorDisplay: v ? `R$ ${v}` : '', obs: p.obs_orcamento || '' };
+  if (p.data_evento) verificarConflitos(p.pk);
+}
+
+async function verificarConflitos(pedidoPk) {
+  carregandoConflitos.value = true;
+  try {
+    const { data } = await api.get(`/api/catalogos/pedidos/${pedidoPk}/conflitos`);
+    conflitos.value = data.conflitos || [];
+  } catch { /* silencioso */ } finally {
+    carregandoConflitos.value = false;
+  }
 }
 
 function mascaraMoeda(e) {
@@ -522,20 +688,31 @@ function mascaraMoeda(e) {
 }
 
 function fecharPedido() {
-  pedidoSelecionado.value  = null;
-  editandoOrc.value        = false;
-  confirmandoStatus.value  = null;
+  pedidoSelecionado.value   = null;
+  editandoOrc.value         = false;
+  confirmandoStatus.value   = null;
+  confirmandoExclusao.value = false;
 }
 
-async function excluirPedido(p) {
-  if (!confirm(`Excluir pedido de "${p.nome_cliente}"? Esta ação não pode ser desfeita.`)) return;
+function pedirExclusao(p) {
+  if (!pedidoSelecionado.value || pedidoSelecionado.value.pk !== p.pk) abrirPedido(p);
+  confirmandoExclusao.value = true;
+}
+
+async function confirmarExclusao() {
+  const p = pedidoSelecionado.value;
+  if (!p) return;
+  excluindo.value = true;
   try {
     await api.delete(`/api/catalogos/pedidos/${p.pk}`);
     pedidos.value = pedidos.value.filter(x => x.pk !== p.pk);
-    if (pedidoSelecionado.value?.pk === p.pk) fecharPedido();
+    fecharPedido();
     showToast('Pedido excluído.');
   } catch (e) {
     showToast(e.response?.data?.erro || 'Erro ao excluir.', 'err');
+  } finally {
+    excluindo.value = false;
+    confirmandoExclusao.value = false;
   }
 }
 
@@ -572,18 +749,31 @@ const produtosFiltradosPicker = computed(() => {
     .sort((a, b) => (b.saldo ?? -1) - (a.saldo ?? -1));
 });
 
+async function abrirPickerAdicionar() {
+  pickerModo.value  = 'adicionar';
+  pickerBusca.value = '';
+  pickerQtd.value   = 1;
+  pickerAberto.value = true;
+  await _carregarProdutosCatalogo();
+}
+
 async function abrirPicker(item, idxLocal) {
+  pickerModo.value  = 'substituir';
   itemParaSubstituir.value = { ...item, idxLocal };
   pickerBusca.value = '';
+  pickerQtd.value   = item.quantidade || 1;
   pickerAberto.value = true;
-  if (!produtosCatalogo.value.length) {
-    pickerCarregando.value = true;
-    try {
-      const { data } = await api.get(`/api/catalogos/${pk}/produtos`);
-      produtosCatalogo.value = data.data || [];
-    } catch { /* silencioso */ } finally {
-      pickerCarregando.value = false;
-    }
+  await _carregarProdutosCatalogo();
+}
+
+async function _carregarProdutosCatalogo() {
+  if (produtosCatalogo.value.length) return;
+  pickerCarregando.value = true;
+  try {
+    const { data } = await api.get(`/api/catalogos/${pk}/produtos`);
+    produtosCatalogo.value = data.data || [];
+  } catch { /* silencioso */ } finally {
+    pickerCarregando.value = false;
   }
 }
 
@@ -593,22 +783,73 @@ function fecharPicker() {
 }
 
 async function selecionarSubstituto(produto) {
+  if (pickerModo.value === 'adicionar') {
+    // Adiciona novo item ao pedido
+    try {
+      const { data } = await api.post(`/api/catalogos/pedidos/${pedidoSelecionado.value.pk}/itens`, {
+        produto_pk: produto.pk,
+        quantidade: pickerQtd.value,
+      });
+      pedidoSelecionado.value = {
+        ...pedidoSelecionado.value,
+        itens: [...pedidoSelecionado.value.itens, data.item],
+      };
+      fecharPicker();
+      await verificarConflitos(pedidoSelecionado.value.pk);
+      showToast(`"${produto.descricao}" adicionado ao pedido.`);
+    } catch (e) {
+      showToast(e.response?.data?.erro || 'Erro ao adicionar produto.', 'err');
+    }
+    return;
+  }
+
   const item = itemParaSubstituir.value;
   if (!item) return;
   try {
-    const { data } = await api.patch(`/api/catalogos/pedidos/itens/${item.pk}/substituir`, { produto_substituto_pk: produto.pk });
+    const { data } = await api.patch(`/api/catalogos/pedidos/itens/${item.pk}/substituir`, {
+      produto_substituto_pk: produto.pk,
+      quantidade: pickerQtd.value,
+    });
     const itens = pedidoSelecionado.value.itens;
     itens[item.idxLocal] = {
       ...itens[item.idxLocal],
+      quantidade:              pickerQtd.value,
       produto_substituto_pk:   produto.pk,
       nome_produto_substituto: data.nome_produto_substituto,
       foto_url_substituto:     produto.foto_url || null,
     };
     pedidoSelecionado.value = { ...pedidoSelecionado.value, itens: [...itens] };
     fecharPicker();
+    await verificarConflitos(pedidoSelecionado.value.pk);
     showToast(`Substituído por "${data.nome_produto_substituto}".`);
   } catch (e) {
     showToast(e.response?.data?.erro || 'Erro ao substituir.', 'err');
+  }
+}
+
+async function alterarQtdItem(it, idx, delta) {
+  const novaQtd = (it.quantidade || 1) + delta;
+  if (novaQtd < 1) return;
+  try {
+    await api.patch(`/api/catalogos/pedidos/itens/${it.pk}/quantidade`, { quantidade: novaQtd });
+    const itens = pedidoSelecionado.value.itens;
+    itens[idx] = { ...itens[idx], quantidade: novaQtd };
+    pedidoSelecionado.value = { ...pedidoSelecionado.value, itens: [...itens] };
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao alterar quantidade.', 'err');
+  }
+}
+
+async function removerItemPedido(it, idx) {
+  try {
+    await api.delete(`/api/catalogos/pedidos/itens/${it.pk}`);
+    const itens = [...pedidoSelecionado.value.itens];
+    itens.splice(idx, 1);
+    pedidoSelecionado.value = { ...pedidoSelecionado.value, itens };
+    await verificarConflitos(pedidoSelecionado.value.pk);
+    showToast('Item removido.');
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao remover item.', 'err');
   }
 }
 
@@ -795,6 +1036,18 @@ function showToast(msg, tipo = 'ok') {
 .modal-close { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: rgba(255,255,255,.6); cursor: pointer; display: flex; padding: 4px; transition: all .15s; }
 .modal-close:hover { background: rgba(255,255,255,.15); color: #fff; }
 .modal-close .material-symbols-outlined { font-size: 20px; }
+.mh-del-actions { display: flex; align-items: center; gap: 10px; }
+.mh-del-confirm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.mh-del-confirm-txt { font-size: 12px; color: rgba(255,255,255,.8); }
+.mh-del-confirm-txt strong { color: #fff; }
+.mh-del-cancel { padding: 6px 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 7px; color: rgba(255,255,255,.7); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; }
+.mh-del-cancel:hover { background: rgba(255,255,255,.15); color: #fff; }
+.mh-del-ok { display: flex; align-items: center; gap: 5px; padding: 6px 12px; background: rgba(239,68,68,.25); border: 1px solid rgba(239,68,68,.4); border-radius: 7px; color: #fca5a5; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
+.mh-del-ok:hover:not(:disabled) { background: rgba(239,68,68,.4); color: #fff; }
+.mh-del-ok:disabled { opacity: .5; cursor: not-allowed; }
+.mh-del-ok .material-symbols-outlined { font-size: 14px; }
+.del-conf-enter-active, .del-conf-leave-active { transition: opacity .15s; }
+.del-conf-enter-from, .del-conf-leave-to { opacity: 0; }
 
 /* Two-column body */
 .modal-cols { display: grid; grid-template-columns: 1fr 420px; overflow: hidden; flex: 1; }
@@ -826,6 +1079,27 @@ function showToast(msg, tipo = 'ok') {
 .mc-item-qty  { width: 26px; height: 26px; border-radius: 7px; background: var(--g-dim); color: var(--g); font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .mc-item-nome { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
 
+/* Strip de orçamento recusado */
+.mc-recusa-strip { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; }
+.mc-recusa-strip .material-symbols-outlined { font-size: 18px; color: #ef4444; flex-shrink: 0; margin-top: 1px; }
+.mc-recusa-titulo { font-size: 12px; font-weight: 800; color: #ef4444; }
+.mc-recusa-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.mc-recusa-sub strong { color: var(--text); }
+
+/* Controle de quantidade inline nos itens */
+.mc-item-qty-ctrl { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.mc-qty-mini { background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; line-height: 1; transition: all .12s; padding: 0; }
+.mc-qty-mini:hover:not(:disabled) { border-color: var(--g); color: var(--g); }
+.mc-qty-mini:disabled { opacity: .35; cursor: not-allowed; }
+.mc-item-del { background: none; border: none; color: var(--text2); cursor: pointer; display: flex; padding: 2px; border-radius: 5px; transition: all .12s; flex-shrink: 0; margin-left: auto; }
+.mc-item-del:hover { color: #ef4444; background: rgba(239,68,68,.1); }
+.mc-item-del .material-symbols-outlined { font-size: 15px; }
+
+/* Botão adicionar produto */
+.mc-add-item-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 8px; background: none; border: 1px dashed var(--border); border-radius: 9px; color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 4px; transition: all .15s; }
+.mc-add-item-btn:hover { border-color: var(--g); color: var(--g); background: var(--g-soft); }
+.mc-add-item-btn .material-symbols-outlined { font-size: 16px; }
+
 /* Saldo badge */
 .mc-saldo { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
 .saldo--ok   { background: rgba(0,200,83,.12); color: #00c853; }
@@ -849,7 +1123,14 @@ function showToast(msg, tipo = 'ok') {
 
 /* ── Picker de substituição ── */
 .subst-picker { position: absolute; inset: 0; z-index: 20; background: var(--bg2); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
-.subst-picker-hd { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 22px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.subst-picker-hd { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 22px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 10px; }
+.subst-picker-hd-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.subst-picker-qty-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.subst-picker-qty-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+.subst-picker-qty-ctrl { display: flex; align-items: center; gap: 6px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
+.subst-qty-btn { background: none; border: none; color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer; padding: 0 4px; line-height: 1; transition: color .12s; }
+.subst-qty-btn:hover { color: var(--g); }
+.subst-qty-val { font-size: 14px; font-weight: 800; color: var(--text); min-width: 20px; text-align: center; }
 .subst-picker-titulo { font-size: 15px; font-weight: 800; color: var(--text); }
 .subst-picker-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
 .subst-picker-sub strong { color: var(--text); }
@@ -893,6 +1174,8 @@ function showToast(msg, tipo = 'ok') {
 .mc-orc-num  { font-size: 28px; font-weight: 900; color: var(--g); letter-spacing: -.5px; }
 .mc-orc-desc { font-size: 12px; color: var(--text2); font-style: italic; }
 
+.mc-orc-bloqueado { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 9px; font-size: 12px; font-weight: 600; color: #ef4444; }
+.mc-orc-bloqueado .material-symbols-outlined { font-size: 16px; flex-shrink: 0; }
 .mc-orc-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; text-align: center; font-size: 12px; color: var(--text2); }
 .mc-orc-form  { display: flex; flex-direction: column; gap: 10px; }
 .mc-field-group { display: flex; flex-direction: column; gap: 4px; }
@@ -906,6 +1189,19 @@ function showToast(msg, tipo = 'ok') {
 .btn-orc-send:hover:not(:disabled) { filter: brightness(1.1); }
 .btn-orc-send:disabled { opacity: .5; cursor: not-allowed; }
 .btn-orc-send .material-symbols-outlined { font-size: 16px; }
+
+/* Aviso de conflito de disponibilidade */
+.mc-conflito-load { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #f59e0b; padding: 8px 12px; background: rgba(245,158,11,.08); border-radius: 9px; border: 1px solid rgba(245,158,11,.2); }
+.mc-conflito-card { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.3); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.mc-conflito-titulo { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; color: #ef4444; text-transform: uppercase; letter-spacing: .05em; }
+.mc-conflito-titulo .material-symbols-outlined { font-size: 16px; }
+.mc-conflito-lista { display: flex; flex-direction: column; gap: 8px; }
+.mc-conflito-item { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; background: rgba(239,68,68,.06); border-radius: 8px; border: 1px solid rgba(239,68,68,.15); }
+.mc-conflito-prod { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--text); }
+.mc-conflito-prod .material-symbols-outlined { font-size: 14px; color: #ef4444; }
+.mc-conflito-ref  { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); flex-wrap: wrap; padding-left: 19px; }
+.mc-conflito-ref  .material-symbols-outlined { font-size: 13px; flex-shrink: 0; }
+.mc-conflito-hint { font-size: 11px; color: #f87171; font-style: italic; line-height: 1.4; }
 
 /* Ações de status (retirado / devolvido) */
 .mc-status-acao {

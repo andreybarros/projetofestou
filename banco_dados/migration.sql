@@ -1382,6 +1382,12 @@ ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS retirado_em  timestamptz;
 ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS devolvido_em timestamptz;
 
 -- ============================================================
+-- Registro de recusa de orçamento pelo cliente
+-- ============================================================
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS recusado_em  timestamptz;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS valor_orcamento_recusado numeric(12,2);
+
+-- ============================================================
 -- Substituição de produto no item do pedido de catálogo
 -- ============================================================
 ALTER TABLE pedidos_catalogo_itens ADD COLUMN IF NOT EXISTS produto_substituto_pk   bigint REFERENCES produtos(pk);
@@ -1392,6 +1398,11 @@ ALTER TABLE pedidos_catalogo_itens ADD COLUMN IF NOT EXISTS nome_produto_substit
 -- ============================================================
 ALTER TABLE auditoria_estoque ADD COLUMN IF NOT EXISTS pedido_catalogo_pk bigint REFERENCES pedidos_catalogo(pk);
 CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_pedido_catalogo ON auditoria_estoque(pedido_catalogo_pk);
+
+-- ============================================================
+-- Realtime: transmite todas as colunas ao atualizar (necessário para status, etc.)
+-- ============================================================
+ALTER TABLE pedidos_catalogo REPLICA IDENTITY FULL;
 
 -- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema

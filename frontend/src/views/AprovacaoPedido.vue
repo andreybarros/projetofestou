@@ -135,14 +135,38 @@
           <div v-if="pedido.obs_orcamento" class="ap-valor-obs">{{ pedido.obs_orcamento }}</div>
         </section>
 
-        <!-- Sem orçamento ainda -->
+        <!-- Sem orçamento ainda / aguardando novo após recusa ou substituição -->
         <section v-else class="ap-section ap-section--aguardando">
           <span class="material-symbols-outlined">hourglass_empty</span>
-          <p>O orçamento ainda não foi preparado. Em breve a loja entrará em contato.</p>
+          <p v-if="pedido.recusado_em">Orçamento recusado. Aguardando nova proposta da loja.</p>
+          <p v-else>O orçamento ainda não foi preparado. Em breve a loja entrará em contato.</p>
         </section>
 
+        <!-- Conflitos de disponibilidade -->
+        <div v-if="pedido.status === 'orcamento_enviado' && temConflito" class="ap-conflito-zone">
+          <div class="ap-conflito-titulo">
+            <span class="material-symbols-outlined">warning</span>
+            Produtos indisponíveis para a data do seu evento
+          </div>
+          <p class="ap-conflito-desc">
+            Os produtos abaixo foram reservados por outro pedido. Escolha um substituto para cada um para continuar.
+          </p>
+          <div class="ap-conflito-lista">
+            <div v-for="c in conflitos" :key="c.item_pk" class="ap-conflito-item">
+              <div class="ap-conflito-prod">
+                <span class="material-symbols-outlined">block</span>
+                {{ c.nome_produto }}
+              </div>
+              <button class="ap-conflito-btn" @click="irParaCatalogo(c)">
+                <span class="material-symbols-outlined">storefront</span>
+                Escolher no catálogo
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Ação de aprovação -->
-        <div v-if="pedido.status === 'orcamento_enviado'" class="ap-aprovar-zone">
+        <div v-if="pedido.status === 'orcamento_enviado' && !temConflito" class="ap-aprovar-zone">
           <p class="ap-aprovar-msg">
             Está de acordo com o valor? Confirme abaixo para que possamos prosseguir!
           </p>
@@ -150,11 +174,29 @@
             <span class="material-symbols-outlined">error</span>
             {{ erroAprovar }}
           </div>
-          <button class="ap-btn-confirmar" :disabled="aprovando" @click="aprovar">
+          <button class="ap-btn-confirmar" :disabled="aprovando || recusando" @click="aprovar">
             <span v-if="aprovando" class="ap-spinner"></span>
             <span v-else class="material-symbols-outlined">check_circle</span>
             {{ aprovando ? 'Confirmando…' : 'Confirmar Pedido' }}
           </button>
+          <!-- Recusar -->
+          <Transition name="ap-fade">
+            <div v-if="confirmandoRecusa" class="ap-recusar-confirm">
+              <p>Tem certeza? O orçamento será recusado e a loja será notificada para enviar uma nova proposta.</p>
+              <div class="ap-recusar-btns">
+                <button class="ap-btn-recusar-cancel" @click="confirmandoRecusa = false">Cancelar</button>
+                <button class="ap-btn-recusar-ok" :disabled="recusando" @click="recusar">
+                  <span v-if="recusando" class="ap-spinner" style="width:16px;height:16px"></span>
+                  <span v-else class="material-symbols-outlined">thumb_down</span>
+                  {{ recusando ? 'Recusando…' : 'Recusar Orçamento' }}
+                </button>
+              </div>
+            </div>
+            <button v-else class="ap-btn-recusar" @click="confirmandoRecusa = true">
+              <span class="material-symbols-outlined">thumb_down</span>
+              Não aceito este valor
+            </button>
+          </Transition>
         </div>
 
         <!-- Aprovado -->
@@ -189,12 +231,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onActivated } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
 const route  = useRoute();
 const router = useRouter();
+
+// Ao voltar do catálogo após substituir, recarrega pedido e conflitos
+onActivated(async () => {
+  if (pedido.value && route.query.substituido) {
+    const { data } = await axios.get(`/api/catalogo-publico/orcamento/${pedidoToken}`).catch(() => ({ data: null }));
+    if (data?.pedido) pedido.value = data.pedido;
+    await verificarConflitos();
+  }
+});
 
 const catalogoToken = route.params.token;
 const pedidoToken   = route.params.pedidoToken;
@@ -203,9 +254,15 @@ const carregando  = ref(true);
 const erro        = ref('');
 const pedido      = ref(null);
 const catalogo    = ref(null);
-const aprovando   = ref(false);
-const erroAprovar = ref('');
-const fotoLightbox = ref(null);
+const aprovando          = ref(false);
+const erroAprovar        = ref('');
+const recusando          = ref(false);
+const confirmandoRecusa  = ref(false);
+const fotoLightbox       = ref(null);
+
+// Conflitos
+const conflitos  = ref([]);
+const temConflito = computed(() => conflitos.value.length > 0);
 
 function abrirFoto(it) {
   const url  = it.nome_produto_substituto ? it.foto_url_substituto : it.foto_url;
@@ -215,7 +272,6 @@ function abrirFoto(it) {
 
 onMounted(async () => {
   try {
-    // Carrega dados do catálogo e do pedido em paralelo
     const [resCatalogo, resPedido] = await Promise.allSettled([
       axios.get(`/api/catalogo-publico/${catalogoToken}`),
       axios.get(`/api/catalogo-publico/orcamento/${pedidoToken}`),
@@ -228,6 +284,7 @@ onMounted(async () => {
       erro.value = resPedido.reason.response?.data?.erro || 'Orçamento não encontrado';
     } else {
       pedido.value = resPedido.value.data.pedido;
+      if (pedido.value?.status === 'orcamento_enviado') await verificarConflitos();
     }
   } catch (e) {
     erro.value = 'Erro ao carregar. Tente novamente.';
@@ -236,16 +293,53 @@ onMounted(async () => {
   }
 });
 
+async function verificarConflitos() {
+  try {
+    const { data } = await axios.get(`/api/catalogo-publico/orcamento/${pedidoToken}/conflitos`);
+    conflitos.value = data.conflitos || [];
+  } catch { /* silencioso */ }
+}
+
+function irParaCatalogo(c) {
+  router.push({
+    path: `/catalogo/${catalogoToken}`,
+    query: {
+      modo:        'substituir',
+      item:        c.item_pk,
+      pedido:      pedidoToken,
+      produto:     c.nome_produto,
+      data_evento: pedido.value?.data_evento  || '',
+      hora_evento: pedido.value?.hora_evento  || '',
+    },
+  });
+}
+
 async function aprovar() {
   erroAprovar.value = '';
   aprovando.value = true;
   try {
     await axios.post(`/api/catalogo-publico/orcamento/${pedidoToken}/aprovar`);
     pedido.value.status = 'aprovado';
+    conflitos.value = [];
   } catch (e) {
     erroAprovar.value = e.response?.data?.erro || 'Erro ao confirmar. Tente novamente.';
   } finally {
     aprovando.value = false;
+  }
+}
+
+async function recusar() {
+  recusando.value = true;
+  try {
+    await axios.post(`/api/catalogo-publico/orcamento/${pedidoToken}/recusar`);
+    pedido.value.status        = 'aguardando';
+    pedido.value.valor_orcamento = null;
+    pedido.value.obs_orcamento   = null;
+    confirmandoRecusa.value = false;
+  } catch (e) {
+    erroAprovar.value = e.response?.data?.erro || 'Erro ao recusar. Tente novamente.';
+  } finally {
+    recusando.value = false;
   }
 }
 
@@ -338,6 +432,19 @@ function fmtMoeda(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'c
 .ap-item-foto--vazio { width: 52px; height: 52px; border-radius: 8px; background: #f1f5f9; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; }
 .ap-item-foto--vazio .material-symbols-outlined { font-size: 20px; color: #cbd5e1; }
 
+/* Recusar orçamento */
+.ap-btn-recusar { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px; background: transparent; border: 1px solid #e2e8f0; border-radius: 10px; color: #6b7280; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; width: 100%; margin-top: 4px; }
+.ap-btn-recusar:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+.ap-btn-recusar .material-symbols-outlined { font-size: 17px; }
+.ap-recusar-confirm { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; margin-top: 4px; }
+.ap-recusar-confirm p { font-size: 13px; color: #7f1d1d; margin: 0; line-height: 1.5; }
+.ap-recusar-btns { display: flex; gap: 8px; }
+.ap-btn-recusar-cancel { flex: 1; padding: 9px; background: #fff; border: 1px solid #e2e8f0; border-radius: 9px; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.ap-btn-recusar-ok { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px; background: #ef4444; border: none; border-radius: 9px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: filter .15s; }
+.ap-btn-recusar-ok:hover:not(:disabled) { filter: brightness(1.08); }
+.ap-btn-recusar-ok:disabled { opacity: .5; cursor: not-allowed; }
+.ap-btn-recusar-ok .material-symbols-outlined { font-size: 16px; }
+
 /* Lightbox */
 .ap-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
 .ap-lightbox-img { max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 14px; box-shadow: 0 8px 48px rgba(0,0,0,.5); cursor: default; }
@@ -367,6 +474,20 @@ function fmtMoeda(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'c
 .ap-section--aguardando { align-items: center; text-align: center; padding: 32px 20px; background: #f8fafc; }
 .ap-section--aguardando .material-symbols-outlined { font-size: 36px; color: #d1d5db; }
 .ap-section--aguardando p { font-size: 14px; color: #6b7280; margin: 0; }
+
+/* Conflitos */
+.ap-conflito-zone { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; background: #fff7ed; border-top: 1px solid #fed7aa; }
+.ap-conflito-titulo { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 800; color: #c2410c; }
+.ap-conflito-titulo .material-symbols-outlined { font-size: 18px; }
+.ap-conflito-desc { font-size: 13px; color: #92400e; margin: 0; line-height: 1.5; }
+.ap-conflito-lista { display: flex; flex-direction: column; gap: 8px; }
+.ap-conflito-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 9px; flex-wrap: wrap; }
+.ap-conflito-prod { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #92400e; }
+.ap-conflito-prod .material-symbols-outlined { font-size: 16px; color: #ef4444; }
+.ap-conflito-btn { display: flex; align-items: center; gap: 5px; padding: 7px 14px; background: #f97316; border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: filter .15s; white-space: nowrap; }
+.ap-conflito-btn:hover { filter: brightness(1.1); }
+.ap-conflito-btn .material-symbols-outlined { font-size: 15px; }
+
 
 /* Aprovar */
 .ap-aprovar-zone { padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #f0fdf4; border-top: 1px solid #bbf7d0; }

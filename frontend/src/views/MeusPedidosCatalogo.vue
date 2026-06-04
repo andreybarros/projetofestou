@@ -1,6 +1,6 @@
 <template>
   <div class="mp-overlay" @click.self="$emit('fechar')">
-    <div class="mp-drawer">
+    <div :class="['mp-drawer', { 'mp-dark': tema === 'dark' }]">
 
       <!-- Header do drawer -->
       <div class="mp-header">
@@ -47,6 +47,53 @@
 
         <!-- Lista de pedidos -->
         <div v-else class="mp-lista">
+
+          <!-- Pedidos aguardando orçamento — editáveis -->
+          <div v-if="editaveis.length" class="mp-secao">
+            <div class="mp-secao-titulo">
+              <span class="material-symbols-outlined">hourglass_empty</span>
+              Aguardando orçamento
+              <span class="mp-secao-badge" style="background:#f59e0b">{{ editaveis.length }}</span>
+            </div>
+            <div v-for="p in editaveis" :key="p.pk" class="mp-card mp-card--editavel">
+              <div class="mp-card-top">
+                <div class="mp-card-num">#{{ String(p.pk).padStart(4,'0') }}</div>
+                <span class="mp-badge mp-badge--aguardando">Aguardando orçamento</span>
+              </div>
+              <div class="mp-card-itens">
+                <span v-for="it in p.itens.slice(0,3)" :key="it.nome" class="mp-item-tag">
+                  {{ it.quantidade }}× {{ it.nome }}
+                </span>
+                <span v-if="p.itens.length > 3" class="mp-item-tag mp-item-tag--more">+{{ p.itens.length - 3 }}</span>
+              </div>
+              <div v-if="p.data_evento" class="mp-card-info">
+                <span class="material-symbols-outlined">event</span>
+                {{ fmtDataLocal(p.data_evento) }}
+                <span v-if="p.hora_evento"> · {{ p.hora_evento }}</span>
+              </div>
+              <button class="mp-btn-editar" @click="editarPedido(p)">
+                <span class="material-symbols-outlined">edit</span>
+                Editar Pedido
+              </button>
+
+              <!-- Cancelamento inline -->
+              <div v-if="cancelandoPk === p.pk" class="mp-cancel-confirm">
+                <span>Cancelar este pedido?</span>
+                <div class="mp-cancel-confirm-btns">
+                  <button class="mp-cancel-sim" :disabled="cancelando" @click="confirmarCancelamento(p)">
+                    <span v-if="cancelando" class="mp-spin-xs"></span>
+                    <span v-else class="material-symbols-outlined">check</span>
+                    Sim, cancelar
+                  </button>
+                  <button class="mp-cancel-nao" @click="cancelandoPk = null">Não</button>
+                </div>
+              </div>
+              <button v-else class="mp-btn-cancelar" @click="cancelandoPk = p.pk">
+                <span class="material-symbols-outlined">cancel</span>
+                Cancelar Pedido
+              </button>
+            </div>
+          </div>
 
           <!-- Pedidos com orçamento pendente de aprovação - destaque -->
           <div v-if="pendentes.length" class="mp-secao">
@@ -173,23 +220,27 @@ const props = defineProps({
   token:        String,
   sessaoToken:  String,
   catalogo:     Object,
+  tema:         { type: String, default: 'light' },
 });
 
-const emit   = defineEmits(['fechar']);
+const emit   = defineEmits(['fechar', 'editar-pedido']);
 const router = useRouter();
 
-const carregando = ref(true);
-const pedidos    = ref([]);
-const toast      = ref('');
-const toastTipo  = ref('ok');
-let   toastTimer = null;
+const carregando    = ref(true);
+const pedidos       = ref([]);
+const toast         = ref('');
+const toastTipo     = ref('ok');
+const cancelandoPk  = ref(null);
+const cancelando    = ref(false);
+let   toastTimer    = null;
 
 const headers = computed(() =>
   props.sessaoToken ? { 'x-sessao-token': props.sessaoToken } : {}
 );
 
+const editaveis  = computed(() => pedidos.value.filter(p => p.status === 'aguardando'));
 const pendentes  = computed(() => pedidos.value.filter(p => p.status === 'orcamento_enviado'));
-const historico  = computed(() => pedidos.value.filter(p => p.status !== 'orcamento_enviado'));
+const historico  = computed(() => pedidos.value.filter(p => !['aguardando','orcamento_enviado'].includes(p.status)));
 
 onMounted(() => carregar());
 
@@ -211,6 +262,29 @@ async function carregar() {
 function verOrcamento(pedidoToken) {
   router.push(`/catalogo/${props.token}/aprovacaoped/${pedidoToken}`);
   emit('fechar');
+}
+
+function editarPedido(p) {
+  emit('editar-pedido', p);
+  emit('fechar');
+}
+
+async function confirmarCancelamento(p) {
+  cancelando.value = true;
+  try {
+    await axios.patch(
+      `/api/catalogo-publico/orcamento/${p.pedido_token}/cancelar`,
+      {},
+      { headers: headers.value }
+    );
+    cancelandoPk.value = null;
+    showToast('Pedido cancelado.', 'ok');
+    await carregar();
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao cancelar pedido.', 'err');
+  } finally {
+    cancelando.value = false;
+  }
 }
 
 function labelStatus(s) {
@@ -385,6 +459,60 @@ function showToast(msg, tipo = 'ok') {
 .mp-valor-obs { font-size: 11px; color: #6b7280; font-style: italic; }
 
 
+/* Card editável (aguardando) */
+.mp-card--editavel { border-color: #fde68a; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); }
+.mp-btn-editar {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 10px;
+  background: #f59e0b; border: none; border-radius: 9px;
+  color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: filter .15s;
+}
+.mp-btn-editar:hover { filter: brightness(1.08); }
+.mp-btn-editar .material-symbols-outlined { font-size: 16px; }
+
+/* Cancelar pedido */
+.mp-btn-cancelar {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 9px;
+  background: transparent; border: 1px solid #fca5a5; border-radius: 9px;
+  color: #dc2626; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.mp-btn-cancelar:hover { background: #fee2e2; border-color: #dc2626; }
+.mp-btn-cancelar .material-symbols-outlined { font-size: 15px; }
+
+/* Confirmação inline de cancelamento */
+.mp-cancel-confirm {
+  display: flex; flex-direction: column; gap: 8px;
+  background: #fff5f5; border: 1px solid #fca5a5;
+  border-radius: 10px; padding: 10px 12px;
+}
+.mp-cancel-confirm > span { font-size: 12px; font-weight: 700; color: #dc2626; text-align: center; }
+.mp-cancel-confirm-btns { display: flex; gap: 8px; }
+.mp-cancel-sim {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 8px; background: #dc2626; border: none; border-radius: 8px;
+  color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: filter .15s;
+}
+.mp-cancel-sim:hover:not(:disabled) { filter: brightness(1.1); }
+.mp-cancel-sim:disabled { opacity: .6; cursor: not-allowed; }
+.mp-cancel-sim .material-symbols-outlined { font-size: 14px; }
+.mp-cancel-nao {
+  flex: 1; padding: 8px; background: #f3f4f6; border: 1px solid #e5e7eb;
+  border-radius: 8px; color: #374151; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.mp-cancel-nao:hover { background: #e5e7eb; }
+
+/* Spinner mini */
+.mp-spin-xs {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+
 /* Botão visualizar orçamento */
 .mp-btn-ver-orc {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -459,4 +587,42 @@ function showToast(msg, tipo = 'ok') {
 .mp-toast .material-symbols-outlined { font-size: 16px; }
 .toast-enter-active, .toast-leave-active { transition: all .25s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
+
+/* ── Dark mode ── */
+.mp-dark { background: #1e293b; color: #f1f5f9; }
+.mp-dark .mp-header { background: #1e293b; border-bottom-color: #334155; }
+.mp-dark .mp-title  { color: #f1f5f9; }
+.mp-dark .mp-sub    { color: #64748b; }
+.mp-dark .mp-refresh-btn,
+.mp-dark .mp-close-btn   { background: #2d3748; border-color: #334155; color: #94a3b8; }
+.mp-dark .mp-refresh-btn:hover,
+.mp-dark .mp-close-btn:hover { background: #334155; color: #f1f5f9; }
+.mp-dark .mp-header-icon { background: #312e81; }
+.mp-dark .mp-body   { background: #1e293b; }
+.mp-dark .mp-state  { color: #64748b; }
+.mp-dark .mp-vazio-ico { background: #2d3748; }
+.mp-dark .mp-vazio-txt { color: #e2e8f0; }
+.mp-dark .mp-secao-titulo { color: #64748b; }
+.mp-dark .mp-card   { background: #2d3748; border-color: #334155; }
+.mp-dark .mp-card--editavel { background: linear-gradient(135deg, #422006 0%, #451a03 100%); border-color: #92400e; }
+.mp-dark .mp-card--pendente { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-color: #4338ca; }
+.mp-dark .mp-card--aprovado { background: #052e16; border-color: #166534; }
+.mp-dark .mp-card-num { color: #818cf8; }
+.mp-dark .mp-item-tag { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+.mp-dark .mp-card-info { color: #64748b; }
+.mp-dark .mp-valor-box { background: #1e1b4b; }
+.mp-dark .mp-valor-num { color: #a5b4fc; }
+.mp-dark .mp-valor-obs { color: #64748b; }
+.mp-dark .mp-valor-inline { color: #e2e8f0; }
+.mp-dark .mp-card-data { color: #475569; }
+.mp-dark .mp-aprovado-strip { background: #052e16; color: #4ade80; }
+.mp-dark .mp-btn-ver-orc { background: #2d3748; border-color: #334155; color: #818cf8; }
+.mp-dark .mp-btn-ver-orc:hover { border-color: #6366f1; background: #1e1b4b; }
+.mp-dark .mp-btn-ver-orc--destaque { background: #6366f1; border-color: #6366f1; color: #fff; }
+.mp-dark .mp-footer { background: #1e293b; border-top-color: #334155; }
+.mp-dark .mp-btn-novo-pedido { background: #2d3748; border-color: #334155; color: #cbd5e1; }
+.mp-dark .mp-btn-novo-pedido:hover { border-color: #6366f1; color: #a5b4fc; background: #1e1b4b; }
+.mp-dark .mp-cancel-confirm { background: rgba(127,29,29,.3); border-color: #7f1d1d; }
+.mp-dark .mp-cancel-nao { background: #2d3748; border-color: #334155; color: #cbd5e1; }
+.mp-dark .mp-cancel-nao:hover { background: #334155; }
 </style>

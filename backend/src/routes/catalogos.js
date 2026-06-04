@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
     if (pks.length) {
       const [{ data: itens }, { data: pedidos }] = await Promise.all([
         supabase.from('catalogo_itens').select('catalogo_pk').in('catalogo_pk', pks),
-        supabase.from('pedidos_catalogo').select('catalogo_pk, status').in('catalogo_pk', pks),
+        supabase.from('pedidos_catalogo').select('catalogo_pk, status').in('catalogo_pk', pks).is('deletado_em', null),
       ]);
       (itens   || []).forEach(i => { contagemItens[i.catalogo_pk]   = (contagemItens[i.catalogo_pk]   || 0) + 1; });
       (pedidos || []).forEach(p => { contagemPedidos[p.catalogo_pk] = (contagemPedidos[p.catalogo_pk] || 0) + 1; });
@@ -176,7 +176,7 @@ router.get('/:pk/pedidos', async (req, res) => {
   try {
     const { data: pedidos, error } = await supabase
       .from('pedidos_catalogo')
-      .select('pk, nome_cliente, telefone, email, observacao, status, valor_orcamento, obs_orcamento, pedido_token, data_evento, hora_evento, tipo_entrega, endereco_evento, criado_em')
+      .select('pk, nome_cliente, telefone, email, observacao, status, valor_orcamento, obs_orcamento, pedido_token, data_evento, hora_evento, tipo_entrega, endereco_evento, criado_em, recusado_em, valor_orcamento_recusado')
       .eq('catalogo_pk', req.params.pk)
       .is('deletado_em', null)
       .order('criado_em', { ascending: false });
@@ -260,6 +260,74 @@ router.patch('/pedidos/:pk/orcamento', async (req, res) => {
   }
 });
 
+// ── Admin: alterar quantidade de um item do pedido ───────────
+router.patch('/pedidos/itens/:pk/quantidade', async (req, res) => {
+  try {
+    const { quantidade } = req.body;
+    if (!quantidade || parseInt(quantidade, 10) < 1)
+      return res.status(400).json({ erro: 'Quantidade inválida' });
+    const { error } = await supabase
+      .from('pedidos_catalogo_itens')
+      .update({ quantidade: parseInt(quantidade, 10) })
+      .eq('pk', req.params.pk);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Catalogos/PATCH/itens/quantidade]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ── Admin: adicionar item ao pedido ──────────────────────────
+router.post('/pedidos/:pk/itens', async (req, res) => {
+  try {
+    const { produto_pk, quantidade } = req.body;
+    if (!produto_pk) return res.status(400).json({ erro: 'produto_pk obrigatório' });
+
+    const { data: prod } = await supabase
+      .from('produtos').select('descricao, foto_url, saldo').eq('pk', produto_pk).single();
+    if (!prod) return res.status(404).json({ erro: 'Produto não encontrado' });
+
+    const { data: item, error } = await supabase
+      .from('pedidos_catalogo_itens')
+      .insert({
+        pedido_pk:    req.params.pk,
+        produto_pk,
+        nome_produto: prod.descricao,
+        quantidade:   parseInt(quantidade || 1, 10),
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    res.status(201).json({ ok: true, item: {
+      pk:       item.pk,
+      nome:     prod.descricao,
+      produto_pk,
+      foto_url: prod.foto_url || null,
+      saldo:    prod.saldo ?? null,
+      quantidade: item.quantidade,
+      produto_substituto_pk: null, nome_produto_substituto: null, foto_url_substituto: null,
+    }});
+  } catch (err) {
+    console.error('[Catalogos/POST/pedidos/itens]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ── Admin: remover item do pedido ────────────────────────────
+router.delete('/pedidos/itens/:pk', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('pedidos_catalogo_itens').delete().eq('pk', req.params.pk);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Catalogos/DELETE/pedidos/itens]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // ── Admin: substituir produto de um item do pedido ───────────
 router.patch('/pedidos/itens/:pk/substituir', async (req, res) => {
   try {
@@ -273,15 +341,93 @@ router.patch('/pedidos/itens/:pk/substituir', async (req, res) => {
       nome_produto_substituto = prod.descricao;
     }
 
+    const { quantidade } = req.body;
+    const updatePayload = { produto_substituto_pk: produto_substituto_pk || null, nome_produto_substituto };
+    if (quantidade) updatePayload.quantidade = parseInt(quantidade, 10);
+
     const { error } = await supabase
-      .from('pedidos_catalogo_itens')
-      .update({ produto_substituto_pk: produto_substituto_pk || null, nome_produto_substituto })
-      .eq('pk', req.params.pk);
+      .from('pedidos_catalogo_itens').update(updatePayload).eq('pk', req.params.pk);
     if (error) throw error;
 
     res.json({ ok: true, nome_produto_substituto });
   } catch (err) {
     console.error('[Catalogos/PATCH/itens/substituir]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ── Admin: verificar conflitos de disponibilidade por data ───
+router.get('/pedidos/:pk/conflitos', async (req, res) => {
+  try {
+    const { data: pedido, error: errPed } = await supabase
+      .from('pedidos_catalogo')
+      .select('pk, data_evento, filial_pk')
+      .eq('pk', req.params.pk)
+      .single();
+    if (errPed || !pedido) return res.status(404).json({ erro: 'Pedido não encontrado' });
+
+    // Sem data de evento — sem conflito possível
+    if (!pedido.data_evento) return res.json({ ok: true, conflitos: [] });
+
+    // Itens do pedido atual ainda sem substituto
+    const { data: itensAtuais } = await supabase
+      .from('pedidos_catalogo_itens')
+      .select('produto_pk, nome_produto')
+      .eq('pedido_pk', req.params.pk)
+      .is('produto_substituto_pk', null);
+
+    const prodPks = (itensAtuais || []).map(i => i.produto_pk).filter(Boolean);
+    if (!prodPks.length) return res.json({ ok: true, conflitos: [] });
+
+    // Outros pedidos aprovados ou retirados na mesma data e filial
+    const { data: outrosPedidos } = await supabase
+      .from('pedidos_catalogo')
+      .select('pk, nome_cliente, status')
+      .eq('data_evento', pedido.data_evento)
+      .eq('filial_pk', pedido.filial_pk)
+      .in('status', ['aprovado', 'retirado'])
+      .is('deletado_em', null)
+      .neq('pk', req.params.pk);
+
+    if (!outrosPedidos?.length) return res.json({ ok: true, conflitos: [] });
+
+    const outrosPks  = outrosPedidos.map(p => p.pk);
+    const pedidoMap  = {};
+    outrosPedidos.forEach(p => { pedidoMap[p.pk] = p; });
+
+    // Itens desses pedidos que usam o mesmo produto
+    const { data: itensConflito } = await supabase
+      .from('pedidos_catalogo_itens')
+      .select('pedido_pk, produto_pk, nome_produto')
+      .in('pedido_pk', outrosPks)
+      .in('produto_pk', prodPks);
+
+    if (!itensConflito?.length) return res.json({ ok: true, conflitos: [] });
+
+    // Agrupa conflitos por produto
+    const nomeMap = {};
+    (itensAtuais || []).forEach(i => { nomeMap[i.produto_pk] = i.nome_produto; });
+
+    const conflitosMap = {};
+    for (const it of itensConflito) {
+      if (!conflitosMap[it.produto_pk]) {
+        conflitosMap[it.produto_pk] = {
+          produto_pk:   it.produto_pk,
+          nome_produto: nomeMap[it.produto_pk] || it.nome_produto,
+          pedidos:      [],
+        };
+      }
+      const p = pedidoMap[it.pedido_pk];
+      conflitosMap[it.produto_pk].pedidos.push({
+        pk:           p.pk,
+        nome_cliente: p.nome_cliente,
+        status:       p.status,
+      });
+    }
+
+    res.json({ ok: true, conflitos: Object.values(conflitosMap) });
+  } catch (err) {
+    console.error('[Catalogos/GET/conflitos]', err.message);
     res.status(500).json({ erro: err.message });
   }
 });
