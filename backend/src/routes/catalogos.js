@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
       .from('catalogos')
       .select('pk, nome, descricao, token, ativo, criado_em')
       .eq('filial_pk', filial_pk)
+      .is('deletado_em', null)
       .order('criado_em', { ascending: false });
     if (error) throw error;
 
@@ -86,10 +87,13 @@ router.put('/:pk', async (req, res) => {
   }
 });
 
-// ── Admin: excluir catálogo ───────────────────────────────────
+// ── Admin: soft-delete catálogo ──────────────────────────────
 router.delete('/:pk', async (req, res) => {
   try {
-    const { error } = await supabase.from('catalogos').delete().eq('pk', req.params.pk);
+    const { error } = await supabase
+      .from('catalogos')
+      .update({ deletado_em: new Date().toISOString() })
+      .eq('pk', req.params.pk);
     if (error) throw error;
     res.json({ ok: true });
   } catch (err) {
@@ -105,6 +109,7 @@ router.get('/:pk', async (req, res) => {
       .from('catalogos')
       .select('pk, nome, descricao, token, ativo, criado_em')
       .eq('pk', req.params.pk)
+      .is('deletado_em', null)
       .single();
     if (error || !data) return res.status(404).json({ erro: 'Catálogo não encontrado' });
     res.json({ ok: true, data });
@@ -173,6 +178,7 @@ router.get('/:pk/pedidos', async (req, res) => {
       .from('pedidos_catalogo')
       .select('pk, nome_cliente, telefone, email, observacao, status, valor_orcamento, obs_orcamento, pedido_token, data_evento, hora_evento, tipo_entrega, endereco_evento, criado_em')
       .eq('catalogo_pk', req.params.pk)
+      .is('deletado_em', null)
       .order('criado_em', { ascending: false });
     if (error) throw error;
 
@@ -196,6 +202,21 @@ router.get('/:pk/pedidos', async (req, res) => {
     });
   } catch (err) {
     console.error('[Catalogos/GET/pedidos]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ── Admin: soft-delete pedido ────────────────────────────────
+router.delete('/pedidos/:pk', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('pedidos_catalogo')
+      .update({ deletado_em: new Date().toISOString(), status: 'cancelado' })
+      .eq('pk', req.params.pk);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Catalogos/DELETE/pedido]', err.message);
     res.status(500).json({ erro: err.message });
   }
 });

@@ -53,6 +53,7 @@ const FormCatalogo        = () => import('../views/FormCatalogo.vue');
 const PedidosCatalogo     = () => import('../views/PedidosCatalogo.vue');
 const CatalogoPublico     = () => import('../views/CatalogoPublico.vue');
 const OrcamentoPublico    = () => import('../views/OrcamentoPublico.vue');
+const AprovacaoPedido     = () => import('../views/AprovacaoPedido.vue');
 
 const routes = [
   { path: '/',                  name: 'Home',             component: Home,            meta: { requiresAuth: true } },
@@ -113,8 +114,9 @@ const routes = [
   { path: '/catalogos',                  name: 'Catalogos',       component: Catalogos,        meta: { requiresAuth: true } },
   { path: '/catalogos/:pk/editar',       name: 'FormCatalogo',    component: FormCatalogo,     meta: { requiresAuth: true } },
   { path: '/catalogos/:pk/pedidos',      name: 'PedidosCatalogo', component: PedidosCatalogo,  meta: { requiresAuth: true } },
-  { path: '/catalogo/:token',         name: 'CatalogoPublico', component: CatalogoPublico,  meta: { public: true } },
-  { path: '/orcamento/:token',        name: 'OrcamentoPublico', component: OrcamentoPublico, meta: { public: true } },
+  { path: '/catalogo/:token',                              name: 'CatalogoPublico', component: CatalogoPublico,  meta: { public: true } },
+  { path: '/catalogo/:token/aprovacaoped/:pedidoToken',  name: 'AprovacaoPedido', component: AprovacaoPedido,  meta: { public: true } },
+  { path: '/orcamento/:token',                           name: 'OrcamentoPublico', component: OrcamentoPublico, meta: { public: true } },
 ];
 
 const router = createRouter({

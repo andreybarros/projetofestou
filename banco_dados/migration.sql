@@ -1352,6 +1352,30 @@ DROP POLICY IF EXISTS "anon_all_pedidos_catalogo_itens" ON pedidos_catalogo_iten
 CREATE POLICY "anon_all_pedidos_catalogo_itens" ON pedidos_catalogo_itens FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ============================================================
+-- Sessões de cliente no catálogo público
+-- ============================================================
+CREATE TABLE IF NOT EXISTS catalogo_sessoes (
+  pk          bigserial PRIMARY KEY,
+  cliente_pk  bigint REFERENCES clientes(pk) ON DELETE CASCADE,
+  catalogo_pk bigint REFERENCES catalogos(pk) ON DELETE CASCADE,
+  token       text UNIQUE NOT NULL,
+  expira_em   timestamptz NOT NULL,
+  criado_em   timestamptz DEFAULT now()
+);
+ALTER TABLE catalogo_sessoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_catalogo_sessoes" ON catalogo_sessoes;
+CREATE POLICY "anon_all_catalogo_sessoes" ON catalogo_sessoes FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- Soft delete — catálogos e pedidos
+-- ============================================================
+ALTER TABLE catalogos        ADD COLUMN IF NOT EXISTS deletado_em timestamptz;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS deletado_em  timestamptz;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS cliente_pk   bigint REFERENCES clientes(pk) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_catalogo_sessoes_token ON catalogo_sessoes(token);
+CREATE INDEX IF NOT EXISTS idx_pedidos_catalogo_cliente ON pedidos_catalogo(cliente_pk);
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

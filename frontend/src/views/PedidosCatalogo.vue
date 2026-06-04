@@ -85,7 +85,7 @@
             <th>Itens</th>
             <th>Valor</th>
             <th>Status</th>
-            <th></th>
+            <th style="width:80px"></th>
           </tr>
         </thead>
         <tbody>
@@ -131,7 +131,12 @@
             </td>
             <td><span :class="['ps-badge', `ps-${p.status}`]">{{ labelStatus(p.status) }}</span></td>
             <td>
-              <span class="td-arrow material-symbols-outlined">chevron_right</span>
+              <div class="td-acoes">
+                <span class="td-arrow material-symbols-outlined">chevron_right</span>
+                <button class="td-del-btn" @click.stop="excluirPedido(p)" title="Excluir pedido">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -164,6 +169,9 @@
               </div>
               <div class="modal-hero-right">
                 <span :class="['mh-badge', `mh-${pedidoSelecionado.status}`]">{{ labelStatus(pedidoSelecionado.status) }}</span>
+                <button class="mh-del-btn" @click="excluirPedido(pedidoSelecionado)" title="Excluir pedido">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
                 <button class="modal-close" @click="fecharPedido">
                   <span class="material-symbols-outlined">close</span>
                 </button>
@@ -407,6 +415,18 @@ function fecharPedido() {
   linkPendenteEnvio.value = false;
 }
 
+async function excluirPedido(p) {
+  if (!confirm(`Excluir pedido de "${p.nome_cliente}"? Esta ação não pode ser desfeita.`)) return;
+  try {
+    await api.delete(`/api/catalogos/pedidos/${p.pk}`);
+    pedidos.value = pedidos.value.filter(x => x.pk !== p.pk);
+    if (pedidoSelecionado.value?.pk === p.pk) fecharPedido();
+    showToast('Pedido excluído.');
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao excluir.', 'err');
+  }
+}
+
 async function enviarOrcamento() {
   if (!orcForm.value.valor) { showToast('Informe o valor do orçamento.', 'err'); return; }
   const foiEdicao = !!pedidoSelecionado.value.valor_orcamento;
@@ -458,7 +478,11 @@ function showToast(msg, tipo = 'ok') {
 </script>
 
 <style scoped>
-.pc-wrap { --g: #00c853; --g-dim: rgba(0,200,83,.12); --g-soft: rgba(0,200,83,.06); }
+.pc-wrap {
+  --g: #6366f1;
+  --g-dim: rgba(99,102,241,.12);
+  --g-soft: rgba(99,102,241,.06);
+}
 .pc-wrap { display: flex; flex-direction: column; gap: 20px; padding-bottom: 60px; }
 
 /* ── Header ── */
@@ -534,7 +558,17 @@ function showToast(msg, tipo = 'ok') {
 .ps-orcamento_enviado { background: rgba(96,158,252,.12); color: #609efc; }
 .ps-aprovado          { background: var(--g-dim); color: var(--g); }
 .ps-cancelado         { background: rgba(248,113,113,.12); color: #f87171; }
-.td-arrow  { font-size: 18px; color: var(--text2); opacity: .4; transition: all .15s; display: flex; }
+.td-acoes   { display: flex; align-items: center; gap: 6px; }
+.td-arrow   { font-size: 18px; color: var(--text2); opacity: .4; transition: all .15s; display: flex; }
+.td-del-btn { background: none; border: none; color: var(--text2); cursor: pointer; display: flex; padding: 4px; border-radius: 6px; opacity: 0; transition: all .15s; }
+.pc-row:hover .td-del-btn { opacity: 1; }
+.td-del-btn:hover { color: #ef4444; background: rgba(239,68,68,.1); }
+.td-del-btn .material-symbols-outlined { font-size: 16px; }
+
+.mh-del-btn { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.25); border-radius: 8px; color: #fca5a5; cursor: pointer; display: flex; padding: 5px; transition: all .15s; }
+.mh-del-btn:hover { background: rgba(239,68,68,.3); color: #fff; }
+.mh-del-btn .material-symbols-outlined { font-size: 17px; }
+
 .pc-table-footer { padding: 12px 16px; font-size: 12px; color: var(--text2); background: var(--bg3); border-top: 1px solid var(--border); }
 
 /* ── Modal ── */
@@ -546,18 +580,18 @@ function showToast(msg, tipo = 'ok') {
 .modal-enter-from .modal-box, .modal-leave-to .modal-box { transform: scale(.95) translateY(12px); }
 
 /* Hero header */
-.modal-hero        { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 16px; background: linear-gradient(135deg, #002b12 0%, #003d1a 100%); border-bottom: 1px solid rgba(0,200,83,.15); flex-shrink: 0; gap: 12px; }
+.modal-hero        { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 16px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-bottom: 1px solid rgba(99,102,241,.2); flex-shrink: 0; gap: 12px; }
 .modal-hero-left   { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
-.modal-order-num   { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #00e676; white-space: nowrap; }
+.modal-order-num   { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #a5b4fc; white-space: nowrap; }
 .modal-order-num .material-symbols-outlined { font-size: 14px; }
-.modal-hero-avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(0,200,83,.2); border: 2px solid rgba(0,200,83,.3); color: #00e676; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.modal-hero-avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(99,102,241,.25); border: 2px solid rgba(99,102,241,.4); color: #a5b4fc; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .modal-hero-name   { font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 1px; }
 .modal-hero-sub    { font-size: 12px; color: rgba(255,255,255,.55); }
 .modal-hero-right  { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .mh-badge  { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
 .mh-aguardando        { background: rgba(245,158,11,.2); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); }
 .mh-orcamento_enviado { background: rgba(96,158,252,.2); color: #93c5fd; border: 1px solid rgba(96,158,252,.3); }
-.mh-aprovado          { background: rgba(0,200,83,.2); color: #00e676; border: 1px solid rgba(0,200,83,.3); }
+.mh-aprovado          { background: rgba(99,102,241,.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,.3); }
 .mh-cancelado         { background: rgba(248,113,113,.2); color: #fca5a5; border: 1px solid rgba(248,113,113,.3); }
 .modal-close { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: rgba(255,255,255,.6); cursor: pointer; display: flex; padding: 4px; transition: all .15s; }
 .modal-close:hover { background: rgba(255,255,255,.15); color: #fff; }

@@ -481,9 +481,9 @@ function showToast(msg, tipo = 'ok') {
 
 <style scoped>
 .fc-wrap {
-  --g: #00c853;
-  --g-dim: rgba(0,200,83,.12);
-  --g-soft: rgba(0,200,83,.06);
+  --g: #6366f1;
+  --g-dim: rgba(99,102,241,.12);
+  --g-soft: rgba(99,102,241,.06);
 }
 .fc-wrap { display: flex; flex-direction: column; gap: 22px; padding-bottom: 60px; max-width: 1020px; }
 
@@ -536,7 +536,7 @@ function showToast(msg, tipo = 'ok') {
 .fc-count-pill  { background: var(--g-dim); color: var(--g); font-size: 12px; font-weight: 800; padding: 3px 12px; border-radius: 20px; white-space: nowrap; }
 
 /* Btn Adicionar Todos */
-.btn-add-all { display: flex; align-items: center; gap: 7px; padding: 9px 18px; background: linear-gradient(135deg,#004d20,#00c853); border: none; border-radius: 9px; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; transition: filter .15s; white-space: nowrap; }
+.btn-add-all { display: flex; align-items: center; gap: 7px; padding: 9px 18px; background: var(--primary); border: none; border-radius: 9px; color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; transition: filter .15s; white-space: nowrap; }
 .btn-add-all:hover:not(:disabled) { filter: brightness(1.12); }
 .btn-add-all:disabled { opacity: .5; cursor: not-allowed; }
 .btn-add-all .material-symbols-outlined { font-size: 17px; }

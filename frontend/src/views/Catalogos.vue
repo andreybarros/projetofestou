@@ -371,11 +371,11 @@ const pedidoExpandido   = ref(null);
 let   toastTimer        = null;
 
 const coverGradients = [
-  'linear-gradient(135deg,#00401a 0%,#00c853 100%)',
-  'linear-gradient(135deg,#0d2d6b 0%,#3b82f6 100%)',
+  'linear-gradient(135deg,#0e1f3d 0%,#609efc 100%)',
   'linear-gradient(135deg,#3b1364 0%,#9333ea 100%)',
   'linear-gradient(135deg,#7c1d1d 0%,#f97316 100%)',
   'linear-gradient(135deg,#064e3b 0%,#06b6d4 100%)',
+  'linear-gradient(135deg,#1a2f1a 0%,#4ade80 100%)',
 ];
 
 const totalProdutos  = computed(() => lista.value.reduce((s, c) => s + (c.qtd_itens  || 0), 0));
@@ -508,7 +508,11 @@ function showToast(msg, tipo = 'ok') {
 
 <style scoped>
 /* ── Variables ── */
-.cat-wrap { --g: #00c853; --g-dim: rgba(0,200,83,.12); --g-soft: rgba(0,200,83,.06); }
+.cat-wrap {
+  --g: #6366f1;
+  --g-dim: rgba(99,102,241,.12);
+  --g-soft: rgba(99,102,241,.06);
+}
 
 /* ── Layout ── */
 .cat-wrap  { display: flex; flex-direction: column; gap: 22px; padding-bottom: 60px; }

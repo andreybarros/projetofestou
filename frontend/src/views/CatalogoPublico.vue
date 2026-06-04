@@ -12,7 +12,18 @@
       <p>Verifique o link ou entre em contato com a loja.</p>
     </div>
 
-    <template v-else>
+    <!-- Tela de login (exibida antes do catálogo se não autenticado) -->
+    <Transition name="cl-fade">
+      <CatalogoLogin
+        v-if="!carregando && !erro && mostrarLogin"
+        :catalogo="catalogo"
+        :token="token"
+        @loginOk="onLoginOk"
+        @pular="mostrarLogin = false"
+      />
+    </Transition>
+
+    <template v-if="!carregando && !erro && !mostrarLogin">
       <!-- Header da loja -->
       <header class="cp-header">
         <div class="cp-header-inner">
@@ -34,6 +45,21 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
+          <!-- Cliente logado -->
+          <div v-if="clienteLogado" class="cp-cliente-pill" @click="mostrarMeusPedidos = true" style="cursor:pointer">
+            <div class="cp-cliente-avatar">{{ clienteLogado.nome?.charAt(0)?.toUpperCase() }}</div>
+            <span class="cp-cliente-nome">{{ clienteLogado.nome?.split(' ')[0] }}</span>
+          </div>
+          <button v-if="clienteLogado" class="cp-btn-meus-pedidos" @click="mostrarMeusPedidos = true">
+            <span class="material-symbols-outlined">receipt_long</span>
+            <span class="cp-btn-mp-txt">Meus Pedidos</span>
+            <span v-if="qtdPendentes" class="cp-btn-mp-badge">{{ qtdPendentes }}</span>
+          </button>
+          <button v-else class="cp-btn-login" @click="mostrarLogin = true">
+            <span class="material-symbols-outlined">person</span>
+            Entrar
+          </button>
+
           <button class="cp-cart-btn" @click="mostrarCarrinho = !mostrarCarrinho">
             <span class="material-symbols-outlined">shopping_bag</span>
             <span v-if="totalItens" class="cp-cart-badge">{{ totalItens }}</span>
@@ -263,6 +289,18 @@
         </div>
       </Transition>
 
+      <!-- Meus Pedidos drawer -->
+      <Transition name="drawer">
+        <MeusPedidosCatalogo
+          v-if="mostrarMeusPedidos"
+          :token="token"
+          :sessao-token="sessaoToken"
+          :catalogo="catalogo"
+          @fechar="mostrarMeusPedidos = false"
+          @pedido-aprovado="onPedidoAprovado"
+        />
+      </Transition>
+
       <!-- Lightbox foto -->
       <Transition name="fade">
         <div v-if="fotoLightbox" class="cp-lightbox" @click="fotoLightbox = null">
@@ -300,6 +338,8 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
+import CatalogoLogin      from './CatalogoLogin.vue';
+import MeusPedidosCatalogo from './MeusPedidosCatalogo.vue';
 
 const route   = useRoute();
 const token   = route.params.token;
@@ -307,6 +347,27 @@ const token   = route.params.token;
 const carregando      = ref(true);
 const erro            = ref('');
 const catalogo        = ref(null);
+const mostrarLogin      = ref(false);
+const mostrarMeusPedidos = ref(false);
+const clienteLogado     = ref(null);   // { nome, email, pk }
+const sessaoToken       = ref('');
+const qtdPendentes      = ref(0);
+
+function onLoginOk({ cliente, sessaoToken: st }) {
+  clienteLogado.value = cliente;
+  sessaoToken.value   = st;
+  mostrarLogin.value  = false;
+  form.value.nome     = cliente.nome      || '';
+  form.value.telefone = cliente.telefone  || '';
+  form.value.email    = cliente.email     || '';
+  // Abre Meus Pedidos automaticamente após login
+  mostrarMeusPedidos.value = true;
+}
+
+function onPedidoAprovado(p) {
+  // Atualiza badge de pendentes
+  if (qtdPendentes.value > 0) qtdPendentes.value--;
+}
 const produtos         = ref([]);
 const busca            = ref('');
 const visiveis         = ref(24);
@@ -341,6 +402,29 @@ onMounted(async () => {
     const { data } = await axios.get(`/api/catalogo-publico/${token}`);
     catalogo.value = data.catalogo;
     produtos.value = data.produtos || [];
+
+    // Verifica sessão salva
+    const st = localStorage.getItem(`cl_sessao_${token}`);
+    if (st) {
+      try {
+        const { data: sd } = await axios.get(
+          `/api/catalogo-publico/${token}/cliente/sessao`,
+          { headers: { 'x-sessao-token': st } }
+        );
+        clienteLogado.value = sd.cliente;
+        sessaoToken.value   = st;
+        form.value.nome     = sd.cliente.nome      || '';
+        form.value.telefone = sd.cliente.telefone  || '';
+        form.value.email    = sd.cliente.email     || '';
+        mostrarLogin.value  = false;
+      } catch {
+        // Sessão expirada — remove e mostra login
+        localStorage.removeItem(`cl_sessao_${token}`);
+        mostrarLogin.value = true;
+      }
+    } else {
+      mostrarLogin.value = true;
+    }
   } catch (e) {
     erro.value = e.response?.data?.erro || 'Catálogo não encontrado';
   } finally {
@@ -389,6 +473,7 @@ async function enviarPedido() {
   }
   enviando.value = true;
   try {
+    const headers = sessaoToken.value ? { 'x-sessao-token': sessaoToken.value } : {};
     const { data } = await axios.post(`/api/catalogo-publico/${token}/pedido`, {
       nome_cliente:    form.value.nome,
       telefone:        form.value.telefone        || null,
@@ -403,7 +488,7 @@ async function enviarPedido() {
         nome:       i.descricao,
         quantidade: i.quantidade,
       })),
-    });
+    }, { headers });
     pedidoToken.value = data.pedido_token || '';
     enviado.value = true;
     mostrarCarrinho.value = false;
@@ -451,6 +536,24 @@ function copiarLinkOrcamento() {
 .cp-busca-clear:hover { color: #fff; }
 .cp-busca-clear .material-symbols-outlined { font-size: 16px; }
 
+/* Cliente logado no header */
+.cp-btn-login { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; color: rgba(255,255,255,.8); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; }
+.cp-btn-login:hover { background: rgba(255,255,255,.14); color: #fff; }
+.cp-btn-login .material-symbols-outlined { font-size: 17px; }
+.cp-cliente-pill { display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; background: rgba(99,102,241,.2); border: 1px solid rgba(99,102,241,.3); border-radius: 20px; transition: background .15s; }
+.cp-cliente-pill:hover { background: rgba(99,102,241,.3); }
+.cp-cliente-avatar { width: 28px; height: 28px; border-radius: 50%; background: #6366f1; color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cp-cliente-nome { font-size: 12px; font-weight: 700; color: #c7d2fe; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+
+.cp-btn-meus-pedidos { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; white-space: nowrap; position: relative; }
+.cp-btn-meus-pedidos:hover { background: rgba(255,255,255,.18); }
+.cp-btn-meus-pedidos .material-symbols-outlined { font-size: 17px; }
+.cp-btn-mp-txt { display: none; }
+.cp-btn-mp-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #111318; }
+@media (min-width: 500px) {
+  .cp-btn-mp-txt { display: inline; }
+}
+
 .cp-cart-btn { position: relative; width: 44px; height: 44px; background: #6366f1; border: none; border-radius: 12px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .cp-cart-btn .material-symbols-outlined { font-size: 22px; }
 .cp-cart-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #111318; }
@@ -479,15 +582,16 @@ function copiarLinkOrcamento() {
 .cp-card-body { padding: 12px 12px 6px; flex: 1; }
 .cp-card-nome { font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.3; }
 .cp-card-cod  { font-size: 11px; color: #9ca3af; margin-top: 3px; }
-.cp-card-footer { padding: 8px 12px 12px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.cp-card-footer-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.cp-saldo-hint { font-size: 10px; color: #9ca3af; font-weight: 500; }
+.cp-card-footer { padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cp-qty-ctrl    { justify-content: center; }
+.cp-card-footer-right { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+.cp-saldo-hint  { font-size: 10px; color: #9ca3af; font-weight: 500; text-align: center; }
 .cp-qty-ctrl { display: flex; align-items: center; gap: 6px; }
 .cp-qty-btn { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: all .12s; }
 .cp-qty-btn:hover:not(:disabled) { background: #6366f1; color: #fff; border-color: #6366f1; }
 .cp-qty-btn:disabled { opacity: .35; cursor: not-allowed; }
 .cp-qty-val { font-size: 14px; font-weight: 700; min-width: 20px; text-align: center; }
-.cp-add-btn { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: #6366f1; border: none; border-radius: 8px; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.cp-add-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; background: #6366f1; border: none; border-radius: 8px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s; width: 100%; }
 .cp-add-btn:hover:not(:disabled) { background: #4f46e5; }
 .cp-add-btn--in  { background: #16a34a; }
 .cp-add-btn--in:hover:not(:disabled) { background: #15803d; }
@@ -563,6 +667,10 @@ function copiarLinkOrcamento() {
 .cp-lightbox-close { position: absolute; top: 16px; right: 16px; width: 44px; height: 44px; background: rgba(255,255,255,.15); border: none; border-radius: 50%; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: background .15s; }
 .cp-lightbox-close:hover { background: rgba(255,255,255,.28); }
 .cp-lightbox-close .material-symbols-outlined { font-size: 22px; }
+
+/* Transição login */
+.cl-fade-enter-active, .cl-fade-leave-active { transition: opacity .25s; }
+.cl-fade-enter-from, .cl-fade-leave-to { opacity: 0; }
 
 /* Transitions */
 .drawer-enter-active, .drawer-leave-active { transition: opacity .2s; }
