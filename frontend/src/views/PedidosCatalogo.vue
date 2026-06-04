@@ -225,9 +225,35 @@
                     <span class="mc-count">{{ pedidoSelecionado.itens.length }}</span>
                   </div>
                   <div class="mc-itens">
-                    <div v-for="(it, i) in pedidoSelecionado.itens" :key="i" class="mc-item">
-                      <div class="mc-item-qty">{{ it.quantidade }}</div>
-                      <div class="mc-item-nome">{{ it.nome }}</div>
+                    <div v-for="(it, i) in pedidoSelecionado.itens" :key="it.pk || i" class="mc-item">
+                      <!-- Foto -->
+                      <img v-if="it.foto_url" :src="it.foto_url" class="mc-item-foto" />
+                      <div v-else class="mc-item-foto mc-item-foto--vazio">
+                        <span class="material-symbols-outlined">image_not_supported</span>
+                      </div>
+                      <div class="mc-item-body">
+                        <div class="mc-item-row">
+                          <div class="mc-item-qty">{{ it.quantidade }}</div>
+                          <div class="mc-item-nome">{{ it.nome }}</div>
+                          <span :class="['mc-saldo', saldoCls(it.saldo)]" :title="`Saldo: ${it.saldo ?? 'N/D'}`">
+                            {{ it.saldo === null ? '—' : it.saldo <= 0 ? 'Sem estoque' : `${it.saldo} disp.` }}
+                          </span>
+                        </div>
+                        <!-- Substituto atual -->
+                        <div v-if="it.nome_produto_substituto" class="mc-subst-atual">
+                          <span class="material-symbols-outlined">swap_horiz</span>
+                          <img v-if="it.foto_url_substituto" :src="it.foto_url_substituto" class="mc-subst-thumb" />
+                          <span class="mc-subst-nome-txt">{{ it.nome_produto_substituto }}</span>
+                          <button class="mc-subst-rm" @click.stop="removerSubstituto(it)" title="Remover substituição">
+                            <span class="material-symbols-outlined">close</span>
+                          </button>
+                        </div>
+                        <!-- Botão substituir -->
+                        <button class="mc-subst-btn" @click.stop="abrirPicker(it, i)">
+                          <span class="material-symbols-outlined">swap_horiz</span>
+                          {{ it.nome_produto_substituto ? 'Alterar substituto' : 'Substituir produto' }}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -243,41 +269,8 @@
 
               </div>
 
-              <!-- Coluna direita: link + orçamento -->
+              <!-- Coluna direita: orçamento -->
               <div class="modal-col modal-col--orc">
-
-                <!-- Alerta: reenviar link após edição -->
-                <Transition name="alerta">
-                  <div v-if="linkPendenteEnvio" class="mc-alerta">
-                    <span class="material-symbols-outlined mc-alerta-ico">campaign</span>
-                    <div>
-                      <div class="mc-alerta-title">Orçamento atualizado!</div>
-                      <div class="mc-alerta-sub">Copie o link abaixo e reenvie ao cliente para que ele aprove o novo valor.</div>
-                    </div>
-                  </div>
-                </Transition>
-
-                <!-- Link do orçamento -->
-                <div
-                  v-if="pedidoSelecionado.pedido_token"
-                  :class="['mc-link-card', linkPendenteEnvio && 'mc-link-card--destaque']"
-                >
-                  <div class="mc-link-label">
-                    <span class="material-symbols-outlined">link</span>
-                    Link para o cliente
-                  </div>
-                  <div class="mc-link-sub">Envie este link ao cliente para que ele veja e aprove o orçamento.</div>
-                  <div class="mc-link-row">
-                    <input :value="linkOrcamento(pedidoSelecionado.pedido_token)" readonly class="mc-link-input" />
-                  </div>
-                  <button
-                    :class="['mc-link-copy-btn', linkPendenteEnvio && 'mc-link-copy-btn--pulse']"
-                    @click="copiarLink(pedidoSelecionado.pedido_token)"
-                  >
-                    <span class="material-symbols-outlined">content_copy</span>
-                    {{ linkPendenteEnvio ? 'Copiar e Reenviar ao Cliente' : 'Copiar Link' }}
-                  </button>
-                </div>
 
                 <!-- Orçamento -->
                 <div class="mc-orc-card">
@@ -310,7 +303,13 @@
                     </div>
                     <div class="mc-field-group">
                       <label>Valor total (R$) *</label>
-                      <input v-model="orcForm.valor" type="number" step="0.01" class="m-input" placeholder="0,00" />
+                      <input
+                        :value="orcForm.valorDisplay"
+                        @input="mascaraMoeda"
+                        inputmode="numeric"
+                        class="m-input"
+                        placeholder="R$ 0,00"
+                      />
                     </div>
                     <div class="mc-field-group">
                       <label>Observações</label>
@@ -327,8 +326,104 @@
                   </div>
                 </div>
 
+                <!-- Ação: marcar retirado -->
+                <div v-if="pedidoSelecionado.status === 'aprovado'" class="mc-status-acao">
+                  <div class="mc-status-acao-title">
+                    <span class="material-symbols-outlined">local_shipping</span>
+                    Entrega / Retirada
+                  </div>
+                  <Transition name="acao-conf">
+                    <div v-if="confirmandoStatus === 'retirado'" class="mc-status-confirm">
+                      <p class="mc-status-confirm-msg">Confirmar que o material foi retirado pelo cliente?</p>
+                      <div class="mc-status-confirm-btns">
+                        <button class="btn-conf-cancel" @click="confirmandoStatus = null">Cancelar</button>
+                        <button class="btn-retirado" :disabled="marcandoStatus" @click="marcarStatus('retirado')">
+                          <span v-if="marcandoStatus" class="spin-sm"></span>
+                          <span v-else class="material-symbols-outlined">check_circle</span>
+                          {{ marcandoStatus ? 'Salvando…' : 'Confirmar Retirada' }}
+                        </button>
+                      </div>
+                    </div>
+                    <button v-else class="btn-retirado" @click="confirmandoStatus = 'retirado'">
+                      <span class="material-symbols-outlined">check_circle</span>
+                      Marcar como Retirado
+                    </button>
+                  </Transition>
+                </div>
+
+                <!-- Ação: marcar devolvido -->
+                <div v-if="pedidoSelecionado.status === 'retirado'" class="mc-status-acao mc-status-acao--dev">
+                  <div class="mc-status-acao-title">
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    Devolução
+                  </div>
+                  <Transition name="acao-conf">
+                    <div v-if="confirmandoStatus === 'devolvido'" class="mc-status-confirm mc-status-confirm--dev">
+                      <p class="mc-status-confirm-msg">O material voltou? O estoque dos produtos será restaurado automaticamente.</p>
+                      <div class="mc-status-confirm-btns">
+                        <button class="btn-conf-cancel" @click="confirmandoStatus = null">Cancelar</button>
+                        <button class="btn-devolvido" :disabled="marcandoStatus" @click="marcarStatus('devolvido')">
+                          <span v-if="marcandoStatus" class="spin-sm"></span>
+                          <span v-else class="material-symbols-outlined">undo</span>
+                          {{ marcandoStatus ? 'Salvando…' : 'Confirmar Devolução' }}
+                        </button>
+                      </div>
+                    </div>
+                    <button v-else class="btn-devolvido" @click="confirmandoStatus = 'devolvido'">
+                      <span class="material-symbols-outlined">undo</span>
+                      Confirmar Devolução
+                    </button>
+                  </Transition>
+                </div>
+
               </div>
             </div>
+
+            <!-- ── Picker de substituição ─────────────────────── -->
+            <Transition name="picker">
+              <div v-if="pickerAberto" class="subst-picker">
+                <div class="subst-picker-hd">
+                  <div>
+                    <div class="subst-picker-titulo">Substituir produto</div>
+                    <div class="subst-picker-sub">Substituindo: <strong>{{ itemParaSubstituir?.nome }}</strong></div>
+                  </div>
+                  <button class="subst-picker-close" @click="fecharPicker">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+                <div class="subst-picker-busca-wrap">
+                  <span class="material-symbols-outlined subst-picker-busca-ico">search</span>
+                  <input v-model="pickerBusca" type="text" placeholder="Buscar produto…" class="subst-picker-busca" autofocus />
+                </div>
+                <div v-if="pickerCarregando" class="subst-picker-load">
+                  <span class="spin"></span>
+                </div>
+                <div v-else class="subst-picker-lista">
+                  <div
+                    v-for="p in produtosFiltradosPicker"
+                    :key="p.pk"
+                    class="subst-picker-item"
+                    :class="{ 'subst-picker-item--sel': itemParaSubstituir?.produto_substituto_pk === p.pk }"
+                    @click="selecionarSubstituto(p)"
+                  >
+                    <img v-if="p.foto_url" :src="p.foto_url" class="subst-picker-foto" />
+                    <div v-else class="subst-picker-foto subst-picker-foto--vazio">
+                      <span class="material-symbols-outlined">image_not_supported</span>
+                    </div>
+                    <div class="subst-picker-info">
+                      <div class="subst-picker-nome">{{ p.descricao }}</div>
+                      <div v-if="p.codigo" class="subst-picker-cod">{{ p.codigo }}</div>
+                    </div>
+                    <span :class="['subst-saldo', saldoCls(p.saldo)]">
+                      {{ p.saldo === null ? '—' : p.saldo <= 0 ? 'Indisponível' : `${p.saldo} disp.` }}
+                    </span>
+                  </div>
+                  <div v-if="!produtosFiltradosPicker.length" class="subst-picker-vazio">
+                    Nenhum produto encontrado.
+                  </div>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
       </Transition>
@@ -362,7 +457,13 @@ const pedidoSelecionado  = ref(null);
 const editandoOrc        = ref(false);
 const orcForm            = ref({ valor: '', obs: '' });
 const orcSalvando        = ref(false);
-const linkPendenteEnvio  = ref(false);
+const marcandoStatus     = ref(false);
+const confirmandoStatus  = ref(null);
+const produtosCatalogo   = ref([]);
+const pickerAberto       = ref(false);
+const pickerCarregando   = ref(false);
+const pickerBusca        = ref('');
+const itemParaSubstituir = ref(null);  // { pk, nome, idxLocal, produto_substituto_pk }
 const toastMsg        = ref('');
 const toastTipo       = ref('ok');
 let   toastTimer      = null;
@@ -372,6 +473,8 @@ const abas = computed(() => [
   { key: 'aguardando',        label: 'Aguardando',        count: pedidos.value.filter(p => p.status === 'aguardando').length },
   { key: 'orcamento_enviado', label: 'Orç. enviado',      count: pedidos.value.filter(p => p.status === 'orcamento_enviado').length },
   { key: 'aprovado',          label: 'Aprovados',         count: pedidos.value.filter(p => p.status === 'aprovado').length },
+  { key: 'retirado',          label: 'Retirados',         count: pedidos.value.filter(p => p.status === 'retirado').length },
+  { key: 'devolvido',         label: 'Devolvidos',        count: pedidos.value.filter(p => p.status === 'devolvido').length },
   { key: 'cancelado',         label: 'Cancelados',        count: pedidos.value.filter(p => p.status === 'cancelado').length },
 ]);
 
@@ -404,15 +507,24 @@ onMounted(async () => {
 
 function abrirPedido(p) {
   pedidoSelecionado.value = p;
-  editandoOrc.value      = false;
-  linkPendenteEnvio.value = false;
-  orcForm.value = { valor: p.valor_orcamento || '', obs: p.obs_orcamento || '' };
+  editandoOrc.value       = false;
+  const v = p.valor_orcamento ? Number(p.valor_orcamento).toFixed(2).replace('.', ',') : '';
+  orcForm.value = { valor: p.valor_orcamento || '', valorDisplay: v ? `R$ ${v}` : '', obs: p.obs_orcamento || '' };
+}
+
+function mascaraMoeda(e) {
+  const raw = e.target.value.replace(/\D/g, '');
+  const num = parseInt(raw || '0', 10) / 100;
+  const display = num === 0 ? '' : `R$ ${num.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+  orcForm.value.valorDisplay = display;
+  orcForm.value.valor = num || '';
+  e.target.value = display;
 }
 
 function fecharPedido() {
-  pedidoSelecionado.value = null;
-  editandoOrc.value       = false;
-  linkPendenteEnvio.value = false;
+  pedidoSelecionado.value  = null;
+  editandoOrc.value        = false;
+  confirmandoStatus.value  = null;
 }
 
 async function excluirPedido(p) {
@@ -444,9 +556,8 @@ async function enviarOrcamento() {
       pedidos.value[idx].status          = 'orcamento_enviado';
       pedidoSelecionado.value = { ...pedidos.value[idx] };
     }
-    editandoOrc.value       = false;
-    linkPendenteEnvio.value = true;
-    showToast(foiEdicao ? 'Orçamento atualizado! Reenvie o link ao cliente.' : 'Orçamento registrado!');
+    editandoOrc.value = false;
+    showToast(foiEdicao ? 'Orçamento atualizado!' : 'Orçamento registrado!');
   } catch (e) {
     showToast(e.response?.data?.erro || 'Erro ao salvar.', 'err');
   } finally {
@@ -454,15 +565,99 @@ async function enviarOrcamento() {
   }
 }
 
-function linkOrcamento(token) { return `${window.location.origin}/orcamento/${token}`; }
-function copiarLink(token) {
-  navigator.clipboard.writeText(linkOrcamento(token));
-  linkPendenteEnvio.value = false;
-  showToast('Link copiado! Envie ao cliente.');
+const produtosFiltradosPicker = computed(() => {
+  const q = pickerBusca.value.toLowerCase().trim();
+  return produtosCatalogo.value
+    .filter(p => !q || p.descricao?.toLowerCase().includes(q) || p.codigo?.toLowerCase().includes(q))
+    .sort((a, b) => (b.saldo ?? -1) - (a.saldo ?? -1));
+});
+
+async function abrirPicker(item, idxLocal) {
+  itemParaSubstituir.value = { ...item, idxLocal };
+  pickerBusca.value = '';
+  pickerAberto.value = true;
+  if (!produtosCatalogo.value.length) {
+    pickerCarregando.value = true;
+    try {
+      const { data } = await api.get(`/api/catalogos/${pk}/produtos`);
+      produtosCatalogo.value = data.data || [];
+    } catch { /* silencioso */ } finally {
+      pickerCarregando.value = false;
+    }
+  }
 }
 
+function fecharPicker() {
+  pickerAberto.value = false;
+  itemParaSubstituir.value = null;
+}
+
+async function selecionarSubstituto(produto) {
+  const item = itemParaSubstituir.value;
+  if (!item) return;
+  try {
+    const { data } = await api.patch(`/api/catalogos/pedidos/itens/${item.pk}/substituir`, { produto_substituto_pk: produto.pk });
+    const itens = pedidoSelecionado.value.itens;
+    itens[item.idxLocal] = {
+      ...itens[item.idxLocal],
+      produto_substituto_pk:   produto.pk,
+      nome_produto_substituto: data.nome_produto_substituto,
+      foto_url_substituto:     produto.foto_url || null,
+    };
+    pedidoSelecionado.value = { ...pedidoSelecionado.value, itens: [...itens] };
+    fecharPicker();
+    showToast(`Substituído por "${data.nome_produto_substituto}".`);
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao substituir.', 'err');
+  }
+}
+
+async function removerSubstituto(it) {
+  const idx = pedidoSelecionado.value.itens.indexOf(it);
+  if (idx === -1) return;
+  try {
+    await api.patch(`/api/catalogos/pedidos/itens/${it.pk}/substituir`, { produto_substituto_pk: null });
+    const itens = pedidoSelecionado.value.itens;
+    itens[idx] = { ...itens[idx], produto_substituto_pk: null, nome_produto_substituto: null, foto_url_substituto: null };
+    pedidoSelecionado.value = { ...pedidoSelecionado.value, itens: [...itens] };
+    showToast('Substituição removida.');
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao remover substituição.', 'err');
+  }
+}
+
+function saldoCls(saldo) {
+  if (saldo === null || saldo === undefined) return 'saldo--nd';
+  if (saldo <= 0) return 'saldo--zero';
+  if (saldo <= 2)  return 'saldo--baixo';
+  return 'saldo--ok';
+}
+
+async function marcarStatus(novoStatus) {
+  marcandoStatus.value = true;
+  try {
+    await api.patch(`/api/catalogos/pedidos/${pedidoSelecionado.value.pk}/status`, { status: novoStatus });
+    const idx = pedidos.value.findIndex(p => p.pk === pedidoSelecionado.value.pk);
+    if (idx !== -1) {
+      pedidos.value[idx].status = novoStatus;
+      pedidoSelecionado.value = { ...pedidos.value[idx] };
+    }
+    const label = novoStatus === 'devolvido' ? 'Devolução registrada e estoque restaurado!' : 'Pedido marcado como retirado!';
+    showToast(label);
+  } catch (e) {
+    showToast(e.response?.data?.erro || 'Erro ao atualizar status.', 'err');
+  } finally {
+    marcandoStatus.value  = false;
+    confirmandoStatus.value = null;
+  }
+}
+
+
 function labelStatus(s) {
-  const m = { aguardando: 'Aguardando', orcamento_enviado: 'Orç. enviado', aprovado: 'Aprovado', cancelado: 'Cancelado' };
+  const m = {
+    aguardando: 'Aguardando', orcamento_enviado: 'Orç. enviado',
+    aprovado: 'Aprovado', retirado: 'Retirado', devolvido: 'Devolvido', cancelado: 'Cancelado',
+  };
   return m[s] || s;
 }
 function fmtData(dt)      { return dt ? new Date(dt).toLocaleDateString('pt-BR') : '—'; }
@@ -557,6 +752,8 @@ function showToast(msg, tipo = 'ok') {
 .ps-aguardando        { background: rgba(245,158,11,.12); color: #f59e0b; }
 .ps-orcamento_enviado { background: rgba(96,158,252,.12); color: #609efc; }
 .ps-aprovado          { background: var(--g-dim); color: var(--g); }
+.ps-retirado          { background: rgba(14,165,233,.15); color: #38bdf8; }
+.ps-devolvido         { background: rgba(168,85,247,.15); color: #c084fc; }
 .ps-cancelado         { background: rgba(248,113,113,.12); color: #f87171; }
 .td-acoes   { display: flex; align-items: center; gap: 6px; }
 .td-arrow   { font-size: 18px; color: var(--text2); opacity: .4; transition: all .15s; display: flex; }
@@ -573,7 +770,7 @@ function showToast(msg, tipo = 'ok') {
 
 /* ── Modal ── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 16px; }
-.modal-box     { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 820px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 32px 100px rgba(0,0,0,.6); }
+.modal-box     { position: relative; background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: min(1160px, 96vw); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 32px 100px rgba(0,0,0,.6); }
 .modal-enter-active, .modal-leave-active { transition: opacity .2s; }
 .modal-enter-active .modal-box, .modal-leave-active .modal-box { transition: transform .28s cubic-bezier(.32,.72,0,1); }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
@@ -592,13 +789,15 @@ function showToast(msg, tipo = 'ok') {
 .mh-aguardando        { background: rgba(245,158,11,.2); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); }
 .mh-orcamento_enviado { background: rgba(96,158,252,.2); color: #93c5fd; border: 1px solid rgba(96,158,252,.3); }
 .mh-aprovado          { background: rgba(99,102,241,.2); color: #a5b4fc; border: 1px solid rgba(99,102,241,.3); }
+.mh-retirado          { background: rgba(14,165,233,.2); color: #7dd3fc; border: 1px solid rgba(14,165,233,.3); }
+.mh-devolvido         { background: rgba(168,85,247,.2); color: #d8b4fe; border: 1px solid rgba(168,85,247,.3); }
 .mh-cancelado         { background: rgba(248,113,113,.2); color: #fca5a5; border: 1px solid rgba(248,113,113,.3); }
 .modal-close { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: rgba(255,255,255,.6); cursor: pointer; display: flex; padding: 4px; transition: all .15s; }
 .modal-close:hover { background: rgba(255,255,255,.15); color: #fff; }
 .modal-close .material-symbols-outlined { font-size: 20px; }
 
 /* Two-column body */
-.modal-cols { display: grid; grid-template-columns: 1fr 300px; overflow: hidden; flex: 1; }
+.modal-cols { display: grid; grid-template-columns: 1fr 420px; overflow: hidden; flex: 1; }
 .modal-col  { overflow-y: auto; }
 .modal-col--info { padding: 20px 22px; display: flex; flex-direction: column; gap: 18px; border-right: 1px solid var(--border); }
 .modal-col--orc  { padding: 20px 18px; display: flex; flex-direction: column; gap: 14px; background: var(--bg3); }
@@ -616,38 +815,70 @@ function showToast(msg, tipo = 'ok') {
 .mc-entrega { display: flex; align-items: center; gap: 5px; }
 .mc-entrega .material-symbols-outlined { font-size: 15px; color: var(--g); }
 
-.mc-itens { display: flex; flex-direction: column; gap: 6px; }
-.mc-item  { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; transition: border-color .12s; }
-.mc-item:hover { border-color: rgba(0,200,83,.2); }
-.mc-item-qty  { width: 28px; height: 28px; border-radius: 8px; background: var(--g-dim); color: var(--g); font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.mc-item-nome { font-size: 13px; font-weight: 600; color: var(--text); }
+.mc-itens { display: flex; flex-direction: column; gap: 8px; }
+.mc-item  { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; transition: border-color .12s; }
+.mc-item:hover { border-color: rgba(0,200,83,.15); }
+.mc-item-foto { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+.mc-item-foto--vazio { width: 48px; height: 48px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mc-item-foto--vazio .material-symbols-outlined { font-size: 18px; color: var(--text2); opacity: .4; }
+.mc-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.mc-item-row  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mc-item-qty  { width: 26px; height: 26px; border-radius: 7px; background: var(--g-dim); color: var(--g); font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mc-item-nome { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+
+/* Saldo badge */
+.mc-saldo { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+.saldo--ok   { background: rgba(0,200,83,.12); color: #00c853; }
+.saldo--baixo{ background: rgba(245,158,11,.12); color: #f59e0b; }
+.saldo--zero { background: rgba(239,68,68,.12); color: #ef4444; }
+.saldo--nd   { background: var(--bg2); color: var(--text2); }
+
+/* Substituto atual no item */
+.mc-subst-atual { display: flex; align-items: center; gap: 6px; background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.2); border-radius: 7px; padding: 5px 8px; flex-wrap: wrap; }
+.mc-subst-atual .material-symbols-outlined { font-size: 14px; color: var(--g); flex-shrink: 0; }
+.mc-subst-thumb { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+.mc-subst-nome-txt { font-size: 11px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+.mc-subst-rm { background: none; border: none; color: var(--text2); cursor: pointer; display: flex; padding: 1px; border-radius: 4px; transition: all .12s; }
+.mc-subst-rm:hover { color: #ef4444; }
+.mc-subst-rm .material-symbols-outlined { font-size: 14px; }
+
+/* Botão substituir */
+.mc-subst-btn { display: flex; align-items: center; gap: 5px; padding: 5px 9px; background: none; border: 1px dashed var(--border); border-radius: 7px; color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; align-self: flex-start; }
+.mc-subst-btn:hover { border-color: var(--g); color: var(--g); background: var(--g-dim); }
+.mc-subst-btn .material-symbols-outlined { font-size: 14px; }
+
+/* ── Picker de substituição ── */
+.subst-picker { position: absolute; inset: 0; z-index: 20; background: var(--bg2); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
+.subst-picker-hd { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 22px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.subst-picker-titulo { font-size: 15px; font-weight: 800; color: var(--text); }
+.subst-picker-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+.subst-picker-sub strong { color: var(--text); }
+.subst-picker-close { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); cursor: pointer; display: flex; padding: 4px; transition: all .15s; }
+.subst-picker-close:hover { color: var(--text); }
+.subst-picker-close .material-symbols-outlined { font-size: 18px; }
+.subst-picker-busca-wrap { position: relative; padding: 12px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.subst-picker-busca-ico { position: absolute; left: 34px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--text2); pointer-events: none; }
+.subst-picker-busca { width: 100%; padding: 9px 12px 9px 38px; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 13px; font-family: inherit; outline: none; box-sizing: border-box; transition: border-color .15s; }
+.subst-picker-busca:focus { border-color: var(--g); }
+.subst-picker-load { display: flex; align-items: center; justify-content: center; padding: 40px; }
+.subst-picker-lista { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.subst-picker-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: all .15s; }
+.subst-picker-item:hover { border-color: var(--g); background: var(--g-soft); }
+.subst-picker-item--sel { border-color: var(--g); background: var(--g-dim); }
+.subst-picker-foto { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+.subst-picker-foto--vazio { width: 44px; height: 44px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.subst-picker-foto--vazio .material-symbols-outlined { font-size: 18px; color: var(--text2); opacity: .4; }
+.subst-picker-info { flex: 1; min-width: 0; }
+.subst-picker-nome { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subst-picker-cod  { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.subst-saldo { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+.subst-picker-vazio { text-align: center; padding: 40px 20px; font-size: 13px; color: var(--text2); opacity: .6; }
+.picker-enter-active, .picker-leave-active { transition: opacity .18s; }
+.picker-enter-from, .picker-leave-to { opacity: 0; }
 
 .mc-obs { font-size: 13px; color: var(--text2); background: var(--bg3); border-radius: 8px; padding: 10px 12px; font-style: italic; border: 1px solid var(--border); }
 
-/* Alerta reenvio */
-.mc-alerta { display: flex; align-items: flex-start; gap: 10px; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); border-radius: 10px; padding: 12px 14px; }
-.mc-alerta-ico { font-size: 20px; color: #f59e0b; flex-shrink: 0; margin-top: 1px; }
-.mc-alerta-title { font-size: 12px; font-weight: 800; color: #fbbf24; margin-bottom: 2px; }
-.mc-alerta-sub   { font-size: 11px; color: rgba(251,191,36,.8); line-height: 1.4; }
-.alerta-enter-active, .alerta-leave-active { transition: all .3s; }
-.alerta-enter-from, .alerta-leave-to { opacity: 0; transform: translateY(-6px); }
 
-/* Link card */
-.mc-link-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; transition: border-color .3s, box-shadow .3s; }
-.mc-link-card--destaque { border-color: rgba(0,200,83,.4); box-shadow: 0 0 0 3px rgba(0,200,83,.08); }
-.mc-link-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--g); }
-.mc-link-label .material-symbols-outlined { font-size: 14px; }
-.mc-link-sub   { font-size: 11px; color: var(--text2); line-height: 1.4; margin-top: -4px; }
-.mc-link-row   { display: flex; }
-.mc-link-input { flex: 1; padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; color: var(--text2); font-size: 10px; font-family: monospace; outline: none; width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mc-link-copy-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px; background: var(--g); border: none; border-radius: 9px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: filter .15s; }
-.mc-link-copy-btn:hover { filter: brightness(1.1); }
-.mc-link-copy-btn .material-symbols-outlined { font-size: 15px; }
-.mc-link-copy-btn--pulse { animation: pulse-green 1.6s ease-in-out infinite; }
-@keyframes pulse-green {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,83,.5); }
-  50%       { box-shadow: 0 0 0 8px rgba(0,200,83,0); }
-}
 
 /* Orçamento card */
 .mc-orc-card { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
@@ -676,6 +907,46 @@ function showToast(msg, tipo = 'ok') {
 .btn-orc-send:disabled { opacity: .5; cursor: not-allowed; }
 .btn-orc-send .material-symbols-outlined { font-size: 16px; }
 
+/* Ações de status (retirado / devolvido) */
+.mc-status-acao {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.mc-status-acao--dev { border-color: rgba(168,85,247,.3); background: rgba(168,85,247,.05); }
+.mc-status-acao-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text2);
+}
+.mc-status-acao-title .material-symbols-outlined { font-size: 14px; color: var(--g); }
+.mc-status-acao--dev .mc-status-acao-title .material-symbols-outlined { color: #c084fc; }
+.mc-status-acao-desc { font-size: 11px; color: var(--text2); line-height: 1.4; margin: 0; }
+.mc-status-confirm { display: flex; flex-direction: column; gap: 8px; }
+.mc-status-confirm--dev { }
+.mc-status-confirm-msg { font-size: 12px; color: var(--text); font-weight: 500; margin: 0; line-height: 1.5; padding: 8px 10px; background: var(--bg3); border-radius: 8px; border: 1px solid var(--border); }
+.mc-status-confirm-btns { display: flex; gap: 6px; }
+.btn-conf-cancel { padding: 8px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .12s; }
+.btn-conf-cancel:hover { color: var(--text); border-color: var(--text2); }
+.acao-conf-enter-active, .acao-conf-leave-active { transition: opacity .15s, transform .15s; }
+.acao-conf-enter-from, .acao-conf-leave-to { opacity: 0; transform: translateY(-4px); }
+.btn-retirado {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; background: rgba(14,165,233,.15); border: 1px solid rgba(14,165,233,.3);
+  border-radius: 9px; color: #38bdf8; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.btn-retirado:hover:not(:disabled) { background: rgba(14,165,233,.25); }
+.btn-retirado:disabled { opacity: .5; cursor: not-allowed; }
+.btn-retirado .material-symbols-outlined { font-size: 15px; }
+.btn-devolvido {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; background: rgba(168,85,247,.2); border: 1px solid rgba(168,85,247,.35);
+  border-radius: 9px; color: #c084fc; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.btn-devolvido:hover:not(:disabled) { background: rgba(168,85,247,.3); }
+.btn-devolvido:disabled { opacity: .5; cursor: not-allowed; }
+.btn-devolvido .material-symbols-outlined { font-size: 15px; }
+
 /* ── Shared ── */
 .state-center { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 20px; color: var(--text2); font-size: 13px; }
 .muted { opacity: .6; }
@@ -690,10 +961,11 @@ function showToast(msg, tipo = 'ok') {
 .toast-enter-active, .toast-leave-active { transition: all .25s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 
-@media (max-width: 700px) {
+@media (max-width: 860px) {
   .pc-metricas { grid-template-columns: repeat(2,1fr); }
   .modal-cols  { grid-template-columns: 1fr; }
   .modal-col--orc { border-right: none; border-top: 1px solid var(--border); }
+  .mc-ref-lista { max-height: 180px; }
 }
 
 </style>
@@ -725,12 +997,9 @@ function showToast(msg, tipo = 'ok') {
 [data-theme="light"] .modal-col--info         { background: #fff; border-right-color: rgba(0,0,0,.08); }
 [data-theme="light"] .modal-col--orc          { background: #fff; }
 [data-theme="light"] .mc-orc-card             { background: #fff; border-color: rgba(0,0,0,.1); }
-[data-theme="light"] .mc-link-card            { background: #fff; border-color: rgba(0,0,0,.1); }
-[data-theme="light"] .mc-link-input           { background: #fff; border-color: rgba(0,0,0,.12); color: #374151; }
 [data-theme="light"] .mc-orc-edit             { background: #fff; border-color: rgba(0,0,0,.12); color: #374151; }
 [data-theme="light"] .mc-item                 { background: #fff; border-color: rgba(0,0,0,.1); }
 [data-theme="light"] .mc-obs                  { background: #fff; border-color: rgba(0,0,0,.1); }
 [data-theme="light"] .m-input                 { background: #fff; border-color: rgba(0,0,0,.15); }
 [data-theme="light"] .btn-cancel              { background: #fff; border-color: rgba(0,0,0,.12); color: #374151; }
-[data-theme="light"] .mc-alerta               { background: rgba(245,158,11,.08); }
 </style>

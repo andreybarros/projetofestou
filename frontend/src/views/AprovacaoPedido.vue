@@ -82,8 +82,36 @@
           </div>
           <div class="ap-itens">
             <div v-for="it in pedido.itens" :key="it.nome_produto" class="ap-item">
-              <div class="ap-item-qty">{{ it.quantidade }}</div>
-              <div class="ap-item-nome">{{ it.nome_produto || it.nome }}</div>
+              <!-- Foto do produto (substituto se houver) — clicável para ampliar -->
+              <div
+                class="ap-item-foto-wrap"
+                :class="{ 'ap-item-foto-wrap--zoom': it.nome_produto_substituto ? it.foto_url_substituto : it.foto_url }"
+                @click="abrirFoto(it)"
+              >
+                <img
+                  v-if="it.nome_produto_substituto ? it.foto_url_substituto : it.foto_url"
+                  :src="it.nome_produto_substituto ? it.foto_url_substituto : it.foto_url"
+                  class="ap-item-foto"
+                />
+                <div v-else class="ap-item-foto ap-item-foto--vazio">
+                  <span class="material-symbols-outlined">image_not_supported</span>
+                </div>
+                <div v-if="it.nome_produto_substituto ? it.foto_url_substituto : it.foto_url" class="ap-item-foto-lupa">
+                  <span class="material-symbols-outlined">zoom_in</span>
+                </div>
+              </div>
+              <div class="ap-item-info">
+                <div class="ap-item-row">
+                  <div class="ap-item-qty">{{ it.quantidade }}</div>
+                  <div class="ap-item-nome">{{ it.nome_produto_substituto || it.nome_produto || it.nome }}</div>
+                </div>
+                <!-- Badge de substituição -->
+                <div v-if="it.nome_produto_substituto" class="ap-item-subst">
+                  <span class="material-symbols-outlined">swap_horiz</span>
+                  <span>substituído por <strong>{{ it.nome_produto_substituto }}</strong></span>
+                  <span class="ap-item-orig">(original: {{ it.nome_produto }})</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -147,6 +175,17 @@
       </div>
     </div>
   </div>
+
+  <!-- Lightbox -->
+  <Transition name="ap-fade">
+    <div v-if="fotoLightbox" class="ap-lightbox" @click="fotoLightbox = null">
+      <button class="ap-lightbox-close" @click="fotoLightbox = null">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <img :src="fotoLightbox.url" :alt="fotoLightbox.nome" class="ap-lightbox-img" @click.stop />
+      <div class="ap-lightbox-nome">{{ fotoLightbox.nome }}</div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -166,6 +205,13 @@ const pedido      = ref(null);
 const catalogo    = ref(null);
 const aprovando   = ref(false);
 const erroAprovar = ref('');
+const fotoLightbox = ref(null);
+
+function abrirFoto(it) {
+  const url  = it.nome_produto_substituto ? it.foto_url_substituto : it.foto_url;
+  const nome = it.nome_produto_substituto || it.nome_produto || it.nome;
+  if (url) fotoLightbox.value = { url, nome };
+}
 
 onMounted(async () => {
   try {
@@ -212,6 +258,8 @@ function labelStatus(s) {
     aguardando:        'Aguardando orçamento',
     orcamento_enviado: 'Orçamento pronto',
     aprovado:          'Confirmado',
+    retirado:          'Retirado',
+    devolvido:         'Devolvido',
     cancelado:         'Cancelado',
   };
   return m[s] || s;
@@ -260,6 +308,8 @@ function fmtMoeda(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'c
 .ap-status--aguardando        { background: rgba(245,158,11,.12); color: #b45309; }
 .ap-status--orcamento_enviado { background: #eef2ff; color: #6366f1; }
 .ap-status--aprovado          { background: #dcfce7; color: #16a34a; }
+.ap-status--retirado          { background: rgba(14,165,233,.12); color: #0369a1; }
+.ap-status--devolvido         { background: rgba(168,85,247,.12); color: #7e22ce; }
 .ap-status--cancelado         { background: #fee2e2; color: #dc2626; }
 
 /* Seções */
@@ -277,10 +327,33 @@ function fmtMoeda(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'c
 .ap-info-entrega .material-symbols-outlined { font-size: 16px; color: #6366f1; }
 
 /* Itens */
-.ap-itens { display: flex; flex-direction: column; gap: 6px; }
-.ap-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #f8fafc; border-radius: 9px; border: 1px solid #f1f5f9; }
-.ap-item-qty { width: 30px; height: 30px; border-radius: 8px; background: #eef2ff; color: #6366f1; font-size: 13px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ap-itens { display: flex; flex-direction: column; gap: 8px; }
+.ap-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #f1f5f9; }
+.ap-item-foto-wrap { flex-shrink: 0; position: relative; }
+.ap-item-foto-wrap--zoom { cursor: zoom-in; }
+.ap-item-foto-wrap--zoom:hover .ap-item-foto-lupa { opacity: 1; }
+.ap-item-foto-lupa { position: absolute; inset: 0; background: rgba(0,0,0,.38); border-radius: 8px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .18s; }
+.ap-item-foto-lupa .material-symbols-outlined { font-size: 22px; color: #fff; }
+.ap-item-foto { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid #e2e8f0; display: flex; }
+.ap-item-foto--vazio { width: 52px; height: 52px; border-radius: 8px; background: #f1f5f9; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; }
+.ap-item-foto--vazio .material-symbols-outlined { font-size: 20px; color: #cbd5e1; }
+
+/* Lightbox */
+.ap-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
+.ap-lightbox-img { max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 14px; box-shadow: 0 8px 48px rgba(0,0,0,.5); cursor: default; }
+.ap-lightbox-nome { margin-top: 16px; color: rgba(255,255,255,.8); font-size: 14px; font-weight: 600; text-align: center; }
+.ap-lightbox-close { position: absolute; top: 18px; right: 18px; width: 44px; height: 44px; background: rgba(255,255,255,.15); border: none; border-radius: 50%; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+.ap-lightbox-close:hover { background: rgba(255,255,255,.28); }
+.ap-lightbox-close .material-symbols-outlined { font-size: 22px; }
+.ap-fade-enter-active, .ap-fade-leave-active { transition: opacity .2s; }
+.ap-fade-enter-from, .ap-fade-leave-to { opacity: 0; }
+.ap-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.ap-item-row { display: flex; align-items: center; gap: 10px; }
+.ap-item-qty { width: 28px; height: 28px; border-radius: 7px; background: #eef2ff; color: #6366f1; font-size: 13px; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ap-item-nome { font-size: 13px; font-weight: 600; color: #0f172a; }
+.ap-item-subst { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: #92400e; }
+.ap-item-subst .material-symbols-outlined { font-size: 14px; color: #d97706; flex-shrink: 0; }
+.ap-item-orig { color: #b45309; font-style: italic; }
 
 /* Observações */
 .ap-obs { font-size: 13px; color: #6b7280; background: #f8fafc; border-radius: 8px; padding: 10px 12px; font-style: italic; border: 1px solid #f1f5f9; }

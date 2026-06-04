@@ -218,6 +218,8 @@ function labelStatus(s) {
     aguardando:        'Aguardando orçamento',
     orcamento_enviado: 'Orçamento enviado',
     aprovado:          'Confirmado',
+    retirado:          'Retirado',
+    devolvido:         'Devolvido',
     cancelado:         'Cancelado',
   };
   return m[s] || s;
@@ -353,6 +355,8 @@ function showToast(msg, tipo = 'ok') {
 .mp-badge--orcamento_enviado { background: #eef2ff; color: #6366f1; }
 .mp-badge--orc               { background: #eef2ff; color: #6366f1; }
 .mp-badge--aprovado          { background: #dcfce7; color: #16a34a; }
+.mp-badge--retirado          { background: rgba(14,165,233,.12); color: #0369a1; }
+.mp-badge--devolvido         { background: rgba(168,85,247,.12); color: #7e22ce; }
 .mp-badge--cancelado         { background: #fee2e2; color: #dc2626; }
 
 .mp-card-itens { display: flex; flex-wrap: wrap; gap: 5px; }

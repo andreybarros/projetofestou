@@ -127,11 +127,29 @@ router.get('/orcamento/:token', async (req, res) => {
 
     const { data: itens } = await supabase
       .from('pedidos_catalogo_itens')
-      .select('nome_produto, quantidade')
+      .select('pk, produto_pk, nome_produto, quantidade, produto_substituto_pk, nome_produto_substituto')
       .eq('pedido_pk', pedido.pk)
       .order('pk');
 
-    res.json({ ok: true, pedido: { ...pedido, itens: itens || [] } });
+    const allPks = [...new Set(
+      [...(itens||[]).map(i => i.produto_pk), ...(itens||[]).map(i => i.produto_substituto_pk)].filter(Boolean)
+    )];
+    let fotoMap = {};
+    if (allPks.length) {
+      const { data: prods } = await supabase.from('produtos').select('pk, foto_url').in('pk', allPks);
+      (prods || []).forEach(p => { fotoMap[p.pk] = p.foto_url || null; });
+    }
+
+    const itensCompletos = (itens || []).map(i => ({
+      nome_produto:            i.nome_produto,
+      quantidade:              i.quantidade,
+      foto_url:                fotoMap[i.produto_pk] || null,
+      produto_substituto_pk:   i.produto_substituto_pk || null,
+      nome_produto_substituto: i.nome_produto_substituto || null,
+      foto_url_substituto:     i.produto_substituto_pk ? (fotoMap[i.produto_substituto_pk] || null) : null,
+    }));
+
+    res.json({ ok: true, pedido: { ...pedido, itens: itensCompletos } });
   } catch (err) {
     console.error('[OrcamentoPublico/GET]', err.message);
     res.status(500).json({ erro: err.message });

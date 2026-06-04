@@ -1376,6 +1376,24 @@ CREATE INDEX IF NOT EXISTS idx_catalogo_sessoes_token ON catalogo_sessoes(token)
 CREATE INDEX IF NOT EXISTS idx_pedidos_catalogo_cliente ON pedidos_catalogo(cliente_pk);
 
 -- ============================================================
+-- Timestamps de retirada e devolução (catálogo)
+-- ============================================================
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS retirado_em  timestamptz;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS devolvido_em timestamptz;
+
+-- ============================================================
+-- Substituição de produto no item do pedido de catálogo
+-- ============================================================
+ALTER TABLE pedidos_catalogo_itens ADD COLUMN IF NOT EXISTS produto_substituto_pk   bigint REFERENCES produtos(pk);
+ALTER TABLE pedidos_catalogo_itens ADD COLUMN IF NOT EXISTS nome_produto_substituto text;
+
+-- ============================================================
+-- Auditoria de estoque: referência ao pedido de catálogo
+-- ============================================================
+ALTER TABLE auditoria_estoque ADD COLUMN IF NOT EXISTS pedido_catalogo_pk bigint REFERENCES pedidos_catalogo(pk);
+CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_pedido_catalogo ON auditoria_estoque(pedido_catalogo_pk);
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

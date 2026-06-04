@@ -318,15 +318,8 @@
           <div class="cp-sucesso-box">
             <div class="cp-sucesso-ico">🎉</div>
             <h2>Pedido enviado!</h2>
-            <p>Recebemos sua solicitação. Quando o orçamento estiver pronto, você poderá aprová-lo pelo link abaixo:</p>
-            <div v-if="pedidoToken" class="cp-link-box">
-              <input :value="linkOrcamento()" readonly class="cp-link-input" />
-              <button class="cp-link-copy" @click="copiarLinkOrcamento" title="Copiar link">
-                <span class="material-symbols-outlined">content_copy</span>
-              </button>
-            </div>
-            <p class="cp-link-hint">Guarde esse link para acompanhar e aprovar seu orçamento.</p>
-            <button class="cp-enviar-btn" style="margin-top:8px" @click="reiniciar">Fazer novo pedido</button>
+            <p>Recebemos sua solicitação. Quando o orçamento estiver pronto, você poderá acompanhar e aprovar em <strong>Meus Pedidos</strong>.</p>
+            <button class="cp-enviar-btn" style="margin-top:16px" @click="reiniciar">Fazer novo pedido</button>
           </div>
         </div>
       </Transition>
@@ -506,13 +499,6 @@ function reiniciar() {
   enviado.value = false;
 }
 
-function linkOrcamento() {
-  return `${window.location.origin}/orcamento/${pedidoToken.value}`;
-}
-
-function copiarLinkOrcamento() {
-  navigator.clipboard.writeText(linkOrcamento());
-}
 </script>
 
 <style scoped>
@@ -654,11 +640,6 @@ function copiarLinkOrcamento() {
 .cp-sucesso-ico { font-size: 60px; }
 .cp-sucesso-box h2 { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; }
 .cp-sucesso-box p  { color: #6b7280; font-size: 14px; margin: 0; }
-.cp-link-box { display: flex; gap: 6px; width: 100%; }
-.cp-link-input { flex: 1; padding: 9px 11px; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 12px; background: #f9fafb; width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
-.cp-link-copy { width: 38px; height: 38px; flex-shrink: 0; background: #6366f1; border: none; border-radius: 8px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.cp-link-copy .material-symbols-outlined { font-size: 18px; }
-.cp-link-hint { font-size: 12px; color: #9ca3af; margin: 0; }
 
 /* Lightbox */
 .cp-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
