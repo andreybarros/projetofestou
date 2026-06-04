@@ -141,6 +141,64 @@
             </div>
           </div>
 
+          <!-- Foto do Produto -->
+          <div class="fp-card fp-card--teal">
+            <div class="fp-card-head">
+              <span class="material-symbols-outlined fp-card-icon">photo_camera</span>
+              <h3 class="fp-card-title">Foto do Produto</h3>
+              <span class="fp-tag">Opcional</span>
+            </div>
+            <div class="fp-card-body fp-foto-body">
+              <!-- Área de preview / drop -->
+              <div
+                class="fp-foto-zone"
+                :class="{ 'fp-foto-zone--has': form.foto_url || fotoPreview }"
+                @click="inputFoto.click()"
+                @dragover.prevent
+                @drop.prevent="onFotoDrop"
+              >
+                <img
+                  v-if="form.foto_url || fotoPreview"
+                  :src="fotoPreview || form.foto_url"
+                  class="fp-foto-preview"
+                  alt="Foto do produto"
+                />
+                <div v-else class="fp-foto-placeholder">
+                  <span class="material-symbols-outlined">add_photo_alternate</span>
+                  <span>Clique ou arraste uma imagem</span>
+                  <span class="fp-foto-hint">JPG, PNG, WEBP — máx. 5 MB</span>
+                </div>
+                <div v-if="uploadandoFoto" class="fp-foto-overlay">
+                  <div class="fp-spinner"></div>
+                  <span>Enviando…</span>
+                </div>
+              </div>
+
+              <!-- Inputs ocultos: galeria e câmera separados -->
+              <input ref="inputFoto"       type="file" accept="image/*"                   class="fp-foto-input-hidden" @change="onFotoSelecionada" />
+              <input ref="inputCamera"     type="file" accept="image/*" capture="environment" class="fp-foto-input-hidden" @change="onFotoSelecionada" />
+
+              <div class="fp-foto-actions">
+                <button type="button" class="fp-btn-foto-alt" @click="inputFoto.click()" :disabled="uploadandoFoto">
+                  <span class="material-symbols-outlined">photo_library</span>
+                  {{ form.foto_url || fotoPreview ? 'Alterar da galeria' : 'Galeria' }}
+                </button>
+                <button type="button" class="fp-btn-foto-camera" @click="inputCamera.click()" :disabled="uploadandoFoto">
+                  <span class="material-symbols-outlined">camera_alt</span>
+                  Tirar foto
+                </button>
+                <button
+                  v-if="form.foto_url || fotoPreview"
+                  type="button"
+                  class="fp-btn-foto-rem"
+                  @click="removerFoto"
+                >
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- Coluna secundária -->
@@ -255,9 +313,13 @@ const sessaoStore = useSessaoStore();
 
 const pk             = route.params.pk || null;
 const carregando     = ref(!!pk);
-const salvando       = ref(false);
-const gerandoBarcode = ref(false);
-const saldoOriginal  = ref(null);
+const salvando        = ref(false);
+const gerandoBarcode  = ref(false);
+const saldoOriginal   = ref(null);
+const inputFoto       = ref(null);
+const inputCamera     = ref(null);
+const fotoPreview     = ref('');
+const uploadandoFoto  = ref(false);
 
 function calcEAN13(cod12) {
   const sum = [...cod12].reduce((acc, d, i) => acc + parseInt(d) * (i % 2 === 0 ? 1 : 3), 0);
@@ -298,8 +360,62 @@ const ncmsPadrao = [
   { ncm: '96170000', descricao: 'Garrafas térmicas e vasilhas para bebidas' },
 ];
 
-function usarNcm(n) {
-  form.value.ncm = n.ncm;
+function usarNcm(n) { form.value.ncm = n.ncm; }
+
+async function comprimirImagem(file, maxPx = 900) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width: w, height: h } = img;
+      if (w > maxPx) { h = Math.round(h * maxPx / w); w = maxPx; }
+      if (h > maxPx) { w = Math.round(w * maxPx / h); h = maxPx; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(blob => resolve(blob), 'image/webp', 0.82);
+    };
+    img.src = url;
+  });
+}
+
+async function uploadFoto(file) {
+  if (file.size > 5 * 1024 * 1024) { erro.value = 'Foto maior que 5 MB.'; return; }
+  fotoPreview.value = URL.createObjectURL(file);
+  uploadandoFoto.value = true;
+  try {
+    const blob    = await comprimirImagem(file);
+    const caminho = `${sessaoStore.filial?.pk || 0}/${Date.now()}.webp`;
+    const { error: upErr } = await supabase.storage
+      .from('produto-fotos')
+      .upload(caminho, blob, { contentType: 'image/webp', upsert: true });
+    if (upErr) throw upErr;
+    const { data } = supabase.storage.from('produto-fotos').getPublicUrl(caminho);
+    form.value.foto_url = data.publicUrl;
+    fotoPreview.value   = data.publicUrl;
+  } catch (e) {
+    erro.value = 'Erro ao enviar foto: ' + e.message;
+    fotoPreview.value = '';
+  } finally {
+    uploadandoFoto.value = false;
+  }
+}
+
+function onFotoSelecionada(e) {
+  const file = e.target.files[0];
+  if (file) uploadFoto(file);
+  e.target.value = '';
+}
+
+function onFotoDrop(e) {
+  const file = e.dataTransfer?.files[0];
+  if (file && file.type.startsWith('image/')) uploadFoto(file);
+}
+
+function removerFoto() {
+  form.value.foto_url = '';
+  fotoPreview.value   = '';
 }
 
 const valorVendaDisplay = ref('');
@@ -333,6 +449,7 @@ const form = ref({
   promo_fim: '',
   armazem_pk: '',
   endereco_armazem_pk: '',
+  foto_url: '',
 });
 
 const enderecosFiltrados = computed(() =>
@@ -434,6 +551,7 @@ async function salvar() {
       preco_promo:  form.value.preco_promo > 0 ? parseFloat(form.value.preco_promo) : null,
       promo_inicio: form.value.promo_inicio ? new Date(form.value.promo_inicio).toISOString() : null,
       promo_fim:    form.value.promo_fim    ? new Date(form.value.promo_fim).toISOString()    : null,
+      foto_url:     form.value.foto_url     || null,
     };
 
     let error, novoPk;
@@ -579,6 +697,38 @@ async function salvar() {
 .fp-cols  { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
 .fp-col-main { display: flex; flex-direction: column; gap: 16px; }
 .fp-col-side { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Foto ── */
+.fp-card--teal .fp-card-head { background: rgba(20,184,166,.07); }
+.fp-card--teal .fp-card-icon { color: #14b8a6; }
+.fp-foto-body { flex-direction: row !important; flex-wrap: wrap; gap: 16px; }
+.fp-foto-zone {
+  width: 220px; height: 220px; flex-shrink: 0; border-radius: 12px;
+  border: 2px dashed var(--border); background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; overflow: hidden; position: relative; transition: border-color .15s;
+}
+.fp-foto-zone:hover { border-color: #14b8a6; }
+.fp-foto-zone--has  { border-style: solid; }
+.fp-foto-preview    { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fp-foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text2); padding: 20px; text-align: center; }
+.fp-foto-placeholder .material-symbols-outlined { font-size: 40px; opacity: .35; }
+.fp-foto-placeholder span { font-size: 13px; font-weight: 600; }
+.fp-foto-hint { font-size: 11px; opacity: .6; font-weight: 400; }
+.fp-foto-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 13px; }
+.fp-foto-input-hidden { display: none; }
+.fp-foto-actions { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: flex-end; min-width: 140px; }
+.fp-btn-foto-alt    { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; background: rgba(20,184,166,.1); border: 1px solid rgba(20,184,166,.3); border-radius: 8px; color: #14b8a6; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
+.fp-btn-foto-alt:hover:not(:disabled)    { background: rgba(20,184,166,.2); }
+.fp-btn-foto-alt:disabled { opacity: .5; cursor: not-allowed; }
+.fp-btn-foto-alt .material-symbols-outlined { font-size: 16px; }
+.fp-btn-foto-camera { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); border-radius: 8px; color: #6366f1; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
+.fp-btn-foto-camera:hover:not(:disabled) { background: rgba(99,102,241,.2); }
+.fp-btn-foto-camera:disabled { opacity: .5; cursor: not-allowed; }
+.fp-btn-foto-camera .material-symbols-outlined { font-size: 16px; }
+.fp-btn-foto-rem { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; color: #ef4444; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
+.fp-btn-foto-rem:hover { background: rgba(239,68,68,.16); }
+.fp-btn-foto-rem .material-symbols-outlined { font-size: 16px; }
 
 /* ── Cards ────────────────────────────────────────────────────── */
 .fp-card {

@@ -1,8 +1,11 @@
 <template>
   <div :data-theme="tema" :class="['festou-root', tema]">
 
+    <!-- ══ ROTA PÚBLICA (catálogo) ══════════════════════════════ -->
+    <RouterView v-if="isPublicRoute" />
+
     <!-- ══ LOGIN ══════════════════════════════════════════════════ -->
-    <div v-if="!sessao.isAutenticado" class="login-screen">
+    <div v-else-if="!sessao.isAutenticado" class="login-screen">
       <LoginView @login-ok="onLoginOk" />
     </div>
 
@@ -63,6 +66,15 @@
             <RouterLink v-if="pode('armazens')"       to="/armazens"       class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#22d3ee">warehouse</span><span class="nav-label">Armazéns</span></RouterLink>
             <RouterLink v-if="pode('entrada_nfe')"    to="/entrada-nfe"    class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#4ade80">move_to_inbox</span><span class="nav-label">Entrada de NF-e</span></RouterLink>
             <RouterLink v-if="pode('pedidos_compra')" to="/pedidos-compra" class="nav-btn" @click="fecharSidebar"><span class="material-symbols-outlined nav-icon" style="color:#fbbf24">shopping_cart</span><span class="nav-label">Pedidos de Compra</span></RouterLink>
+          </div>
+
+          <!-- CATÁLOGOS -->
+          <div v-if="pode('catalogos')" class="nav-section">
+            <p class="section-title">Catálogo</p>
+            <RouterLink to="/catalogos" class="nav-btn" @click="fecharSidebar">
+              <span class="material-symbols-outlined nav-icon" style="color:#a78bfa">link</span>
+              <span class="nav-label">Catálogos Públicos</span>
+            </RouterLink>
           </div>
 
           <!-- VENDAS -->
@@ -399,7 +411,8 @@ const parametros  = useParametrosStore();
 const vendaStore  = useVendaStore();
 const router      = useRouter();
 const route       = useRoute();
-const isPDV       = computed(() => route.name === 'PDV');
+const isPDV         = computed(() => route.name === 'PDV');
+const isPublicRoute = computed(() => route.meta?.public === true);
 
 const miniActiveGroup = computed(() => {
   const p = route.path;
@@ -582,6 +595,7 @@ function pode(modulo) {
     entrada_nfe:    o.acesso_entrada_nfe,
     projetos:       o.acesso_projetos,
     pedidos_compra: o.acesso_pedidos_compra,
+    catalogos:      o.acesso_admin || o.admin || true, // todos os operadores podem ver catálogos
   };
   return !!mapa[modulo];
 }
@@ -1062,7 +1076,7 @@ body {
 [data-theme="light"] .user-chip { color: var(--text); }
 [data-theme="light"] .user-dropdown { background: #fff; }
 [data-theme="light"] .udrop-item:hover { background: rgba(0,0,0,.05); }
-[data-theme="light"] .content-area { background: var(--bg); }
+[data-theme="light"] .content-area { background: #fff; }
 [data-theme="light"] .toast.success { background: #065f46; }
 [data-theme="light"] .toast.error   { background: #991b1b; }
 

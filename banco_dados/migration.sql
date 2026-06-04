@@ -1287,6 +1287,71 @@ DROP POLICY IF EXISTS "anon_all_itens_venda" ON itens_venda;
 CREATE POLICY "anon_all_itens_venda" ON itens_venda FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ============================================================
+-- Catálogo Público (link para cliente montar pedido de locação)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS catalogos (
+  pk          bigserial PRIMARY KEY,
+  filial_pk   bigint REFERENCES filiais(pk) ON DELETE CASCADE,
+  nome        text NOT NULL,
+  descricao   text,
+  token       text UNIQUE NOT NULL,
+  ativo       boolean DEFAULT true,
+  criado_em   timestamptz DEFAULT now()
+);
+ALTER TABLE catalogos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_catalogos" ON catalogos;
+CREATE POLICY "anon_all_catalogos" ON catalogos FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS catalogo_itens (
+  pk           bigserial PRIMARY KEY,
+  catalogo_pk  bigint REFERENCES catalogos(pk) ON DELETE CASCADE,
+  produto_pk   bigint REFERENCES produtos(pk) ON DELETE CASCADE,
+  UNIQUE(catalogo_pk, produto_pk)
+);
+ALTER TABLE catalogo_itens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_catalogo_itens" ON catalogo_itens;
+CREATE POLICY "anon_all_catalogo_itens" ON catalogo_itens FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS pedidos_catalogo (
+  pk              bigserial PRIMARY KEY,
+  catalogo_pk     bigint REFERENCES catalogos(pk) ON DELETE SET NULL,
+  filial_pk       bigint,
+  nome_cliente    text NOT NULL,
+  telefone        text,
+  email           text,
+  observacao      text,
+  data_evento     date,
+  hora_evento     time,
+  tipo_entrega    text DEFAULT 'retirada',
+  endereco_evento text,
+  pedido_token    text UNIQUE,
+  status          text DEFAULT 'aguardando',
+  valor_orcamento numeric(12,2),
+  obs_orcamento   text,
+  criado_em       timestamptz DEFAULT now()
+);
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS data_evento     date;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS hora_evento     time;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS tipo_entrega    text DEFAULT 'retirada';
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS endereco_evento text;
+ALTER TABLE pedidos_catalogo ADD COLUMN IF NOT EXISTS pedido_token    text UNIQUE;
+ALTER TABLE pedidos_catalogo ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_pedidos_catalogo" ON pedidos_catalogo;
+CREATE POLICY "anon_all_pedidos_catalogo" ON pedidos_catalogo FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS pedidos_catalogo_itens (
+  pk           bigserial PRIMARY KEY,
+  pedido_pk    bigint REFERENCES pedidos_catalogo(pk) ON DELETE CASCADE,
+  produto_pk   bigint,
+  nome_produto text,
+  quantidade   integer DEFAULT 1
+);
+ALTER TABLE pedidos_catalogo_itens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_pedidos_catalogo_itens" ON pedidos_catalogo_itens;
+CREATE POLICY "anon_all_pedidos_catalogo_itens" ON pedidos_catalogo_itens FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 

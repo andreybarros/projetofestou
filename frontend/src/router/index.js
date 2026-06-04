@@ -48,6 +48,11 @@ const Projetos            = () => import('../views/Projetos.vue');
 const FormProjeto         = () => import('../views/FormProjeto.vue');
 const PedidosCompra       = () => import('../views/PedidosCompra.vue');
 const FormPedidoCompra    = () => import('../views/FormPedidoCompra.vue');
+const Catalogos           = () => import('../views/Catalogos.vue');
+const FormCatalogo        = () => import('../views/FormCatalogo.vue');
+const PedidosCatalogo     = () => import('../views/PedidosCatalogo.vue');
+const CatalogoPublico     = () => import('../views/CatalogoPublico.vue');
+const OrcamentoPublico    = () => import('../views/OrcamentoPublico.vue');
 
 const routes = [
   { path: '/',                  name: 'Home',             component: Home,            meta: { requiresAuth: true } },
@@ -105,6 +110,11 @@ const routes = [
   { path: '/pedidos-compra',              name: 'PedidosCompra',      component: PedidosCompra,    meta: { requiresAuth: true } },
   { path: '/pedidos-compra/novo',         name: 'NovoPedidoCompra',   component: FormPedidoCompra, meta: { requiresAuth: true } },
   { path: '/pedidos-compra/:pk/editar',   name: 'EditarPedidoCompra', component: FormPedidoCompra, meta: { requiresAuth: true } },
+  { path: '/catalogos',                  name: 'Catalogos',       component: Catalogos,        meta: { requiresAuth: true } },
+  { path: '/catalogos/:pk/editar',       name: 'FormCatalogo',    component: FormCatalogo,     meta: { requiresAuth: true } },
+  { path: '/catalogos/:pk/pedidos',      name: 'PedidosCatalogo', component: PedidosCatalogo,  meta: { requiresAuth: true } },
+  { path: '/catalogo/:token',         name: 'CatalogoPublico', component: CatalogoPublico,  meta: { public: true } },
+  { path: '/orcamento/:token',        name: 'OrcamentoPublico', component: OrcamentoPublico, meta: { public: true } },
 ];
 
 const router = createRouter({
@@ -121,6 +131,7 @@ router.beforeEach((to) => {
     return false; // App.vue mostra o Login nativamente
   }
 });
+
 
 router.afterEach(() => {
   const el = document.getElementById('content');
