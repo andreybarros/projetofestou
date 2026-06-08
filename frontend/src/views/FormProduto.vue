@@ -1059,11 +1059,11 @@ async function salvar() {
 .fp-btn-scan-barcode {
   flex-shrink: 0; width: 40px; height: 40px;
   display: flex; align-items: center; justify-content: center;
-  border: 1.5px solid rgba(99,102,241,.5); border-radius: 8px;
-  background: transparent; color: #6366f1;
+  border: 1.5px solid #14b8a6; border-radius: 8px;
+  background: #14b8a6; color: #fff;
   cursor: pointer; transition: all .15s;
 }
-.fp-btn-scan-barcode:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
+.fp-btn-scan-barcode:hover { background: #0d9488; border-color: #0d9488; }
 
 /* ── Scanner modal ─────────────────────────────────────────────── */
 .fp-scanner-overlay {
