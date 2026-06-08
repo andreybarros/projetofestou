@@ -931,7 +931,7 @@ body {
   font-family: 'Hanken Grotesk', sans-serif;
   font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 1.3px;
-  color: rgba(255,255,255,0.27);
+  color: rgba(255,255,255,0.45);
   padding: 0 10px 5px;
 }
 
@@ -940,20 +940,20 @@ body {
   width: 100%; padding: 8px 10px 8px 12px;
   border-radius: 8px; margin-bottom: 1px;
   font-family: 'Hanken Grotesk', sans-serif;
-  font-size: 13.5px; font-weight: 500;
-  color: rgba(255,255,255,0.48);
+  font-size: 13.5px; font-weight: 600;
+  color: rgba(255,255,255,0.88);
   text-decoration: none; border: none; background: none; cursor: pointer;
   transition: background .15s, color .15s, box-shadow .15s;
 }
 .nav-btn:hover {
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.82);
+  background: rgba(255,255,255,0.07);
+  color: #fff;
 }
 .nav-btn.router-link-active {
-  background: rgba(0,200,83,0.09);
+  background: rgba(99,102,241,0.12);
   color: #fff;
   font-weight: 600;
-  box-shadow: inset 3px 0 0 #00c853;
+  box-shadow: inset 3px 0 0 #6366f1;
 }
 .nav-icon { font-size: 19px; flex-shrink: 0; }
 

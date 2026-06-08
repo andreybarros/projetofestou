@@ -52,6 +52,9 @@
                       <span v-if="gerandoBarcode" class="fp-spin-xs"></span>
                       <span v-else class="material-symbols-outlined" style="font-size:18px">barcode</span>
                     </button>
+                    <button type="button" class="fp-btn-scan-barcode" @click="abrirScannerBarcode" title="Ler código com câmera">
+                      <span class="material-symbols-outlined" style="font-size:18px">barcode_scanner</span>
+                    </button>
                   </div>
                 </div>
                 <div class="fp-field">
@@ -320,10 +323,36 @@
 
     </form>
   </div>
+
+  <!-- ── Scanner de código de barras ──────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="scannerAberto" class="fp-scanner-overlay">
+      <div class="fp-scanner-box">
+        <div class="fp-scanner-header">
+          <span class="material-symbols-outlined fp-scanner-icon">barcode_scanner</span>
+          <span class="fp-scanner-title">Aponte para o código de barras</span>
+          <button class="fp-scanner-close" @click="fecharScannerBarcode">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="fp-scanner-viewport">
+          <video id="fp-scanner-video" class="fp-scanner-video" playsinline muted></video>
+          <div class="fp-scanner-frame">
+            <span class="fp-sf-corner tl"></span>
+            <span class="fp-sf-corner tr"></span>
+            <span class="fp-sf-corner bl"></span>
+            <span class="fp-sf-corner br"></span>
+          </div>
+          <div class="fp-scanner-line"></div>
+        </div>
+        <p v-if="scannerStatus" class="fp-scanner-status" :class="scannerStatusTipo">{{ scannerStatus }}</p>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
@@ -343,6 +372,69 @@ const inputCamera     = ref(null);
 const fotoPreview     = ref('');
 const uploadandoFoto  = ref(false);
 const arrastando      = ref(false);
+
+const scannerAberto     = ref(false);
+const scannerStatus     = ref('');
+const scannerStatusTipo = ref('');
+let   _scannerControls  = null;
+let   _scannerReader    = null;
+let   _scannerDetectado = false;
+
+async function abrirScannerBarcode() {
+  scannerAberto.value = true;
+  scannerStatus.value = '';
+  scannerStatusTipo.value = '';
+  _scannerDetectado = false;
+  await nextTick();
+  await nextTick();
+  if (!navigator.mediaDevices?.getUserMedia) {
+    scannerStatus.value = 'Câmera requer HTTPS.';
+    scannerStatusTipo.value = 'err';
+    return;
+  }
+  const videoEl = document.getElementById('fp-scanner-video');
+  if (!videoEl) return;
+  try {
+    const { BrowserMultiFormatReader } = await import('@zxing/browser');
+    const { DecodeHintType, BarcodeFormat } = await import('@zxing/library');
+    const hints = new Map([
+      [DecodeHintType.TRY_HARDER, true],
+      [DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
+        BarcodeFormat.CODE_128, BarcodeFormat.CODE_39,
+        BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+      ]],
+    ]);
+    _scannerReader = new BrowserMultiFormatReader(hints);
+    _scannerControls = await _scannerReader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      videoEl,
+      (result) => {
+        if (!result || _scannerDetectado) return;
+        _scannerDetectado = true;
+        form.value.codigo_barras = result.getText();
+        fecharScannerBarcode();
+      }
+    );
+  } catch (e) {
+    const msg = e?.message || '';
+    if (/permission|denied|notallowed/i.test(msg)) scannerStatus.value = 'Permissão de câmera negada.';
+    else if (/notfound|devicenotfound/i.test(msg)) scannerStatus.value = 'Nenhuma câmera encontrada.';
+    else scannerStatus.value = msg || 'Não foi possível iniciar o scanner.';
+    scannerStatusTipo.value = 'err';
+  }
+}
+
+function fecharScannerBarcode() {
+  try { _scannerControls?.stop(); } catch {}
+  try { _scannerReader?.reset(); } catch {}
+  const videoEl = document.getElementById('fp-scanner-video');
+  if (videoEl?.srcObject) { videoEl.srcObject.getTracks().forEach(t => t.stop()); videoEl.srcObject = null; }
+  _scannerControls = null;
+  _scannerReader = null;
+  scannerAberto.value = false;
+  scannerStatus.value = '';
+}
 
 function calcEAN13(cod12) {
   const sum = [...cod12].reduce((acc, d, i) => acc + parseInt(d) * (i % 2 === 0 ? 1 : 3), 0);
@@ -963,6 +1055,73 @@ async function salvar() {
 }
 .fp-btn-gen-barcode:hover:not(:disabled) { background: var(--primary); color: #fff; }
 .fp-btn-gen-barcode:disabled { opacity: .4; cursor: not-allowed; }
+
+.fp-btn-scan-barcode {
+  flex-shrink: 0; width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid rgba(99,102,241,.5); border-radius: 8px;
+  background: transparent; color: #6366f1;
+  cursor: pointer; transition: all .15s;
+}
+.fp-btn-scan-barcode:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
+
+/* ── Scanner modal ─────────────────────────────────────────────── */
+.fp-scanner-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.85);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.fp-scanner-box {
+  background: #111827; border-radius: 16px; overflow: hidden;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+}
+.fp-scanner-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.fp-scanner-icon { font-size: 22px; color: #6366f1; }
+.fp-scanner-title { flex: 1; font-size: .95rem; font-weight: 700; color: #fff; }
+.fp-scanner-close {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255,255,255,.08); border: none;
+  color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.fp-scanner-close:hover { background: rgba(255,255,255,.16); }
+.fp-scanner-close .material-symbols-outlined { font-size: 18px; }
+.fp-scanner-viewport {
+  position: relative; width: 100%; aspect-ratio: 4/3;
+  background: #000; overflow: hidden;
+}
+.fp-scanner-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fp-scanner-frame { position: absolute; inset: 0; }
+.fp-sf-corner {
+  position: absolute; width: 22px; height: 22px;
+  border-color: #6366f1; border-style: solid;
+}
+.fp-sf-corner.tl { top: 16px; left: 16px; border-width: 3px 0 0 3px; border-radius: 3px 0 0 0; }
+.fp-sf-corner.tr { top: 16px; right: 16px; border-width: 3px 3px 0 0; border-radius: 0 3px 0 0; }
+.fp-sf-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 3px 3px; border-radius: 0 0 0 3px; }
+.fp-sf-corner.br { bottom: 16px; right: 16px; border-width: 0 3px 3px 0; border-radius: 0 0 3px 0; }
+.fp-scanner-line {
+  position: absolute; left: 16px; right: 16px; height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, transparent);
+  top: 50%; transform: translateY(-50%);
+  animation: fp-scan-sweep 2s ease-in-out infinite;
+}
+@keyframes fp-scan-sweep {
+  0%, 100% { top: 20%; }
+  50%       { top: 80%; }
+}
+.fp-scanner-status {
+  text-align: center; font-size: .85rem; font-weight: 700;
+  padding: .6rem 1rem; margin: 0;
+}
+.fp-scanner-status.err { background: rgba(239,68,68,.2); color: #fca5a5; }
+.fp-scanner-status.ok  { background: rgba(16,185,129,.2); color: #6ee7b7; }
 
 .fp-input--locked {
   opacity: .55;
