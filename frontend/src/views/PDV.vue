@@ -70,7 +70,12 @@
               @click="add(p)"
             >
               <div class="prod-avatar">
-                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" loading="lazy" />
+                <div v-if="p.foto_url" class="prod-avatar-foto-wrap" @click.stop="fotoExpandida = p.foto_url">
+                  <img :src="p.foto_url" :alt="p.descricao" loading="lazy" class="prod-avatar-foto" />
+                  <div class="prod-avatar-zoom">
+                    <span class="material-symbols-outlined">zoom_in</span>
+                  </div>
+                </div>
                 <span v-else>{{ (p.descricao||'?')[0].toUpperCase() }}</span>
               </div>
               <div class="prod-info">
@@ -820,6 +825,18 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- Lightbox foto produto -->
+  <Teleport to="body">
+    <Transition name="pdv-lb">
+      <div v-if="fotoExpandida" class="pdv-lb-backdrop" @click="fotoExpandida = null">
+        <button class="pdv-lb-close" @click="fotoExpandida = null">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+        <img :src="fotoExpandida" class="pdv-lb-img" @click.stop />
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -983,6 +1000,7 @@ const scannerStatusTipo = ref('');
 const catSel         = ref(null);
 const somentePromo   = ref(false);
 const carregando     = ref(true);
+const fotoExpandida  = ref(null);
 const recarregandoProd = ref(false);
 const caixaVerificado = ref(false);
 const todos          = ref([]);
@@ -2722,6 +2740,30 @@ async function emitirNFCe() {
 .prod-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .prod-avatar span { font-size: 24px; font-weight: 700; color: var(--muted); }
 
+.prod-avatar-foto-wrap {
+  width: 100%; height: 100%;
+  position: relative;
+  cursor: zoom-in;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(99,102,241,.35);
+  box-sizing: border-box;
+}
+.prod-avatar-foto { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prod-avatar-zoom {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.42);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.prod-avatar-foto-wrap:hover .prod-avatar-zoom { opacity: 1; }
+.prod-avatar-zoom .material-symbols-outlined {
+  font-size: 20px; color: #fff;
+  background: rgba(0,0,0,.45);
+  border-radius: 6px; padding: 2px;
+}
+
 .prod-info {
   flex: 1;
   display: flex;
@@ -4372,5 +4414,34 @@ async function emitirNFCe() {
 <style>
 /* Esconde o menu inferior global no PDV */
 #bottom-nav { display: none !important; }
+</style>
+
+<style scoped>
+/* ── Lightbox foto produto ── */
+.pdv-lb-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.88);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.pdv-lb-img {
+  max-width: 90vw; max-height: 88vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6);
+}
+.pdv-lb-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,.12); border: none;
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.pdv-lb-close:hover { background: rgba(255,255,255,.22); }
+.pdv-lb-close .material-symbols-outlined { font-size: 22px; }
+
+.pdv-lb-enter-active, .pdv-lb-leave-active { transition: opacity .18s; }
+.pdv-lb-enter-from,  .pdv-lb-leave-to     { opacity: 0; }
 </style>
 
