@@ -149,53 +149,75 @@
               <span class="fp-tag">Opcional</span>
             </div>
             <div class="fp-card-body fp-foto-body">
-              <!-- Área de preview / drop -->
+
+              <!-- Zona principal de drop/preview -->
               <div
                 class="fp-foto-zone"
-                :class="{ 'fp-foto-zone--has': form.foto_url || fotoPreview }"
-                @click="inputFoto.click()"
-                @dragover.prevent
-                @drop.prevent="onFotoDrop"
+                :class="{
+                  'fp-foto-zone--has':      form.foto_url || fotoPreview,
+                  'fp-foto-zone--drag':     arrastando,
+                  'fp-foto-zone--uploading': uploadandoFoto
+                }"
+                @click="!uploadandoFoto && !(form.foto_url || fotoPreview) && inputFoto.click()"
+                @dragover.prevent="arrastando = true"
+                @dragleave="arrastando = false"
+                @drop.prevent="e => { arrastando = false; onFotoDrop(e); }"
               >
+                <!-- Imagem -->
                 <img
                   v-if="form.foto_url || fotoPreview"
                   :src="fotoPreview || form.foto_url"
-                  class="fp-foto-preview"
+                  class="fp-foto-img"
                   alt="Foto do produto"
                 />
-                <div v-else class="fp-foto-placeholder">
-                  <span class="material-symbols-outlined">add_photo_alternate</span>
-                  <span>Clique ou arraste uma imagem</span>
-                  <span class="fp-foto-hint">JPG, PNG, WEBP — máx. 5 MB</span>
+
+                <!-- Estado vazio -->
+                <div v-else class="fp-foto-empty">
+                  <div class="fp-foto-empty-icon">
+                    <span class="material-symbols-outlined">add_photo_alternate</span>
+                  </div>
+                  <div class="fp-foto-empty-text">
+                    <span class="fp-foto-empty-title">Arraste ou clique para adicionar</span>
+                    <span class="fp-foto-empty-hint">JPG, PNG, WEBP — máx. 5 MB</span>
+                  </div>
                 </div>
-                <div v-if="uploadandoFoto" class="fp-foto-overlay">
-                  <div class="fp-spinner"></div>
+
+                <!-- Overlay de upload -->
+                <div v-if="uploadandoFoto" class="fp-foto-uploading">
+                  <div class="fp-foto-upload-spinner"></div>
                   <span>Enviando…</span>
                 </div>
+
+                <!-- Overlay de hover quando tem imagem -->
+                <div v-else-if="form.foto_url || fotoPreview" class="fp-foto-hover-overlay">
+                  <button type="button" class="fp-foto-action-btn" @click.stop="inputFoto.click()" title="Trocar foto">
+                    <span class="material-symbols-outlined">photo_library</span>
+                  </button>
+                  <button type="button" class="fp-foto-action-btn fp-foto-action-btn--del" @click.stop="removerFoto" title="Remover foto">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- Inputs ocultos: galeria e câmera separados -->
-              <input ref="inputFoto"       type="file" accept="image/*"                   class="fp-foto-input-hidden" @change="onFotoSelecionada" />
-              <input ref="inputCamera"     type="file" accept="image/*" capture="environment" class="fp-foto-input-hidden" @change="onFotoSelecionada" />
-
+              <!-- Botões inferiores -->
               <div class="fp-foto-actions">
-                <button type="button" class="fp-btn-foto-alt" @click="inputFoto.click()" :disabled="uploadandoFoto">
+                <button type="button" class="fp-btn-foto-gallery" @click="inputFoto.click()" :disabled="uploadandoFoto">
                   <span class="material-symbols-outlined">photo_library</span>
-                  {{ form.foto_url || fotoPreview ? 'Alterar da galeria' : 'Galeria' }}
+                  {{ form.foto_url || fotoPreview ? 'Trocar foto' : 'Galeria' }}
                 </button>
-                <button type="button" class="fp-btn-foto-camera" @click="inputCamera.click()" :disabled="uploadandoFoto">
+                <button type="button" class="fp-btn-foto-cam" @click="inputCamera.click()" :disabled="uploadandoFoto">
                   <span class="material-symbols-outlined">camera_alt</span>
-                  Tirar foto
+                  Câmera
                 </button>
-                <button
-                  v-if="form.foto_url || fotoPreview"
-                  type="button"
-                  class="fp-btn-foto-rem"
-                  @click="removerFoto"
-                >
+                <button v-if="form.foto_url || fotoPreview" type="button" class="fp-btn-foto-rem" @click="removerFoto" :disabled="uploadandoFoto">
                   <span class="material-symbols-outlined">delete</span>
+                  Remover
                 </button>
               </div>
+
+              <!-- Inputs ocultos -->
+              <input ref="inputFoto"   type="file" accept="image/*"                    class="fp-foto-input-hidden" @change="onFotoSelecionada" />
+              <input ref="inputCamera" type="file" accept="image/*" capture="environment" class="fp-foto-input-hidden" @change="onFotoSelecionada" />
             </div>
           </div>
 
@@ -320,6 +342,7 @@ const inputFoto       = ref(null);
 const inputCamera     = ref(null);
 const fotoPreview     = ref('');
 const uploadandoFoto  = ref(false);
+const arrastando      = ref(false);
 
 function calcEAN13(cod12) {
   const sum = [...cod12].reduce((acc, d, i) => acc + parseInt(d) * (i % 2 === 0 ? 1 : 3), 0);
@@ -701,34 +724,128 @@ async function salvar() {
 /* ── Foto ── */
 .fp-card--teal .fp-card-head { background: rgba(20,184,166,.07); }
 .fp-card--teal .fp-card-icon { color: #14b8a6; }
-.fp-foto-body { flex-direction: row !important; flex-wrap: wrap; gap: 16px; }
+.fp-foto-body { gap: 12px; }
+
 .fp-foto-zone {
-  width: 220px; height: 220px; flex-shrink: 0; border-radius: 12px;
-  border: 2px dashed var(--border); background: var(--bg);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; overflow: hidden; position: relative; transition: border-color .15s;
+  position: relative;
+  width: 100%;
+  height: 210px;
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  background: var(--bg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
 }
-.fp-foto-zone:hover { border-color: #14b8a6; }
-.fp-foto-zone--has  { border-style: solid; }
-.fp-foto-preview    { width: 100%; height: 100%; object-fit: cover; display: block; }
-.fp-foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text2); padding: 20px; text-align: center; }
-.fp-foto-placeholder .material-symbols-outlined { font-size: 40px; opacity: .35; }
-.fp-foto-placeholder span { font-size: 13px; font-weight: 600; }
-.fp-foto-hint { font-size: 11px; opacity: .6; font-weight: 400; }
-.fp-foto-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 13px; }
-.fp-foto-input-hidden { display: none; }
-.fp-foto-actions { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: flex-end; min-width: 140px; }
-.fp-btn-foto-alt    { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; background: rgba(20,184,166,.1); border: 1px solid rgba(20,184,166,.3); border-radius: 8px; color: #14b8a6; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
-.fp-btn-foto-alt:hover:not(:disabled)    { background: rgba(20,184,166,.2); }
-.fp-btn-foto-alt:disabled { opacity: .5; cursor: not-allowed; }
-.fp-btn-foto-alt .material-symbols-outlined { font-size: 16px; }
-.fp-btn-foto-camera { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); border-radius: 8px; color: #6366f1; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
-.fp-btn-foto-camera:hover:not(:disabled) { background: rgba(99,102,241,.2); }
-.fp-btn-foto-camera:disabled { opacity: .5; cursor: not-allowed; }
-.fp-btn-foto-camera .material-symbols-outlined { font-size: 16px; }
-.fp-btn-foto-rem { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; color: #ef4444; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
-.fp-btn-foto-rem:hover { background: rgba(239,68,68,.16); }
+.fp-foto-zone:hover:not(.fp-foto-zone--uploading):not(.fp-foto-zone--has) {
+  border-color: #14b8a6;
+  background: rgba(20,184,166,.03);
+}
+.fp-foto-zone--drag {
+  border-color: #14b8a6 !important;
+  background: rgba(20,184,166,.06) !important;
+  border-style: solid;
+}
+.fp-foto-zone--has   { border-style: solid; cursor: default; }
+.fp-foto-zone--uploading { cursor: not-allowed; }
+
+.fp-foto-img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--bg2); }
+
+/* Estado vazio */
+.fp-foto-empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  pointer-events: none;
+}
+.fp-foto-empty-icon {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: rgba(20,184,166,.1);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .2s;
+}
+.fp-foto-zone:hover .fp-foto-empty-icon { transform: scale(1.1); }
+.fp-foto-empty-icon .material-symbols-outlined { font-size: 28px; color: #14b8a6; }
+.fp-foto-empty-text { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.fp-foto-empty-title { font-size: 13.5px; font-weight: 600; color: var(--text2); }
+.fp-foto-empty-hint  { font-size: 11.5px; color: var(--text2); opacity: .55; }
+
+/* Overlay de upload */
+.fp-foto-uploading {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.52);
+  backdrop-filter: blur(4px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  color: #fff; font-size: 13px; font-weight: 600;
+}
+.fp-foto-upload-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid rgba(255,255,255,.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: fp-spin .7s linear infinite;
+}
+
+/* Overlay de hover (com imagem) */
+.fp-foto-hover-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.38);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  opacity: 0; transition: opacity .2s;
+}
+.fp-foto-zone:hover .fp-foto-hover-overlay { opacity: 1; }
+.fp-foto-action-btn {
+  width: 46px; height: 46px; border-radius: 12px;
+  background: rgba(255,255,255,.94);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: #374151;
+  transform: translateY(8px);
+  transition: transform .2s, background .15s, color .15s;
+}
+.fp-foto-zone:hover .fp-foto-action-btn { transform: translateY(0); }
+.fp-foto-action-btn .material-symbols-outlined { font-size: 20px; }
+.fp-foto-action-btn:hover { background: #fff; transform: scale(1.08) !important; }
+.fp-foto-action-btn--del { color: #ef4444; }
+.fp-foto-action-btn--del:hover { background: #fff0f0; }
+
+/* Botões inferiores */
+.fp-foto-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fp-btn-foto-gallery {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  background: rgba(20,184,166,.08); border: 1.5px solid rgba(20,184,166,.25); border-radius: 9px;
+  color: #0d9488; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.fp-btn-foto-gallery:hover:not(:disabled) { background: rgba(20,184,166,.16); border-color: #14b8a6; }
+.fp-btn-foto-gallery:disabled { opacity: .4; cursor: not-allowed; }
+.fp-btn-foto-gallery .material-symbols-outlined { font-size: 16px; }
+
+.fp-btn-foto-cam {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  background: rgba(99,102,241,.08); border: 1.5px solid rgba(99,102,241,.25); border-radius: 9px;
+  color: #6366f1; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.fp-btn-foto-cam:hover:not(:disabled) { background: rgba(99,102,241,.16); border-color: #6366f1; }
+.fp-btn-foto-cam:disabled { opacity: .4; cursor: not-allowed; }
+.fp-btn-foto-cam .material-symbols-outlined { font-size: 16px; }
+
+.fp-btn-foto-rem {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  background: rgba(239,68,68,.06); border: 1.5px solid rgba(239,68,68,.2); border-radius: 9px;
+  color: #ef4444; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+  margin-left: auto;
+}
+.fp-btn-foto-rem:hover:not(:disabled) { background: rgba(239,68,68,.14); border-color: #ef4444; }
+.fp-btn-foto-rem:disabled { opacity: .4; cursor: not-allowed; }
 .fp-btn-foto-rem .material-symbols-outlined { font-size: 16px; }
+
+.fp-foto-input-hidden { display: none; }
 
 /* ── Cards ────────────────────────────────────────────────────── */
 .fp-card {

@@ -81,7 +81,7 @@ router.put('/produto/:pk', async (req, res) => {
       codigo, codigo_barras, descricao, valor_venda, preco_custo, saldo,
       ncm, cfop, csosn, unidade_comercial, categoria_pk,
       armazem_pk, endereco_armazem_pk, filial_pk,
-      preco_promo, promo_inicio, promo_fim,
+      preco_promo, promo_inicio, promo_fim, foto_url,
     } = req.body;
 
     // Lê saldo atual antes de alterar
@@ -109,6 +109,7 @@ router.put('/produto/:pk', async (req, res) => {
       preco_promo:  preco_promo > 0 ? parseFloat(preco_promo) : null,
       promo_inicio: promo_inicio || null,
       promo_fim:    promo_fim    || null,
+      foto_url:     foto_url     || null,
     };
 
     const { error } = await supabase.from('produtos').update(payload).eq('pk', pk);
