@@ -52,10 +52,11 @@
                       <span v-if="gerandoBarcode" class="fp-spin-xs"></span>
                       <span v-else class="material-symbols-outlined" style="font-size:18px">barcode</span>
                     </button>
-                    <button type="button" class="fp-btn-scan-barcode" @click="abrirScannerBarcode" title="Ler código com câmera">
-                      <span class="material-symbols-outlined" style="font-size:18px">barcode_scanner</span>
-                    </button>
                   </div>
+                  <button type="button" class="fp-btn-scan-barcode" @click="abrirScannerBarcode">
+                    <span class="material-symbols-outlined">camera_alt</span>
+                    Ler código com câmera
+                  </button>
                 </div>
                 <div class="fp-field">
                   <label class="fp-label">Unidade</label>
@@ -1057,13 +1058,15 @@ async function salvar() {
 .fp-btn-gen-barcode:disabled { opacity: .4; cursor: not-allowed; }
 
 .fp-btn-scan-barcode {
-  flex-shrink: 0; width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1.5px solid #14b8a6; border-radius: 8px;
-  background: #14b8a6; color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; margin-top: 6px;
+  padding: 8px 12px; border-radius: 8px;
+  border: 1.5px solid #14b8a6; background: #14b8a6; color: #fff;
+  font-size: .85rem; font-weight: 600; font-family: inherit;
   cursor: pointer; transition: all .15s;
 }
 .fp-btn-scan-barcode:hover { background: #0d9488; border-color: #0d9488; }
+.fp-btn-scan-barcode .material-symbols-outlined { font-size: 18px; }
 
 /* ── Scanner modal ─────────────────────────────────────────────── */
 .fp-scanner-overlay {
