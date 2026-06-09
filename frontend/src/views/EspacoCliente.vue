@@ -164,25 +164,6 @@
     </header>
 
     <main class="ec-main">
-      <!-- Banner de permissão de notificações -->
-      <Transition name="ec-slide">
-        <div v-if="mostrarBannerPush" class="ec-push-banner">
-          <span class="material-symbols-outlined ec-push-ico">notifications</span>
-          <div class="ec-push-txt">
-            <strong>Ative as notificações</strong>
-            <span>Receba alertas de novas compras e vencimentos de crediários.</span>
-          </div>
-          <button class="ec-push-btn-ativar" :disabled="ativandoPush" @click="ativarPush">
-            <span v-if="ativandoPush" class="ec-spinner sm"></span>
-            <span v-else class="material-symbols-outlined" style="font-size:15px">notifications_active</span>
-            {{ ativandoPush ? 'Ativando…' : 'Ativar' }}
-          </button>
-          <button class="ec-push-btn-fechar" @click="dispensarPush" title="Fechar">
-            <span class="material-symbols-outlined" style="font-size:18px">close</span>
-          </button>
-        </div>
-      </Transition>
-
       <!-- Abas -->
       <div class="ec-tabs">
         <button :class="['ec-tab', { active: aba === 'compras' }]" @click="trocarAba('compras')">
@@ -477,9 +458,6 @@ const erroVendas         = ref('');
 const abrindoCatalogo    = ref(null);
 const abrindoDanfe       = ref(null);
 
-const EC_PUSH_KEY        = 'ec_push_dispensado';
-const mostrarBannerPush  = ref(false);
-const ativandoPush       = ref(false);
 
 const POR_PAGINA        = 5;
 const paginaVendas      = ref(1);
@@ -523,7 +501,6 @@ onMounted(async () => {
                       || null;
     tela.value = 'portal';
     carregarDados();
-    iniciarPush();
   } catch {
     localStorage.removeItem(EC_SESSAO_KEY);
   } finally {
@@ -587,7 +564,6 @@ async function entrar() {
       localStorage.setItem(EC_FILIAL_KEY, JSON.stringify(filialAtual.value));
       tela.value = 'portal';
       carregarDados();
-      iniciarPush();
     }
   } catch (e) {
     const status = e.response?.status;
@@ -604,7 +580,6 @@ function selecionarFilial(f) {
   localStorage.setItem(EC_FILIAL_KEY, JSON.stringify(f));
   tela.value = 'portal';
   carregarDados();
-  iniciarPush();
 }
 
 function trocarFilial(f) {
@@ -665,63 +640,6 @@ async function abrirCatalogo(p) {
   } finally {
     abrindoCatalogo.value = null;
   }
-}
-
-function urlBase64ToUint8Array(b64) {
-  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
-  const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
-
-async function iniciarPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  const perm = Notification.permission;
-  if (perm === 'denied') return;
-  if (perm === 'granted') {
-    await registrarSubscricao();
-    return;
-  }
-  const dispensado = localStorage.getItem(EC_PUSH_KEY);
-  if (dispensado && Date.now() - Number(dispensado) < 7 * 24 * 60 * 60 * 1000) return;
-  mostrarBannerPush.value = true;
-}
-
-async function registrarSubscricao() {
-  try {
-    const { data: kd } = await axios.get('/api/espaco-cliente/vapid-public-key');
-    // SW já registrado pelo main.js — só aguarda ficar pronto
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(kd.key),
-    });
-    await axios.post('/api/espaco-cliente/push-subscribe', sub.toJSON(), { headers: ecHeaders() });
-    // Verifica crediários vencendo amanhã (não-bloqueante)
-    axios.get('/api/espaco-cliente/push-check-crediarios', { headers: ecHeaders() }).catch(() => {});
-  } catch (e) {
-    console.warn('[EC] push subscribe falhou:', e.message);
-  }
-}
-
-async function ativarPush() {
-  ativandoPush.value = true;
-  try {
-    const perm = await Notification.requestPermission();
-    mostrarBannerPush.value = false;
-    if (perm === 'granted') {
-      await registrarSubscricao();
-    } else {
-      localStorage.setItem(EC_PUSH_KEY, String(Date.now()));
-    }
-  } finally {
-    ativandoPush.value = false;
-  }
-}
-
-function dispensarPush() {
-  mostrarBannerPush.value = false;
-  localStorage.setItem(EC_PUSH_KEY, String(Date.now()));
 }
 
 async function verNfce(venda) {
@@ -1279,37 +1197,6 @@ function badgePedido(s) {
   background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.12); color: rgba(255,255,255,.7);
 }
 .ec-root.light .ec-tema-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
-
-/* ── Banner push ── */
-.ec-push-banner {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin-bottom: 18px; padding: 14px 16px;
-  background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.25);
-  border-radius: 14px;
-}
-.ec-push-ico { font-size: 22px; color: #818cf8; flex-shrink: 0; }
-.ec-push-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ec-push-txt strong { font-size: 13px; font-weight: 700; color: var(--ec-text1); }
-.ec-push-txt span   { font-size: 12px; color: var(--ec-text2); }
-.ec-push-btn-ativar {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 9px;
-  background: #6366f1; border: none; color: #fff;
-  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
-  transition: background .15s; white-space: nowrap; flex-shrink: 0;
-}
-.ec-push-btn-ativar:hover:not(:disabled) { background: #4f46e5; }
-.ec-push-btn-ativar:disabled { opacity: .5; cursor: not-allowed; }
-.ec-push-btn-fechar {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  background: none; border: none; color: var(--ec-text2); cursor: pointer;
-  border-radius: 7px; transition: background .12s; flex-shrink: 0;
-}
-.ec-push-btn-fechar:hover { background: rgba(99,102,241,.1); color: var(--ec-text1); }
-
-/* Transição slide do banner */
-.ec-slide-enter-active, .ec-slide-leave-active { transition: all .25s ease; }
-.ec-slide-enter-from, .ec-slide-leave-to { opacity: 0; transform: translateY(-10px); max-height: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
 
 /* ── Responsive ── */
 @media (min-width: 640px) {

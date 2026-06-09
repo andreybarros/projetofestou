@@ -3,8 +3,6 @@ const express  = require('express');
 const crypto   = require('crypto');
 const router   = express.Router();
 const supabase = require('../supabase');
-const { enviarPushCliente } = require('../push');
-
 const soDigitos = s => (s || '').replace(/\D/g, '');
 
 function dedupFiliais(lista) {
@@ -317,68 +315,6 @@ router.get('/danfe/:venda_pk', validarSessao, async (req, res) => {
   } catch (err) {
     console.error('[EspacoCliente/danfe]', err.message);
     res.status(500).json({ erro: err.message });
-  }
-});
-
-// GET /api/espaco-cliente/vapid-public-key
-router.get('/vapid-public-key', (req, res) => {
-  const key = process.env.VAPID_PUBLIC_KEY;
-  if (!key) return res.status(503).json({ erro: 'Push não configurado' });
-  res.json({ ok: true, key });
-});
-
-// POST /api/espaco-cliente/push-subscribe
-router.post('/push-subscribe', validarSessao, async (req, res) => {
-  try {
-    const { endpoint, keys } = req.body || {};
-    if (!endpoint || !keys?.p256dh || !keys?.auth)
-      return res.status(400).json({ erro: 'Assinatura inválida' });
-
-    await supabase
-      .from('push_subscriptions')
-      .upsert(
-        { cliente_pk: req.cliente_pk, endpoint, p256dh: keys.p256dh, auth: keys.auth },
-        { onConflict: 'cliente_pk,endpoint' }
-      );
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[EspacoCliente/push-subscribe]', err.message);
-    res.status(500).json({ erro: 'Erro interno' });
-  }
-});
-
-// GET /api/espaco-cliente/push-check-crediarios  — verifica vencimentos de amanhã e envia push
-router.get('/push-check-crediarios', validarSessao, async (req, res) => {
-  try {
-    const amanha = new Date();
-    amanha.setDate(amanha.getDate() + 1);
-    const dataAmanha = amanha.toISOString().slice(0, 10);
-
-    const { data: vencendo } = await supabase
-      .from('vendas')
-      .select('pk, numero, total, data_vencimento_crediario')
-      .eq('cliente_pk', req.cliente_pk)
-      .eq('data_vencimento_crediario', dataAmanha)
-      .neq('status_crediario', 'recebido')
-      .neq('ativo', false);
-
-    if (vencendo?.length) {
-      for (const v of vencendo) {
-        await enviarPushCliente(req.cliente_pk, {
-          title:               'Crediário vence amanhã!',
-          body:                `Venda #${v.numero || v.pk} — ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v.total)}`,
-          url:                 '/minha-conta',
-          tag:                 `crediario-${v.pk}`,
-          requireInteraction:  true,
-        });
-      }
-    }
-
-    res.json({ ok: true, vencendo: vencendo?.length || 0 });
-  } catch (err) {
-    console.error('[EspacoCliente/push-check-crediarios]', err.message);
-    res.status(500).json({ erro: 'Erro interno' });
   }
 });
 
