@@ -13,6 +13,24 @@
       </button>
     </div>
 
+    <!-- ── Banner Espaço do Cliente ── -->
+    <div class="cl-espaco-banner">
+      <div class="cl-espaco-info">
+        <span class="material-symbols-outlined cl-espaco-ico">account_circle</span>
+        <div>
+          <div class="cl-espaco-titulo">Espaço do Cliente</div>
+          <div class="cl-espaco-desc">Compartilhe este link para que seus clientes acessem compras e orçamentos</div>
+        </div>
+      </div>
+      <div class="cl-espaco-link-wrap">
+        <span class="cl-espaco-url">{{ linkEspaco }}</span>
+        <button class="cl-espaco-btn" @click="copiarLink" :class="{ copiado: linkCopiado }">
+          <span class="material-symbols-outlined">{{ linkCopiado ? 'check' : 'content_copy' }}</span>
+          {{ linkCopiado ? 'Copiado!' : 'Copiar' }}
+        </button>
+      </div>
+    </div>
+
     <!-- ── Metric Cards ── -->
     <div class="cl-metrics">
 
@@ -245,6 +263,17 @@ import { supabase } from '../composables/useSupabase';
 
 const sessaoStore = useSessaoStore();
 const lista       = ref([]);
+
+const linkEspaco  = computed(() => window.location.origin + '/minha-conta');
+const linkCopiado = ref(false);
+let _copiarTimer  = null;
+function copiarLink() {
+  navigator.clipboard.writeText(linkEspaco.value).then(() => {
+    linkCopiado.value = true;
+    clearTimeout(_copiarTimer);
+    _copiarTimer = setTimeout(() => { linkCopiado.value = false; }, 2500);
+  });
+}
 const carregando  = ref(true);
 const busca       = ref('');
 const pagina      = ref(1);
@@ -395,6 +424,42 @@ function fmtDia(data) {
   padding: 28px 32px 48px;
   min-height: 100%;
   font-family: 'Hanken Grotesk', system-ui, sans-serif;
+}
+
+/* ── Banner Espaço do Cliente ── */
+.cl-espaco-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  padding: 14px 18px;
+  background: rgba(99,102,241,.07);
+  border: 1px solid rgba(99,102,241,.2);
+  border-radius: 14px;
+  animation: cl-up .32s .06s ease both;
+}
+.cl-espaco-info  { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cl-espaco-ico   { font-size: 26px; color: #6366f1; flex-shrink: 0; }
+.cl-espaco-titulo{ font-size: 13px; font-weight: 800; color: var(--text); }
+.cl-espaco-desc  { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.cl-espaco-link-wrap {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+}
+.cl-espaco-url {
+  font-size: 12px; font-weight: 600; color: #6366f1;
+  background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2);
+  border-radius: 8px; padding: 5px 10px; font-family: monospace;
+}
+.cl-espaco-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: 9px; cursor: pointer;
+  font-size: 12px; font-weight: 700; font-family: inherit;
+  border: 1px solid rgba(99,102,241,.35);
+  background: rgba(99,102,241,.1); color: #6366f1;
+  transition: all .15s;
+}
+.cl-espaco-btn .material-symbols-outlined { font-size: 15px; }
+.cl-espaco-btn:hover { background: rgba(99,102,241,.2); }
+.cl-espaco-btn.copiado {
+  background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); color: #16a34a;
 }
 
 /* ── Header ── */

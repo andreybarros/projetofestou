@@ -21,6 +21,7 @@ const ajustePrecosRoutes    = require('./ajustePrecos');
 const agendaRoutes          = require('./agenda');
 const catalogosRoutes       = require('./catalogos');
 const catalogosPublicoRoutes = require('./catalogosPublico');
+const espacoClienteRoutes    = require('./espacoCliente');
 
 function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   // Health
@@ -56,6 +57,7 @@ function setupRoutes(app, authMiddleware, permissoesMiddleware) {
   app.use('/api/catalogos',        authMiddleware, permissoesMiddleware, catalogosRoutes);
   app.use('/api/catalogo-publico', catalogosPublicoRoutes); // sem auth — catálogo e orçamento público
   app.use('/api/orcamento-publico', catalogosPublicoRoutes); // alias para rota /orcamento/:token
+  app.use('/api/espaco-cliente',   espacoClienteRoutes);   // sem auth — portal do cliente
 }
 
 module.exports = setupRoutes;

@@ -1405,6 +1405,26 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_pedido_catalogo ON auditoria_es
 ALTER TABLE pedidos_catalogo REPLICA IDENTITY FULL;
 
 -- ============================================================
+-- Web Push: assinaturas de notificações do Espaço do Cliente
+-- ============================================================
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  pk         bigserial   PRIMARY KEY,
+  cliente_pk bigint      NOT NULL REFERENCES clientes(pk) ON DELETE CASCADE,
+  endpoint   text        NOT NULL,
+  p256dh     text        NOT NULL,
+  auth       text        NOT NULL,
+  criado_em  timestamptz DEFAULT now(),
+  UNIQUE (cliente_pk, endpoint)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_cliente ON push_subscriptions(cliente_pk);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_push_subscriptions" ON push_subscriptions;
+CREATE POLICY "anon_all_push_subscriptions" ON push_subscriptions
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ============================================================
 -- FIM DO SCRIPT — Notifica o PostgREST para recarregar schema
 -- ============================================================
 
