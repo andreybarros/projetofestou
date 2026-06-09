@@ -330,18 +330,6 @@ router.post('/finalizar', async (req, res) => {
       });
     }
 
-    // 10. Push notification para o cliente (não-bloqueante)
-    if (cliente_pk) {
-      const { enviarPushCliente } = require('../push');
-      const tipoLabel = { venda: 'Nova venda', locacao: 'Nova locação', orcamento: 'Novo orçamento', crediario: 'Novo crediário' }[tipo_venda || 'venda'] || 'Nova venda';
-      enviarPushCliente(cliente_pk, {
-        title: tipoLabel + ' registrada!',
-        body:  `${tipoLabel} #${vendaSalva.numero} — ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(total))}`,
-        url:   '/minha-conta',
-        tag:   `venda-${venda_pk}`,
-      }).catch(() => {});
-    }
-
     res.status(201).json({
       ok:       true,
       venda_pk,
