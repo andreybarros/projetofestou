@@ -39,7 +39,7 @@
               <h3 class="fp-card-title">Identificação</h3>
             </div>
             <div class="fp-card-body">
-              <div class="fp-grid fp-grid--3">
+              <div class="fp-grid fp-grid--codigos">
                 <div class="fp-field">
                   <label class="fp-label">Código Interno</label>
                   <input v-model="form.codigo" type="text" :readonly="!pk" class="fp-input" :class="{ 'fp-input--locked': !pk }" />
@@ -1009,6 +1009,7 @@ async function salvar() {
 .fp-grid { display: grid; gap: 12px; }
 .fp-grid--2 { grid-template-columns: 1fr 1fr; }
 .fp-grid--3 { grid-template-columns: 1fr 1fr 1fr; }
+.fp-grid--codigos { grid-template-columns: 0.6fr 1.6fr 0.8fr; }
 
 
 /* ── Fields & Inputs ──────────────────────────────────────────── */
@@ -1304,10 +1305,11 @@ details[open] .fp-ncm-summary::before { transform: rotate(90deg); }
 /* ── Responsivo ───────────────────────────────────────────────── */
 @media (max-width: 780px) {
   .fp-cols  { grid-template-columns: 1fr; }
-  .fp-grid--3 { grid-template-columns: 1fr 1fr; }
+  .fp-grid--3, .fp-grid--codigos { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 500px) {
   .fp-grid--2,
-  .fp-grid--3 { grid-template-columns: 1fr; }
+  .fp-grid--3,
+  .fp-grid--codigos { grid-template-columns: 1fr; }
 }
 </style>

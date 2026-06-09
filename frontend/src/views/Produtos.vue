@@ -64,6 +64,18 @@
         <span class="material-symbols-outlined">local_offer</span>
         Em Promoção
       </button>
+      <div class="filtros-sep" v-if="categorias.length"></div>
+      <button
+        v-if="categorias.length"
+        :class="['filtro-chip filtro-cat', { active: categoriaFiltro === null }]"
+        @click="categoriaFiltro = null"
+      >Todos</button>
+      <button
+        v-for="cat in categorias"
+        :key="cat.pk"
+        :class="['filtro-chip filtro-cat', { active: categoriaFiltro === cat.pk }]"
+        @click="categoriaFiltro = categoriaFiltro === cat.pk ? null : cat.pk"
+      >{{ cat.nome }}</button>
     </div>
 
     <div v-if="carregando" class="loading">
@@ -323,7 +335,8 @@ const viewMode     = ref("grid");
 const pagina       = ref(1);
 const POR_PAGINA   = 48;
 const showAcoes    = ref(false);
-const filtroPromo  = ref(false);
+const filtroPromo      = ref(false);
+const categoriaFiltro  = ref(null);
 const produtoParaExcluir = ref(null);
 const excluindo          = ref(false);
 const scannerAberto     = ref(false);
@@ -403,6 +416,7 @@ const produtosFiltrados = computed(() => {
   const q = semAcento((busca.value || '').trim());
   return produtos.value.filter(p => {
     if (filtroPromo.value && !p.em_promo) return false;
+    if (categoriaFiltro.value !== null && Number(p.categoria_pk) !== Number(categoriaFiltro.value)) return false;
     if (!q) return true;
     const palavras = q.split(/\s+/).filter(Boolean);
     const desc   = semAcento(p.descricao);
@@ -434,8 +448,9 @@ const totais = computed(() => {
   }
 });
 
-watch(busca, (v) => { pagina.value = 1; sessionStorage.setItem('produtos_busca', v); });
-watch(filtroPromo, () => { pagina.value = 1; });
+watch(busca,           (v) => { pagina.value = 1; sessionStorage.setItem('produtos_busca', v); });
+watch(filtroPromo,     () => { pagina.value = 1; });
+watch(categoriaFiltro, () => { pagina.value = 1; });
 
 onMounted(async () => { 
   try {
@@ -745,11 +760,14 @@ window.addEventListener('load',function(){
 .btn-secondary:disabled { opacity: .5; cursor: default; }
 
 /* Filtros rápidos */
-.filtros-rapidos { display: flex; gap: 6px; flex-wrap: wrap; }
+.filtros-rapidos { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .filtro-chip { display: flex; align-items: center; gap: 5px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); cursor: pointer; transition: all .15s; white-space: nowrap; }
 .filtro-chip .material-symbols-outlined { font-size: 15px; }
 .filtro-chip.active { background: rgba(239,68,68,.12); color: #ef4444; border-color: rgba(239,68,68,.35); }
 .filtro-chip:not(.active):hover { background: var(--bg3); color: var(--text); }
+.filtro-cat.active { background: rgba(99,102,241,.12); color: #6366f1; border-color: rgba(99,102,241,.35); }
+.filtro-cat:not(.active):hover { background: var(--bg3); color: var(--text); }
+.filtros-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
 
 /* ── Cards ────────────────────────────────── */
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }

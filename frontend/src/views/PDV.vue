@@ -210,18 +210,6 @@
           </div>
 
           <template v-if="vendaStore.itens.length">
-            <div v-if="catsDecorador.length" class="cart-section">
-              <label class="section-label">Desconto decorador</label>
-              <div v-for="cd in catsDecorador" :key="cd.pk" class="decorador-row">
-                <span class="decorador-nome">🎈 {{ cd.nome }}</span>
-                <span class="decorador-pct-label">10%</span>
-                <button class="btn-apply-dec" @click="aplicarDescCat(cd)">Aplicar</button>
-                <button class="btn-remove-dec" @click="vendaStore.removerDescontoCategoria(cd.pk)" title="Remover desconto">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                  Tirar
-                </button>
-              </div>
-            </div>
 
             <div class="cart-summary">
               <div class="summary-row">
@@ -307,6 +295,24 @@
               </div>
               <div v-else-if="showClienteDrop && clienteBusca.length >= 2 && !buscandoCliente && !clienteResultados.length" class="cliente-drop">
                 <span class="drop-empty">Nenhum cliente encontrado</span>
+              </div>
+            </div>
+
+            <!-- Desconto decorador -->
+            <div v-if="catsDecorador.length" class="cart-section">
+              <label class="section-label">Desconto decorador</label>
+              <div v-if="parametrosStore.getParam('pdv_desconto_decorador_balao', false) && !clienteSel?.decorador" class="decorador-aviso">
+                <span class="material-symbols-outlined" style="font-size:14px;vertical-align:-2px">info</span>
+                Selecione um cliente decorador para aplicar este desconto
+              </div>
+              <div v-for="cd in catsDecorador" :key="cd.pk" class="decorador-row">
+                <span class="decorador-nome">🎈 {{ cd.nome }}</span>
+                <span class="decorador-pct-label">10%</span>
+                <button class="btn-apply-dec" @click="aplicarDescCat(cd)">Aplicar</button>
+                <button class="btn-remove-dec" @click="vendaStore.removerDescontoCategoria(cd.pk)" title="Remover desconto">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  Tirar
+                </button>
               </div>
             </div>
 
@@ -1019,7 +1025,8 @@ const clienteSel        = ref(null);
 const clienteBusca      = ref('');
 const clienteResultados = ref([]);
 const buscandoCliente   = ref(false);
-const showClienteDrop   = ref(false);
+const showClienteDrop      = ref(false);
+const showClienteDropItens = ref(false);
 let   _clienteTimer     = null;
 const dtLocacao   = ref('');
 const dtDevolucao = ref('');
@@ -1267,6 +1274,20 @@ const descontoTotal = computed(() => {
 // ── Sincronização vendedor/cliente com store ──────────────────
 watch(vendedorSel, v  => vendaStore.setVendedor(v));
 watch(clienteSel,  c  => vendaStore.setCliente(c));
+
+// Zera descontos de categorias restritas ao trocar para cliente não-decorador
+watch(clienteSel, (novo, anterior) => {
+  const restricaoAtiva = parametrosStore.getParam('pdv_desconto_decorador_balao', false);
+  if (!restricaoAtiva) return;
+  const eraDecorador = !!anterior?.decorador;
+  const eAgora       = !!novo?.decorador;
+  if (eraDecorador && !eAgora) {
+    categorias.value
+      .filter(c => c.desconto_somente_decorador)
+      .forEach(c => vendaStore.removerDescontoCategoria(c.pk));
+    toast('Descontos de decorador removidos pois o cliente não é decorador.', 'warn', 4000);
+  }
+});
 
 // Preenche valor recebido com o total restante sempre que o total da venda muda
 watch(() => vendaStore.faltaPagar, (val) => {
@@ -1661,16 +1682,22 @@ function onClienteBlur() {
 }
 
 function categoriaRestritoDecorador(categoria_pk) {
-  const cat = categorias.value.find(c => c.pk === categoria_pk);
+  const cat = categorias.value.find(c => Number(c.pk) === Number(categoria_pk));
   return !!cat?.desconto_somente_decorador;
 }
 
-function validarDescontoCategoria(categoria_pk, pct) {
+function validarDescontoCategoria(categoria_pk, pctOuBrl, tipo = 'pct') {
   const restricaoAtiva = parametrosStore.getParam('pdv_desconto_decorador_balao', false);
   if (!restricaoAtiva || !categoriaRestritoDecorador(categoria_pk)) return true;
   if (!clienteSel.value?.decorador) {
-    const nomeCat = categoriasMap.value[categoria_pk] || 'categoria restrita';
+    const nomeCat = categoriasMap.value[Number(categoria_pk)] || 'categoria restrita';
     toast(`Desconto em "${nomeCat}" é exclusivo para clientes decoradores.`, 'err'); return false;
+  }
+  let pct = pctOuBrl;
+  if (tipo === 'brl') {
+    const item = vendaStore.itens.find(i => Number(i.categoria_pk) === Number(categoria_pk));
+    const base = item ? Number(item.qtd || 1) * Number(item.preco_unitario || 0) : 0;
+    pct = base > 0 ? (pctOuBrl / base) * 100 : 0;
   }
   if (pct > 10) {
     toast('Desconto máximo para decoradores nesta categoria: 10%.', 'err'); return false;
@@ -1753,12 +1780,7 @@ function aplicarDescontoItem(i) {
   if (descontoMax > 0 && itemDescTipo.value === 'pct' && itemDescVal.value > descontoMax) {
     toast(`Desconto máximo permitido: ${descontoMax}%.`, 'err'); return;
   }
-  let pct = itemDescVal.value;
-  if (itemDescTipo.value === 'val') {
-    const bruto = Number(item.qtd || 1) * Number(item.preco_unitario || 0);
-    pct = bruto > 0 ? (pct / bruto) * 100 : 0;
-  }
-  if (!validarDescontoCategoria(item.categoria_pk, pct)) return;
+  if (!validarDescontoCategoria(item.categoria_pk, itemDescVal.value, itemDescTipo.value)) return;
   vendaStore.atualizarDescontoItem(i, itemDescVal.value, itemDescTipo.value);
   itemDescAberto.value = null;
 }
@@ -3685,6 +3707,15 @@ async function emitirNFCe() {
 .desc-preview { font-family: var(--mono); font-size: 11px; color: var(--amber); white-space: nowrap; flex-shrink: 0; }
 
 /* Decorador */
+.decorador-aviso {
+  font-size: 11px;
+  color: var(--amber, #f59e0b);
+  background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.25);
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-bottom: 4px;
+}
 .decorador-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .decorador-row:first-of-type { margin-top: 4px; }
 .decorador-nome { flex: 1; font-size: 12px; font-weight: 500; color: var(--text); }
@@ -3780,6 +3811,7 @@ async function emitirNFCe() {
 .btn-orcamento:hover { background: rgba(99,102,241,.1); border-color: var(--accent); }
 .btn-orcamento .hotkey-badge { margin-left: 0; }
 .btn-orcamento.copiado { color: var(--green); border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.08); }
+.btn-orcamento--full { width: 100%; }
 
 /* ── Toast ──────────────────────────────────────────────────── */
 .pdv-toast {
@@ -3807,6 +3839,11 @@ async function emitirNFCe() {
   background: #052e16; color: #6ee7b7;
   border: 1px solid rgba(16,185,129,.4);
   box-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(16,185,129,.15);
+}
+.pdv-toast.warn {
+  background: #2d1a00; color: #fcd34d;
+  border: 1px solid rgba(245,158,11,.45);
+  box-shadow: 0 12px 40px rgba(0,0,0,.55), 0 0 16px rgba(245,158,11,.15);
 }
 .pdv-toast.err {
   background: #2d0707; color: #fca5a5;
@@ -3943,8 +3980,9 @@ async function emitirNFCe() {
 [data-theme="light"] .disc-badge-remove { color: #b45309; border-left-color: rgba(180,83,9,.25); }
 [data-theme="light"] .nfce-result.ok  { background: rgba(5,150,105,.08); border-color: rgba(5,150,105,.25); color: #065f46; }
 [data-theme="light"] .nfce-result.err { background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.25); color: #991b1b; }
-[data-theme="light"] .pdv-toast.ok  { background: #065f46; color: #d1fae5; border-color: rgba(5,150,105,.4); }
-[data-theme="light"] .pdv-toast.err { background: #7f1d1d; color: #fee2e2; border-color: rgba(220,38,38,.4); box-shadow: 0 12px 40px rgba(0,0,0,.3), 0 0 20px rgba(239,68,68,.15); }
+[data-theme="light"] .pdv-toast.ok   { background: #065f46; color: #d1fae5; border-color: rgba(5,150,105,.4); }
+[data-theme="light"] .pdv-toast.warn { background: #78350f; color: #fef3c7; border-color: rgba(245,158,11,.4); }
+[data-theme="light"] .pdv-toast.err  { background: #7f1d1d; color: #fee2e2; border-color: rgba(220,38,38,.4); box-shadow: 0 12px 40px rgba(0,0,0,.3), 0 0 20px rgba(239,68,68,.15); }
 [data-theme="light"] .products-area  { scrollbar-color: rgba(0,0,0,.15) transparent; }
 [data-theme="light"] .pag-scroll,
 [data-theme="light"] .cart-items     { scrollbar-color: rgba(0,0,0,.12) transparent; }

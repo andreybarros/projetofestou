@@ -139,11 +139,19 @@
           <div v-else class="cp-grid">
             <div v-for="p in produtosVisiveis" :key="p.pk" class="cp-card">
               <div class="cp-card-foto" :class="p.foto_url ? 'cp-card-foto--clicavel' : ''" @click.stop="p.foto_url && abrirFoto(p)">
-                <img v-if="p.foto_url" :src="p.foto_url" :alt="p.descricao" loading="lazy" />
+                <template v-if="p.foto_url">
+                  <img
+                    :src="thumbUrl(p.foto_url, 320)"
+                    :alt="p.descricao"
+                    loading="lazy"
+                    decoding="async"
+                    class="cp-foto-img"
+                  />
+                  <div class="cp-foto-lupa">
+                    <span class="material-symbols-outlined">zoom_in</span>
+                  </div>
+                </template>
                 <div v-else class="cp-card-avatar">{{ p.descricao?.charAt(0)?.toUpperCase() }}</div>
-                <div v-if="p.foto_url" class="cp-foto-lupa">
-                  <span class="material-symbols-outlined">zoom_in</span>
-                </div>
               </div>
               <div class="cp-card-body">
                 <div class="cp-card-nome">{{ p.descricao }}</div>
@@ -437,9 +445,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import { supabase } from '../composables/useSupabase';
 import CatalogoLogin      from './CatalogoLogin.vue';
 import MeusPedidosCatalogo from './MeusPedidosCatalogo.vue';
 
@@ -587,11 +596,49 @@ function abrirFoto(p) {
   fotoLightbox.value = { url: p.foto_url, nome: p.descricao };
 }
 
+function thumbUrl(url, width = 400) {
+  if (!url) return '';
+  const thumb = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+  const sep = thumb.includes('?') ? '&' : '?';
+  return `${thumb}${sep}width=${width}&quality=80&resize=contain`;
+}
+
+let _realtimeChannel = null;
+
+function _iniciarRealtime() {
+  const pks = produtos.value.map(p => p.pk).filter(Boolean);
+  if (!pks.length) return;
+  _realtimeChannel = supabase
+    .channel(`catalogo-estoque-${token}`)
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'produtos',
+    }, (payload) => {
+      const novo = payload.new;
+      if (!novo?.pk) return;
+      const idx = produtos.value.findIndex(p => p.pk === novo.pk);
+      if (idx === -1) return;
+      produtos.value[idx] = { ...produtos.value[idx], saldo: novo.saldo };
+    })
+    .subscribe();
+}
+
+function _pararRealtime() {
+  if (_realtimeChannel) {
+    supabase.removeChannel(_realtimeChannel);
+    _realtimeChannel = null;
+  }
+}
+
+onUnmounted(_pararRealtime);
+
 onMounted(async () => {
   try {
     const { data } = await axios.get(`/api/catalogo-publico/${token}`);
     catalogo.value = data.catalogo;
     produtos.value = data.produtos || [];
+    _iniciarRealtime();
 
 
     // Verifica sessão salva
@@ -910,15 +957,16 @@ function reiniciar() {
 .cp-dark .cp-card { background: #1e293b; box-shadow: 0 1px 6px rgba(0,0,0,.3); }
 .cp-dark .cp-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.4); }
 
-.cp-card-foto { height: 150px; background: #f3f4f6; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
-.cp-dark .cp-card-foto { background: #2d3748; }
-.cp-card-foto img { width: 100%; height: 100%; object-fit: cover; }
+.cp-card-foto { height: 180px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+.cp-dark .cp-card-foto { background: #1e293b; }
 .cp-card-foto--clicavel { cursor: zoom-in; }
 .cp-card-foto--clicavel:hover .cp-foto-lupa { opacity: 1; }
 .cp-foto-lupa { position: absolute; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .2s; }
 .cp-foto-lupa .material-symbols-outlined { font-size: 36px; color: #fff; }
 .cp-card-avatar { font-size: 40px; font-weight: 800; color: #d1d5db; }
 .cp-dark .cp-card-avatar { color: #475569; }
+
+.cp-foto-img { max-width: 100%; max-height: 180px; width: auto; height: auto; display: block; }
 .cp-card-body { padding: 12px 12px 6px; flex: 1; }
 .cp-card-nome { font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.3; }
 .cp-dark .cp-card-nome { color: #f1f5f9; }
