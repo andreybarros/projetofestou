@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
     const q = busca.trim();
     let query = supabase
       .from('clientes')
-      .select('pk, nome, razao_social, cpf, telefone, decorador, logradouro, numero, bairro, cep')
+      .select('pk, nome, razao_social, cpf, telefone, email, decorador, logradouro, numero, bairro, cep')
       .eq('ativo', true)
       .or(`nome.ilike.%${q}%,razao_social.ilike.%${q}%,cpf.ilike.%${q}%,telefone.ilike.%${q}%`)
       .order('nome')

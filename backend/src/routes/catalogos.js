@@ -107,7 +107,7 @@ router.get('/:pk', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('catalogos')
-      .select('pk, nome, descricao, token, ativo, criado_em')
+      .select('pk, nome, descricao, token, ativo, filial_pk, criado_em')
       .eq('pk', req.params.pk)
       .is('deletado_em', null)
       .single();
@@ -131,6 +131,26 @@ router.get('/:pk/produtos', async (req, res) => {
     res.json({ ok: true, data: (data || []).map(i => i.produtos).filter(Boolean) });
   } catch (err) {
     console.error('[Catalogos/GET/produtos]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ── Todos os produtos da filial do catálogo (para pedido avulso) ──
+router.get('/:pk/produtos-filial', async (req, res) => {
+  try {
+    const { data: cat, error: catErr } = await supabase
+      .from('catalogos').select('filial_pk').eq('pk', req.params.pk).single();
+    if (catErr || !cat) return res.status(404).json({ erro: 'Catálogo não encontrado' });
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('pk, descricao, codigo, foto_url, saldo')
+      .eq('filial_pk', cat.filial_pk)
+      .eq('ativo', true)
+      .order('descricao');
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[Catalogos/GET/produtos-filial]', err.message);
     res.status(500).json({ erro: err.message });
   }
 });
@@ -534,6 +554,62 @@ router.get('/public/:token', async (req, res) => {
 });
 
 // ── PUBLIC: cliente envia pedido de interesse (sem auth) ─────
+// POST /api/catalogos/:pk/pedido-avulso  — cria pedido manual pelo operador
+router.post('/:pk/pedido-avulso', async (req, res) => {
+  try {
+    const catalogoPk = Number(req.params.pk);
+    if (!catalogoPk) return res.status(400).json({ erro: 'Catálogo inválido' });
+
+    const { nome_cliente, telefone, email, data_evento, hora_evento, tipo_entrega, observacao, cliente_pk, itens } = req.body;
+    if (!nome_cliente?.trim()) return res.status(400).json({ erro: 'Nome do cliente obrigatório' });
+
+    const { data: catalogo } = await supabase
+      .from('catalogos').select('pk, filial_pk').eq('pk', catalogoPk).maybeSingle();
+    if (!catalogo) return res.status(404).json({ erro: 'Catálogo não encontrado' });
+
+    const { data: pedido, error } = await supabase
+      .from('pedidos_catalogo')
+      .insert({
+        catalogo_pk:  catalogo.pk,
+        filial_pk:    catalogo.filial_pk,
+        cliente_pk:   cliente_pk || null,
+        nome_cliente: nome_cliente.trim(),
+        telefone:     telefone?.trim()   || null,
+        email:        email?.trim()      || null,
+        data_evento:  data_evento        || null,
+        hora_evento:  hora_evento        || null,
+        tipo_entrega: tipo_entrega       || 'retirada',
+        observacao:   observacao?.trim() || null,
+        status:       'aguardando',
+      })
+      .select('pk')
+      .single();
+    if (error) throw error;
+
+    // Salva itens se enviados
+    if (Array.isArray(itens) && itens.length) {
+      const prodPks = itens.map(i => i.produto_pk).filter(Boolean);
+      const nomesMap = {};
+      if (prodPks.length) {
+        const { data: prods } = await supabase.from('produtos').select('pk, descricao').in('pk', prodPks);
+        (prods || []).forEach(p => { nomesMap[p.pk] = p.descricao; });
+      }
+      const rows = itens.map(i => ({
+        pedido_pk:    pedido.pk,
+        produto_pk:   i.produto_pk,
+        nome_produto: nomesMap[i.produto_pk] || i.descricao || null,
+        quantidade:   parseInt(i.quantidade || 1, 10),
+      }));
+      await supabase.from('pedidos_catalogo_itens').insert(rows);
+    }
+
+    res.status(201).json({ ok: true, pedido_pk: pedido.pk });
+  } catch (err) {
+    console.error('[Catalogos/PedidoAvulso]', err.message);
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 router.post('/public/:token/pedido', async (req, res) => {
   try {
     const { nome_cliente, telefone, email, observacao, itens } = req.body;

@@ -19,6 +19,10 @@
           <span class="pill-dot"></span>
           {{ catalogo?.ativo ? 'Ativo' : 'Inativo' }}
         </div>
+        <button class="btn-avulso" @click="abrirModalAvulso">
+          <span class="material-symbols-outlined">add</span>
+          Novo Pedido
+        </button>
         <button class="btn-sec" @click="$router.push(`/catalogos/${pk}/editar`)">
           <span class="material-symbols-outlined">settings</span>
           Gerenciar Catálogo
@@ -520,6 +524,264 @@
         {{ toastMsg }}
       </div>
     </Transition>
+
+    <!-- ── Modal Pedido Avulso ───────────────────────────────── -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="modalAvulso" class="modal-overlay" @click.self="fecharModalAvulso">
+          <div class="npa-shell">
+
+            <!-- ── Cabeçalho ── -->
+            <div class="npa-head">
+              <div class="npa-head-left">
+                <span class="material-symbols-outlined npa-head-ico">add_circle</span>
+                <span class="npa-head-title">Novo Pedido Avulso</span>
+                <span class="npa-head-sep">·</span>
+                <span class="npa-head-catalog">{{ catalogo?.nome || '…' }}</span>
+              </div>
+              <button class="npa-pv-close" @click="fecharModalAvulso">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <!-- ── Dois painéis ── -->
+            <div class="npa-body">
+
+              <!-- Coluna esquerda: dados do pedido -->
+              <div class="npa-col-left">
+
+                <!-- Seção 01 · Cliente -->
+                <div class="npa-section">
+                  <div class="npa-sec-hd">
+                    <span class="npa-sec-num">01</span>
+                    <span class="npa-sec-title">Cliente</span>
+                  </div>
+
+                  <!-- Cliente selecionado -->
+                  <div v-if="avulsoClienteSel" class="npa-client-chip">
+                    <div class="npa-chip-av">{{ avulsoClienteSel.nome.charAt(0).toUpperCase() }}</div>
+                    <div class="npa-chip-body">
+                      <div class="npa-chip-name">{{ avulsoClienteSel.nome }}</div>
+                      <div v-if="avulsoClienteSel.telefone" class="npa-chip-tel">{{ avulsoClienteSel.telefone }}</div>
+                    </div>
+                    <button class="npa-chip-rm" type="button" @click.stop="limparClienteAvulso">
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+
+                  <!-- Busca de cliente -->
+                  <div v-else class="npa-search-wrap">
+                    <div class="npa-search-field" :class="{ 'npa-search-field--err': avulsoErro && !avulsoClienteBusca.trim() }">
+                      <span class="material-symbols-outlined npa-search-ico">person_search</span>
+                      <input
+                        v-model="avulsoClienteBusca"
+                        type="text"
+                        class="npa-search-input"
+                        placeholder="Buscar por nome ou telefone…"
+                        autocomplete="off"
+                        @input="buscarClienteAvulso"
+                        @blur="() => setTimeout(() => { avulsoClienteDrop = false }, 200)"
+                      />
+                      <span v-if="avulsoBuscandoCliente" class="spin-sm npa-search-spin"></span>
+                    </div>
+                    <div v-if="avulsoClienteDrop && avulsoClienteResultados.length" class="npa-drop">
+                      <div
+                        v-for="c in avulsoClienteResultados"
+                        :key="c.pk"
+                        class="npa-drop-item"
+                        @mousedown.prevent="selecionarClienteAvulso(c)"
+                      >
+                        <div class="npa-drop-av">{{ c.nome.charAt(0).toUpperCase() }}</div>
+                        <div class="npa-drop-info">
+                          <div class="npa-drop-name">{{ c.nome }}</div>
+                          <div v-if="c.telefone" class="npa-drop-tel">
+                            <span class="material-symbols-outlined">phone</span>{{ c.telefone }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="npa-row-2">
+                    <div class="npa-field">
+                      <label class="npa-lbl">Telefone</label>
+                      <input v-model="formAvulso.telefone" type="tel" class="npa-inp" placeholder="(92) 99999-9999" @input="mascaraTelAvulso" />
+                    </div>
+                    <div class="npa-field">
+                      <label class="npa-lbl">E-mail</label>
+                      <input v-model="formAvulso.email" type="email" class="npa-inp" placeholder="email@cliente.com" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="npa-sep"></div>
+
+                <!-- Seção 02 · Evento -->
+                <div class="npa-section">
+                  <div class="npa-sec-hd">
+                    <span class="npa-sec-num">02</span>
+                    <span class="npa-sec-title">Evento</span>
+                  </div>
+                  <div class="npa-row-2">
+                    <div class="npa-field">
+                      <label class="npa-lbl">Data</label>
+                      <input v-model="formAvulso.data_evento" type="date" class="npa-inp" />
+                    </div>
+                    <div class="npa-field">
+                      <label class="npa-lbl">Horário</label>
+                      <input v-model="formAvulso.hora_evento" type="time" class="npa-inp" />
+                    </div>
+                  </div>
+                  <div class="npa-delivery-toggle">
+                    <button :class="['npa-del-opt', formAvulso.tipo_entrega === 'retirada' && 'active']" type="button" @click="formAvulso.tipo_entrega = 'retirada'">
+                      <span class="material-symbols-outlined">store</span>
+                      Retirada na loja
+                    </button>
+                    <button :class="['npa-del-opt', formAvulso.tipo_entrega === 'entrega' && 'active']" type="button" @click="formAvulso.tipo_entrega = 'entrega'">
+                      <span class="material-symbols-outlined">local_shipping</span>
+                      Entrega no endereço
+                    </button>
+                  </div>
+
+                  <!-- Endereço de entrega -->
+                  <Transition name="npa-slide">
+                    <div v-if="formAvulso.tipo_entrega === 'entrega'" class="npa-address-block">
+                      <div class="npa-field">
+                        <label class="npa-lbl">Endereço</label>
+                        <input v-model="formAvulso.endereco_rua" type="text" class="npa-inp" placeholder="Rua / Avenida, nº" />
+                      </div>
+                      <div class="npa-row-2">
+                        <div class="npa-field">
+                          <label class="npa-lbl">Bairro</label>
+                          <input v-model="formAvulso.endereco_bairro" type="text" class="npa-inp" placeholder="Bairro" />
+                        </div>
+                        <div class="npa-field">
+                          <label class="npa-lbl">Cidade</label>
+                          <input v-model="formAvulso.endereco_cidade" type="text" class="npa-inp" placeholder="Cidade" />
+                        </div>
+                      </div>
+                      <div class="npa-row-2">
+                        <div class="npa-field">
+                          <label class="npa-lbl">CEP</label>
+                          <input v-model="formAvulso.endereco_cep" type="text" class="npa-inp" placeholder="00000-000" maxlength="9" />
+                        </div>
+                        <div class="npa-field">
+                          <label class="npa-lbl">Complemento</label>
+                          <input v-model="formAvulso.endereco_complemento" type="text" class="npa-inp" placeholder="Apto, Bloco…" />
+                        </div>
+                      </div>
+                    </div>
+                  </Transition>
+                </div>
+
+                <div class="npa-sep"></div>
+
+                <!-- Observação -->
+                <div class="npa-section npa-section--last">
+                  <div class="npa-sec-hd">
+                    <span class="npa-sec-num">03</span>
+                    <span class="npa-sec-title">Observações</span>
+                  </div>
+                  <textarea v-model="formAvulso.observacao" class="npa-inp npa-inp--ta" placeholder="Instruções, detalhes especiais…" rows="4"></textarea>
+                </div>
+
+              </div>
+
+              <!-- ── Coluna direita: produtos ── -->
+              <div class="npa-col-right">
+
+                <!-- Cabeçalho da coluna -->
+                <div class="npa-col-right-hd">
+                  <div class="npa-sec-hd" style="margin-bottom:0">
+                    <span class="npa-sec-num npa-sec-num--alt">04</span>
+                    <span class="npa-sec-title">Produtos do Pedido</span>
+                    <span v-if="avulsoItens.length" class="npa-sec-badge">{{ avulsoItens.length }}</span>
+                  </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="npa-col-right-search">
+                  <div class="npa-search-field">
+                    <span class="material-symbols-outlined npa-search-ico">search</span>
+                    <input
+                      v-model="avulsoProdBusca"
+                      type="text"
+                      class="npa-search-input"
+                      placeholder="Buscar produto do catálogo…"
+                      autocomplete="off"
+                    />
+                    <span v-if="avulsoCarregandoProd" class="spin-sm npa-search-spin"></span>
+                  </div>
+                </div>
+
+                <!-- Resultados da busca -->
+                <div v-if="avulsoProdsFiltrados.length" class="npa-prod-results">
+                  <div v-for="p in avulsoProdsFiltrados" :key="p.pk" class="npa-prod-row" @click="adicionarItemAvulso(p)">
+                    <img v-if="p.foto_url" :src="p.foto_url" class="npa-prod-thumb" />
+                    <div v-else class="npa-prod-thumb npa-prod-thumb--empty">
+                      <span class="material-symbols-outlined">image_not_supported</span>
+                    </div>
+                    <div class="npa-prod-info">
+                      <div class="npa-prod-name">{{ p.descricao }}</div>
+                      <div v-if="p.codigo" class="npa-prod-code">{{ p.codigo }}</div>
+                    </div>
+                    <span :class="['npa-stock', saldoCls(p.saldo)]">{{ p.saldo === null ? '—' : p.saldo <= 0 ? '0' : p.saldo }}</span>
+                    <button class="npa-add-btn" type="button">
+                      <span class="material-symbols-outlined">add</span>
+                    </button>
+                  </div>
+                </div>
+                <div v-else-if="avulsoProdBusca.trim()" class="npa-no-results">Nenhum produto encontrado</div>
+
+                <!-- Itens adicionados -->
+                <div class="npa-col-right-items">
+                  <div v-if="avulsoItens.length" class="npa-items-list">
+                    <div v-for="(it, idx) in avulsoItens" :key="idx" class="npa-item-card">
+                      <img v-if="it.foto_url" :src="it.foto_url" class="npa-item-thumb" />
+                      <div v-else class="npa-item-thumb npa-item-thumb--empty">
+                        <span class="material-symbols-outlined">inventory_2</span>
+                      </div>
+                      <div class="npa-item-name">{{ it.descricao }}</div>
+                      <div class="npa-qty-ctrl">
+                        <button type="button" @click.stop="alterarQtdItemAvulso(idx, -1)">−</button>
+                        <span>{{ it.quantidade }}</span>
+                        <button type="button" @click.stop="alterarQtdItemAvulso(idx, 1)">+</button>
+                      </div>
+                      <button class="npa-rm-btn" type="button" @click.stop="removerItemAvulso(idx)">
+                        <span class="material-symbols-outlined">delete_outline</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div v-else class="npa-items-placeholder">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                    <span>Busque acima para adicionar produtos</span>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- ── Footer ── -->
+            <div class="npa-footer">
+              <div v-if="avulsoErro" class="npa-error">
+                <span class="material-symbols-outlined">error_outline</span>{{ avulsoErro }}
+              </div>
+              <div class="npa-footer-btns">
+                <button class="npa-btn-cancel" type="button" @click="fecharModalAvulso">Cancelar</button>
+                <button class="npa-btn-save" type="button" :disabled="salvandoAvulso" @click="salvarAvulso">
+                  <span v-if="salvandoAvulso" class="spin-sm"></span>
+                  <span v-else class="material-symbols-outlined">check</span>
+                  {{ salvandoAvulso ? 'Salvando…' : 'Criar Pedido' }}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -558,6 +820,136 @@ const itemParaSubstituir = ref(null);  // { pk, nome, idxLocal, produto_substitu
 const toastMsg        = ref('');
 const toastTipo       = ref('ok');
 let   toastTimer      = null;
+
+const modalAvulso     = ref(false);
+const salvandoAvulso  = ref(false);
+const avulsoErro      = ref('');
+const formAvulso      = ref({ telefone: '', email: '', data_evento: '', hora_evento: '', tipo_entrega: 'retirada', observacao: '', endereco_rua: '', endereco_bairro: '', endereco_cidade: '', endereco_cep: '', endereco_complemento: '' });
+
+const avulsoClienteBusca      = ref('');
+const avulsoClienteSel        = ref(null);
+const avulsoClienteResultados = ref([]);
+const avulsoClienteDrop       = ref(false);
+const avulsoBuscandoCliente   = ref(false);
+const avulsoProdBusca         = ref('');
+const avulsoItens             = ref([]);
+const avulsoProdutos          = ref([]);
+const avulsoCarregandoProd    = ref(false);
+let   avulsoClienteTimer      = null;
+
+function abrirModalAvulso() {
+  formAvulso.value = { telefone: '', email: '', data_evento: '', hora_evento: '', tipo_entrega: 'retirada', observacao: '', endereco_rua: '', endereco_bairro: '', endereco_cidade: '', endereco_cep: '', endereco_complemento: '' };
+  avulsoErro.value = '';
+  avulsoClienteBusca.value = '';
+  avulsoClienteSel.value = null;
+  avulsoClienteResultados.value = [];
+  avulsoClienteDrop.value = false;
+  avulsoProdBusca.value = '';
+  avulsoItens.value = [];
+  modalAvulso.value = true;
+  _carregarProdutosAvulso();
+}
+function fecharModalAvulso() { modalAvulso.value = false; avulsoClienteDrop.value = false; }
+
+function buscarClienteAvulso() {
+  avulsoClienteSel.value = null;
+  clearTimeout(avulsoClienteTimer);
+  const q = avulsoClienteBusca.value.trim();
+  if (!q) { avulsoClienteResultados.value = []; avulsoClienteDrop.value = false; return; }
+  avulsoClienteTimer = setTimeout(async () => {
+    avulsoBuscandoCliente.value = true;
+    try {
+      const { data } = await api.get('/api/clientes', { params: { busca: q, limit: 8, filial_pk: catalogo.value?.filial_pk } });
+      avulsoClienteResultados.value = data.data || [];
+      avulsoClienteDrop.value = avulsoClienteResultados.value.length > 0;
+    } catch { /* silencioso */ } finally {
+      avulsoBuscandoCliente.value = false;
+    }
+  }, 300);
+}
+
+function selecionarClienteAvulso(c) {
+  avulsoClienteSel.value = c;
+  avulsoClienteBusca.value = c.nome;
+  avulsoClienteDrop.value = false;
+  formAvulso.value.telefone = c.telefone || '';
+  formAvulso.value.email    = c.email    || '';
+}
+
+function limparClienteAvulso() {
+  avulsoClienteSel.value = null;
+  avulsoClienteBusca.value = '';
+  avulsoClienteResultados.value = [];
+  formAvulso.value.telefone = '';
+  formAvulso.value.email    = '';
+}
+
+function mascaraTelAvulso(e) {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 6)      v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+  else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
+  else if (v.length)     v = `(${v}`;
+  formAvulso.value.telefone = v;
+}
+
+const avulsoProdsFiltrados = computed(() => {
+  const q = avulsoProdBusca.value.toLowerCase().trim();
+  if (!q) return [];
+  return avulsoProdutos.value
+    .filter(p => p.descricao?.toLowerCase().includes(q) || p.codigo?.toLowerCase().includes(q))
+    .slice(0, 10);
+});
+
+function adicionarItemAvulso(p) {
+  const existente = avulsoItens.value.find(i => i.produto_pk === p.pk);
+  if (existente) { existente.quantidade++; }
+  else { avulsoItens.value.push({ produto_pk: p.pk, descricao: p.descricao, quantidade: 1, foto_url: p.foto_url || null }); }
+  avulsoProdBusca.value = '';
+}
+
+function removerItemAvulso(idx) { avulsoItens.value.splice(idx, 1); }
+
+function alterarQtdItemAvulso(idx, delta) {
+  const novaQtd = (avulsoItens.value[idx].quantidade || 1) + delta;
+  if (novaQtd < 1) { avulsoItens.value.splice(idx, 1); return; }
+  avulsoItens.value[idx].quantidade = novaQtd;
+}
+
+async function salvarAvulso() {
+  avulsoErro.value = '';
+  const nome = (avulsoClienteSel.value?.nome || avulsoClienteBusca.value).trim();
+  if (!nome) { avulsoErro.value = 'Informe o nome do cliente.'; return; }
+  salvandoAvulso.value = true;
+  try {
+    const enderecoPayload = formAvulso.value.tipo_entrega === 'entrega' ? {
+      endereco_rua:         formAvulso.value.endereco_rua         || null,
+      endereco_bairro:      formAvulso.value.endereco_bairro      || null,
+      endereco_cidade:      formAvulso.value.endereco_cidade      || null,
+      endereco_cep:         formAvulso.value.endereco_cep         || null,
+      endereco_complemento: formAvulso.value.endereco_complemento || null,
+    } : {};
+    await api.post(`/api/catalogos/${pk}/pedido-avulso`, {
+      nome_cliente: nome,
+      cliente_pk:   avulsoClienteSel.value?.pk || null,
+      telefone:     formAvulso.value.telefone   || null,
+      email:        formAvulso.value.email       || null,
+      data_evento:  formAvulso.value.data_evento || null,
+      hora_evento:  formAvulso.value.hora_evento || null,
+      tipo_entrega: formAvulso.value.tipo_entrega,
+      observacao:   formAvulso.value.observacao  || null,
+      itens:        avulsoItens.value.length ? avulsoItens.value : undefined,
+      ...enderecoPayload,
+    });
+    fecharModalAvulso();
+    showToast('Pedido criado com sucesso!');
+    const { data: resPed } = await api.get(`/api/catalogos/${pk}/pedidos`);
+    pedidos.value = resPed.data || [];
+  } catch (e) {
+    avulsoErro.value = e.response?.data?.erro || 'Erro ao criar pedido.';
+  } finally {
+    salvandoAvulso.value = false;
+  }
+}
 
 const abas = computed(() => [
   { key: 'todos',             label: 'Todos',             count: pedidos.value.length },
@@ -772,8 +1164,23 @@ async function _carregarProdutosCatalogo() {
   try {
     const { data } = await api.get(`/api/catalogos/${pk}/produtos`);
     produtosCatalogo.value = data.data || [];
-  } catch { /* silencioso */ } finally {
+  } catch (err) {
+    console.error('[PedidosCatalogo/_carregarProdutosCatalogo]', err);
+  } finally {
     pickerCarregando.value = false;
+  }
+}
+
+async function _carregarProdutosAvulso() {
+  if (avulsoProdutos.value.length) return;
+  avulsoCarregandoProd.value = true;
+  try {
+    const { data } = await api.get(`/api/catalogos/${pk}/produtos-filial`);
+    avulsoProdutos.value = data.data || [];
+  } catch (err) {
+    console.error('[PedidosCatalogo/_carregarProdutosAvulso]', err);
+  } finally {
+    avulsoCarregandoProd.value = false;
   }
 }
 
@@ -1262,12 +1669,355 @@ function showToast(msg, tipo = 'ok') {
   .modal-cols  { grid-template-columns: 1fr; }
   .modal-col--orc { border-right: none; border-top: 1px solid var(--border); }
   .mc-ref-lista { max-height: 180px; }
+  .btn-avulso { padding: 8px 12px; font-size: 12px; }
+  .btn-avulso span:last-child { display: none; }
+  .avulso-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Botão Novo Pedido ── */
+.btn-avulso {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 16px; background: var(--g); border: none;
+  border-radius: 9px; color: #fff; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: opacity .15s;
+}
+.btn-avulso:hover { opacity: .88; }
+.btn-avulso .material-symbols-outlined { font-size: 16px; }
+
+/* ══════════════════════════════════════════════════════════════
+   NOVO PEDIDO AVULSO  ·  Redesign
+   Dois painéis: preview dark-navy à esquerda, formulário à direita
+   Accent: #f59e0b (âmbar)  |  Font: Syne (importado no <style> global)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Shell */
+.npa-shell {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 96vw);
+  max-height: 90vh;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--bg2);
+  box-shadow: 0 48px 120px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.05);
+}
+
+/* Cabeçalho */
+.npa-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; background: var(--bg);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.npa-head-left {
+  display: flex; align-items: center; gap: 10px;
+}
+.npa-head-ico { font-size: 20px; color: var(--g); }
+.npa-head-title {
+  font-family: 'Hanken Grotesk', sans-serif; font-size: 15px; font-weight: 800;
+  color: var(--text); letter-spacing: .01em;
+}
+.npa-head-sep { color: var(--border); font-size: 16px; padding: 0 2px; }
+.npa-head-catalog { font-size: 12px; color: var(--text2); font-weight: 500; }
+.npa-pv-close {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text2); cursor: pointer; display: flex;
+  padding: 5px; transition: all .15s;
+}
+.npa-pv-close:hover { background: var(--bg2); color: var(--text); }
+.npa-pv-close .material-symbols-outlined { font-size: 17px; }
+
+/* Corpo: duas colunas */
+.npa-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Coluna esquerda */
+.npa-col-left {
+  display: flex; flex-direction: column;
+  overflow-y: auto; border-right: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+/* Coluna direita */
+.npa-col-right {
+  display: flex; flex-direction: column;
+  overflow: hidden; background: var(--bg);
+}
+.npa-col-right-hd {
+  padding: 20px 20px 0; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); padding-bottom: 14px;
+}
+.npa-col-right-search { padding: 12px 16px 6px; flex-shrink: 0; }
+.npa-col-right-items {
+  flex: 1; overflow-y: auto;
+  padding: 6px 16px 14px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+
+/* Seções */
+.npa-section { padding: 20px 24px; }
+.npa-section--last { padding-bottom: 24px; }
+.npa-sep { height: 1px; background: var(--border); margin: 0 24px; }
+
+.npa-sec-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.npa-sec-num {
+  font-family: 'Hanken Grotesk', sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  color: var(--g); background: var(--g-dim); border: 1px solid rgba(99,102,241,.28);
+  padding: 3px 9px; border-radius: 6px; flex-shrink: 0;
+}
+.npa-sec-num--alt {
+  color: var(--g); background: var(--g-dim); border-color: rgba(99,102,241,.28);
+}
+.npa-sec-title {
+  font-family: 'Hanken Grotesk', sans-serif; font-size: 13px; font-weight: 700;
+  color: var(--text); letter-spacing: .01em; flex: 1;
+}
+.npa-sec-badge {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--g);
+  color: #fff; font-size: 10px; font-weight: 900; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* Cliente chip */
+.npa-client-chip {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: var(--g-soft); border: 1px solid rgba(99,102,241,.25);
+  border-radius: 12px; margin-bottom: 14px;
+}
+.npa-chip-av {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--g-dim); color: var(--g);
+  font-family: 'Hanken Grotesk', sans-serif; font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.npa-chip-body { flex: 1; min-width: 0; }
+.npa-chip-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.npa-chip-tel  { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.npa-chip-rm {
+  background: none; border: none; color: var(--text2); cursor: pointer;
+  display: flex; padding: 4px; border-radius: 6px; transition: all .12s;
+}
+.npa-chip-rm:hover { color: #ef4444; background: rgba(239,68,68,.1); }
+.npa-chip-rm .material-symbols-outlined { font-size: 16px; }
+
+/* Campo de busca */
+.npa-search-wrap { position: relative; margin-bottom: 14px; }
+.npa-search-field {
+  position: relative; display: flex; align-items: center;
+}
+.npa-search-ico {
+  position: absolute; left: 12px; font-size: 18px; color: var(--text2); pointer-events: none;
+}
+.npa-search-input {
+  width: 100%; padding: 10px 40px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); font-size: 13px; font-family: inherit;
+  outline: none; transition: border-color .15s, box-shadow .15s; box-sizing: border-box;
+}
+.npa-search-input:focus { border-color: var(--g); box-shadow: 0 0 0 3px var(--g-dim); }
+.npa-search-field--err .npa-search-input { border-color: #ef4444; }
+.npa-search-spin { position: absolute; right: 12px; }
+
+/* Dropdown busca de cliente */
+.npa-drop {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 300;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+  overflow: hidden; max-height: 260px; overflow-y: auto;
+}
+.npa-drop-item {
+  display: flex; align-items: center; gap: 12px; padding: 11px 16px;
+  cursor: pointer; transition: background .12s; user-select: none;
+}
+.npa-drop-item:first-child { border-radius: 14px 14px 0 0; }
+.npa-drop-item:last-child  { border-radius: 0 0 14px 14px; }
+.npa-drop-item:only-child  { border-radius: 14px; }
+.npa-drop-item:hover { background: var(--bg3); }
+.npa-drop-item + .npa-drop-item { border-top: 1px solid var(--border); }
+.npa-drop-av {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: var(--g-dim); border: 1.5px solid rgba(99,102,241,.22); color: var(--g);
+  font-family: 'Hanken Grotesk', sans-serif; font-size: 14px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.npa-drop-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.npa-drop-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.npa-drop-tel  { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text2); }
+.npa-drop-tel .material-symbols-outlined { font-size: 12px; }
+
+/* Campos */
+.npa-row-2    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.npa-field    { display: flex; flex-direction: column; gap: 5px; }
+.npa-lbl      { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+.npa-inp {
+  padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text); font-size: 13px; font-family: inherit;
+  outline: none; transition: border-color .15s, box-shadow .15s;
+  width: 100%; box-sizing: border-box;
+}
+.npa-inp:focus { border-color: var(--g); box-shadow: 0 0 0 3px var(--g-dim); }
+.npa-inp--ta { resize: vertical; min-height: 90px; }
+
+/* Toggle entrega e endereço */
+.npa-delivery-toggle { display: flex; gap: 8px; margin-top: 14px; }
+.npa-address-block { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; }
+
+.npa-slide-enter-active, .npa-slide-leave-active { transition: max-height .22s ease, opacity .18s ease; max-height: 300px; overflow: hidden; }
+.npa-slide-enter-from, .npa-slide-leave-to { max-height: 0; opacity: 0; }
+.npa-del-opt {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text2); font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .18s;
+}
+.npa-del-opt .material-symbols-outlined { font-size: 15px; }
+.npa-del-opt:hover { border-color: rgba(99,102,241,.35); }
+.npa-del-opt.active {
+  border-color: rgba(99,102,241,.55); color: var(--g);
+  background: var(--g-soft); box-shadow: 0 0 0 2px var(--g-dim);
+}
+
+/* Resultados de produto */
+.npa-prod-results {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  margin: 0 16px 8px; max-height: 220px; overflow-y: auto;
+}
+.npa-prod-row {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  cursor: pointer; transition: background .12s; background: var(--bg3);
+}
+.npa-prod-row:hover { background: var(--bg2); }
+.npa-prod-row + .npa-prod-row { border-top: 1px solid var(--border); }
+.npa-prod-thumb {
+  width: 36px; height: 36px; border-radius: 8px; object-fit: cover;
+  border: 1px solid var(--border); flex-shrink: 0;
+}
+.npa-prod-thumb--empty {
+  width: 36px; height: 36px; border-radius: 8px; background: var(--bg);
+  border: 1px solid var(--border); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.npa-prod-thumb--empty .material-symbols-outlined { font-size: 15px; color: var(--text2); opacity: .35; }
+.npa-prod-info  { flex: 1; min-width: 0; }
+.npa-prod-name  { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.npa-prod-code  { font-size: 10px; color: var(--text2); margin-top: 1px; }
+.npa-stock { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; }
+.npa-add-btn {
+  width: 28px; height: 28px; border-radius: 8px; background: var(--g-dim);
+  border: 1px solid rgba(99,102,241,.28); color: var(--g); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all .12s;
+}
+.npa-add-btn:hover { background: rgba(99,102,241,.22); }
+.npa-add-btn .material-symbols-outlined { font-size: 17px; }
+.npa-no-results { text-align: center; padding: 14px; font-size: 12px; color: var(--text2); opacity: .5; }
+
+/* Lista de itens adicionados */
+.npa-items-list { display: flex; flex-direction: column; gap: 5px; }
+.npa-item-card {
+  display: flex; align-items: center; gap: 9px; padding: 9px 12px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 10px;
+  transition: border-color .12s;
+}
+.npa-item-card:hover { border-color: rgba(99,102,241,.25); }
+.npa-item-thumb {
+  width: 32px; height: 32px; border-radius: 7px; object-fit: cover;
+  border: 1px solid var(--border); flex-shrink: 0;
+}
+.npa-item-thumb--empty {
+  width: 32px; height: 32px; border-radius: 7px; background: var(--bg);
+  border: 1px solid var(--border); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.npa-item-thumb--empty .material-symbols-outlined { font-size: 13px; color: var(--text2); opacity: .35; }
+.npa-item-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.npa-qty-ctrl { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.npa-qty-ctrl button {
+  width: 24px; height: 24px; border-radius: 6px; background: var(--bg2);
+  border: 1px solid var(--border); color: var(--text); font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  padding: 0; transition: all .12s;
+}
+.npa-qty-ctrl button:hover { border-color: var(--g); color: var(--g); }
+.npa-qty-ctrl span { font-size: 13px; font-weight: 800; color: var(--text); min-width: 22px; text-align: center; }
+.npa-rm-btn {
+  background: none; border: none; color: var(--text2); cursor: pointer;
+  display: flex; padding: 3px; border-radius: 6px; flex-shrink: 0; transition: all .12s;
+}
+.npa-rm-btn:hover { color: #ef4444; background: rgba(239,68,68,.1); }
+.npa-rm-btn .material-symbols-outlined { font-size: 16px; }
+.npa-items-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 32px 18px; border: 1px dashed var(--border); border-radius: 10px;
+  font-size: 12px; color: var(--text2); opacity: .45; text-align: center;
+  margin-top: 6px;
+}
+.npa-items-placeholder .material-symbols-outlined { font-size: 26px; }
+
+/* Footer */
+.npa-footer {
+  padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
+  background: var(--bg);
+}
+.npa-error {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444;
+  margin-bottom: 10px; padding: 8px 12px; background: rgba(239,68,68,.06);
+  border: 1px solid rgba(239,68,68,.15); border-radius: 8px;
+}
+.npa-error .material-symbols-outlined { font-size: 15px; flex-shrink: 0; }
+.npa-footer-btns { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.npa-btn-cancel {
+  padding: 10px 20px; background: none; border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text2); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.npa-btn-cancel:hover { border-color: var(--text2); color: var(--text); }
+.npa-btn-save {
+  display: flex; align-items: center; gap: 7px; padding: 10px 22px;
+  background: var(--primary); border: none; border-radius: 10px; color: #fff;
+  font-size: 13px; font-weight: 800; cursor: pointer;
+  font-family: 'Hanken Grotesk', sans-serif; letter-spacing: .02em; transition: all .18s;
+}
+.npa-btn-save:hover:not(:disabled) { opacity: .88; box-shadow: 0 4px 18px rgba(96,158,252,.38); }
+.npa-btn-save:disabled { opacity: .5; cursor: not-allowed; }
+.npa-btn-save .material-symbols-outlined { font-size: 16px; }
+
+/* Responsive */
+@media (max-width: 760px) {
+  .npa-body       { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .npa-col-left   { border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
+  .npa-col-right  { max-height: 50vh; }
+  .npa-shell      { width: 96vw; max-height: 95vh; }
+  .npa-row-2      { grid-template-columns: 1fr; }
+  .npa-section    { padding: 16px 18px; }
+  .npa-sep        { margin: 0 18px; }
+  .npa-footer     { padding: 12px 18px; }
 }
 
 </style>
 
 <!-- Bloco não-escopado: usa .pc-wrap como namespace para não vazar -->
 <style>
+
+/* ── Light mode: NPA modal ── */
+[data-theme="light"] .npa-shell           { background: #f5f5f7; }
+[data-theme="light"] .npa-head            { background: #fff; }
+[data-theme="light"] .npa-col-left        { background: #f5f5f7; }
+[data-theme="light"] .npa-col-right       { background: #fff; }
+[data-theme="light"] .npa-footer          { background: #fff; }
+[data-theme="light"] .npa-search-input    { background: #fff; border-color: rgba(0,0,0,.14); }
+[data-theme="light"] .npa-inp             { background: #fff; border-color: rgba(0,0,0,.14); }
+[data-theme="light"] .npa-prod-row        { background: #f9f9fb; }
+[data-theme="light"] .npa-item-card       { background: #f9f9fb; }
+[data-theme="light"] .npa-del-opt         { background: #fff; }
+[data-theme="light"] .npa-sep             { background: rgba(0,0,0,.08); }
+[data-theme="light"] .npa-drop            { background: #fff; border-color: rgba(0,0,0,.12); box-shadow: 0 12px 36px rgba(0,0,0,.14); }
+[data-theme="light"] .npa-drop-item:hover { background: #f4f4f8; }
+[data-theme="light"] .npa-prod-results    { border-color: rgba(0,0,0,.1); }
+
 [data-theme="light"] .pc-wrap { background: #fff; }
 
 /* Cards de métrica */

@@ -158,11 +158,21 @@
             <!-- Chips de categoria -->
             <div class="fc-cats">
               <button
-                :class="['fc-cat-chip', categoriaSelecionada === null && 'fc-cat-chip--active']"
-                @click="categoriaSelecionada = null"
+                :class="['fc-cat-chip', categoriaSelecionada === null && !apenasNaoAdicionados && 'fc-cat-chip--active']"
+                @click="categoriaSelecionada = null; apenasNaoAdicionados = false"
               >
                 <span class="material-symbols-outlined">apps</span>
                 Todos
+              </button>
+              <button
+                :class="['fc-cat-chip', 'fc-cat-chip--pending', apenasNaoAdicionados && 'fc-cat-chip--active']"
+                @click="apenasNaoAdicionados = !apenasNaoAdicionados; categoriaSelecionada = null"
+              >
+                <span class="material-symbols-outlined">add_circle</span>
+                Não adicionados
+                <span v-if="todosProdutos.filter(p => !jaAdicionado(p.pk)).length" class="fc-chip-count">
+                  {{ todosProdutos.filter(p => !jaAdicionado(p.pk)).length }}
+                </span>
               </button>
               <button
                 v-for="cat in categorias"
@@ -296,7 +306,8 @@ const carregando         = ref(true);
 const carregandoProdutos = ref(false);
 const todosProdutos      = ref([]);
 const categorias         = ref([]);
-const categoriaSelecionada = ref(null);
+const categoriaSelecionada   = ref(null);
+const apenasNaoAdicionados   = ref(false);
 const busca              = ref('');
 const adicionandoTodos   = ref(false);
 const toastMsg           = ref('');
@@ -307,9 +318,12 @@ const paginaCat          = ref(1);
 const POR_PAGINA_CAT     = 24;
 let   toastTimer         = null;
 
-// Filtro client-side: categoria + texto
+// Filtro client-side: categoria + texto + não adicionados
 const resultados = computed(() => {
   let lista = todosProdutos.value;
+  if (apenasNaoAdicionados.value) {
+    lista = lista.filter(p => !jaAdicionado(p.pk));
+  }
   if (categoriaSelecionada.value !== null) {
     lista = lista.filter(p => p.categoria_pk === categoriaSelecionada.value);
   }
@@ -346,7 +360,7 @@ function buildPages(atual, total) {
 }
 
 // Volta para página 1 ao mudar filtros
-watch([busca, categoriaSelecionada], () => { paginaAtual.value = 1; });
+watch([busca, categoriaSelecionada, apenasNaoAdicionados], () => { paginaAtual.value = 1; });
 
 onMounted(() => carregar());
 
@@ -583,6 +597,9 @@ function showToast(msg, tipo = 'ok') {
 .fc-cat-chip:hover { border-color: var(--g); color: var(--g); }
 .fc-cat-chip--active { background: var(--g-dim); border-color: rgba(0,200,83,.3); color: var(--g); }
 .fc-cat-chip .material-symbols-outlined { font-size: 14px; }
+.fc-cat-chip--pending { border-style: dashed; }
+.fc-cat-chip--pending.fc-cat-chip--active { border-style: solid; }
+.fc-chip-count { background: var(--g); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 10px; margin-left: 2px; }
 
 /* ── Table ── */
 .fc-table-wrap { overflow-x: auto; }
