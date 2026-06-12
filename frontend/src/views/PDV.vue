@@ -1726,7 +1726,10 @@ function aplicarDescCat(cd) {
     it.preco_total  = (qty * uni * 0.90).toFixed(2);
   });
 
-  if (algumSkip) toast('Desconto aplicado. Itens em promoção foram mantidos com o preço promocional.');
+  const msg = algumSkip
+    ? `Desconto decorador de 10% aplicado em "${cd.nome}". Itens em promoção não foram alterados.`
+    : `Desconto decorador de 10% aplicado com sucesso em "${cd.nome}"!`;
+  toast(msg);
 }
 
 function toggleDescItem(i, tipo = 'pct') {

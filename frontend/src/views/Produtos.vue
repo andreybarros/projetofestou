@@ -47,6 +47,10 @@
                 <span class="material-symbols-outlined">download</span>
                 Exportar Excel
               </button>
+              <button class="drop-item" @click="abrirDuplicatas">
+                <span class="material-symbols-outlined">content_copy</span>
+                Ver Duplicatas
+              </button>
               <div class="drop-sep"></div>
               <button class="drop-item" @click="abrirEtiquetas">
                 <span class="material-symbols-outlined">label</span>
@@ -290,6 +294,76 @@
     </div>
   </Teleport>
 
+  <!-- Modal de Duplicatas -->
+  <Teleport to="body">
+    <div v-if="showDuplicatas" class="modal-backdrop" @click.self="showDuplicatas = false">
+      <div class="modal-box dup-modal">
+        <div class="modal-header">
+          <span class="material-symbols-outlined" style="color:var(--primary)">content_copy</span>
+          <h3>Produtos Duplicados</h3>
+          <button class="modal-close" @click="showDuplicatas = false">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body dup-body">
+          <div v-if="carregandoDuplicatas" class="dup-loading">
+            <div class="spin"></div>
+            <span>Verificando duplicatas...</span>
+          </div>
+          <template v-else-if="dupGruposLista.length === 0">
+            <div class="dup-vazio">
+              <span class="material-symbols-outlined" style="font-size:2.5rem;color:var(--primary)">check_circle</span>
+              <p>Nenhum produto duplicado encontrado.</p>
+            </div>
+          </template>
+          <template v-else>
+            <div v-for="grupo in dupGruposPaginados" :key="grupo.tipo + grupo.chave" class="dup-grupo">
+              <div class="dup-grupo-label">
+                <span class="material-symbols-outlined dup-grupo-ico">{{ grupo.tipo === 'descricao' ? 'text_fields' : 'barcode' }}</span>
+                <span class="dup-grupo-chave">{{ grupo.tipo === 'descricao' ? grupo.chave : 'EAN: ' + grupo.chave }}</span>
+                <span class="dup-grupo-badge">{{ grupo.produtos.length }} produtos com {{ grupo.tipo === 'descricao' ? 'mesma descrição' : 'mesmo EAN' }}</span>
+              </div>
+              <div class="dup-grupo-itens">
+                <div v-for="(p, idx) in grupo.produtos" :key="p.pk" class="dup-item">
+                  <span class="dup-item-num">{{ idx + 1 }}</span>
+                  <div class="dup-item-info">
+                    <span class="dup-item-desc">{{ p.descricao }}</span>
+                    <div class="dup-item-meta">
+                      <span class="dup-item-cod">Cód. {{ p.codigo || '—' }}</span>
+                      <span :class="['dup-item-barras', grupo.tipo === 'codigo_barras' ? 'dup-igual' : '']">
+                        {{ p.codigo_barras || 'sem EAN' }}
+                      </span>
+                      <span class="dup-item-saldo">Est. {{ p.saldo ?? 0 }}</span>
+                      <span class="dup-item-venda">{{ fmt(p.valor_venda) }}</span>
+                    </div>
+                  </div>
+                  <button class="dup-btn-editar" @click="$router.push(`/produtos/${p.pk}/editar`); showDuplicatas = false">
+                    <span class="material-symbols-outlined">edit</span>
+                    Editar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="modal-footer dup-footer">
+          <span class="dup-total" v-if="dupGruposLista.length > 0">
+            {{ dupGruposLista.length }} grupo(s) · {{ dupResumoInfo }}
+          </span>
+          <div v-if="dupTotalPaginas > 1" class="paginacao" style="padding:0;flex:1;justify-content:center">
+            <button :disabled="dupPagina === 1" @click="dupIrPara(dupPagina - 1)" class="pg-btn">‹</button>
+            <template v-for="p in dupPaginacaoVisiveis" :key="p">
+              <span v-if="p === '...'" class="pg-ellipsis">…</span>
+              <button v-else :class="['pg-btn', dupPagina === p ? 'active' : '']" @click="dupIrPara(p)">{{ p }}</button>
+            </template>
+            <button :disabled="dupPagina === dupTotalPaginas" @click="dupIrPara(dupPagina + 1)" class="pg-btn">›</button>
+          </div>
+          <button class="btn-secondary" @click="showDuplicatas = false">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
   <!-- Scanner de código de barras -->
   <Teleport to="body">
     <div v-if="scannerAberto" class="prod-scanner-overlay">
@@ -334,7 +408,19 @@ const categorias  = ref([]);
 const carregando  = ref(true);
 const viewMode     = ref("grid");
 const POR_PAGINA   = 48;
-const showAcoes    = ref(false);
+const showAcoes           = ref(false);
+const showDuplicatas      = ref(false);
+const carregandoDuplicatas = ref(false);
+const dupGruposLista       = ref([]);
+
+const {
+  pagina:             dupPagina,
+  paginados:          dupGruposPaginados,
+  totalPaginas:       dupTotalPaginas,
+  resumoInfo:         dupResumoInfo,
+  paginacaoVisiveis:  dupPaginacaoVisiveis,
+  irPara:             dupIrPara,
+} = useListaPaginada(dupGruposLista, (items) => items, 5);
 const filtroPromo      = ref(false);
 const categoriaFiltro  = ref(null);
 const produtoParaExcluir = ref(null);
@@ -519,6 +605,31 @@ function exportarProdutos() {
   const data = new Date().toLocaleDateString('en-CA');
   XLSX.writeFile(wb, `produtos_${data}.xlsx`);
   showAcoes.value = false;
+}
+
+async function abrirDuplicatas() {
+  showAcoes.value = false;
+  showDuplicatas.value = true;
+  carregandoDuplicatas.value = true;
+  dupGruposLista.value = [];
+  dupPagina.value = 1;
+  try {
+    const filial_pk = sessaoStore.filial?.pk;
+    if (!filial_pk) return;
+    const res = await apiClient.get(`/api/pdv/produtos/duplicatas?filial_pk=${filial_pk}`);
+    const grupos = [];
+    (res.data.por_descricao || []).forEach(g =>
+      grupos.push({ tipo: 'descricao', chave: g.descricao, produtos: g.produtos })
+    );
+    (res.data.por_codigo_barras || []).forEach(g =>
+      grupos.push({ tipo: 'codigo_barras', chave: g.codigo_barras, produtos: g.produtos })
+    );
+    dupGruposLista.value = grupos;
+  } catch (e) {
+    console.error('Erro ao buscar duplicatas:', e.message);
+  } finally {
+    carregandoDuplicatas.value = false;
+  }
 }
 
 async function confirmarExclusao() {
@@ -929,6 +1040,55 @@ window.addEventListener('load',function(){
 [data-theme="light"] .etq-footer-info strong { color: #0f172a; }
 
 .drop-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── Modal Duplicatas ────────────────────────────────────────── */
+.dup-modal  { max-width: 680px; max-height: 88vh; }
+.dup-body   { flex: 1; overflow-y: auto; min-height: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.dup-footer { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.dup-total  { font-size: .82rem; color: var(--text2); white-space: nowrap; }
+
+.dup-loading { display: flex; align-items: center; gap: 12px; padding: 32px; color: var(--text2); }
+.dup-vazio   { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 20px; color: var(--text2); text-align: center; }
+.dup-vazio p { font-size: .95rem; }
+
+.dup-grupo       { background: var(--bg3); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); flex-shrink: 0; }
+.dup-grupo-label {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 14px; font-size: .81rem; font-weight: 700;
+  color: var(--text); background: rgba(99,102,241,.07);
+  border-bottom: 1px solid var(--border);
+}
+.dup-grupo-ico   { font-size: 17px; color: var(--primary); flex-shrink: 0; }
+.dup-grupo-chave { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dup-grupo-badge {
+  font-size: .7rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; flex-shrink: 0;
+  background: rgba(99,102,241,.15); color: var(--primary);
+}
+.dup-grupo-itens { display: flex; flex-direction: column; }
+.dup-item        { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+.dup-item:last-child { border-bottom: none; }
+.dup-item-num    {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(99,102,241,.15); color: var(--primary);
+  font-size: .72rem; font-weight: 800; display: flex; align-items: center; justify-content: center;
+}
+.dup-item-info   { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.dup-item-desc   { font-size: .86rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dup-item-meta   { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.dup-item-cod    { font-family: monospace; font-size: .75rem; color: var(--text2); background: var(--bg2); padding: 2px 6px; border-radius: 5px; }
+.dup-item-barras { font-family: monospace; font-size: .75rem; color: var(--text2); background: var(--bg2); padding: 2px 6px; border-radius: 5px; }
+.dup-item-barras.dup-igual { background: rgba(239,68,68,.12); color: #ef4444; font-weight: 700; }
+.dup-item-saldo  { font-size: .75rem; color: var(--text2); }
+.dup-item-venda  { font-size: .78rem; font-weight: 700; color: var(--primary); }
+.dup-btn-editar  {
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+  padding: 5px 11px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg2); color: var(--text); font-size: .78rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.dup-btn-editar:hover { background: rgba(99,102,241,.1); border-color: var(--primary); color: var(--primary); }
+.dup-btn-editar .material-symbols-outlined { font-size: 15px; }
+.pg-ellipsis { padding: 0 4px; color: var(--text2); font-size: .9rem; letter-spacing: 2px; }
 
 .acoes     { text-align: right !important; white-space: nowrap; }
 .btn-edit  { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; border-radius: 8px; transition: all .2s; }

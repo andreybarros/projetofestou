@@ -1,5 +1,7 @@
 # Festou — Instruções para Claude Code
 
+> **Design System:** Antes de criar ou editar qualquer componente visual, leia `DESIGN_SYSTEM.md` na raiz do projeto. Ele define tokens CSS, padrões de botão, modal, toast, input, tabela, paginação, sidebar e composables disponíveis.
+
 ## Stack
 - **Frontend**: Vue 3 (`<script setup>` + Composition API), Vite, Pinia, Vue Router 4, Axios, Supabase JS
 - **Backend**: Node.js, Express 4, Supabase JS, JWT customizado (HMAC-SHA256, 12h)

@@ -671,23 +671,19 @@ async function salvar() {
 
     let error, novoPk;
     if (pk) {
-      // Update via backend para garantir auditoria de estoque no servidor
       try {
         await api.put(`/api/pdv/produto/${pk}`, payload);
       } catch (e) {
         error = e.response?.data || e;
       }
     } else {
-      let inserted;
-      ({ data: inserted, error } = await supabase.from('produtos').insert(payload).select('pk').single());
-      if (error?.code === '23505' && error.message.includes('codigo')) {
-        const filialPk = sessaoStore.filial?.pk || null;
-        const { data: novoCod } = await supabase.rpc('proximo_codigo_produto', { p_filial_pk: filialPk });
-        payload.codigo = novoCod || payload.codigo;
-        form.value.codigo = payload.codigo;
-        ({ data: inserted, error } = await supabase.from('produtos').insert(payload).select('pk').single());
+      try {
+        const res = await api.post('/api/pdv/produto', payload);
+        novoPk = res.data.pk;
+        if (res.data.codigo) form.value.codigo = res.data.codigo;
+      } catch (e) {
+        error = e.response?.data || e;
       }
-      novoPk = inserted?.pk;
     }
     if (error) throw error;
 
@@ -703,7 +699,7 @@ async function salvar() {
       router.push('/produtos');
     }
   } catch (e) {
-    erro.value = e.message;
+    erro.value = e?.erro || e?.message || 'Erro ao salvar.';
   } finally {
     salvando.value = false;
   }

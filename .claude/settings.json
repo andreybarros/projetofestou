@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$json = $input | Out-String | ConvertFrom-Json; $fp = $json.tool_input.file_path; if ($fp -match '\\.vue$') { $ds = [System.IO.File]::ReadAllText('c:\\Users\\AndreyBarros\\projeto_festou\\DESIGN_SYSTEM.md'); Write-Output ([pscustomobject]@{hookSpecificOutput=[pscustomobject]@{hookEventName='PreToolUse';additionalContext=$ds}} | ConvertTo-Json -Depth 3 -Compress) }",
+            "timeout": 10,
+            "statusMessage": "Carregando Design System..."
+          }
+        ]
+      }
+    ]
+  }
+}
