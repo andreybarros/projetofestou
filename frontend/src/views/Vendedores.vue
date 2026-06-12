@@ -38,44 +38,32 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useSessaoStore } from '../stores/sessao';
-import { supabase } from '../composables/useSupabase';
+import { ref, onMounted } from 'vue';
+import { useCarregaSupabase } from '../composables/useCarregaSupabase';
+import { useListaPaginada }   from '../composables/useListaPaginada';
+import { useExcluirItem }     from '../composables/useExcluirItem';
 
-const sessaoStore = useSessaoStore();
-const lista      = ref([]);
-const carregando = ref(true);
-const busca      = ref('');
+const lista = ref([]);
 
-const filtrados = computed(() => {
-  const q = busca.value.trim().toLowerCase();
-  if (!q) return lista.value;
-  return lista.value.filter(v => (v.nome || '').toLowerCase().includes(q));
-});
+const { carregando, executar } = useCarregaSupabase();
+
+const { busca, filtrados } =
+  useListaPaginada(lista, (items, q) => {
+    const lower = q.trim().toLowerCase();
+    return lower ? items.filter(v => (v.nome || '').toLowerCase().includes(lower)) : items;
+  });
 
 onMounted(carregar);
 
 async function carregar() {
-  carregando.value = true;
-  try {
-    let q = supabase.from('vendedores').select('pk, nome, telefone, ativo').eq('ativo', true).order('nome');
-    if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-  } catch (e) {
-    console.error(e.message);
-  } finally {
-    carregando.value = false;
-  }
+  await executar((sb, filialPk) => {
+    let q = sb.from('vendedores').select('pk, nome, telefone, ativo').eq('ativo', true).order('nome');
+    if (filialPk) q = q.eq('filial_pk', filialPk);
+    return q;
+  }, lista);
 }
 
-async function excluir(v) {
-  if (!confirm(`Excluir vendedor "${v.nome}"?`)) return;
-  const { error } = await supabase.from('vendedores').update({ ativo: false }).eq('pk', v.pk);
-  if (error) return alert('Erro: ' + error.message);
-  await carregar();
-}
+const { excluir } = useExcluirItem('vendedores', carregar);
 </script>
 
 <style scoped>

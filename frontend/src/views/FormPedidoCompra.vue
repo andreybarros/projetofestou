@@ -289,10 +289,12 @@ import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 import api from '../services/api';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const route = useRoute();
 const router = useRouter();
 const sessaoStore = useSessaoStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 const pk = route.params.pk;
 const editando = !!pk;
@@ -595,10 +597,6 @@ async function salvar() {
 function labelStatus(s) {
   const m = { em_andamento: 'Em Andamento', comprado: 'Comprado', cancelado: 'Cancelado', finalizado: 'Finalizado' };
   return m[s] || s;
-}
-
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
 
 function showToast(msg, tipo = 'ok') {

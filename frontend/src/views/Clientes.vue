@@ -258,11 +258,12 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useSessaoStore } from '../stores/sessao';
-import { supabase } from '../composables/useSupabase';
+import { useCarregaSupabase } from '../composables/useCarregaSupabase';
+import { useListaPaginada }   from '../composables/useListaPaginada';
+import { useExcluirItem }     from '../composables/useExcluirItem';
 
-const sessaoStore = useSessaoStore();
 const lista       = ref([]);
+const filtroAtivo = ref('todos');
 
 const linkEspaco  = computed(() => window.location.origin + '/minha-conta');
 const linkCopiado = ref(false);
@@ -274,11 +275,6 @@ function copiarLink() {
     _copiarTimer = setTimeout(() => { linkCopiado.value = false; }, 2500);
   });
 }
-const carregando  = ref(true);
-const busca       = ref('');
-const pagina      = ref(1);
-const filtroAtivo = ref('todos');
-const POR_PAGINA  = 20;
 
 // ── Avatar gradient ──
 const GRADS = [
@@ -302,7 +298,6 @@ function avatarGrad(nome) {
 }
 
 // ── Metrics ──
-
 const totalDecoradores = computed(() => lista.value.filter(c => c.decorador).length);
 const pctDecoradores   = computed(() =>
   lista.value.length ? Math.round(totalDecoradores.value / lista.value.length * 100) : 0
@@ -314,80 +309,39 @@ const tabs = computed(() => [
   { val: 'decoradores', label: 'Decoradores', count: totalDecoradores.value },
 ]);
 
-// ── Filtering ──
-const filtrados = computed(() => {
-  let res = lista.value;
+// ── Paginação + busca ──
+const { carregando, executar } = useCarregaSupabase();
 
-  if (filtroAtivo.value === 'decoradores') {
-    res = res.filter(c => c.decorador);
-  }
+const { busca, pagina, filtrados, paginados, totalPaginas, resumoInfo, paginacaoVisiveis } =
+  useListaPaginada(lista, (items, q) => {
+    let res = filtroAtivo.value === 'decoradores' ? items.filter(c => c.decorador) : items;
+    const lower = q.trim().toLowerCase();
+    if (lower) res = res.filter(c =>
+      (c.nome     || '').toLowerCase().includes(lower) ||
+      (c.cpf      || '').includes(lower) ||
+      (c.telefone || '').includes(lower)
+    );
+    return res;
+  });
 
-  const q = busca.value.trim().toLowerCase();
-  if (q) res = res.filter(c =>
-    (c.nome      || '').toLowerCase().includes(q) ||
-    (c.cpf       || '').includes(q) ||
-    (c.telefone  || '').includes(q)
-  );
-
-  return res;
-});
-
-const totalPaginas = computed(() => Math.max(1, Math.ceil(filtrados.value.length / POR_PAGINA)));
-
-const paginados = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA;
-  return filtrados.value.slice(ini, ini + POR_PAGINA);
-});
-
-const resumoInfo = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA + 1;
-  const fim = Math.min(pagina.value * POR_PAGINA, filtrados.value.length);
-  return `${ini}–${fim}`;
-});
-
-const paginacaoVisiveis = computed(() => {
-  const tp = totalPaginas.value;
-  const p  = pagina.value;
-  if (tp <= 7) return Array.from({ length: tp }, (_, i) => i + 1);
-  const pages = [1];
-  if (p > 3) pages.push('...');
-  for (let i = Math.max(2, p - 1); i <= Math.min(tp - 1, p + 1); i++) pages.push(i);
-  if (p < tp - 2) pages.push('...');
-  pages.push(tp);
-  return pages;
-});
-
-watch(busca,       () => { pagina.value = 1; });
 watch(filtroAtivo, () => { pagina.value = 1; });
 
 // ── Data ──
 onMounted(carregar);
 
 async function carregar() {
-  carregando.value = true;
-  try {
-    let q = supabase
+  await executar((sb, filialPk) => {
+    let q = sb
       .from('clientes')
       .select('pk, nome, cpf, telefone, email, decorador, cidade, uf, data_nascimento')
       .eq('ativo', true)
       .order('nome');
-    if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-  } catch (e) {
-    console.error('[Clientes/carregar]', e.message);
-  } finally {
-    carregando.value = false;
-  }
+    if (filialPk) q = q.eq('filial_pk', filialPk);
+    return q;
+  }, lista);
 }
 
-async function excluir(c) {
-  if (!confirm(`Excluir cliente "${c.nome}"?`)) return;
-  const { error } = await supabase.from('clientes').update({ ativo: false }).eq('pk', c.pk);
-  if (error) return alert('Erro: ' + error.message);
-  await carregar();
-}
+const { excluir } = useExcluirItem('clientes', carregar);
 
 // ── Aniversariantes ──
 const aniversariantes = computed(() => {

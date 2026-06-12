@@ -189,9 +189,11 @@ import { useSessaoStore }     from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import { supabase }           from '../composables/useSupabase';
 import apiClient              from '../services/api';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessao     = useSessaoStore();
 const parametros = useParametrosStore();
+const { fmt, fmtNum } = useFormatacao();
 
 const op = computed(() => sessao.operador);
 
@@ -260,10 +262,6 @@ function contagem(s) {
 const filtrados = computed(() =>
   filtroStatus.value ? vales.value.filter(v => v.status === filtroStatus.value) : vales.value
 );
-
-function fmt(v) {
-  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
 
 function fmtData(iso) {
   if (!iso) return '—';

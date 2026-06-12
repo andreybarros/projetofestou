@@ -176,13 +176,14 @@
 import { ref, reactive, onMounted, inject, computed } from 'vue';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
+import { useCarregaSupabase } from '../composables/useCarregaSupabase';
 
 const sessaoStore = useSessaoStore();
 const showToast = inject('showToast');
+const { carregando, executar } = useCarregaSupabase();
 
 const lista = ref([]);
 const filiais = ref([]);
-const carregando = ref(true);
 const processando = ref(false);
 const modalAberto = ref(false);
 
@@ -262,24 +263,15 @@ onMounted(async () => {
 });
 
 async function carregar() {
-  carregando.value = true;
   const opLogado = sessaoStore.operador;
-  try {
-    let q = supabase.from('operadores').select('*').eq('ativo', true).order('nome');
-    
+  await executar((sb) => {
+    let q = sb.from('operadores').select('*').eq('ativo', true).order('nome');
     // Se o logado não for superadmin (tem filial_pk), vê só a sua filial
     if (opLogado?.filial_pk) {
       q = q.eq('filial_pk', opLogado.filial_pk);
     }
-
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-  } catch (e) {
-    showToast('Erro ao carregar operadores: ' + e.message, 'error');
-  } finally {
-    carregando.value = false;
-  }
+    return q;
+  }, lista);
 }
 
 async function carregarFiliais() {

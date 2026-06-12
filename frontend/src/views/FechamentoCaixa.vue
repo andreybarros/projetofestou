@@ -139,8 +139,10 @@ import { ref, onMounted, reactive } from 'vue';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
 import * as XLSX from 'xlsx';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 const carregando = ref(false);
 const resultado = ref(false);
 const operadores = ref([]);
@@ -340,9 +342,6 @@ function exportar() {
   XLSX.writeFile(wb, `Fechamento_${filtros.ini}_a_${filtros.fim}.xlsx`);
 }
 
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
 </script>
 
 <style scoped>

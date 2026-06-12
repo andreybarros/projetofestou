@@ -385,11 +385,12 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 import apiClient from '../services/api';
+import { useListaPaginada } from '../composables/useListaPaginada';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore      = useSessaoStore();
 const lista            = ref([]);
 const carregando       = ref(true);
-const busca            = ref('');
 const filtroStatus     = ref('');
 const recebendoPk      = ref(null);
 const recebModal       = ref(null);
@@ -402,29 +403,35 @@ let   _toastTimer      = null;
 const totais = ref({ totalPendente: 0, totalVencido: 0, totalRecebido: 0 });
 const formas = ref([]);
 
+const { fmt, fmtData } = useFormatacao();
+
 // ── Paginação ───────────────────────────────────────────────────
 const ITEMS_POR_PAGINA = 15;
-const paginaAtual = ref(1);
 
-const totalPaginas = computed(() => Math.max(1, Math.ceil(filtrados.value.length / ITEMS_POR_PAGINA)));
-const itensDe = computed(() => (paginaAtual.value - 1) * ITEMS_POR_PAGINA + 1);
+const {
+  busca,
+  pagina: paginaAtual,
+  filtrados,
+  totalPaginas,
+  paginados,
+  resumoInfo,
+  paginacaoVisiveis: paginasVisiveis,
+} = useListaPaginada(lista, (items, q) => {
+  const lower = q.trim().toLowerCase();
+  let l = lower
+    ? items.filter(v => (v.cliente_nome || '').toLowerCase().includes(lower) || String(v.numero).includes(lower))
+    : items;
+  if (filtroStatus.value) l = l.filter(v => v.status_calc === filtroStatus.value);
+  return l;
+}, ITEMS_POR_PAGINA);
+
+const itensDe = computed(() => {
+  if (!filtrados.value.length) return 0;
+  return (paginaAtual.value - 1) * ITEMS_POR_PAGINA + 1;
+});
 const itensAte = computed(() => Math.min(paginaAtual.value * ITEMS_POR_PAGINA, filtrados.value.length));
 
-const paginados = computed(() => {
-  const ini = (paginaAtual.value - 1) * ITEMS_POR_PAGINA;
-  return filtrados.value.slice(ini, ini + ITEMS_POR_PAGINA);
-});
-
-const paginasVisiveis = computed(() => {
-  const total = totalPaginas.value;
-  const cur = paginaAtual.value;
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = [];
-  if (cur > 3) pages.push(1, '...');
-  for (let p = Math.max(1, cur - 2); p <= Math.min(total, cur + 2); p++) pages.push(p);
-  if (cur < total - 2) pages.push('...', total);
-  return pages;
-});
+watch(filtroStatus, () => { paginaAtual.value = 1; });
 
 // ── Computed ────────────────────────────────────────────────────
 const formaLabel = computed(() => {
@@ -432,16 +439,6 @@ const formaLabel = computed(() => {
   formas.value.forEach(f => { m[f.val] = f.label; });
   return m;
 });
-
-const filtrados = computed(() => {
-  let l = lista.value;
-  const q = busca.value.trim().toLowerCase();
-  if (q) l = l.filter(v => (v.cliente_nome || '').toLowerCase().includes(q) || String(v.numero).includes(q));
-  if (filtroStatus.value) l = l.filter(v => v.status_calc === filtroStatus.value);
-  return l;
-});
-
-watch([busca, filtroStatus], () => { paginaAtual.value = 1; });
 
 const totalPendente = computed(() => totais.value.totalPendente);
 const totalVencido  = computed(() => totais.value.totalVencido);
@@ -513,7 +510,7 @@ function exportarCSV() {
     `"${(v.cliente_nome || '').replace(/"/g, '""')}"`,
     `"${(v.vendedor || '').replace(/"/g, '""')}"`,
     fmtDate(v.criado_em),
-    fmtDateOnly(v.data_vencimento_crediario),
+    fmtData(v.data_vencimento_crediario),
     (v.valor_crediario || 0).toFixed(2).replace('.', ','),
     labelStatus(v.status_calc),
   ].join(','));
@@ -553,18 +550,12 @@ function avatarColor(nome) {
   return AVATAR_COLORS[sum % AVATAR_COLORS.length];
 }
 
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('pt-BR');
 }
-function fmtDateOnly(d) {
-  if (!d) return '—';
-  const [y, m, dia] = d.split('-');
-  return `${dia}/${m}/${y}`;
-}
+
+const fmtDateOnly = fmtData;
 
 onUnmounted(() => { clearTimeout(_toastTimer); });
 </script>

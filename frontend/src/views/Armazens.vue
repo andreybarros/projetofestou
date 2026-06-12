@@ -126,44 +126,36 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
 import { useRouter } from 'vue-router';
+import { useCarregaSupabase } from '../composables/useCarregaSupabase';
+import { useListaPaginada } from '../composables/useListaPaginada';
 
 const router      = useRouter();
 const sessaoStore = useSessaoStore();
-const lista       = ref([]);
-const enderecos   = ref([]);
-const carregando  = ref(true);
-const busca       = ref('');
+const { carregando, executar } = useCarregaSupabase();
+
+const lista     = ref([]);
+const enderecos = ref([]);
 const armToDelete = ref(null);
 const excluindo   = ref(false);
 const toast       = ref('');
-const pagina      = ref(1);
-const POR_PAGINA  = 12;
 
 function showToast(msg, duracao = 2800) {
   toast.value = msg;
   setTimeout(() => { toast.value = ''; }, duracao);
 }
 
-const filtrados = computed(() => {
-  const q = busca.value.trim().toLowerCase();
-  if (!q) return lista.value;
-  return lista.value.filter(a =>
-    (a.id          || '').toLowerCase().includes(q) ||
-    (a.localizacao || '').toLowerCase().includes(q)
+const { busca, pagina, filtrados, paginados, totalPaginas } = useListaPaginada(lista, (items, q) => {
+  const lower = q.trim().toLowerCase();
+  if (!lower) return items;
+  return items.filter(a =>
+    (a.id          || '').toLowerCase().includes(lower) ||
+    (a.localizacao || '').toLowerCase().includes(lower)
   );
-});
-
-const totalPaginas = computed(() => Math.max(1, Math.ceil(filtrados.value.length / POR_PAGINA)));
-const paginados    = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA;
-  return filtrados.value.slice(ini, ini + POR_PAGINA);
-});
-
-watch(busca, () => { pagina.value = 1; });
+}, 12);
 
 function enderecosPorArmazem(armPk) {
   return enderecos.value.filter(e => e.armazem_pk == armPk);
@@ -176,25 +168,18 @@ function contarEnderecos(armPk) {
 onMounted(carregar);
 
 async function carregar() {
-  carregando.value = true;
-  try {
-    let q = supabase.from('armazem').select('pk, filial, id, localizacao').eq('ativo', true).order('id');
+  await executar((sb) => {
+    let q = sb.from('armazem').select('pk, filial, id, localizacao').eq('ativo', true).order('id');
     if (sessaoStore.filial?.codigo) q = q.eq('filial', sessaoStore.filial.codigo);
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
+    return q;
+  }, lista);
 
-    // Carrega todos os endereços de uma vez
-    const { data: ends } = await supabase
-      .from('endereco_armazem')
-      .select('pk, armazem_pk, codigo, descricao')
-      .order('codigo');
-    enderecos.value = ends || [];
-  } catch (e) {
-    console.error(e.message);
-  } finally {
-    carregando.value = false;
-  }
+  // Carrega todos os endereços de uma vez
+  const { data: ends } = await supabase
+    .from('endereco_armazem')
+    .select('pk, armazem_pk, codigo, descricao')
+    .order('codigo');
+  enderecos.value = ends || [];
 }
 
 // Abre o modal de confirmação (substitui o confirm() nativo)

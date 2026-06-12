@@ -49,63 +49,37 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useSessaoStore } from '../stores/sessao';
-import { supabase } from '../composables/useSupabase';
+import { ref, onMounted } from 'vue';
+import { useCarregaSupabase } from '../composables/useCarregaSupabase';
+import { useListaPaginada }   from '../composables/useListaPaginada';
+import { useExcluirItem }     from '../composables/useExcluirItem';
 
-const sessaoStore = useSessaoStore();
-const lista      = ref([]);
-const carregando = ref(true);
-const busca      = ref('');
-const pagina      = ref(1);
-const POR_PAGINA  = 20;
+const lista = ref([]);
 
-const filtrados = computed(() => {
-  const q = busca.value.trim().toLowerCase();
-  if (!q) return lista.value;
-  return lista.value.filter(f =>
-    (f.nome     || '').toLowerCase().includes(q) ||
-    (f.cnpj_cpf || '').includes(q) ||
-    (f.telefone || '').includes(q)
-  );
-});
+const { carregando, executar } = useCarregaSupabase();
 
-const totalPaginas = computed(() => Math.max(1, Math.ceil(filtrados.value.length / POR_PAGINA)));
-const paginados    = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA;
-  return filtrados.value.slice(ini, ini + POR_PAGINA);
-});
-const resumoInfo   = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA + 1;
-  const fim = Math.min(pagina.value * POR_PAGINA, filtrados.value.length);
-  return `${ini}–${fim}`;
-});
-
-watch(busca, () => { pagina.value = 1; });
+const { busca, pagina, filtrados, paginados, totalPaginas, resumoInfo } =
+  useListaPaginada(lista, (items, q) => {
+    const lower = q.trim().toLowerCase();
+    if (!lower) return items;
+    return items.filter(f =>
+      (f.nome     || '').toLowerCase().includes(lower) ||
+      (f.cnpj_cpf || '').includes(lower) ||
+      (f.telefone || '').includes(lower)
+    );
+  });
 
 onMounted(carregar);
 
 async function carregar() {
-  carregando.value = true;
-  try {
-    let q = supabase.from('fornecedores').select('pk, nome, cnpj_cpf, telefone, email').eq('ativo', true).order('nome');
-    if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-  } catch (e) {
-    console.error(e.message);
-  } finally {
-    carregando.value = false;
-  }
+  await executar((sb, filialPk) => {
+    let q = sb.from('fornecedores').select('pk, nome, cnpj_cpf, telefone, email').eq('ativo', true).order('nome');
+    if (filialPk) q = q.eq('filial_pk', filialPk);
+    return q;
+  }, lista);
 }
 
-async function excluir(f) {
-  if (!confirm(`Excluir fornecedor "${f.nome}"?`)) return;
-  const { error } = await supabase.from('fornecedores').update({ ativo: false }).eq('pk', f.pk);
-  if (error) return alert('Erro: ' + error.message);
-  await carregar();
-}
+const { excluir } = useExcluirItem('fornecedores', carregar);
 </script>
 
 <style scoped>

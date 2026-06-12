@@ -145,10 +145,12 @@ import { useCaixaStore }  from "../stores/caixa";
 import { useSessaoStore } from "../stores/sessao";
 import { supabase } from "../composables/useSupabase";
 import apiClient from "../services/api";
+import { useFormatacao } from '../composables/useFormatacao';
 
 const caixaStore  = useCaixaStore();
 const sessaoStore = useSessaoStore();
 const showToast   = inject("showToast");
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 const contas           = ref([]);
 const vendedores       = ref([]);
@@ -212,10 +214,6 @@ async function carregarContas() {
   } catch (e) {
     console.error("Erro ao carregar contas:", e);
   }
-}
-
-function fmt(v) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 }
 
 function fmtTime(d) {

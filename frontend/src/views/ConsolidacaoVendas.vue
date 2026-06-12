@@ -399,8 +399,10 @@
 import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import api from '../services/api';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 const hoje      = new Date().toISOString().slice(0, 10);
 const inicioMes = hoje.slice(0, 8) + '01';
@@ -626,9 +628,6 @@ function labelForma(f) {
   if (found) return found.label || found.forma;
   const fallback = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', crediario: 'Crediário' };
   return fallback[f.toLowerCase()] || f;
-}
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
 function fmtDataSimples(s) {
   if (!s) return '—';

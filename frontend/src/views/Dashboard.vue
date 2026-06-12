@@ -183,9 +183,11 @@ import { useSessaoStore } from "../stores/sessao";
 import { useCaixaStore }  from "../stores/caixa";
 import { supabase }       from "../composables/useSupabase";
 import * as XLSX from "xlsx";
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore   = useSessaoStore();
 const caixaStore    = useCaixaStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 const carregando    = ref(true);
 const ultimasVendas = ref([]);
 const totalHoje         = ref(0);
@@ -295,10 +297,6 @@ async function exportarEstoqueZerado() {
   } finally {
     exportandoEstoque.value = false;
   }
-}
-
-function fmt(v) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 }
 
 function statusCls(s) {

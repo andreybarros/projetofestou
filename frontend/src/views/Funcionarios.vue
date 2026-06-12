@@ -257,16 +257,20 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
+import { useCarregaSupabase } from '../composables/useCarregaSupabase';
+import { useListaPaginada } from '../composables/useListaPaginada';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
-const lista       = ref([]);
-const carregando  = ref(true);
-const busca       = ref('');
-const filtro      = ref('todos');
-const modal       = ref(false);
-const salvando    = ref(false);
-const toastMsg    = ref('');
-const toastTipo   = ref('ok');
+const { carregando, executar } = useCarregaSupabase();
+const { fmt, fmtData: fmtDate } = useFormatacao();
+
+const lista    = ref([]);
+const filtro   = ref('todos');
+const modal    = ref(false);
+const salvando = ref(false);
+const toastMsg  = ref('');
+const toastTipo = ref('ok');
 let   _toastTimer = null;
 
 const formVazio = () => ({
@@ -285,14 +289,19 @@ function toast(msg, tipo = 'ok', dur = 3500) {
   _toastTimer = setTimeout(() => { toastMsg.value = ''; }, dur);
 }
 
+const { busca, filtrados: filtradosBusca } = useListaPaginada(lista, (items, q) => {
+  const lower = q.trim().toLowerCase();
+  return lower
+    ? items.filter(f =>
+        f.nome.toLowerCase().includes(lower) ||
+        (f.cpf || '').includes(lower) ||
+        (f.matricula || '').toLowerCase().includes(lower)
+      )
+    : items;
+});
+
 const filtrados = computed(() => {
-  let l = lista.value;
-  const q = busca.value.trim().toLowerCase();
-  if (q) l = l.filter(f =>
-    f.nome.toLowerCase().includes(q) ||
-    (f.cpf || '').includes(q) ||
-    (f.matricula || '').toLowerCase().includes(q)
-  );
+  let l = filtradosBusca.value;
   if (filtro.value === 'ativos')    l = l.filter(f => f.ativo);
   if (filtro.value === 'inativos')  l = l.filter(f => !f.ativo);
   if (filtro.value === 'diaristas') l = l.filter(f => f.diarista);
@@ -302,20 +311,11 @@ const filtrados = computed(() => {
 onMounted(carregar);
 
 async function carregar() {
-  carregando.value = true;
-  try {
-    let q = supabase.from('funcionarios').select('*').order('nome');
-    if (sessaoStore.filial?.pk) {
-      q = q.or(`filial_pk.eq.${sessaoStore.filial.pk},filial_pk.is.null`);
-    }
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-  } catch (e) {
-    toast('Erro ao carregar: ' + e.message, 'err');
-  } finally {
-    carregando.value = false;
-  }
+  await executar((sb, filialPk) => {
+    let q = sb.from('funcionarios').select('*').order('nome');
+    if (filialPk) q = q.or(`filial_pk.eq.${filialPk},filial_pk.is.null`);
+    return q;
+  }, lista);
 }
 
 function abrirNovo() {
@@ -390,15 +390,6 @@ function maskCpf() {
        .replace(/(\d{3})(\d)/, '$1.$2')
        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
   form.value.cpf = v;
-}
-
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
-function fmtDate(d) {
-  if (!d) return '';
-  const [y, m, dia] = d.split('-');
-  return `${dia}/${m}/${y}`;
 }
 
 onUnmounted(() => { clearTimeout(_toastTimer); });

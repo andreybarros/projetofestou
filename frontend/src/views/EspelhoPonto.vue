@@ -208,8 +208,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessao = useSessaoStore();
+const { fmt, fmtNum } = useFormatacao();
 const meses  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 const loading      = ref(true);
@@ -411,7 +413,6 @@ async function rejeitar() {
 // Helpers
 function timeToSec(t) { const [h, m] = t.split(':'); return +h * 3600 + +m * 60; }
 function formatSec(s) { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return `${h}h${String(m).padStart(2,'0')}`; }
-function fmt(v) { return new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v || 0); }
 function fmtData(d) { return d ? new Date(d).toLocaleString('pt-BR') : ''; }
 
 onMounted(carregar);

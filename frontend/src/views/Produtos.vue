@@ -324,15 +324,15 @@ import { useSessaoStore } from "../stores/sessao";
 import { supabase } from "../composables/useSupabase";
 import apiClient from "../services/api";
 import * as XLSX from "xlsx";
+import { useListaPaginada } from "../composables/useListaPaginada";
+import { useFormatacao } from "../composables/useFormatacao";
 
 const router      = useRouter();
 const sessaoStore = useSessaoStore();
 const produtos    = ref([]);
 const categorias  = ref([]);
 const carregando  = ref(true);
-const busca        = ref(sessionStorage.getItem('produtos_busca') || "");
 const viewMode     = ref("grid");
-const pagina       = ref(1);
 const POR_PAGINA   = 48;
 const showAcoes    = ref(false);
 const filtroPromo      = ref(false);
@@ -345,6 +345,8 @@ const scannerStatusTipo = ref('');
 let zxingReader     = null;
 let scannerControls = null;
 let scannerDetectado = false;
+
+const { fmt } = useFormatacao();
 
 async function abrirScanner() {
   scannerAberto.value = true;
@@ -412,26 +414,28 @@ function semAcento(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-const produtosFiltrados = computed(() => {
-  const q = semAcento((busca.value || '').trim());
-  return produtos.value.filter(p => {
+const {
+  busca,
+  pagina,
+  filtrados: produtosFiltrados,
+  paginados: produtosPaginados,
+  totalPaginas,
+} = useListaPaginada(produtos, (items, q) => {
+  const qNorm = semAcento(q.trim());
+  return items.filter(p => {
     if (filtroPromo.value && !p.em_promo) return false;
     if (categoriaFiltro.value !== null && Number(p.categoria_pk) !== Number(categoriaFiltro.value)) return false;
-    if (!q) return true;
-    const palavras = q.split(/\s+/).filter(Boolean);
+    if (!qNorm) return true;
+    const palavras = qNorm.split(/\s+/).filter(Boolean);
     const desc   = semAcento(p.descricao);
     const codigo = semAcento(p.codigo);
     const barras = (p.codigo_barras || '').toLowerCase();
-    if (barras.includes(q) || codigo.includes(q)) return true;
+    if (barras.includes(qNorm) || codigo.includes(qNorm)) return true;
     return palavras.every(w => desc.includes(w));
   });
-});
+}, POR_PAGINA);
 
-const totalPaginas    = computed(() => Math.max(1, Math.ceil(produtosFiltrados.value.length / POR_PAGINA)));
-const produtosPaginados = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA;
-  return produtosFiltrados.value.slice(ini, ini + POR_PAGINA);
-});
+busca.value = sessionStorage.getItem('produtos_busca') || '';
 
 const totais = computed(() => {
   try {
@@ -448,7 +452,7 @@ const totais = computed(() => {
   }
 });
 
-watch(busca,           (v) => { pagina.value = 1; sessionStorage.setItem('produtos_busca', v); });
+watch(busca,           (v) => { sessionStorage.setItem('produtos_busca', v); });
 watch(filtroPromo,     () => { pagina.value = 1; });
 watch(categoriaFiltro, () => { pagina.value = 1; });
 
@@ -528,14 +532,6 @@ async function confirmarExclusao() {
     console.error("Erro ao excluir produto:", e.message);
   } finally {
     excluindo.value = false;
-  }
-}
-
-function fmt(v) {
-  try {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
-  } catch (err) {
-    return "R$ 0,00";
   }
 }
 

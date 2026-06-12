@@ -227,8 +227,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import { supabase } from '../composables/useSupabase';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
+const { fmt, fmtNum } = useFormatacao();
 
 // ── Filtros ───────────────────────────────────────────────────
 const hoje = new Date().toISOString().slice(0, 10);
@@ -312,9 +314,6 @@ function diferencaClass(s) {
 }
 
 // ── Formatação ────────────────────────────────────────────────
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
 function fmtDif(v) {
   return (v >= 0 ? '+' : '') + fmt(v);
 }

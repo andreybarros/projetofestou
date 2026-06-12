@@ -580,11 +580,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { useSessaoStore } from '../stores/sessao';
 import { useParametrosStore } from '../stores/parametros';
 import apiClient from '../services/api';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const route      = useRoute();
 const router     = useRouter();
 const sessao     = useSessaoStore();
 const parametros = useParametrosStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 // ── Lista ──────────────────────────────────────────────────────────────────
 const lista          = ref([]);
@@ -844,7 +846,6 @@ watch(pagarHorasDomingo, (val) => {
 // ── Utils ──────────────────────────────────────────────────────────────────
 function formatSec(s) { const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return `${h}h${String(m).padStart(2,'0')}`; }
 function fmtH(v)  { return (v || 0).toFixed(2) + 'h'; }
-function fmt(v)   { return new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v || 0); }
 
 // ── Carregar lista ─────────────────────────────────────────────────────────
 async function carregarLista() {

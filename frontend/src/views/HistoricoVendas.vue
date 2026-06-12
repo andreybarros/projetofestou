@@ -452,11 +452,13 @@ import { useSessaoStore }     from "../stores/sessao";
 import { useParametrosStore } from "../stores/parametros";
 import apiClient              from "../services/api";
 import { imprimirContratoLocacao } from "../utils/contrato";
+import { useFormatacao } from '../composables/useFormatacao';
 
 const route           = useRoute();
 const router          = useRouter();
 const sessaoStore     = useSessaoStore();
 const parametrosStore = useParametrosStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 const vendas         = ref([]);
 const carregando     = ref(false);
@@ -892,10 +894,6 @@ async function imprimirDanfe(url) {
   } catch {
     window.open(url, '_blank');
   }
-}
-
-function fmt(v) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 }
 
 function fmtDate(d) {

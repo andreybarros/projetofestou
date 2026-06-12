@@ -296,9 +296,11 @@ import { useRouter } from 'vue-router';
 import { supabase } from '../composables/useSupabase';
 import { useSessaoStore } from '../stores/sessao';
 import api from '../services/api';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const router      = useRouter();
 const sessao      = useSessaoStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 const aba         = ref('nova');
 const step        = ref(1);
@@ -580,18 +582,9 @@ function reiniciar() {
   nf.value = { fornecedor_cnpj: '', fornecedor_nome: '', numero_nf: '', chave_nfe: '', data_emissao: '', total_nf: 0 };
 }
 
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
-
 function fmtCnpj(v) {
   if (!v || v.length < 14) return v || '—';
   return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-}
-
-function fmtData(d) {
-  if (!d) return '—';
-  return d.split('-').reverse().join('/');
 }
 
 function fmtDataHora(dt) {

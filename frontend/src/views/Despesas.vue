@@ -408,6 +408,8 @@
 import { ref, reactive, onMounted, computed, inject, watch } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import apiClient from '../services/api';
+import { useListaPaginada } from '../composables/useListaPaginada';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
 const showToast = inject('showToast');
@@ -417,7 +419,6 @@ const carregando = ref(true);
 const salvando   = ref(false);
 const modalAberto = ref(false);
 const modalBaixar = ref(false);
-
 
 const fornecedores      = ref([]);
 const contas            = ref([]);
@@ -434,6 +435,8 @@ const f = reactive({
 const despesaBaixar = ref(null);
 const contaBaixarPk = ref(null);
 
+const { fmt } = useFormatacao();
+
 // ── Paginação ───────────────────────────────────────────────────
 const ITEMS_POR_PAGINA = 15;
 const filtroCatPk = ref(null);
@@ -443,33 +446,25 @@ watch(() => ({ ...filtros }), () => {
   clearTimeout(_filterTimer);
   _filterTimer = setTimeout(carregar, 350);
 });
+
+const {
+  pagina: paginaAtual,
+  filtrados: listaFiltrada,
+  paginados: listaPaginada,
+  totalPaginas,
+  paginacaoVisiveis: paginasVisiveis,
+} = useListaPaginada(lista, (items) => {
+  if (!filtroCatPk.value) return items;
+  return items.filter(d => d.categoria_pk === filtroCatPk.value);
+}, ITEMS_POR_PAGINA);
+
 watch(filtroCatPk, () => { paginaAtual.value = 1; });
-const paginaAtual = ref(1);
 
-const listaFiltrada = computed(() => {
-  if (!filtroCatPk.value) return lista.value;
-  return lista.value.filter(d => d.categoria_pk === filtroCatPk.value);
+const itensDe = computed(() => {
+  if (!listaFiltrada.value.length) return 0;
+  return (paginaAtual.value - 1) * ITEMS_POR_PAGINA + 1;
 });
-
-const totalPaginas = computed(() => Math.max(1, Math.ceil(listaFiltrada.value.length / ITEMS_POR_PAGINA)));
-const itensDe = computed(() => (paginaAtual.value - 1) * ITEMS_POR_PAGINA + 1);
 const itensAte = computed(() => Math.min(paginaAtual.value * ITEMS_POR_PAGINA, listaFiltrada.value.length));
-
-const listaPaginada = computed(() => {
-  const ini = (paginaAtual.value - 1) * ITEMS_POR_PAGINA;
-  return listaFiltrada.value.slice(ini, ini + ITEMS_POR_PAGINA);
-});
-
-const paginasVisiveis = computed(() => {
-  const total = totalPaginas.value;
-  const cur = paginaAtual.value;
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = [];
-  if (cur > 3) pages.push(1, '...');
-  for (let p = Math.max(1, cur - 2); p <= Math.min(total, cur + 2); p++) pages.push(p);
-  if (cur < total - 2) pages.push('...', total);
-  return pages;
-});
 
 // ── Computed de resumo ──────────────────────────────────────────
 const hojeStr = computed(() => new Date().toLocaleDateString('en-CA'));
@@ -651,9 +646,6 @@ function vencMesAno(v) {
   return new Date(v + 'T12:00:00').toLocaleString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase();
 }
 
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
 </script>
 
 <style scoped>

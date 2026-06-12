@@ -205,8 +205,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../services/api';
 import { useSessaoStore } from '../stores/sessao';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
+const { fmt, fmtData, fmtNum } = useFormatacao();
 const carregando  = ref(true);
 const atualizando = ref(false);
 const produtos    = ref([]);
@@ -393,10 +395,6 @@ async function limparPromo() {
 }
 
 // Helpers Visuais
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
-
 function calcularMargem(p) {
   if (!p.valor_venda || !p.preco_custo) return 0;
   const lucro = p.valor_venda - p.preco_custo;

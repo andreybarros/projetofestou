@@ -101,57 +101,35 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useSessaoStore } from '../stores/sessao';
-import { supabase } from '../composables/useSupabase';
+import { ref, onMounted } from 'vue';
+import { supabase }               from '../composables/useSupabase';
+import { useCarregaSupabase }     from '../composables/useCarregaSupabase';
+import { useListaPaginada }       from '../composables/useListaPaginada';
 
-const sessaoStore = useSessaoStore();
 const lista       = ref([]);
-const carregando  = ref(true);
-const busca       = ref('');
-const pagina      = ref(1);
-const POR_PAGINA  = 20;
 const paraExcluir = ref(null);
 const excluindo   = ref(false);
 
-const filtrados = computed(() => {
-  const q = busca.value.trim().toLowerCase();
-  if (!q) return lista.value;
-  return lista.value.filter(c => (c.nome || '').toLowerCase().includes(q));
-});
+const { carregando, executar } = useCarregaSupabase();
 
-const totalPaginas = computed(() => Math.max(1, Math.ceil(filtrados.value.length / POR_PAGINA)));
-const paginados    = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA;
-  return filtrados.value.slice(ini, ini + POR_PAGINA);
-});
-const resumoInfo = computed(() => {
-  const ini = (pagina.value - 1) * POR_PAGINA + 1;
-  const fim = Math.min(pagina.value * POR_PAGINA, filtrados.value.length);
-  return `${ini}–${fim}`;
-});
-
-watch(busca, () => { pagina.value = 1; });
+const { busca, pagina, filtrados, paginados, totalPaginas, resumoInfo } =
+  useListaPaginada(lista, (items, q) => {
+    const lower = q.trim().toLowerCase();
+    return lower ? items.filter(c => (c.nome || '').toLowerCase().includes(lower)) : items;
+  });
 
 onMounted(carregar);
 
 async function carregar() {
-  carregando.value = true;
-  try {
-    let q = supabase
+  await executar((sb, filialPk) => {
+    let q = sb
       .from('categorias')
       .select('pk, nome, descricao, desconto_somente_decorador')
       .eq('ativo', true)
       .order('nome');
-    if (sessaoStore.filial?.pk) q = q.eq('filial_pk', sessaoStore.filial.pk);
-    const { data, error } = await q;
-    if (error) throw error;
-    lista.value = data || [];
-  } catch (e) {
-    console.error('[Categorias]', e.message);
-  } finally {
-    carregando.value = false;
-  }
+    if (filialPk) q = q.eq('filial_pk', filialPk);
+    return q;
+  }, lista);
 }
 
 function confirmarExclusao(c) {

@@ -664,9 +664,11 @@
 import { ref, reactive, computed, onMounted, onUnmounted, inject } from 'vue';
 import { useSessaoStore } from '../stores/sessao';
 import apiClient from '../services/api';
+import { useFormatacao } from '../composables/useFormatacao';
 
 const sessaoStore = useSessaoStore();
 const showToast   = inject('showToast');
+const { fmt, fmtData, fmtNum } = useFormatacao();
 
 const tabAtiva = ref('contas');
 const contas   = ref([]);
@@ -1207,9 +1209,6 @@ function dtFmt(dStr) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Manaus' });
 }
 
-function fmt(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-}
 </script>
 
 <style scoped>
