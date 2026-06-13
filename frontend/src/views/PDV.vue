@@ -708,6 +708,105 @@
 
   </div>
 
+  <!-- ── Modal Consulta de Preço (Ctrl+K) ──────────────────── -->
+  <Teleport to="body">
+    <Transition name="cp-fade">
+      <div v-if="showConsultaPreco" class="cp-backdrop" @click.self="showConsultaPreco = false">
+        <div class="cp-modal">
+
+          <!-- Barra de busca -->
+          <div class="cp-search-bar">
+            <div class="cp-search-wrap">
+              <svg class="cp-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                ref="consultaInputRef"
+                v-model="buscaConsulta"
+                type="text"
+                placeholder="Nome, código ou EAN… · 4* adiciona 4 un."
+                class="cp-search-input"
+                @keydown.esc="showConsultaPreco = false"
+              />
+              <span v-if="qtdMultiplicadorConsulta > 1" class="cp-qty-badge">×{{ qtdMultiplicadorConsulta }}</span>
+              <button v-if="buscaConsulta" class="cp-search-clear" @click="buscaConsulta = ''" tabindex="-1">×</button>
+            </div>
+            <button class="cp-close-btn" @click="showConsultaPreco = false" title="Fechar (Esc)">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- Meta bar -->
+          <div class="cp-meta">
+            <span class="cp-meta-label">
+              <span class="material-symbols-outlined" style="font-size:13px;vertical-align:-2px;margin-right:4px">price_check</span>Consulta de Preço
+            </span>
+            <kbd class="cp-kbd">Ctrl K</kbd>
+            <span class="cp-meta-count" v-if="consultaFiltrados.length">
+              {{ consultaResumoInfo }} / {{ consultaFiltrados.length }}
+            </span>
+          </div>
+
+          <!-- Lista de produtos -->
+          <div class="cp-list">
+            <div v-if="!consultaFiltrados.length" class="cp-empty">
+              <span class="material-symbols-outlined cp-empty-ico">search_off</span>
+              <p>Nenhum produto encontrado</p>
+            </div>
+            <div
+              v-for="p in consultaPaginados"
+              :key="p.pk"
+              class="cp-item"
+              :class="{ 'cp-item-sem-estoque': p.saldo !== null && p.saldo <= 0 }"
+            >
+              <div class="cp-item-info">
+                <span class="cp-item-name">{{ p.descricao }}</span>
+                <div class="cp-item-meta">
+                  <span v-if="p.codigo_barras" class="cp-item-ean">{{ p.codigo_barras }}</span>
+                  <span v-else-if="p.codigo" class="cp-item-ean">{{ p.codigo }}</span>
+                  <span :class="['cp-item-stock', p.saldo <= 0 ? 'zero' : p.saldo <= 5 ? 'low' : 'ok']">
+                    <span class="material-symbols-outlined" style="font-size:12px">inventory_2</span>
+                    {{ p.saldo !== null ? p.saldo : '∞' }}
+                  </span>
+                </div>
+              </div>
+              <div class="cp-item-right">
+                <div class="cp-item-price-wrap">
+                  <span v-if="getPromoAtiva(p)" class="cp-item-price-old">{{ fmt(p.valor_venda) }}</span>
+                  <div class="cp-item-price-row">
+                    <span :class="['cp-item-price', { 'cp-promo': getPromoAtiva(p) }]">{{ fmt(getPrecoEfetivo(p)) }}</span>
+                    <span v-if="getPromoAtiva(p)" class="cp-promo-tag">PROMO</span>
+                  </div>
+                </div>
+                <button
+                  class="cp-add-btn"
+                  @click="addFromConsulta(p)"
+                  :disabled="vendaFinalizada || (!permitirEstoqueNegativo && p.saldo !== null && p.saldo <= 0)"
+                  :title="vendaFinalizada ? 'Venda já finalizada' : p.saldo <= 0 ? 'Sem estoque' : 'Adicionar'"
+                >
+                  <span class="material-symbols-outlined">add_shopping_cart</span>
+                  <span class="cp-add-txt">Adicionar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer: paginação -->
+          <div class="cp-footer" v-if="consultaFiltrados.length">
+            <div v-if="consultaTotalPaginas > 1" class="cp-paginacao">
+              <button :disabled="consultaPagina === 1" @click="consultaIrPara(consultaPagina - 1)" class="cp-pg-btn">‹</button>
+              <template v-for="pg in consultaPaginacaoVisiveis" :key="pg">
+                <span v-if="pg === '...'" class="cp-pg-ellipsis">…</span>
+                <button v-else :class="['cp-pg-btn', consultaPagina === pg ? 'active' : '']" @click="consultaIrPara(pg)">{{ pg }}</button>
+              </template>
+              <button :disabled="consultaPagina === consultaTotalPaginas" @click="consultaIrPara(consultaPagina + 1)" class="cp-pg-btn">›</button>
+            </div>
+            <span v-else class="cp-footer-info">{{ consultaFiltrados.length }} produto(s)</span>
+          </div>
+
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
   <!-- Modal Scanner de Código de Barras -->
   <Teleport to="body">
     <div v-if="scannerAberto" class="scanner-overlay">
@@ -1050,6 +1149,109 @@ const cartItemsEl = ref(null);
 // ── Orçamento ─────────────────────────────────────────────────
 const orcCopiado = ref(false);
 
+// ── Consulta de Preço (Ctrl+K) ────────────────────────────────
+const showConsultaPreco  = ref(false);
+const consultaInputRef   = ref(null);
+
+const buscaConsulta   = ref('');
+const consultaPagina  = ref(1);
+const _CP_POR_PAG     = 15;
+
+function _norm(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+const consultaFiltrados = computed(() => {
+  const q     = buscaConsulta.value;
+  const items = todos.value;
+  const qtdM  = q.match(/^(\d+)\*/);
+  const termo = _norm((qtdM ? q.replace(/^\d+\*/, '') : q).trim());
+  if (!termo) return items;
+  const palavras = termo.split(/\s+/).filter(Boolean);
+  return items.filter(p => {
+    const barras = (p.codigo_barras || '');
+    const codigo = _norm(p.codigo || '');
+    if (barras.includes(termo) || codigo.includes(termo)) return true;
+    return palavras.every(w => _norm(p.descricao).includes(w));
+  });
+});
+
+const consultaTotalPaginas = computed(() =>
+  Math.max(1, Math.ceil(consultaFiltrados.value.length / _CP_POR_PAG)));
+
+const consultaResumoInfo = computed(() => {
+  const total = consultaFiltrados.value.length;
+  if (!total) return '0–0';
+  const ini = (consultaPagina.value - 1) * _CP_POR_PAG + 1;
+  const fim = Math.min(consultaPagina.value * _CP_POR_PAG, total);
+  return `${ini}–${fim}`;
+});
+
+const consultaPaginados = computed(() => {
+  const ini = (consultaPagina.value - 1) * _CP_POR_PAG;
+  return consultaFiltrados.value.slice(ini, ini + _CP_POR_PAG);
+});
+
+const consultaPaginacaoVisiveis = computed(() => {
+  const tp = consultaTotalPaginas.value;
+  const p  = consultaPagina.value;
+  if (tp <= 7) return Array.from({ length: tp }, (_, i) => i + 1);
+  const pages = [1];
+  if (p > 3) pages.push('...');
+  for (let i = Math.max(2, p - 1); i <= Math.min(tp - 1, p + 1); i++) pages.push(i);
+  if (p < tp - 2) pages.push('...');
+  pages.push(tp);
+  return pages;
+});
+
+watch(buscaConsulta, () => { consultaPagina.value = 1; });
+
+function consultaIrPara(p) {
+  if (p >= 1 && p <= consultaTotalPaginas.value) consultaPagina.value = p;
+}
+
+const qtdMultiplicadorConsulta = computed(() => {
+  const m = buscaConsulta.value.match(/^(\d+)\*/);
+  return m ? parseInt(m[1]) : 1;
+});
+
+function abrirConsultaPreco() {
+  showConsultaPreco.value = true;
+  buscaConsulta.value = '';
+  nextTick(() => consultaInputRef.value?.focus());
+}
+
+function addFromConsulta(p) {
+  if (vendaFinalizada.value) return;
+  const qtd = qtdMultiplicadorConsulta.value;
+  if (!permitirEstoqueNegativo.value && p.saldo !== null) {
+    const noCarrinho = vendaStore.itens.find(i => i.produto_pk === p.pk);
+    const qtdAtual = noCarrinho ? parseFloat(noCarrinho.qtd || 0) : 0;
+    if (qtdAtual + qtd > p.saldo) {
+      const disponivel = p.saldo - qtdAtual;
+      toast(disponivel <= 0 ? 'Produto sem estoque disponível.' : `Estoque insuficiente. Disponível: ${disponivel}`, 'err');
+      return;
+    }
+  }
+  const preco = getPrecoEfetivo(p);
+  vendaStore.adicionarItem({
+    produto_pk:     p.pk,
+    nome:           p.descricao,
+    codigo:         p.codigo,
+    categoria_pk:   p.categoria_pk,
+    preco_unitario: parseFloat(preco),
+    qtd,
+    preco_total:    parseFloat(preco) * qtd,
+    desconto_val:   0,
+    saldo:          p.saldo,
+  });
+  if (qtdMultiplicadorConsulta.value > 1) buscaConsulta.value = '';
+  toast(`${p.descricao} adicionado ao carrinho.`, 'ok');
+  nextTick(() => {
+    if (cartItemsEl.value) cartItemsEl.value.scrollTop = cartItemsEl.value.scrollHeight;
+  });
+}
+
 // ── Toast ─────────────────────────────────────────────────────
 const toastMsg  = ref('');
 const toastTipo = ref('ok');
@@ -1305,7 +1507,11 @@ watch(cartTab, (tab) => {
 
 // ── Mount ─────────────────────────────────────────────────────
 function onHotkey(e) {
-  if (e.key === 'Escape') { e.preventDefault(); limpar(); }
+  if (e.ctrlKey && e.key === 'k') { e.preventDefault(); abrirConsultaPreco(); return; }
+  if (e.key === 'Escape') {
+    if (showConsultaPreco.value) { showConsultaPreco.value = false; return; }
+    e.preventDefault(); limpar();
+  }
   if (e.key === 'F1' && vendaStore.itens.length) { e.preventDefault(); copiarOrcamento(); }
   if (e.key === 'F2' && !vendaFinalizada.value) { e.preventDefault(); cartTab.value = 0; }
   if (e.key === 'F3' && !vendaFinalizada.value && vendaStore.itens.length) { e.preventDefault(); cartTab.value = 1; }
@@ -4484,5 +4690,217 @@ async function emitirNFCe() {
 
 .pdv-lb-enter-active, .pdv-lb-leave-active { transition: opacity .18s; }
 .pdv-lb-enter-from,  .pdv-lb-leave-to     { opacity: 0; }
+
+/* ── Modal Consulta de Preço — Obsidian Silk ──────────────── */
+
+/* Transição entrada/saída */
+.cp-fade-enter-active { transition: opacity .2s ease; }
+.cp-fade-leave-active { transition: opacity .15s ease; }
+.cp-fade-enter-from, .cp-fade-leave-to { opacity: 0; }
+.cp-fade-enter-active .cp-modal {
+  transition: transform .32s cubic-bezier(0.22, 1, 0.36, 1), opacity .22s ease;
+}
+.cp-fade-leave-active .cp-modal {
+  transition: transform .15s ease, opacity .15s ease;
+}
+.cp-fade-enter-from .cp-modal { transform: translateY(24px) scale(0.97); opacity: 0; }
+.cp-fade-leave-to   .cp-modal { transform: translateY(8px)  scale(0.98); opacity: 0; }
+
+/* backdrop */
+.cp-backdrop {
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(4,5,12,.7);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 6vh 1rem 1rem;
+}
+
+/* container modal — dark fixo, independente do tema */
+.cp-modal {
+  width: 100%; max-width: 700px; max-height: 86vh;
+  background: linear-gradient(158deg, #181c27 0%, #10121a 55%, #0d0f16 100%);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.03),
+    0 32px 80px rgba(0,0,0,.75),
+    0 8px 24px rgba(0,0,0,.4),
+    inset 0 1px 0 rgba(255,255,255,.07);
+  display: flex; flex-direction: column;
+  overflow: hidden; position: relative;
+}
+
+/* faixa iridescente de seda — top edge */
+.cp-modal::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(200,175,110,.32) 22%,
+    rgba(160,138,255,.26) 48%,
+    rgba(110,195,230,.2) 74%,
+    transparent 100%
+  );
+  pointer-events: none; z-index: 2;
+}
+
+/* barra de busca */
+.cp-search-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 15px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  position: relative; z-index: 1;
+}
+.cp-search-wrap { flex: 1; position: relative; display: flex; align-items: center; }
+.cp-search-ico  { position: absolute; left: 13px; color: rgba(255,255,255,.22); pointer-events: none; flex-shrink: 0; }
+.cp-search-input {
+  width: 100%; padding: .72rem 3rem .72rem 2.75rem;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px; color: #eeeef4; font-size: .97rem;
+  outline: none; caret-color: #d4a843;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+.cp-search-input:focus {
+  border-color: rgba(212,168,67,.45);
+  background: rgba(255,255,255,.07);
+  box-shadow: 0 0 0 3px rgba(212,168,67,.09), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.cp-search-input::placeholder { color: rgba(255,255,255,.2); }
+.cp-qty-badge {
+  position: absolute; right: 38px;
+  background: rgba(212,168,67,.18); border: 1px solid rgba(212,168,67,.32);
+  color: #d4a843; font-size: .68rem; font-weight: 800;
+  padding: 2px 7px; border-radius: 20px; letter-spacing: .5px;
+}
+.cp-search-clear {
+  position: absolute; right: 12px;
+  background: none; border: none; color: rgba(255,255,255,.28); cursor: pointer;
+  font-size: 1.05rem; line-height: 1; padding: 3px 4px; border-radius: 5px;
+  transition: color .12s;
+}
+.cp-search-clear:hover { color: rgba(255,255,255,.65); }
+.cp-close-btn {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px; color: rgba(255,255,255,.32);
+  cursor: pointer; padding: 7px; display: flex;
+  align-items: center; flex-shrink: 0; transition: all .15s;
+}
+.cp-close-btn:hover { background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); }
+.cp-close-btn .material-symbols-outlined { font-size: 20px; }
+
+/* barra de metadados */
+.cp-meta {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 18px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  background: rgba(0,0,0,.18);
+}
+.cp-meta-label {
+  font-size: .7rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+  color: rgba(255,255,255,.28);
+}
+.cp-kbd {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 4px; padding: 1px 6px;
+  font-size: .64rem; font-weight: 700;
+  color: rgba(255,255,255,.36); font-family: ui-monospace, monospace; letter-spacing: .5px;
+}
+.cp-meta-count {
+  margin-left: auto; font-size: .73rem;
+  color: rgba(255,255,255,.22); font-variant-numeric: tabular-nums;
+}
+
+/* lista */
+.cp-list { flex: 1; overflow-y: auto; min-height: 0; }
+.cp-list::-webkit-scrollbar { width: 3px; }
+.cp-list::-webkit-scrollbar-track { background: transparent; }
+.cp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 2px; }
+.cp-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 64px 20px; color: rgba(255,255,255,.18); font-size: .9rem;
+}
+.cp-empty-ico { font-size: 2.4rem; }
+
+/* linha de produto */
+.cp-item {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 18px 12px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .1s, box-shadow .1s;
+}
+.cp-item:last-child { border-bottom: none; }
+.cp-item:hover {
+  background: rgba(255,255,255,.033);
+  box-shadow: inset 3px 0 0 rgba(212,168,67,.55);
+}
+.cp-item-sem-estoque { opacity: .38; }
+.cp-item-info { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cp-item-name {
+  font-size: .91rem; font-weight: 500; color: #e4e4ee;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .01em;
+}
+.cp-item-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cp-item-ean  { font-family: ui-monospace, 'Cascadia Code', monospace; font-size: .7rem; color: rgba(255,255,255,.26); }
+.cp-item-stock { display: flex; align-items: center; gap: 3px; font-size: .72rem; font-weight: 600; }
+.cp-item-stock.ok   { color: #4ade80; }
+.cp-item-stock.low  { color: #fbbf24; }
+.cp-item-stock.zero { color: #f87171; }
+
+/* preço + botão */
+.cp-item-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.cp-item-price-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.cp-item-price-old  { font-size: .7rem; color: rgba(255,255,255,.22); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+.cp-item-price-row  { display: flex; align-items: baseline; gap: 6px; }
+.cp-item-price {
+  font-size: 1.15rem; font-weight: 700; color: #dfc88a;
+  letter-spacing: -.2px; font-variant-numeric: tabular-nums;
+}
+.cp-item-price.cp-promo { color: #5eead4; }
+.cp-promo-tag {
+  font-size: .58rem; font-weight: 800; text-transform: uppercase; letter-spacing: .8px;
+  background: rgba(94,234,212,.1); border: 1px solid rgba(94,234,212,.22); color: #5eead4;
+  padding: 2px 6px; border-radius: 20px;
+}
+.cp-add-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 10px;
+  background: rgba(212,168,67,.1); border: 1px solid rgba(212,168,67,.28); color: #d4a843;
+  font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.cp-add-btn:hover:not(:disabled) {
+  background: rgba(212,168,67,.2); border-color: rgba(212,168,67,.5);
+  box-shadow: 0 0 16px rgba(212,168,67,.12); color: #e8c060;
+}
+.cp-add-btn:disabled { opacity: .22; cursor: not-allowed; }
+.cp-add-btn .material-symbols-outlined { font-size: 17px; }
+
+/* footer */
+.cp-footer {
+  padding: 9px 18px;
+  border-top: 1px solid rgba(255,255,255,.04);
+  background: rgba(0,0,0,.22);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.cp-footer-info  { font-size: .77rem; color: rgba(255,255,255,.22); }
+.cp-paginacao    { display: flex; align-items: center; gap: 4px; }
+.cp-pg-btn {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.44); border-radius: 6px;
+  padding: 4px 11px; cursor: pointer; font-size: .82rem; line-height: 1.4; transition: all .15s;
+}
+.cp-pg-btn:hover:not(:disabled):not(.active) { background: rgba(255,255,255,.09); color: rgba(255,255,255,.8); }
+.cp-pg-btn.active { background: rgba(212,168,67,.18); border-color: rgba(212,168,67,.38); color: #d4a843; }
+.cp-pg-btn:disabled { opacity: .2; cursor: default; }
+.cp-pg-ellipsis { padding: 0 4px; color: rgba(255,255,255,.2); font-size: .85rem; }
+
+@media (max-width: 600px) {
+  .cp-backdrop { padding: 0; align-items: flex-end; }
+  .cp-modal    { max-width: 100%; border-radius: 20px 20px 0 0; max-height: 92vh; }
+  .cp-add-txt  { display: none; }
+  .cp-add-btn  { padding: 8px 10px; }
+}
 </style>
 
