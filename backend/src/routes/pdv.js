@@ -124,9 +124,6 @@ router.post('/produto', async (req, res) => {
     if (!descricao?.trim()) return res.status(400).json({ erro: 'Descrição obrigatória.' });
     if (!filial_pk) return res.status(400).json({ erro: 'filial_pk obrigatório.' });
 
-    const erroDup = await checarDuplicata(filial_pk, descricao, codigo_barras);
-    if (erroDup) return res.status(409).json({ erro: erroDup });
-
     const payload = {
       codigo:              codigo              || null,
       codigo_barras:       codigo_barras       || null,
@@ -236,10 +233,6 @@ router.put('/produto/:pk', async (req, res) => {
 
     const saldoAntes  = parseFloat(prodAtual?.saldo ?? 0);
     const saldoNovo   = parseFloat(saldo ?? 0);
-    const filialVerif = filial_pk || prodAtual?.filial_pk;
-
-    const erroDup = await checarDuplicata(filialVerif, descricao, codigo_barras, pk);
-    if (erroDup) return res.status(409).json({ erro: erroDup });
 
     const payload = {
       codigo:            codigo            || null,
