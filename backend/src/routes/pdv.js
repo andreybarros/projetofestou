@@ -43,6 +43,20 @@ async function checarDuplicata(filial_pk, descricao, codigo_barras, pk_excluir =
   return null;
 }
 
+async function registrarAuditoriaEstoque(produto_pk, filial_pk, nome, saldo_antes, saldo_apos, observacao, operador = null) {
+  const { error } = await supabase.from('auditoria_estoque').insert({
+    filial_pk:    filial_pk || null,
+    produto_pk,
+    nome,
+    saldo_antes,
+    qtd_debitada: saldo_apos - saldo_antes,
+    saldo_apos,
+    observacao,
+    operador:     operador  || null,
+  });
+  if (error) console.error('[PDV/AuditoriaEstoque] Erro:', error.message);
+}
+
 // GET /api/pdv/produtos?filial_pk=X
 router.get('/produtos', async (req, res) => {
   try {
@@ -157,9 +171,14 @@ router.post('/produto', async (req, res) => {
         const { data: retry, error: err2 } = await supabase
           .from('produtos').insert(payload).select('pk, codigo').single();
         if (err2) throw err2;
+        await registrarAuditoriaEstoque(retry.pk, filial_pk, payload.descricao, 0, payload.saldo, 'Cadastro inicial do produto', req.user?.nome);
         return res.json({ ok: true, pk: retry.pk, codigo: payload.codigo });
       }
       throw error;
+    }
+
+    if (payload.saldo > 0) {
+      await registrarAuditoriaEstoque(inserted.pk, filial_pk, payload.descricao, 0, payload.saldo, 'Cadastro inicial do produto', req.user?.nome);
     }
 
     res.json({ ok: true, pk: inserted.pk, codigo: inserted.codigo });
@@ -259,17 +278,10 @@ router.put('/produto/:pk', async (req, res) => {
     if (error) throw error;
 
     // Auditoria somente se o saldo mudou
-    if (saldoNovo !== saldoAntes) {
-      const { error: errAudit } = await supabase.from('auditoria_estoque').insert({
-        filial_pk:    filial_pk    || null,
-        produto_pk:   pk,
-        nome:         descricao?.trim() || prodAtual?.descricao || null,
-        saldo_antes:  saldoAntes,
-        qtd_debitada: saldoNovo - saldoAntes,
-        saldo_apos:   saldoNovo,
-        observacao:   'Alterado estoque pelo cadastro de produto',
-      });
-      if (errAudit) console.error('[PDV/Produto/Update] Erro auditoria:', errAudit.message);
+    if (Math.round(saldoNovo * 1000) !== Math.round(saldoAntes * 1000)) {
+      const filialAudit = filial_pk || prodAtual?.filial_pk || null;
+      const nomeAudit   = descricao?.trim() || prodAtual?.descricao || null;
+      await registrarAuditoriaEstoque(pk, filialAudit, nomeAudit, saldoAntes, saldoNovo, 'Alterado no cadastro de produto', req.user?.nome);
     }
 
     res.json({ ok: true });

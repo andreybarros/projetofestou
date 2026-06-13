@@ -656,6 +656,7 @@ function showToast(msg, tipo = 'success') {
 }
 provide('showToast', showToast);
 provide('abrirSidebar', abrirSidebar);
+provide('tema', tema);
 
 // Verificação de atualização
 const updateDisponivel = ref(false);

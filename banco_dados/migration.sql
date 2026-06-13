@@ -1398,6 +1398,7 @@ ALTER TABLE pedidos_catalogo_itens ADD COLUMN IF NOT EXISTS nome_produto_substit
 -- ============================================================
 ALTER TABLE auditoria_estoque ADD COLUMN IF NOT EXISTS pedido_catalogo_pk bigint REFERENCES pedidos_catalogo(pk);
 CREATE INDEX IF NOT EXISTS idx_auditoria_estoque_pedido_catalogo ON auditoria_estoque(pedido_catalogo_pk);
+ALTER TABLE auditoria_estoque ADD COLUMN IF NOT EXISTS operador text;
 
 -- ============================================================
 -- Realtime: transmite todas as colunas ao atualizar (necessário para status, etc.)
